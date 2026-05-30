@@ -704,12 +704,12 @@ async function doLogin(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appShell').classList.add('visible');
 
-  // Tüm veriyi yükle
   await loadAllData();
 
   if(session.role==='student') S.activeStuId = rows.id;
   setupShell();
-  switchTab(session.role==='coach' ? 'program' : 'portal');
+  const firstTab = {coach:'program', student:'portal', developer:'dev-dashboard'}[session.role] || 'portal';
+  switchTab(firstTab);
 }
 function doLogout(){
   stopChatPoll();
@@ -725,19 +725,25 @@ function doLogout(){
 // ═══════════════════════════════════════════════
 const coachTabs=[{id:'program',lbl:'📋 Program'},{id:'todolist',lbl:'✅ To-Do'},{id:'students',lbl:'👤 Öğrenciler'},{id:'appointments',lbl:'📅 Randevular'},{id:'exams',lbl:'📊 Denemeler'},{id:'messages',lbl:'💬 Mesajlar'}];
 const stuTabs=[{id:'portal',lbl:'🏠 Ana Sayfa'},{id:'sportal',lbl:'📋 Programım'},{id:'sexams',lbl:'📊 Denemeler'},{id:'smessages',lbl:'💬 Koçuma Yaz'},{id:'sprofil',lbl:'👤 Profilim'}];
+const devTabs=[{id:'dev-dashboard',lbl:'📊 Dashboard'},{id:'dev-users',lbl:'👥 Kullanıcılar'},{id:'dev-resources',lbl:'📚 Kaynaklar'},{id:'dev-finance',lbl:'💰 Finans'},{id:'dev-announce',lbl:'📣 Duyurular'},{id:'dev-tickets',lbl:'🎫 Destek'}];
+
 function setupShell(){
-  const tabs=session.role==='coach'?coachTabs:stuTabs;
+  const tabs = session.role==='coach' ? coachTabs : session.role==='developer' ? devTabs : stuTabs;
   document.getElementById('tbarNav').innerHTML=tabs.map(t=>`<button class="tbar-tab" id="tbtab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}</button>`).join('');
   document.getElementById('mobileNav').innerHTML=tabs.slice(0,5).map(t=>`<button class="mnav-btn" id="mntab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}</button>`).join('');
   document.getElementById('mainContent').innerHTML=tabs.map(t=>`<div class="view" id="view-${t.id}"></div>`).join('');
-  const stu=session.role==='student'?S.students.find(s=>s.id===session.studentId):null;
-  const name=session.role==='coach'?'Emin Ceylan':(stu?.name||'');
-  const initials=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const dot=document.getElementById('tbarDot');
-  dot.textContent=initials; dot.style.background=session.role==='coach'?'#f0a500':(stu?.color||'#4da6ff'); dot.style.color='#0f0e0c';
+  const dbUser = session.dbUser;
+  const stu = session.role==='student' ? S.students.find(s=>s.id===session.studentId) : null;
+  const name = dbUser?.full_name || (stu?.name) || '';
+  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const dot = document.getElementById('tbarDot');
+  const roleColors = {coach:'#f0a500', student: stu?.color||'#4da6ff', developer:'#c084fc'};
+  dot.textContent=initials; dot.style.background=roleColors[session.role]||'#888'; dot.style.color='#0f0e0c';
   document.getElementById('tbarName').textContent=name;
-  document.getElementById('tbarRole').textContent=session.role==='coach'?'Koç':'Öğrenci';
-  document.getElementById('tbarRole').className='role-badge '+(session.role==='coach'?'role-coach':'role-student');
+  const roleLabels = {coach:'Koç', student:'Öğrenci', developer:'Developer'};
+  const roleClasses = {coach:'role-coach', student:'role-student', developer:'role-dev'};
+  document.getElementById('tbarRole').textContent=roleLabels[session.role]||session.role;
+  document.getElementById('tbarRole').className='role-badge '+(roleClasses[session.role]||'role-dev');
 }
 function switchTab(tab){
   currentTab=tab;
@@ -746,10 +752,9 @@ function switchTab(tab){
   document.getElementById('view-'+tab)?.classList.add('active');
   document.getElementById('tbtab_'+tab)?.classList.add('active');
   document.getElementById('mntab_'+tab)?.classList.add('active');
-  ({program:renderProgram,todolist:renderTodoList,students:renderStudents,appointments:renderAppointments,exams:renderExams,messages:renderMessages,portal:renderPortal,sportal:renderSPortal,sexams:renderSExams,smessages:renderSMessages,sprofil:renderSProfil})[tab]?.();
-  // Chat polling
-  if(tab==='messages'||tab==='smessages') startChatPoll();
-  else stopChatPoll();
+  ({program:renderProgram,todolist:renderTodoList,students:renderStudents,appointments:renderAppointments,exams:renderExams,messages:renderMessages,portal:renderPortal,sportal:renderSPortal,sexams:renderSExams,smessages:renderSMessages,sprofil:renderSProfil,'dev-dashboard':renderDevDashboard,'dev-users':renderDevUsers,'dev-resources':renderDevResources,'dev-finance':renderDevFinance,'dev-announce':renderDevAnnounce,'dev-tickets':renderDevTickets})[tab]?.();
+  if(tab==='messages'||tab==='smessages') initRealtime();
+  else destroyRealtime();
 }
 
 // ═══════════════════════════════════════════════
@@ -1546,7 +1551,6 @@ function renderMessages(){
 
 async function selectThread(stuId){
   S.msgThread=stuId;
-  // mark read
   const unreadIds=(S.messages[stuId]||[]).filter(m=>m.from==='student'&&!m.read&&m._id).map(m=>m._id);
   if(unreadIds.length) await db.from('messages').update({read:true}).in('id',unreadIds);
   (S.messages[stuId]||[]).forEach(m=>{if(m.from==='student')m.read=true;});
@@ -1554,6 +1558,8 @@ async function selectThread(stuId){
   document.querySelectorAll('.msg-contact').forEach(el=>el.classList.remove('active'));
   S.students.forEach((s,i)=>{if(s.id===stuId)document.querySelectorAll('.msg-contact')[i]?.classList.add('active');});
   scrollMsgs();
+  // Realtime'ı bu thread için yeniden başlat
+  initRealtime();
 }
 
 function renderThreadHTML(stuId,role){
@@ -1830,49 +1836,655 @@ async function renderSMessages(){
 }
 
 // ═══════════════════════════════════════════════
-// CHAT POLLING (eşzamanlı mesajlaşma)
+// SUPABASE REALTIME CHAT
 // ═══════════════════════════════════════════════
-let _chatPollInterval = null;
-let _lastMsgTime = {};
+let _realtimeChannel = null;
 
-function startChatPoll() {
-  stopChatPoll();
-  _chatPollInterval = setInterval(pollMessages, 3000);
-}
-function stopChatPoll() {
-  if(_chatPollInterval) { clearInterval(_chatPollInterval); _chatPollInterval=null; }
-}
-
-async function pollMessages() {
-  // Hangi öğrenci thread'i aktif?
+function initRealtime() {
+  destroyRealtime();
   const stuId = session.role==='coach' ? S.msgThread : session.studentId;
   if(!stuId) return;
 
-  const {data:msgs} = await db.from('messages').select('*').eq('student_id',stuId).order('created_at',{ascending:true});
-  if(!msgs) return;
+  _realtimeChannel = db.channel('messages_' + stuId)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter: `student_id=eq.${stuId}`
+    }, payload => {
+      const m = payload.new;
+      if(!S.messages[stuId]) S.messages[stuId] = [];
+      // tekrar ekleme önlemi
+      if(S.messages[stuId].find(x=>x._id===m.id)) return;
+      S.messages[stuId].push({
+        _id: m.id, from: m.from_role, text: m.text, read: m.read,
+        time: new Date(m.created_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})
+      });
+      if(currentTab==='messages' && S.msgThread===stuId) {
+        document.getElementById('msgMain').innerHTML = renderThreadHTML(stuId,'coach');
+        scrollMsgs();
+      }
+      if(currentTab==='smessages') {
+        document.getElementById('msgMain').innerHTML = renderThreadHTML(stuId,'student');
+        scrollMsgs();
+      }
+    })
+    .subscribe();
+}
 
-  const newList = msgs.map(m=>({
-    _id:m.id, from:m.from_role, text:m.text, read:m.read,
-    time: new Date(m.created_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})
-  }));
+function destroyRealtime() {
+  if(_realtimeChannel) { db.removeChannel(_realtimeChannel); _realtimeChannel=null; }
+}
 
-  const lastKey = stuId;
-  const oldLen = (S.messages[stuId]||[]).length;
-  S.messages[stuId] = newList;
+// Eski polling fonksiyonları (artık kullanılmıyor ama var)
+function startChatPoll(){}
+function stopChatPoll(){}
 
-  // Yeni mesaj geldiyse UI güncelle
-  if(newList.length !== oldLen) {
-    if(currentTab==='messages' && S.msgThread===stuId) {
-      document.getElementById('msgMain').innerHTML = renderThreadHTML(stuId,'coach');
-      scrollMsgs();
-    }
-    if(currentTab==='smessages') {
-      document.getElementById('msgMain').innerHTML = renderThreadHTML(stuId,'student');
-      scrollMsgs();
-    }
-    // Sidebar badge güncelle
-    if(currentTab==='messages') renderMessages();
+// ═══════════════════════════════════════════════
+// DEVELOPER PANEL
+// ═══════════════════════════════════════════════
+
+// ── DASHBOARD ──────────────────────────────────
+async function renderDevDashboard() {
+  const el = document.getElementById('view-dev-dashboard');
+  el.innerHTML = `<div class="sh"><h2>🖥️ Sistem Dashboard</h2></div><div class="empty"><p>Yükleniyor...</p></div>`;
+
+  const [usersRes, tasksRes, examsRes, msgsRes, ticketsRes, paymentsRes] = await Promise.all([
+    db.from('users').select('id,role,created_at'),
+    db.from('tasks').select('id,done,created_at'),
+    db.from('exams').select('id,created_at'),
+    db.from('messages').select('id,created_at'),
+    db.from('tickets').select('id,status,created_at'),
+    db.from('payments').select('id,amount,status,payment_date'),
+  ]);
+
+  const users = usersRes.data||[];
+  const tasks = tasksRes.data||[];
+  const exams = examsRes.data||[];
+  const msgs = msgsRes.data||[];
+  const tickets = ticketsRes.data||[];
+  const payments = paymentsRes.data||[];
+
+  const coaches = users.filter(u=>u.role==='coach').length;
+  const students = users.filter(u=>u.role==='student').length;
+  const totalRevenue = payments.filter(p=>p.status==='completed').reduce((s,p)=>s+Number(p.amount),0);
+  const openTickets = tickets.filter(t=>t.status==='open').length;
+
+  // Son 7 gün aktivite
+  const days7 = Array.from({length:7},(_,i)=>{
+    const d = new Date(); d.setDate(d.getDate()-6+i);
+    return fmtDate(d);
+  });
+  const tasksByDay = days7.map(d=>tasks.filter(t=>t.created_at?.startsWith(d)).length);
+  const maxD = Math.max(...tasksByDay,1);
+
+  el.innerHTML = `
+    <div class="sh"><h2>🖥️ Sistem Dashboard</h2><span style="font-size:12px;color:var(--text-dim)">${new Date().toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</span></div>
+
+    <div class="stats-row" style="margin-bottom:20px">
+      <div class="stat-card"><div class="stat-label">Toplam Öğrenci</div><div class="stat-val" style="color:var(--blue)">${students}</div></div>
+      <div class="stat-card"><div class="stat-label">Toplam Koç</div><div class="stat-val" style="color:var(--accent)">${coaches}</div></div>
+      <div class="stat-card"><div class="stat-label">Toplam Görev</div><div class="stat-val">${tasks.length}</div><div style="font-size:11px;color:var(--green);margin-top:3px">✓ ${tasks.filter(t=>t.done).length} tamamlandı</div></div>
+      <div class="stat-card"><div class="stat-label">Toplam Deneme</div><div class="stat-val">${exams.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Toplam Mesaj</div><div class="stat-val">${msgs.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Toplam Gelir</div><div class="stat-val" style="color:var(--green)">${totalRevenue.toLocaleString('tr-TR')} ₺</div></div>
+      <div class="stat-card"><div class="stat-label">Açık Ticket</div><div class="stat-val" style="color:${openTickets>0?'var(--red)':'var(--green)'}">${openTickets}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card cp">
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:14px">📅 Son 7 Gün Görev Aktivitesi</div>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:80px">
+          ${days7.map((d,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+            <div style="font-size:10px;color:var(--text-mid);font-weight:600">${tasksByDay[i]}</div>
+            <div style="width:100%;background:var(--accent);border-radius:3px 3px 0 0;height:${Math.max(Math.round((tasksByDay[i]/maxD)*100),4)}%;min-height:3px;opacity:.8"></div>
+            <div style="font-size:9px;color:var(--text-dim)">${new Date(d+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="card cp">
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:14px">🎫 Son Ticket'lar</div>
+        ${tickets.slice(-5).reverse().map(t=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
+            <span style="color:var(--text-mid)">#${t.id.slice(0,6)}</span>
+            <span class="role-badge" style="background:${t.status==='open'?'var(--red-dim)':t.status==='resolved'?'var(--green-dim)':'var(--accent-dim)'};color:${t.status==='open'?'var(--red)':t.status==='resolved'?'var(--green)':'var(--accent)'}">${t.status}</span>
+          </div>`).join('') || '<div style="font-size:12px;color:var(--text-dim)">Ticket yok</div>'}
+      </div>
+    </div>`;
+}
+
+// ── KULLANICI YÖNETİMİ ─────────────────────────
+async function renderDevUsers() {
+  const el = document.getElementById('view-dev-users');
+  const {data:users} = await db.from('users').select('*').order('created_at');
+  el.innerHTML = `
+    <div class="sh"><h2>👥 Kullanıcı Yönetimi</h2>
+      <button class="btn btn-accent" onclick="openDevUserModal()">+ Kullanıcı Ekle</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border);color:var(--text-dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px">
+            <th style="text-align:left;padding:10px 12px">Ad Soyad</th>
+            <th style="text-align:left;padding:10px 12px">Kullanıcı Adı</th>
+            <th style="text-align:left;padding:10px 12px">Rol</th>
+            <th style="text-align:left;padding:10px 12px">Şifre</th>
+            <th style="text-align:left;padding:10px 12px">Kayıt</th>
+            <th style="padding:10px 12px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(users||[]).map(u=>`
+            <tr style="border-bottom:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+              <td style="padding:10px 12px;font-weight:700">${esc(u.full_name)}</td>
+              <td style="padding:10px 12px;color:var(--text-mid)">${esc(u.username)}</td>
+              <td style="padding:10px 12px"><span class="role-badge ${u.role==='coach'?'role-coach':u.role==='developer'?'role-dev':'role-student'}">${u.role}</span></td>
+              <td style="padding:10px 12px;color:var(--text-dim);font-size:11px">${esc(u.password_hash)}</td>
+              <td style="padding:10px 12px;color:var(--text-dim);font-size:11px">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td>
+              <td style="padding:10px 12px;display:flex;gap:6px">
+                <button class="btn btn-ghost btn-xs" onclick="openDevUserModal('${u.id}')">✏️</button>
+                <button class="btn btn-danger btn-xs" onclick="devDeleteUser('${u.id}')">🗑</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function openDevUserModal(id) {
+  const u = id ? (await db.from('users').select('*').eq('id',id).single()).data : null;
+  // reuse student modal but show all roles
+  document.getElementById('smTitle').textContent = u ? 'Kullanıcıyı Düzenle' : 'Yeni Kullanıcı';
+  document.getElementById('smId').value = id||'';
+  document.getElementById('smName').value = u?.full_name||'';
+  document.getElementById('smTarget').value = u?.target||'';
+  document.getElementById('smUsername').value = u?.username||'';
+  document.getElementById('smPass').value = u?.password_hash||'';
+  document.getElementById('smWeekStart').value = u?.week_start||0;
+  document.getElementById('smProg').value = u?.progress||0;
+  document.getElementById('smProgVal').textContent = (u?.progress||0)+'%';
+  document.querySelectorAll('.color-opt').forEach(el=>el.classList.toggle('sel',el.dataset.c===(u?.color||'#f0a500')));
+  // add role selector if not present
+  let roleField = document.getElementById('smRoleField');
+  if(!roleField) {
+    roleField = document.createElement('div');
+    roleField.id = 'smRoleField';
+    roleField.className = 'field';
+    roleField.innerHTML = `<label>Rol</label><select id="smRole" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none"><option value="student">Öğrenci</option><option value="coach">Koç</option><option value="developer">Developer</option></select>`;
+    document.getElementById('smName').closest('.modal').insertBefore(roleField, document.getElementById('smName').parentElement);
   }
+  document.getElementById('smRole').value = u?.role||'student';
+  om('studentModal');
+}
+
+async function devDeleteUser(id) {
+  if(!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) return;
+  await db.from('users').delete().eq('id',id);
+  showToast('Kullanıcı silindi');
+  renderDevUsers();
+}
+
+// ── KAYNAK YÖNETİMİ ───────────────────────────
+let _devResources = [];
+async function renderDevResources() {
+  const el = document.getElementById('view-dev-resources');
+  const {data} = await db.from('resources').select('*').order('exam_type,subject,name');
+  _devResources = data||[];
+
+  const grouped = {};
+  _devResources.forEach(r=>{
+    if(!grouped[r.exam_type]) grouped[r.exam_type]={};
+    if(!grouped[r.exam_type][r.subject]) grouped[r.exam_type][r.subject]=[];
+    grouped[r.exam_type][r.subject].push(r);
+  });
+
+  el.innerHTML = `
+    <div class="sh"><h2>📚 Kaynak & Müfredat Yönetimi</h2>
+      <button class="btn btn-accent" onclick="openResourceModal()">+ Kaynak Ekle</button>
+    </div>
+    <div style="font-size:13px;color:var(--text-mid);margin-bottom:16px">Veritabanındaki kaynaklar öğrencilerin görev eklerken gördüğü kitap listesini oluşturur.</div>
+    ${Object.keys(grouped).length===0?`<div class="empty"><p>Henüz kaynak eklenmemiş.<br>+ Kaynak Ekle butonuna tıklayın.</p></div>`:''}
+    ${Object.entries(grouped).map(([exam,subjects])=>`
+      <div style="margin-bottom:20px">
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:10px;color:var(--accent)">${exam}</div>
+        ${Object.entries(subjects).map(([subject,books])=>`
+          <div style="margin-bottom:12px">
+            <div style="font-size:12px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${subject}</div>
+            ${books.map(b=>`
+              <div class="card" style="padding:12px 16px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+                <div style="flex:1">
+                  <div style="font-size:13px;font-weight:700">${esc(b.name)}</div>
+                  <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${b.publisher} · ${b.year} · ${(b.tests||[]).length} test</div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${b.active?'var(--green-dim)':'var(--red-dim)'};color:${b.active?'var(--green)':'var(--red)'}">${b.active?'Aktif':'Pasif'}</span>
+                  <button class="btn btn-ghost btn-xs" onclick="openResourceModal('${b.id}')">✏️</button>
+                  <button class="btn btn-danger btn-xs" onclick="devDeleteResource('${b.id}')">🗑</button>
+                </div>
+              </div>`).join('')}
+          </div>`).join('')}
+      </div>`).join('')}`;
+}
+
+function openResourceModal(id) {
+  const r = id ? _devResources.find(x=>x.id===id) : null;
+  const tests = r ? (r.tests||[]).join('\n') : '';
+  // Dynamic modal
+  let modal = document.getElementById('resourceModal');
+  if(!modal) {
+    modal = document.createElement('div');
+    modal.id = 'resourceModal';
+    modal.className = 'modal-bg';
+    modal.innerHTML = `<div class="modal modal-lg">
+      <button class="modal-close" onclick="cm('resourceModal')">×</button>
+      <h2 id="rmTitle">Kaynak Ekle</h2>
+      <input type="hidden" id="rmId">
+      <div class="field-row">
+        <div class="field"><label>Sınav Türü</label>
+          <select id="rmExam"><option value="TYT">TYT</option><option value="AYT-SAY">AYT Sayısal</option><option value="AYT-EA">AYT Eşit Ağırlık</option><option value="AYT-SOZ">AYT Sözel</option></select>
+        </div>
+        <div class="field"><label>Ders</label><input id="rmSubject" placeholder="Matematik, Türkçe..."></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Yayınevi</label><input id="rmPublisher" placeholder="Karekök, İşler, Delta..."></div>
+        <div class="field"><label>Yıl</label><input type="number" id="rmYear" value="2026"></div>
+      </div>
+      <div class="field"><label>Kitap Adı</label><input id="rmName" placeholder="TYT Matematik Soru Bankası"></div>
+      <div class="field">
+        <label>Testler / Bölümler (her satıra bir tane)</label>
+        <textarea id="rmTests" style="min-height:120px" placeholder="Test 1 - Sayılar&#10;Test 2 - Kesirler&#10;Test 3 - Denklemler"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Durum</label>
+          <select id="rmActive"><option value="true">Aktif</option><option value="false">Pasif</option></select>
+        </div>
+      </div>
+      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveResource()">Kaydet</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+  }
+  document.getElementById('rmTitle').textContent = r ? 'Kaynağı Düzenle' : 'Kaynak Ekle';
+  document.getElementById('rmId').value = id||'';
+  document.getElementById('rmExam').value = r?.exam_type||'TYT';
+  document.getElementById('rmSubject').value = r?.subject||'';
+  document.getElementById('rmPublisher').value = r?.publisher||'';
+  document.getElementById('rmYear').value = r?.year||2026;
+  document.getElementById('rmName').value = r?.name||'';
+  document.getElementById('rmTests').value = tests;
+  document.getElementById('rmActive').value = String(r?.active!==false);
+  om('resourceModal');
+}
+
+async function saveResource() {
+  const name = document.getElementById('rmName').value.trim();
+  const subject = document.getElementById('rmSubject').value.trim();
+  if(!name||!subject) return showToast('Ad ve ders zorunlu!');
+  const tests = document.getElementById('rmTests').value.split('\n').map(t=>t.trim()).filter(Boolean);
+  const id = document.getElementById('rmId').value;
+  const payload = {
+    exam_type: document.getElementById('rmExam').value,
+    subject, publisher: document.getElementById('rmPublisher').value.trim(),
+    year: parseInt(document.getElementById('rmYear').value),
+    name, tests, active: document.getElementById('rmActive').value==='true'
+  };
+  if(id) { await db.from('resources').update(payload).eq('id',id); showToast('Güncellendi ✓'); }
+  else { await db.from('resources').insert(payload); showToast('Kaynak eklendi ✓'); }
+  cm('resourceModal'); renderDevResources();
+}
+
+async function devDeleteResource(id) {
+  if(!confirm('Sil?')) return;
+  await db.from('resources').delete().eq('id',id);
+  showToast('Silindi'); renderDevResources();
+}
+
+// ── FİNANS ────────────────────────────────────
+async function renderDevFinance() {
+  const el = document.getElementById('view-dev-finance');
+  const [{data:subs},{data:pays}] = await Promise.all([
+    db.from('subscriptions').select('*,users(full_name,color)').order('created_at',{ascending:false}),
+    db.from('payments').select('*,users(full_name)').order('payment_date',{ascending:false}).limit(20),
+  ]);
+
+  const totalMo = (pays||[]).filter(p=>p.status==='completed').reduce((s,p)=>s+Number(p.amount),0);
+  const activeSubs = (subs||[]).filter(s=>s.status==='active').length;
+
+  el.innerHTML = `
+    <div class="sh"><h2>💰 Finans Yönetimi</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="openPaymentModal()">+ Ödeme Ekle</button>
+        <button class="btn btn-accent btn-sm" onclick="openSubModal()">+ Abonelik</button>
+      </div>
+    </div>
+    <div class="stats-row" style="margin-bottom:20px">
+      <div class="stat-card"><div class="stat-label">Toplam Tahsilat</div><div class="stat-val" style="color:var(--green)">${totalMo.toLocaleString('tr-TR')} ₺</div></div>
+      <div class="stat-card"><div class="stat-label">Aktif Abonelik</div><div class="stat-val">${activeSubs}</div></div>
+      <div class="stat-card"><div class="stat-label">Toplam İşlem</div><div class="stat-val">${(pays||[]).length}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card cp">
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px">📋 Abonelikler</div>
+        ${(subs||[]).map(s=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+            <div>
+              <div style="font-size:13px;font-weight:700">${esc(s.users?.full_name||'?')}</div>
+              <div style="font-size:11px;color:var(--text-dim)">${s.plan} · ${s.start_date}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:700;color:var(--green)">${Number(s.amount).toLocaleString('tr-TR')} ₺</div>
+              <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:${s.status==='active'?'var(--green-dim)':'var(--red-dim)'};color:${s.status==='active'?'var(--green)':'var(--red)'}">${s.status}</span>
+            </div>
+          </div>`).join('') || '<div class="empty"><p>Abonelik yok</p></div>'}
+      </div>
+      <div class="card cp">
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px">💳 Son Ödemeler</div>
+        ${(pays||[]).slice(0,10).map(p=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div>
+              <div style="font-size:12px;font-weight:700">${esc(p.users?.full_name||'?')}</div>
+              <div style="font-size:11px;color:var(--text-dim)">${p.payment_date} · ${p.method}</div>
+            </div>
+            <div style="font-size:13px;font-weight:700;color:var(--green)">${Number(p.amount).toLocaleString('tr-TR')} ₺</div>
+          </div>`).join('') || '<div class="empty"><p>Ödeme yok</p></div>'}
+      </div>
+    </div>`;
+}
+
+function openPaymentModal() {
+  let modal = document.getElementById('paymentModal');
+  if(!modal) {
+    modal = document.createElement('div'); modal.id='paymentModal'; modal.className='modal-bg';
+    modal.innerHTML=`<div class="modal"><button class="modal-close" onclick="cm('paymentModal')">×</button>
+      <h2>Ödeme Ekle</h2>
+      <div class="field"><label>Öğrenci</label><select id="pmStudent">${S.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>
+      <div class="field-row">
+        <div class="field"><label>Tutar (₺)</label><input type="number" id="pmAmount" placeholder="1500"></div>
+        <div class="field"><label>Yöntem</label><select id="pmMethod"><option>nakit</option><option>havale</option><option>kart</option><option>iyzico</option></select></div>
+      </div>
+      <div class="field"><label>Tarih</label><input type="date" id="pmDate" value="${fmtDate(new Date())}"></div>
+      <div class="field"><label>Açıklama</label><input id="pmDesc" placeholder="Mayıs ayı ücreti"></div>
+      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="savePayment()">Kaydet</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+  }
+  // refresh student list
+  document.getElementById('pmStudent').innerHTML=S.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  om('paymentModal');
+}
+
+async function savePayment() {
+  const amount = parseFloat(document.getElementById('pmAmount').value);
+  if(!amount) return showToast('Tutar girin!');
+  await db.from('payments').insert({
+    student_id: document.getElementById('pmStudent').value,
+    amount, method: document.getElementById('pmMethod').value,
+    payment_date: document.getElementById('pmDate').value,
+    description: document.getElementById('pmDesc').value,
+    status:'completed'
+  });
+  showToast('Ödeme kaydedildi ✓'); cm('paymentModal'); renderDevFinance();
+}
+
+function openSubModal() {
+  let modal = document.getElementById('subModal');
+  if(!modal) {
+    modal = document.createElement('div'); modal.id='subModal'; modal.className='modal-bg';
+    modal.innerHTML=`<div class="modal"><button class="modal-close" onclick="cm('subModal')">×</button>
+      <h2>Abonelik Ekle</h2>
+      <div class="field"><label>Öğrenci</label><select id="sbStudent"></select></div>
+      <div class="field-row">
+        <div class="field"><label>Plan</label><select id="sbPlan"><option value="monthly">Aylık</option><option value="quarterly">3 Aylık</option><option value="yearly">Yıllık</option></select></div>
+        <div class="field"><label>Aylık Tutar (₺)</label><input type="number" id="sbAmount" placeholder="1500"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Başlangıç</label><input type="date" id="sbStart" value="${fmtDate(new Date())}"></div>
+        <div class="field"><label>Bitiş (isteğe bağlı)</label><input type="date" id="sbEnd"></div>
+      </div>
+      <div class="field"><label>Durum</label><select id="sbStatus"><option value="active">Aktif</option><option value="trial">Deneme</option><option value="paused">Durduruldu</option><option value="cancelled">İptal</option></select></div>
+      <div class="field"><label>Not</label><input id="sbNotes" placeholder="..."></div>
+      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveSub()">Kaydet</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+  }
+  document.getElementById('sbStudent').innerHTML=S.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  om('subModal');
+}
+
+async function saveSub() {
+  const amount = parseFloat(document.getElementById('sbAmount').value);
+  if(!amount) return showToast('Tutar girin!');
+  await db.from('subscriptions').insert({
+    student_id: document.getElementById('sbStudent').value,
+    plan: document.getElementById('sbPlan').value, amount,
+    start_date: document.getElementById('sbStart').value,
+    end_date: document.getElementById('sbEnd').value||null,
+    status: document.getElementById('sbStatus').value,
+    notes: document.getElementById('sbNotes').value
+  });
+  showToast('Abonelik eklendi ✓'); cm('subModal'); renderDevFinance();
+}
+
+// ── DUYURULAR ─────────────────────────────────
+async function renderDevAnnounce() {
+  const el = document.getElementById('view-dev-announce');
+  const {data} = await db.from('announcements').select('*').order('created_at',{ascending:false});
+  const typeColors = {info:'var(--blue)',warning:'var(--accent)',success:'var(--green)',urgent:'var(--red)'};
+
+  el.innerHTML = `
+    <div class="sh"><h2>📣 Duyuru Yönetimi</h2>
+      <button class="btn btn-accent" onclick="openAnnounceModal()">+ Duyuru Ekle</button>
+    </div>
+    <div style="font-size:13px;color:var(--text-mid);margin-bottom:16px">Aktif duyurular tüm kullanıcıların ana ekranında gösterilir.</div>
+    ${(data||[]).length===0?'<div class="empty"><p>Henüz duyuru yok</p></div>':''}
+    ${(data||[]).map(a=>`
+      <div class="card" style="padding:16px 20px;margin-bottom:10px;border-left:3px solid ${typeColors[a.type]||'var(--accent)'}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div style="flex:1">
+            <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px">${esc(a.title)}</div>
+            <div style="font-size:13px;color:var(--text-mid);margin-bottom:8px">${esc(a.body)}</div>
+            <div style="display:flex;gap:8px">
+              <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${typeColors[a.type]+'22'};color:${typeColors[a.type]}">${a.type}</span>
+              <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:var(--surface2);color:var(--text-dim)">${a.target}</span>
+              <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${a.active?'var(--green-dim)':'var(--red-dim)'};color:${a.active?'var(--green)':'var(--red)'}">${a.active?'Aktif':'Pasif'}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-xs" onclick="toggleAnnounce('${a.id}',${!a.active})">${a.active?'Pasife Al':'Aktifleştir'}</button>
+            <button class="btn btn-danger btn-xs" onclick="devDeleteAnnounce('${a.id}')">🗑</button>
+          </div>
+        </div>
+      </div>`).join('')}`;
+}
+
+function openAnnounceModal() {
+  let modal = document.getElementById('announceModal');
+  if(!modal) {
+    modal = document.createElement('div'); modal.id='announceModal'; modal.className='modal-bg';
+    modal.innerHTML=`<div class="modal"><button class="modal-close" onclick="cm('announceModal')">×</button>
+      <h2>Yeni Duyuru</h2>
+      <div class="field"><label>Başlık</label><input id="anTitle" placeholder="Önemli Güncelleme"></div>
+      <div class="field"><label>İçerik</label><textarea id="anBody" placeholder="Duyuru metni..."></textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Tür</label><select id="anType"><option value="info">Bilgi</option><option value="warning">Uyarı</option><option value="success">Başarı</option><option value="urgent">Acil</option></select></div>
+        <div class="field"><label>Hedef</label><select id="anTarget"><option value="all">Herkes</option><option value="students">Öğrenciler</option><option value="coaches">Koçlar</option></select></div>
+      </div>
+      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveAnnounce()">Yayınla</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+  }
+  om('announceModal');
+}
+
+async function saveAnnounce() {
+  const title = document.getElementById('anTitle').value.trim();
+  const body = document.getElementById('anBody').value.trim();
+  if(!title||!body) return showToast('Başlık ve içerik zorunlu!');
+  await db.from('announcements').insert({title,body,type:document.getElementById('anType').value,target:document.getElementById('anTarget').value,active:true});
+  showToast('Duyuru yayınlandı ✓'); cm('announceModal'); renderDevAnnounce();
+}
+
+async function toggleAnnounce(id, active) {
+  await db.from('announcements').update({active}).eq('id',id);
+  renderDevAnnounce();
+}
+
+async function devDeleteAnnounce(id) {
+  if(!confirm('Sil?')) return;
+  await db.from('announcements').delete().eq('id',id);
+  showToast('Silindi'); renderDevAnnounce();
+}
+
+// ── DESTEK / TİCKET ───────────────────────────
+async function renderDevTickets() {
+  const el = document.getElementById('view-dev-tickets');
+  const {data} = await db.from('tickets').select('*,users(full_name,role)').order('created_at',{ascending:false});
+  const statusColors = {open:'var(--red)',in_progress:'var(--accent)',resolved:'var(--green)',closed:'var(--text-dim)'};
+  const prioColors = {urgent:'var(--red)',high:'var(--accent)',normal:'var(--blue)',low:'var(--text-dim)'};
+
+  el.innerHTML = `
+    <div class="sh"><h2>🎫 Destek & Geri Bildirim</h2></div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      ${['open','in_progress','resolved','closed'].map(s=>{
+        const count=(data||[]).filter(t=>t.status===s).length;
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:12px;font-weight:700;color:${statusColors[s]}">${s.replace('_',' ')} <span style="font-size:18px;font-family:'Syne',sans-serif;display:block">${count}</span></div>`;
+      }).join('')}
+    </div>
+    ${(data||[]).length===0?'<div class="empty"><p>Henüz ticket yok</p></div>':''}
+    ${(data||[]).map(t=>`
+      <div class="card" style="padding:16px 20px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px">
+          <div>
+            <div style="font-weight:700;margin-bottom:2px">${esc(t.subject)}</div>
+            <div style="font-size:12px;color:var(--text-mid)">${esc(t.users?.full_name||'?')} · ${t.users?.role} · ${new Date(t.created_at).toLocaleDateString('tr-TR')}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${statusColors[t.status]+'22'};color:${statusColors[t.status]}">${t.status}</span>
+            <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${prioColors[t.priority]+'22'};color:${prioColors[t.priority]}">${t.priority}</span>
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--text-mid);margin-bottom:10px;padding:10px;background:var(--surface2);border-radius:8px">${esc(t.body)}</div>
+        ${t.reply?`<div style="font-size:13px;color:var(--green);padding:10px;background:var(--green-dim);border-radius:8px;margin-bottom:10px"><strong>Yanıt:</strong> ${esc(t.reply)}</div>`:''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select onchange="updateTicketStatus('${t.id}',this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-family:inherit;font-size:12px;color:var(--text);cursor:pointer">
+            ${['open','in_progress','resolved','closed'].map(s=>`<option value="${s}" ${t.status===s?'selected':''}>${s.replace('_',' ')}</option>`).join('')}
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="openTicketReply('${t.id}')">💬 Yanıtla</button>
+          <button class="btn btn-danger btn-xs" onclick="devDeleteTicket('${t.id}')">🗑</button>
+        </div>
+      </div>`).join('')}`;
+}
+
+async function updateTicketStatus(id, status) {
+  await db.from('tickets').update({status, updated_at: new Date().toISOString()}).eq('id',id);
+  showToast('Durum güncellendi ✓');
+}
+
+function openTicketReply(id) {
+  const reply = prompt('Yanıtınızı girin:');
+  if(!reply) return;
+  db.from('tickets').update({reply, status:'resolved', updated_at: new Date().toISOString()}).eq('id',id)
+    .then(()=>{ showToast('Yanıt gönderildi ✓'); renderDevTickets(); });
+}
+
+async function devDeleteTicket(id) {
+  if(!confirm('Sil?')) return;
+  await db.from('tickets').delete().eq('id',id);
+  showToast('Silindi'); renderDevTickets();
+}
+
+// ── ÖĞRENCİ DESTEK TICKET GÖNDER ──────────────
+function openSupportTicket() {
+  let modal = document.getElementById('ticketSendModal');
+  if(!modal) {
+    modal = document.createElement('div'); modal.id='ticketSendModal'; modal.className='modal-bg';
+    modal.innerHTML=`<div class="modal"><button class="modal-close" onclick="cm('ticketSendModal')">×</button>
+      <h2>🎫 Destek Talebi Gönder</h2>
+      <div class="field"><label>Konu</label><input id="tkSubject" placeholder="Konu başlığı..."></div>
+      <div class="field"><label>Kategori</label><select id="tkCat"><option value="general">Genel</option><option value="bug">Hata Bildirimi</option><option value="feature">Özellik İsteği</option><option value="billing">Ödeme</option></select></div>
+      <div class="field"><label>Öncelik</label><select id="tkPrio"><option value="normal">Normal</option><option value="low">Düşük</option><option value="high">Yüksek</option><option value="urgent">Acil</option></select></div>
+      <div class="field"><label>Açıklama</label><textarea id="tkBody" placeholder="Sorununuzu detaylıca açıklayın..." style="min-height:100px"></textarea></div>
+      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="submitTicket()">Gönder</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+  }
+  om('ticketSendModal');
+}
+
+async function submitTicket() {
+  const subject = document.getElementById('tkSubject').value.trim();
+  const body = document.getElementById('tkBody').value.trim();
+  if(!subject||!body) return showToast('Konu ve açıklama zorunlu!');
+  const userId = session.studentId || session.dbUser?.id;
+  await db.from('tickets').insert({user_id:userId, subject, body, category:document.getElementById('tkCat').value, priority:document.getElementById('tkPrio').value, status:'open'});
+  showToast('Ticket gönderildi ✓'); cm('ticketSendModal');
+}
+
+// Duyuruları portal'da göster
+async function loadAnnouncements() {
+  const {data} = await db.from('announcements').select('*').eq('active',true);
+  const target = session.role;
+  const relevant = (data||[]).filter(a=>a.target==='all'||(a.target==='students'&&target==='student')||(a.target==='coaches'&&target==='coach'));
+  if(!relevant.length) return;
+  const typeColors = {info:'var(--blue)',warning:'var(--accent)',success:'var(--green)',urgent:'var(--red)'};
+  const container = document.createElement('div');
+  container.style.cssText='position:fixed;top:64px;right:16px;z-index:400;display:flex;flex-direction:column;gap:8px;max-width:340px';
+  container.id='announceBanner';
+  relevant.slice(0,3).forEach(a=>{
+    const el=document.createElement('div');
+    el.style.cssText=`background:var(--surface);border:1px solid var(--border);border-left:3px solid ${typeColors[a.type]||'var(--accent)'};border-radius:10px;padding:12px 14px;box-shadow:var(--shadow);animation:fadeUp .3s ease`;
+    el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div><div style="font-size:13px;font-weight:700;margin-bottom:3px">${esc(a.title)}</div><div style="font-size:12px;color:var(--text-mid)">${esc(a.body)}</div></div>
+      <button onclick="this.closest('div[style]').remove()" style="background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:16px;flex-shrink:0">×</button>
+    </div>`;
+    container.appendChild(el);
+  });
+  document.body.appendChild(container);
+  setTimeout(()=>container.remove(), 8000);
+}
+
+// ── DEVELOPER saveStudent override ─────────────
+const _origSaveStudent = saveStudent;
+async function saveStudent(){
+  const roleEl = document.getElementById('smRole');
+  if(roleEl && session.role==='developer') {
+    // developer can set any role
+    const name=document.getElementById('smName').value.trim();
+    if(!name)return showToast('İsim girin!');
+    const color=document.querySelector('.color-opt.sel')?.dataset.c||'#f0a500';
+    const id=document.getElementById('smId').value;
+    const uname=document.getElementById('smUsername').value.trim().toLowerCase()||name.split(' ')[0].toLowerCase();
+    const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'',color,progress:Number(document.getElementById('smProg').value),password_hash:document.getElementById('smPass').value||'123456',week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:roleEl.value};
+    if(id){
+      const {error}=await db.from('users').update(payload).eq('id',id);
+      if(error)return showToast('Hata: '+error.message);
+      showToast('Güncellendi ✓');
+    } else {
+      const {error}=await db.from('users').insert(payload);
+      if(error)return showToast('Hata: '+error.message);
+      showToast('Kullanıcı eklendi ✓');
+    }
+    cm('studentModal'); await loadAllData(); renderDevUsers(); return;
+  }
+  return _origSaveStudent();
+}
+
+// ── CSS for developer role badge ───────────────
+(()=>{
+  const s=document.createElement('style');
+  s.textContent='.role-dev{background:rgba(192,132,252,.15);color:#c084fc;}';
+  document.head.appendChild(s);
+})();
+
+// ── INIT: load announcements after login ────────
+const _origSetupShell = setupShell;
+function setupShell(){
+  _origSetupShell();
+  setTimeout(loadAnnouncements, 500);
 }
 
 // ═══════════════════════════════════════════════
