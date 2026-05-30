@@ -744,6 +744,8 @@ function setupShell(){
   const roleClasses = {coach:'role-coach', student:'role-student', developer:'role-dev'};
   document.getElementById('tbarRole').textContent=roleLabels[session.role]||session.role;
   document.getElementById('tbarRole').className='role-badge '+(roleClasses[session.role]||'role-dev');
+  // Duyuruları yükle
+  setTimeout(loadAnnouncements, 600);
 }
 function switchTab(tab){
   currentTab=tab;
@@ -1273,6 +1275,10 @@ function openStudentModal(id){
   document.getElementById('smProg').value=s?.progress||0;
   document.getElementById('smProgVal').textContent=(s?.progress||0)+'%';
   document.querySelectorAll('.color-opt').forEach(el=>el.classList.toggle('sel',el.dataset.c===(s?.color||'#f0a500')));
+  // Koç modunda role field varsa gizle, save butonu normal çağırsın
+  const roleField=document.getElementById('smRoleField');
+  if(roleField) roleField.style.display='none';
+  document.querySelector('#studentModal .btn-accent').setAttribute('onclick','saveStudent()');
   om('studentModal');
 }
 document.getElementById('smProg').addEventListener('input',function(){document.getElementById('smProgVal').textContent=this.value+'%';});
@@ -2014,6 +2020,8 @@ async function openDevUserModal(id) {
     document.getElementById('smName').closest('.modal').insertBefore(roleField, document.getElementById('smName').parentElement);
   }
   document.getElementById('smRole').value = u?.role||'student';
+  // Developer modunda save butonu farklı fonksiyon çağırsın
+  document.querySelector('#studentModal .btn-accent').setAttribute('onclick','saveStudentDev()');
   om('studentModal');
 }
 
@@ -2448,29 +2456,27 @@ async function loadAnnouncements() {
 }
 
 // ── DEVELOPER saveStudent override ─────────────
-const _origSaveStudent = saveStudent;
-async function saveStudent(){
+// saveStudent'ın orijinali yukarıda tanımlı, developer için genişletiyoruz
+const _devSaveStudent = saveStudent;
+async function saveStudentDev(){
   const roleEl = document.getElementById('smRole');
-  if(roleEl && session.role==='developer') {
-    // developer can set any role
-    const name=document.getElementById('smName').value.trim();
-    if(!name)return showToast('İsim girin!');
-    const color=document.querySelector('.color-opt.sel')?.dataset.c||'#f0a500';
-    const id=document.getElementById('smId').value;
-    const uname=document.getElementById('smUsername').value.trim().toLowerCase()||name.split(' ')[0].toLowerCase();
-    const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'',color,progress:Number(document.getElementById('smProg').value),password_hash:document.getElementById('smPass').value||'123456',week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:roleEl.value};
-    if(id){
-      const {error}=await db.from('users').update(payload).eq('id',id);
-      if(error)return showToast('Hata: '+error.message);
-      showToast('Güncellendi ✓');
-    } else {
-      const {error}=await db.from('users').insert(payload);
-      if(error)return showToast('Hata: '+error.message);
-      showToast('Kullanıcı eklendi ✓');
-    }
-    cm('studentModal'); await loadAllData(); renderDevUsers(); return;
+  if(!roleEl) return _devSaveStudent();
+  const name=document.getElementById('smName').value.trim();
+  if(!name)return showToast('İsim girin!');
+  const color=document.querySelector('.color-opt.sel')?.dataset.c||'#f0a500';
+  const id=document.getElementById('smId').value;
+  const uname=document.getElementById('smUsername').value.trim().toLowerCase()||name.split(' ')[0].toLowerCase();
+  const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'',color,progress:Number(document.getElementById('smProg').value),password_hash:document.getElementById('smPass').value||'123456',week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:roleEl.value};
+  if(id){
+    const {error}=await db.from('users').update(payload).eq('id',id);
+    if(error)return showToast('Hata: '+error.message);
+    showToast('Güncellendi ✓');
+  } else {
+    const {error}=await db.from('users').insert(payload);
+    if(error)return showToast('Hata: '+error.message);
+    showToast('Kullanıcı eklendi ✓');
   }
-  return _origSaveStudent();
+  cm('studentModal'); await loadAllData(); renderDevUsers();
 }
 
 // ── CSS for developer role badge ───────────────
@@ -2479,13 +2485,6 @@ async function saveStudent(){
   s.textContent='.role-dev{background:rgba(192,132,252,.15);color:#c084fc;}';
   document.head.appendChild(s);
 })();
-
-// ── INIT: load announcements after login ────────
-const _origSetupShell = setupShell;
-function setupShell(){
-  _origSetupShell();
-  setTimeout(loadAnnouncements, 500);
-}
 
 // ═══════════════════════════════════════════════
 // STUDENT PROFILE PAGE
