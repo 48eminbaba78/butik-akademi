@@ -712,6 +712,7 @@ async function doLogin(){
   switchTab(session.role==='coach' ? 'program' : 'portal');
 }
 function doLogout(){
+  stopChatPoll();
   session={role:null,studentId:null,dbUser:null};
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appShell').classList.remove('visible');
@@ -723,7 +724,7 @@ function doLogout(){
 // SHELL
 // ═══════════════════════════════════════════════
 const coachTabs=[{id:'program',lbl:'📋 Program'},{id:'todolist',lbl:'✅ To-Do'},{id:'students',lbl:'👤 Öğrenciler'},{id:'appointments',lbl:'📅 Randevular'},{id:'exams',lbl:'📊 Denemeler'},{id:'messages',lbl:'💬 Mesajlar'}];
-const stuTabs=[{id:'portal',lbl:'🏠 Ana Sayfa'},{id:'sportal',lbl:'📋 Programım'},{id:'sexams',lbl:'📊 Denemeler'},{id:'smessages',lbl:'💬 Koçuma Yaz'}];
+const stuTabs=[{id:'portal',lbl:'🏠 Ana Sayfa'},{id:'sportal',lbl:'📋 Programım'},{id:'sexams',lbl:'📊 Denemeler'},{id:'smessages',lbl:'💬 Koçuma Yaz'},{id:'sprofil',lbl:'👤 Profilim'}];
 function setupShell(){
   const tabs=session.role==='coach'?coachTabs:stuTabs;
   document.getElementById('tbarNav').innerHTML=tabs.map(t=>`<button class="tbar-tab" id="tbtab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}</button>`).join('');
@@ -745,7 +746,10 @@ function switchTab(tab){
   document.getElementById('view-'+tab)?.classList.add('active');
   document.getElementById('tbtab_'+tab)?.classList.add('active');
   document.getElementById('mntab_'+tab)?.classList.add('active');
-  ({program:renderProgram,todolist:renderTodoList,students:renderStudents,appointments:renderAppointments,exams:renderExams,messages:renderMessages,portal:renderPortal,sportal:renderSPortal,sexams:renderSExams,smessages:renderSMessages})[tab]?.();
+  ({program:renderProgram,todolist:renderTodoList,students:renderStudents,appointments:renderAppointments,exams:renderExams,messages:renderMessages,portal:renderPortal,sportal:renderSPortal,sexams:renderSExams,smessages:renderSMessages,sprofil:renderSProfil})[tab]?.();
+  // Chat polling
+  if(tab==='messages'||tab==='smessages') startChatPoll();
+  else stopChatPoll();
 }
 
 // ═══════════════════════════════════════════════
@@ -883,103 +887,148 @@ function openTaskModal(ds, dayName){
 const SORU_BANKALARI = {
   TYT: {
     Matematik: [
-      { name:'Acil TYT Matematiğin İlacı Soru Bankası', yil:2026, testler:['Test 1 - Temel Kavramlar','Test 2 - Sayılar','Test 3 - Kesirler','Test 4 - Oran-Orantı','Test 5 - Yüzde','Test 6 - Denklemler','Test 7 - Fonksiyonlar','Test 8 - Veri Analizi'] },
-      { name:'Acil Yayınları Kurs TYT Matematik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
-      { name:'Aktif Matematik 0\'dan Başlayanlara', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
-      { name:'Apotemi Problemler Fasikülü', yil:2026, testler:['Fasikül 1','Fasikül 2','Fasikül 3'] },
-      { name:'Aydın Yayınları 9. Sınıf Matematik Soru Bankası', yil:2026, testler:['Ünite 1','Ünite 2','Ünite 3','Ünite 4','Ünite 5'] },
-      { name:'Barış Çelenk Problemler', yil:2026, testler:['Bölüm 1 - Temel','Bölüm 2 - Orta','Bölüm 3 - İleri'] },
-      { name:'Barış TYT Matematik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8','Test 9','Test 10'] },
-      { name:'Bilgi Sarmal 10. Sınıf Matematik Soru Bankası', yil:2026, testler:['Sarmal 1','Sarmal 2','Sarmal 3','Sarmal 4'] },
-      { name:'Birey TYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
-      { name:'Delta TYT Matematik Soru Bankası', yil:2026, testler:['Konu 1','Konu 2','Konu 3','Konu 4','Konu 5','Konu 6'] },
-      { name:'Eis TYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3'] },
-      { name:'FDD TYT Matematik', yil:2026, testler:['Fasikül A','Fasikül B','Fasikül C'] },
-      { name:'Karekök TYT Matematik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8'] },
-      { name:'Palme TYT Matematik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4','Bölüm 5'] },
-      { name:'Sınav TYT Matematik Modüler', yil:2026, testler:['Modül 1','Modül 2','Modül 3','Modül 4'] },
+      { name:'İşler Yayınları TYT Matematik Soru Bankası', yil:2026, testler:['Test 1 - Sayılar','Test 2 - Kesirler','Test 3 - Oran-Orantı','Test 4 - Yüzde-Faiz','Test 5 - Temel Cebir','Test 6 - Denklemler','Test 7 - Eşitsizlikler','Test 8 - Kümeler','Test 9 - Mantık','Test 10 - Fonksiyonlar','Test 11 - Sayı Sistemleri','Test 12 - Olasılık','Test 13 - İstatistik','Test 14 - Geometri Temelleri','Test 15 - Üçgenler'] },
+      { name:'İşler Yayınları TYT Matematik Fasikül Seti', yil:2026, testler:['Fasikül 1 - Sayılar','Fasikül 2 - Cebir','Fasikül 3 - Geometri','Fasikül 4 - Veri-Olasılık'] },
+      { name:'Karekök TYT Matematik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8','Test 9','Test 10','Test 11','Test 12'] },
+      { name:'Karekök TYT Matematik Fasikül', yil:2026, testler:['Fasikül 1','Fasikül 2','Fasikül 3','Fasikül 4','Fasikül 5'] },
+      { name:'Delta Yayınları TYT Matematik', yil:2026, testler:['Ünite 1','Ünite 2','Ünite 3','Ünite 4','Ünite 5','Ünite 6'] },
+      { name:'Palme TYT Matematik Soru Bankası', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4','Bölüm 5','Bölüm 6'] },
+      { name:'Birey TYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8'] },
+      { name:'Sınav TYT Matematik Modüler', yil:2026, testler:['Modül 1','Modül 2','Modül 3','Modül 4','Modül 5'] },
+      { name:'Apotemi TYT Matematik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'FDD TYT Matematik', yil:2026, testler:['Fasikül A','Fasikül B','Fasikül C','Fasikül D'] },
+      { name:'Eis TYT Matematik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'Limit TYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+      { name:'Nitelik TYT Matematik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
     ],
     Türkçe: [
-      { name:'Acil TYT Türkçe Soru Bankası', yil:2026, testler:['Paragraf Testleri','Dil Bilgisi Testleri','Sözcük Bilgisi'] },
-      { name:'Birey TYT Türkçe', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
-      { name:'Delta TYT Türkçe', yil:2026, testler:['Paragraf 1','Paragraf 2','Dil Bilgisi 1','Dil Bilgisi 2'] },
-      { name:'Karekök TYT Türkçe Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
-      { name:'Palme TYT Türkçe', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3'] },
+      { name:'İşler Yayınları TYT Türkçe Soru Bankası', yil:2026, testler:['Test 1 - Sözcük Türleri','Test 2 - Cümle Türleri','Test 3 - Anlam Bilgisi','Test 4 - Ses Bilgisi','Test 5 - Yazım Kuralları','Test 6 - Noktalama','Test 7 - Paragraf 1','Test 8 - Paragraf 2','Test 9 - Paragraf 3','Test 10 - Anlam İlişkileri'] },
+      { name:'Karekök TYT Türkçe Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8'] },
+      { name:'Delta TYT Türkçe', yil:2026, testler:['Dil Bilgisi 1','Dil Bilgisi 2','Paragraf 1','Paragraf 2','Paragraf 3'] },
+      { name:'Palme TYT Türkçe', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+      { name:'Birey TYT Türkçe', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'Sınav TYT Türkçe', yil:2026, testler:['Modül 1','Modül 2','Modül 3'] },
+      { name:'Nitelik TYT Türkçe', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
     ],
     Fizik: [
-      { name:'Acil TYT Fizik Soru Bankası', yil:2026, testler:['Test 1 - Kuvvet','Test 2 - Hareket','Test 3 - Enerji','Test 4 - Dalgalar'] },
-      { name:'Karekök TYT Fizik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'İşler Yayınları TYT Fizik Soru Bankası', yil:2026, testler:['Test 1 - Kuvvet ve Hareket','Test 2 - Enerji','Test 3 - Dalgalar','Test 4 - Elektrik','Test 5 - Manyetizma','Test 6 - Optik'] },
+      { name:'Karekök TYT Fizik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
       { name:'Delta TYT Fizik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+      { name:'Palme TYT Fizik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'Birey TYT Fizik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
     ],
     Kimya: [
-      { name:'Acil TYT Kimya Soru Bankası', yil:2026, testler:['Test 1 - Atom','Test 2 - Bağlar','Test 3 - Mol','Test 4 - Çözeltiler'] },
-      { name:'Karekök TYT Kimya', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+      { name:'İşler Yayınları TYT Kimya Soru Bankası', yil:2026, testler:['Test 1 - Atom ve Periyodik Tablo','Test 2 - Kimyasal Bağlar','Test 3 - Mol Kavramı','Test 4 - Çözeltiler','Test 5 - Asit-Baz','Test 6 - Tepkime Hızı'] },
+      { name:'Karekök TYT Kimya Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'Delta TYT Kimya', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+      { name:'Palme TYT Kimya', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+      { name:'Birey TYT Kimya', yil:2026, testler:['Test 1','Test 2','Test 3'] },
     ],
     Biyoloji: [
-      { name:'Acil TYT Biyoloji Soru Bankası', yil:2026, testler:['Test 1 - Hücre','Test 2 - Canlılar','Test 3 - Ekosistem'] },
-      { name:'Karekök TYT Biyoloji', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+      { name:'İşler Yayınları TYT Biyoloji Soru Bankası', yil:2026, testler:['Test 1 - Hücre','Test 2 - Canlıların Sınıflandırılması','Test 3 - Ekosistem','Test 4 - Kalıtım Temelleri','Test 5 - Sindirim','Test 6 - Dolaşım'] },
+      { name:'Karekök TYT Biyoloji Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'Delta TYT Biyoloji', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3'] },
+      { name:'Palme TYT Biyoloji', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
     ],
     Tarih: [
-      { name:'Karekök TYT Tarih Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
-      { name:'Delta TYT Tarih', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3'] },
+      { name:'İşler Yayınları TYT Tarih Soru Bankası', yil:2026, testler:['Test 1 - İlk Çağ','Test 2 - Orta Çağ','Test 3 - Osmanlı Kuruluş','Test 4 - Osmanlı Yükselme','Test 5 - Osmanlı Gerileme','Test 6 - Kurtuluş Savaşı','Test 7 - Cumhuriyet Tarihi'] },
+      { name:'Karekök TYT Tarih Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'Delta TYT Tarih', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+      { name:'Palme TYT Tarih', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
     ],
     Coğrafya: [
-      { name:'Karekök TYT Coğrafya', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+      { name:'İşler Yayınları TYT Coğrafya Soru Bankası', yil:2026, testler:['Test 1 - Doğal Sistemler','Test 2 - Beşeri Sistemler','Test 3 - Küresel Ortam','Test 4 - Türkiye Coğrafyası'] },
+      { name:'Karekök TYT Coğrafya', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+      { name:'Delta TYT Coğrafya', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3'] },
     ],
     Felsefe: [
-      { name:'Karekök TYT Felsefe', yil:2026, testler:['Test 1','Test 2'] },
+      { name:'İşler Yayınları TYT Felsefe Soru Bankası', yil:2026, testler:['Test 1 - Felsefenin Alanı','Test 2 - Bilgi Felsefesi','Test 3 - Varlık Felsefesi','Test 4 - Ahlak Felsefesi'] },
+      { name:'Karekök TYT Felsefe', yil:2026, testler:['Test 1','Test 2','Test 3'] },
     ],
     Din: [
-      { name:'Karekök TYT Din Kültürü', yil:2026, testler:['Test 1','Test 2'] },
+      { name:'İşler Yayınları TYT Din Kültürü Soru Bankası', yil:2026, testler:['Test 1 - İslam İnanç Esasları','Test 2 - İbadetler','Test 3 - Hz. Muhammed','Test 4 - Ahlak'] },
+      { name:'Karekök TYT Din Kültürü', yil:2026, testler:['Test 1','Test 2','Test 3'] },
     ],
   },
   'AYT-SAY': {
     Matematik: [
-      { name:'Karekök AYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8','Test 9','Test 10'] },
-      { name:'Delta AYT Matematik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4','Bölüm 5'] },
-      { name:'Palme AYT Matematik', yil:2026, testler:['Fasikül 1','Fasikül 2','Fasikül 3','Fasikül 4'] },
-      { name:'FDD AYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'İşler Yayınları AYT Matematik Soru Bankası', yil:2026, testler:['Test 1 - Polinomlar','Test 2 - İkinci Dereceden Denklemler','Test 3 - Karmaşık Sayılar','Test 4 - Trigonometri','Test 5 - Logaritma','Test 6 - Diziler','Test 7 - Limit','Test 8 - Türev','Test 9 - İntegral','Test 10 - Olasılık-Kombinasyon'] },
+      { name:'Karekök AYT Matematik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8','Test 9','Test 10','Test 11','Test 12'] },
+      { name:'Delta AYT Matematik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4','Bölüm 5','Bölüm 6'] },
+      { name:'Palme AYT Matematik', yil:2026, testler:['Fasikül 1','Fasikül 2','Fasikül 3','Fasikül 4','Fasikül 5'] },
+      { name:'FDD AYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'Apotemi AYT Matematik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
     ],
     Fizik: [
-      { name:'Karekök AYT Fizik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
-      { name:'Delta AYT Fizik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+      { name:'İşler Yayınları AYT Fizik Soru Bankası', yil:2026, testler:['Test 1 - Kuvvet ve Hareket','Test 2 - İş-Enerji-Güç','Test 3 - Dalgalar','Test 4 - Elektrik ve Manyetizma','Test 5 - Optik','Test 6 - Atom Fiziği'] },
+      { name:'Karekök AYT Fizik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8'] },
+      { name:'Delta AYT Fizik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4','Bölüm 5'] },
+      { name:'Palme AYT Fizik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
     ],
     Kimya: [
-      { name:'Karekök AYT Kimya', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
-      { name:'Delta AYT Kimya', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3'] },
+      { name:'İşler Yayınları AYT Kimya Soru Bankası', yil:2026, testler:['Test 1 - Atomun Kuantum Modeli','Test 2 - Kimyasal Türler Arası Etkileşimler','Test 3 - Maddenin Halleri','Test 4 - Çözeltiler','Test 5 - Kimyasal Tepkimeler','Test 6 - Elektrokimya'] },
+      { name:'Karekök AYT Kimya Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'Delta AYT Kimya', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+      { name:'Palme AYT Kimya', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
     ],
     Biyoloji: [
-      { name:'Karekök AYT Biyoloji', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
-      { name:'Delta AYT Biyoloji', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3'] },
+      { name:'İşler Yayınları AYT Biyoloji Soru Bankası', yil:2026, testler:['Test 1 - Hücre Biyolojisi','Test 2 - Hücre Bölünmeleri','Test 3 - Kalıtım','Test 4 - Ekosistem Ekolojisi','Test 5 - Canlıların Çeşitliliği','Test 6 - Bitki Biyolojisi','Test 7 - İnsan Fizyolojisi'] },
+      { name:'Karekök AYT Biyoloji Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7'] },
+      { name:'Delta AYT Biyoloji', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+      { name:'Palme AYT Biyoloji', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
     ],
   },
   'AYT-EA': {
     Matematik: [
-      { name:'Karekök AYT Matematik (EA)', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'İşler Yayınları AYT Matematik (EA) Soru Bankası', yil:2026, testler:['Test 1 - Polinomlar','Test 2 - Denklemler','Test 3 - Trigonometri','Test 4 - Logaritma','Test 5 - Diziler','Test 6 - Kombinasyon-Olasılık'] },
+      { name:'Karekök AYT Matematik (EA)', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'Delta AYT Matematik (EA)', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
     ],
     Edebiyat: [
-      { name:'Karekök AYT Edebiyat', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
-      { name:'Delta AYT Türk Dili ve Edebiyatı', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+      { name:'İşler Yayınları AYT Türk Dili ve Edebiyatı Soru Bankası', yil:2026, testler:['Test 1 - Şiir','Test 2 - Halk Edebiyatı','Test 3 - Divan Edebiyatı','Test 4 - Tanzimat','Test 5 - Servet-i Fünun','Test 6 - Cumhuriyet Dönemi','Test 7 - Roman Analizi','Test 8 - Anlatma Türleri'] },
+      { name:'Karekök AYT Edebiyat Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8'] },
+      { name:'Delta AYT Edebiyat', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4','Bölüm 5'] },
+      { name:'Palme AYT Edebiyat', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
     ],
     Tarih: [
-      { name:'Karekök AYT Tarih', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+      { name:'İşler Yayınları AYT Tarih Soru Bankası', yil:2026, testler:['Test 1 - Osmanlı Siyasi Tarihi','Test 2 - Osmanlı Kültür-Medeniyet','Test 3 - Birinci Dünya Savaşı','Test 4 - Kurtuluş Savaşı','Test 5 - Atatürk Dönemi','Test 6 - İkinci Dünya Savaşı'] },
+      { name:'Karekök AYT Tarih Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'Delta AYT Tarih', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
     ],
     Coğrafya: [
-      { name:'Karekök AYT Coğrafya', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+      { name:'İşler Yayınları AYT Coğrafya Soru Bankası', yil:2026, testler:['Test 1 - Türkiye Doğal Yapısı','Test 2 - Beşeri Coğrafya','Test 3 - Ekonomik Coğrafya','Test 4 - Çevre Sorunları','Test 5 - Küresel Coğrafya'] },
+      { name:'Karekök AYT Coğrafya', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
     ],
   },
   'AYT-SOZ': {
     Edebiyat: [
-      { name:'Karekök AYT Edebiyat', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'İşler Yayınları AYT Edebiyat Soru Bankası', yil:2026, testler:['Test 1 - Şiir Bilgisi','Test 2 - Halk Edebiyatı','Test 3 - Divan Edebiyatı','Test 4 - Tanzimat-Servet-i Fünun','Test 5 - Milli Edebiyat','Test 6 - Cumhuriyet Dönemi','Test 7 - Roman ve Hikaye','Test 8 - Tiyatro'] },
+      { name:'Karekök AYT Edebiyat', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8'] },
+      { name:'Delta AYT Edebiyat', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4','Bölüm 5'] },
     ],
     Tarih1: [
-      { name:'Karekök AYT Tarih 1', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+      { name:'İşler Yayınları AYT Tarih-1 Soru Bankası', yil:2026, testler:['Test 1 - Tarih Bilimi','Test 2 - İlk Çağ','Test 3 - Orta Çağ','Test 4 - İlk Türk Devletleri','Test 5 - İslam Tarihi','Test 6 - Osmanlı Kuruluş-Yükselme'] },
+      { name:'Karekök AYT Tarih-1', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+    ],
+    Tarih2: [
+      { name:'İşler Yayınları AYT Tarih-2 Soru Bankası', yil:2026, testler:['Test 1 - Osmanlı Gerileme','Test 2 - 19. yy Osmanlı','Test 3 - Birinci Dünya Savaşı','Test 4 - Kurtuluş Savaşı','Test 5 - Türkiye Cumhuriyeti','Test 6 - İkinci Dünya Savaşı'] },
+      { name:'Karekök AYT Tarih-2', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
     ],
     Coğrafya1: [
-      { name:'Karekök AYT Coğrafya 1', yil:2026, testler:['Test 1','Test 2'] },
+      { name:'İşler Yayınları AYT Coğrafya-1 Soru Bankası', yil:2026, testler:['Test 1 - Doğal Sistemler','Test 2 - İklim','Test 3 - Nüfus','Test 4 - Yerleşme'] },
+      { name:'Karekök AYT Coğrafya-1', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+    ],
+    Coğrafya2: [
+      { name:'İşler Yayınları AYT Coğrafya-2 Soru Bankası', yil:2026, testler:['Test 1 - Ekonomik Faaliyetler','Test 2 - Türkiye Ekonomisi','Test 3 - Çevre Sorunları','Test 4 - Küreselleşme'] },
+      { name:'Karekök AYT Coğrafya-2', yil:2026, testler:['Test 1','Test 2','Test 3'] },
     ],
     Felsefe: [
-      { name:'Karekök AYT Felsefe Grubu', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+      { name:'İşler Yayınları AYT Felsefe Grubu Soru Bankası', yil:2026, testler:['Test 1 - Felsefe','Test 2 - Psikoloji','Test 3 - Sosyoloji','Test 4 - Mantık'] },
+      { name:'Karekök AYT Felsefe Grubu', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+    ],
+    Din: [
+      { name:'İşler Yayınları AYT Din Kültürü Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+      { name:'Karekök AYT Din Kültürü', yil:2026, testler:['Test 1','Test 2','Test 3'] },
     ],
   },
 };
@@ -1006,10 +1055,20 @@ function updateSubjectList(){
     sel.style.display='none';free.style.display='';
   }
 
-  // show/hide soru bankasi section
   const isSoru=type==='soru';
   document.getElementById('soruBankasiWrap').style.display=isSoru&&exam?'':'none';
   if(isSoru&&exam) renderBookList('');
+}
+
+// Ders değişince kitap listesi sıfırla — BUG FIX
+function updateBookList(){
+  _selectedBook=null;
+  document.getElementById('tmBookVal').value='';
+  document.getElementById('tmBookSearch').value='';
+  document.getElementById('tmTestWrap').style.display='none';
+  const type=document.getElementById('tmType').value;
+  const exam=document.getElementById('tmExam').value;
+  if(type==='soru'&&exam) renderBookList('');
 }
 
 document.getElementById('tmType').addEventListener('change', updateSubjectList);
@@ -1768,6 +1827,207 @@ async function renderSMessages(){
       </div>
     </div>`;
   scrollMsgs();
+}
+
+// ═══════════════════════════════════════════════
+// CHAT POLLING (eşzamanlı mesajlaşma)
+// ═══════════════════════════════════════════════
+let _chatPollInterval = null;
+let _lastMsgTime = {};
+
+function startChatPoll() {
+  stopChatPoll();
+  _chatPollInterval = setInterval(pollMessages, 3000);
+}
+function stopChatPoll() {
+  if(_chatPollInterval) { clearInterval(_chatPollInterval); _chatPollInterval=null; }
+}
+
+async function pollMessages() {
+  // Hangi öğrenci thread'i aktif?
+  const stuId = session.role==='coach' ? S.msgThread : session.studentId;
+  if(!stuId) return;
+
+  const {data:msgs} = await db.from('messages').select('*').eq('student_id',stuId).order('created_at',{ascending:true});
+  if(!msgs) return;
+
+  const newList = msgs.map(m=>({
+    _id:m.id, from:m.from_role, text:m.text, read:m.read,
+    time: new Date(m.created_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})
+  }));
+
+  const lastKey = stuId;
+  const oldLen = (S.messages[stuId]||[]).length;
+  S.messages[stuId] = newList;
+
+  // Yeni mesaj geldiyse UI güncelle
+  if(newList.length !== oldLen) {
+    if(currentTab==='messages' && S.msgThread===stuId) {
+      document.getElementById('msgMain').innerHTML = renderThreadHTML(stuId,'coach');
+      scrollMsgs();
+    }
+    if(currentTab==='smessages') {
+      document.getElementById('msgMain').innerHTML = renderThreadHTML(stuId,'student');
+      scrollMsgs();
+    }
+    // Sidebar badge güncelle
+    if(currentTab==='messages') renderMessages();
+  }
+}
+
+// ═══════════════════════════════════════════════
+// STUDENT PROFILE PAGE
+// ═══════════════════════════════════════════════
+function renderSProfil() {
+  const stu = S.students.find(s=>s.id===session.studentId);
+  if(!stu) return;
+  const el = document.getElementById('view-sprofil');
+
+  // Stats
+  const myExams = S.exams.filter(e=>e.studentId===stu.id).sort((a,b)=>a.date.localeCompare(b.date));
+  const lastExam = myExams[myExams.length-1];
+  const lastTotal = lastExam ? (()=>{const f=EXAM_DEFS[lastExam.type]||[];return f.reduce((s,fn)=>s+Number(lastExam.nets?.[fn]||0),0).toFixed(1);})() : '—';
+
+  // Haftalık tamamlama
+  const ws = getWeekStart(0, stu.weekStart??0);
+  let weekTotal=0, weekDone=0;
+  for(let i=0;i<7;i++){
+    const tasks=S.tasks[`${stu.id}_${fmtDate(addDays(ws,i))}`]||[];
+    weekTotal+=tasks.length; weekDone+=tasks.filter(t=>t.done).length;
+  }
+  const weekPct = weekTotal>0?Math.round((weekDone/weekTotal)*100):0;
+
+  // Toplam tamamlanan görev (tüm zamanlar)
+  let totalDone=0;
+  Object.keys(S.tasks).filter(k=>k.startsWith(stu.id+'_')).forEach(k=>{ totalDone+=S.tasks[k].filter(t=>t.done).length; });
+
+  // Deneme trendi
+  let trendHtml='';
+  if(myExams.length>0){
+    const chartData=myExams.slice(-6);
+    const maxT=Math.max(...chartData.map(e=>{const f=EXAM_DEFS[e.type]||[];return f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);}),1);
+    trendHtml=`
+      <div class="card cp" style="margin-bottom:16px">
+        <div class="portal-sec-title">📈 Net Gelişim Grafiği</div>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:90px;margin-top:12px">
+          ${chartData.map(e=>{
+            const f=EXAM_DEFS[e.type]||[];
+            const total=f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);
+            const h=Math.max(Math.round((total/maxT)*100),4);
+            const prev=chartData[chartData.indexOf(e)-1];
+            const prevT=prev?(EXAM_DEFS[prev.type]||[]).reduce((s,fn)=>s+Number(prev.nets?.[fn]||0),0):total;
+            const arrow=total>prevT?'↑':total<prevT?'↓':'';
+            const arrowColor=total>prevT?'var(--green)':total<prevT?'var(--red)':'var(--text-dim)';
+            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+              <div style="font-size:10px;font-weight:700;color:var(--text-mid)">${total.toFixed(0)}</div>
+              <div style="font-size:9px;color:${arrowColor};font-weight:800">${arrow}</div>
+              <div style="width:100%;background:${stu.color};border-radius:4px 4px 0 0;height:${h}%;min-height:4px"></div>
+              <div style="font-size:9px;color:var(--text-dim);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%">${esc(e.name.replace('Deneme','').replace('TYT','').replace('AYT','').trim())}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }
+
+  // Ders bazında net ortalamaları
+  let dersOrtHtml='';
+  if(myExams.length>0){
+    const lastType=lastExam.type;
+    const fields=EXAM_DEFS[lastType]||[];
+    const avgs=fields.map(f=>{
+      const vals=myExams.filter(e=>e.type===lastType).map(e=>Number(e.nets?.[f]||0));
+      const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
+      const last=Number(lastExam.nets?.[f]||0);
+      return {f,avg:avg.toFixed(1),last,color:netColor(last)};
+    });
+    dersOrtHtml=`
+      <div class="card cp" style="margin-bottom:16px">
+        <div class="portal-sec-title">📊 Ders Bazında Performans (${lastType})</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:10px">
+          ${avgs.map(a=>`
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px;text-align:center">
+              <div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-bottom:4px;text-transform:uppercase">${a.f}</div>
+              <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--${a.color==='good'?'green':a.color==='mid'?'accent':'red'})">${a.last}</div>
+              <div style="font-size:10px;color:var(--text-dim);margin-top:2px">ort: ${a.avg}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  // Yaklaşan randevular
+  const myAppts=S.appointments.filter(a=>a.studentId===stu.id&&a.date>=todayStr()).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+
+  el.innerHTML=`
+    <!-- HERO -->
+    <div class="portal-hero" style="margin-bottom:16px">
+      <div class="portal-avatar" style="background:${stu.color};width:72px;height:72px;border-radius:18px;font-size:28px">${stu.name[0]}</div>
+      <div class="portal-info" style="flex:1">
+        <h1>${esc(stu.name)}</h1>
+        <p>${esc(stu.target)}</p>
+      </div>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="stats-row" style="margin-bottom:16px">
+      <div class="stat-card">
+        <div class="stat-label">Genel İlerleme</div>
+        <div class="stat-val" style="color:${stu.color}">%${stu.progress}</div>
+        <div class="prog-bar-wrap" style="margin-top:8px"><div class="prog-bar" style="width:${stu.progress}%;background:${stu.color}"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Bu Hafta Görev</div>
+        <div class="stat-val">${weekDone}<span style="font-size:14px;color:var(--text-dim)">/${weekTotal}</span></div>
+        <div style="font-size:11px;color:var(--text-mid);margin-top:4px">%${weekPct} tamamlandı</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Son Deneme Neti</div>
+        <div class="stat-val" style="color:var(--accent)">${lastTotal}</div>
+        <div style="font-size:11px;color:var(--text-mid);margin-top:4px">${lastExam?esc(lastExam.name):'Deneme yok'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Toplam Tamamlanan</div>
+        <div class="stat-val">${totalDone}</div>
+        <div style="font-size:11px;color:var(--text-mid);margin-top:4px">görev</div>
+      </div>
+    </div>
+
+    ${trendHtml}
+    ${dersOrtHtml}
+
+    <!-- YAKLAŞAN RANDEVULAR -->
+    <div class="card cp" style="margin-bottom:16px">
+      <div class="portal-sec-title">📅 Yaklaşan Randevularım</div>
+      ${myAppts.length?myAppts.map(a=>`
+        <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${stu.color};border-radius:9px;padding:12px;margin-top:8px">
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:3px">${new Date(a.date+'T12:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</div>
+          <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700">${a.time} <span style="font-size:13px;color:var(--text-mid)">· ${a.duration} dk</span></div>
+          <div style="font-size:12px;color:var(--text-mid);margin-top:2px">${esc(a.type)}</div>
+        </div>`).join('')
+      :'<div style="font-size:13px;color:var(--text-dim);margin-top:8px">Yaklaşan randevu yok</div>'}
+    </div>
+
+    <!-- ŞİFRE DEĞİŞTİR -->
+    <div class="card cp">
+      <div class="portal-sec-title">🔒 Şifre Değiştir</div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+        <input type="password" id="newPass1" placeholder="Yeni şifre" style="flex:1;min-width:140px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none">
+        <input type="password" id="newPass2" placeholder="Şifreyi tekrar gir" style="flex:1;min-width:140px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none">
+        <button class="btn btn-accent" onclick="changePassword()">Kaydet</button>
+      </div>
+    </div>`;
+}
+
+async function changePassword() {
+  const p1=document.getElementById('newPass1').value;
+  const p2=document.getElementById('newPass2').value;
+  if(!p1) return showToast('Şifre girin!');
+  if(p1!==p2) return showToast('Şifreler uyuşmuyor!');
+  if(p1.length<4) return showToast('En az 4 karakter olmalı');
+  const {error}=await db.from('users').update({password_hash:p1}).eq('id',session.studentId);
+  if(error) return showToast('Hata: '+error.message);
+  showToast('Şifre güncellendi ✓');
+  document.getElementById('newPass1').value='';
+  document.getElementById('newPass2').value='';
 }
 
 // ═══════════════════════════════════════════════
