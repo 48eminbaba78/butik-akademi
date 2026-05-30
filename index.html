@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Butik Akademi</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f0e0c;--surface:#1a1916;--surface2:#242220;--surface3:#2e2b28;
+  --border:#383430;--border2:#454038;
+  --accent:#f0a500;--accent2:#e8622a;--accent-dim:rgba(240,165,0,.12);--accent2-dim:rgba(232,98,42,.12);
+  --text:#f0ece6;--text-mid:#9a9088;--text-dim:#5a5450;
+  --green:#3ecf8e;--green-dim:rgba(62,207,142,.12);
+  --blue:#4da6ff;--blue-dim:rgba(77,166,255,.12);
+  --red:#ff5c5c;--red-dim:rgba(255,92,92,.12);
+  --r:14px;--shadow:0 4px 24px rgba(0,0,0,.4);--shadow-lg:0 8px 32px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);display:flex;flex-direction:column;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+.login-box{width:100%;max-width:400px;animation:fadeUp .4s ease;}
+.login-logo{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;margin-bottom:8px;letter-spacing:-1px;}
+.login-logo span{color:var(--accent);}
+.login-sub{color:var(--text-mid);font-size:14px;margin-bottom:36px;}
+.login-tabs{display:flex;gap:4px;background:var(--surface);border-radius:10px;padding:4px;margin-bottom:24px;}
+.login-tab{flex:1;padding:9px;border-radius:7px;border:none;background:transparent;color:var(--text-mid);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
+.login-tab.active{background:var(--surface3);color:var(--text);}
+.lfield{margin-bottom:14px;}
+.lfield label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+.lfield input,.lfield select{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;font-size:15px;font-family:inherit;color:var(--text);outline:none;transition:border-color .2s;}
+.lfield input:focus,.lfield select:focus{border-color:var(--accent);}
+.lfield select option{background:var(--surface2);}
+.btn-login{width:100%;background:var(--accent);color:#0f0e0c;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:8px;transition:all .2s;}
+.btn-login:hover{background:#fbb800;}
+.login-hint{font-size:12px;color:var(--text-dim);margin-top:14px;text-align:center;line-height:1.7;}
+
+/* APP */
+#appShell{display:none;flex-direction:column;height:100%;}
+#appShell.visible{display:flex;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;}
+.tbar-logo{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.5px;}
+.tbar-logo span{color:var(--accent);}
+.tbar-nav{display:flex;gap:2px;}
+.tbar-tab{padding:7px 14px;border-radius:8px;border:none;background:transparent;color:var(--text-mid);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.tbar-tab.active{background:var(--accent-dim);color:var(--accent);}
+.tbar-tab:hover:not(.active){color:var(--text);background:var(--surface2);}
+.tbar-right{display:flex;align-items:center;gap:10px;}
+.user-pill{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:5px 12px 5px 5px;}
+.user-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;}
+.user-name{font-size:13px;font-weight:600;}
+.role-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px;}
+.role-coach{background:var(--accent-dim);color:var(--accent);}
+.role-student{background:var(--blue-dim);color:var(--blue);}
+.btn-logout{background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;}
+.btn-logout:hover{border-color:var(--red);color:var(--red);}
+
+.content{flex:1;overflow-y:auto;overflow-x:hidden;}
+.view{display:none;padding:24px;max-width:1400px;margin:0 auto;animation:fadeUp .25s ease;}
+.view.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+/* COMPONENTS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);}
+.cp{padding:20px;}
+.sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.sh h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;}
+.btn{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;font-family:inherit;border:none;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.btn:hover{transform:translateY(-1px);}
+.btn-accent{background:var(--accent);color:#0f0e0c;}
+.btn-accent:hover{background:#fbb800;}
+.btn-ghost{background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2);}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid transparent;}
+.btn-danger:hover{border-color:var(--red);}
+.btn-green{background:var(--green-dim);color:var(--green);border:1px solid transparent;}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:7px;}
+.btn-xs{padding:4px 9px;font-size:11px;border-radius:6px;}
+
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;}
+.stat-label{font-size:11px;color:var(--text-mid);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;line-height:1;}
+
+/* COACH TODO */
+.coach-todo-strip{display:grid;grid-template-columns:1fr 2fr 1fr;gap:12px;margin-bottom:24px;}
+@media(max-width:900px){.coach-todo-strip{grid-template-columns:1fr;}}
+.ctd-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
+.ctd-col.today-col{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+.ctd-day-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-bottom:4px;}
+.ctd-date{font-family:'Syne',sans-serif;font-weight:800;line-height:1;margin-bottom:12px;}
+.ctd-col.today-col .ctd-date{color:var(--accent);}
+.ctd-task-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border);position:relative;transition:opacity .15s;}
+.ctd-task-item.done{opacity:.4;}
+.ctd-task-item.done .ctd-subj{text-decoration:line-through;}
+.ctd-check{width:15px;height:15px;border-radius:4px;border:2px solid currentColor;flex-shrink:0;cursor:pointer;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all .1s;}
+.ctd-check.on{background:currentColor;}
+.ctd-check.on::after{content:'✓';color:var(--bg);font-size:9px;font-weight:900;}
+.ctd-subj{font-size:12px;font-weight:700;flex:1;}
+.ctd-meta{font-size:10px;color:var(--text-dim);margin-top:1px;}
+.ctd-del{background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:12px;padding:2px;border-radius:4px;opacity:0;transition:opacity .15s;position:absolute;top:6px;right:6px;}
+.ctd-task-item:hover .ctd-del{opacity:1;}
+.ctd-del:hover{color:var(--red);}
+.ctd-add{width:100%;background:transparent;border:1.5px dashed var(--border);border-radius:7px;padding:7px;font-size:11px;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:inherit;margin-top:4px;transition:all .2s;}
+.ctd-add:hover{border-color:var(--accent);color:var(--accent);}
+.ctd-empty{font-size:12px;color:var(--text-dim);text-align:center;padding:12px 0;}
+
+/* WEEK GRID */
+.week-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.week-lbl{font-weight:700;font-size:14px;color:var(--text-mid);}
+.prog-banner{display:flex;align-items:center;gap:14px;padding:16px 20px;margin-bottom:20px;}
+.prog-avatar{width:46px;height:46px;border-radius:12px;font-family:'Syne',sans-serif;font-size:19px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.prog-meta h2{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;}
+.prog-meta p{font-size:12px;color:var(--text-mid);}
+.prog-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;}
+@media(max-width:1100px){.week-grid{grid-template-columns:repeat(4,1fr);}}
+@media(max-width:640px){.week-grid{grid-template-columns:repeat(2,1fr);}.tbar-nav{display:none;}.mobile-nav{display:flex!important;}.content{padding-bottom:64px;}}
+
+.day-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;min-height:190px;transition:border-color .2s;}
+.day-col.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+.day-col.today .day-num{color:var(--accent);}
+.day-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.day-name-lbl{font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;}
+.day-num{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;line-height:1;}
+.day-badge{font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:2px 7px;color:var(--text-mid);font-weight:600;white-space:nowrap;}
+.day-tasks-list{flex:1;display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+.task-card{border-radius:8px;padding:8px 10px;display:flex;align-items:flex-start;gap:7px;border:1px solid transparent;position:relative;transition:opacity .15s;}
+.task-card.done{opacity:.4;}
+.task-card.done .tc-subject{text-decoration:line-through;}
+.tc-check{width:15px;height:15px;border-radius:4px;border:2px solid currentColor;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:2px;transition:all .1s;}
+.tc-check.on{background:currentColor;}
+.tc-check.on::after{content:'✓';color:var(--bg);font-size:9px;font-weight:900;}
+.tc-body{flex:1;min-width:0;}
+.tc-type{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:1px;}
+.tc-subject{font-size:12px;font-weight:700;line-height:1.3;}
+.tc-meta{font-size:10px;color:var(--text-dim);margin-top:1px;}
+.tc-del{position:absolute;top:4px;right:4px;background:transparent;border:none;cursor:pointer;color:var(--text-dim);font-size:11px;padding:2px 4px;border-radius:4px;opacity:0;transition:opacity .15s;}
+.task-card:hover .tc-del{opacity:1;}
+.tc-del:hover{background:var(--red-dim);color:var(--red);}
+.task-deneme{background:#1e1500;border-color:#3a2800;color:#f59e0b;}
+.task-soru{background:#001428;border-color:#002a52;color:#60a5fa;}
+.task-konu{background:#001a0d;border-color:#003320;color:#34d399;}
+.task-diger{background:#16001e;border-color:#30004a;color:#c084fc;}
+.add-day-btn{width:100%;background:transparent;border:1.5px dashed var(--border);border-radius:7px;padding:7px;font-size:11px;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:inherit;transition:all .2s;}
+.add-day-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+.add-day-btn:disabled{opacity:.3;cursor:not-allowed;}
+
+/* STUDENTS */
+.students-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+.student-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;display:flex;flex-direction:column;align-items:center;text-align:center;transition:border-color .2s;}
+.student-card:hover{border-color:var(--border2);}
+.sc-avatar{width:64px;height:64px;border-radius:16px;font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#0f0e0c;display:flex;align-items:center;justify-content:center;margin-bottom:12px;}
+.sc-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;}
+.sc-target{font-size:12px;color:var(--text-mid);margin-bottom:12px;}
+.prog-bar-wrap{width:100%;background:var(--surface2);border-radius:99px;height:5px;margin-bottom:5px;overflow:hidden;}
+.prog-bar{height:100%;border-radius:99px;transition:width .6s ease;}
+.prog-pct{font-size:11px;color:var(--text-dim);margin-bottom:14px;}
+.sc-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;width:100%;}
+
+/* APPOINTMENTS */
+.appts-layout{display:grid;grid-template-columns:1fr 300px;gap:16px;}
+@media(max-width:900px){.appts-layout{grid-template-columns:1fr;}}
+.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;}
+.cal-dow{text-align:center;font-size:10px;font-weight:700;color:var(--text-dim);padding:5px 0;text-transform:uppercase;}
+.cal-days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day{text-align:center;padding:7px 3px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;position:relative;color:var(--text-mid);}
+.cal-day:hover:not(.empty){background:var(--surface2);color:var(--text);}
+.cal-day.today{background:var(--accent);color:#0f0e0c;font-weight:800;}
+.cal-day.selected:not(.today){background:var(--accent-dim);color:var(--accent);}
+.cal-day.has-appt::after{content:'';display:block;width:4px;height:4px;background:var(--accent2);border-radius:50%;position:absolute;bottom:2px;left:50%;transform:translateX(-50%);}
+.cal-day.today.has-appt::after{background:#0f0e0c;}
+.cal-day.empty{cursor:default;}
+.appt-item{padding:12px 14px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);border-left:3px solid;margin-bottom:8px;}
+.appt-when{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-bottom:4px;}
+.appt-name{font-size:14px;font-weight:700;margin-bottom:2px;}
+.appt-type{font-size:12px;color:var(--text-mid);}
+.appt-note{font-size:11px;color:var(--text-dim);margin-top:5px;border-top:1px solid var(--border);padding-top:5px;}
+.appt-actions{display:flex;gap:5px;margin-top:8px;}
+
+/* EXAMS */
+.exam-layout{display:grid;grid-template-columns:1fr 320px;gap:16px;}
+@media(max-width:900px){.exam-layout{grid-template-columns:1fr;}}
+.exam-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:10px;}
+.exam-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.exam-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;}
+.exam-date{font-size:12px;color:var(--text-dim);margin-top:2px;}
+.nets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:7px;}
+.net-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px;text-align:center;}
+.net-label{font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px;}
+.net-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;}
+.net-val.good{color:var(--green);}
+.net-val.mid{color:var(--accent);}
+.net-val.low{color:var(--red);}
+.coach-comment-box{background:var(--accent-dim);border:1px solid rgba(240,165,0,.3);border-radius:9px;padding:12px;margin-top:10px;font-size:12px;color:var(--accent);line-height:1.5;}
+.coach-comment-box strong{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;opacity:.7;}
+
+/* MESSAGES */
+.msg-layout{display:grid;grid-template-columns:260px 1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;height:calc(100vh - 180px);min-height:400px;}
+@media(max-width:700px){.msg-layout{grid-template-columns:1fr;height:auto;}}
+.msg-sidebar{border-right:1px solid var(--border);overflow-y:auto;}
+.msg-sidebar-hd{padding:14px 16px;border-bottom:1px solid var(--border);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;}
+.msg-contact{padding:11px 14px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--border);}
+.msg-contact:hover{background:var(--surface2);}
+.msg-contact.active{background:var(--accent-dim);}
+.msg-contact-avatar{width:34px;height:34px;border-radius:9px;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#0f0e0c;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.msg-contact-name{font-size:13px;font-weight:700;}
+.msg-contact-last{font-size:11px;color:var(--text-dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+.msg-unread{background:var(--accent);color:#0f0e0c;border-radius:99px;font-size:10px;font-weight:800;padding:1px 6px;margin-left:auto;}
+.msg-main{display:flex;flex-direction:column;}
+.msg-main-hd{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-shrink:0;}
+.msg-main-hd-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
+.msg-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;}
+.msg-bubble{max-width:75%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.5;}
+.msg-bubble.out{align-self:flex-end;background:var(--accent);color:#0f0e0c;border-bottom-right-radius:3px;}
+.msg-bubble.in{align-self:flex-start;background:var(--surface3);color:var(--text);border-bottom-left-radius:3px;}
+.msg-bubble-time{font-size:10px;margin-top:3px;opacity:.6;}
+.msg-input-area{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:7px;flex-shrink:0;}
+.msg-input{flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:9px 13px;font-size:13px;font-family:inherit;color:var(--text);outline:none;resize:none;transition:border-color .2s;min-height:40px;max-height:100px;}
+.msg-input:focus{border-color:var(--accent);}
+.no-chat-sel{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:13px;}
+
+/* PORTAL */
+.portal-hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:18px;display:flex;gap:16px;align-items:center;}
+.portal-avatar{width:56px;height:56px;border-radius:14px;font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#0f0e0c;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.portal-info h1{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;}
+.portal-info p{font-size:13px;color:var(--text-mid);}
+.portal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:700px){.portal-grid{grid-template-columns:1fr;}}
+.portal-sec-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+
+/* MODALS */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);}
+.modal-bg.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:18px;width:100%;max-width:520px;padding:26px;position:relative;box-shadow:var(--shadow-lg);animation:fadeUp .2s ease;max-height:92vh;overflow-y:auto;}
+.modal-lg{max-width:620px;}
+.modal-close{position:absolute;top:14px;right:14px;background:var(--surface2);border:1px solid var(--border);width:28px;height:28px;border-radius:7px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-mid);transition:all .15s;}
+.modal-close:hover{background:var(--red-dim);color:var(--red);}
+.modal h2{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;margin-bottom:18px;}
+.modal h2 span{color:var(--accent);}
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+.field input,.field select,.field textarea{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none;transition:border-color .2s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+.field select option{background:var(--surface2);}
+.field textarea{resize:vertical;min-height:75px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.field-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;}
+.color-pick{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px;}
+.color-opt{width:24px;height:24px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:transform .1s;}
+.color-opt:hover{transform:scale(1.15);}
+.color-opt.sel{border-color:var(--text);}
+.field input[type=range]{padding:6px 0;accent-color:var(--accent);cursor:pointer;}
+.pct-display{text-align:right;font-size:12px;color:var(--text-mid);margin-top:3px;}
+
+/* NETS INPUT */
+.nets-input-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
+.net-input-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px;display:flex;flex-direction:column;gap:3px;}
+.net-input-box label{font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+.net-input-box input{background:var(--surface3);border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:14px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text);outline:none;width:100%;text-align:center;}
+.net-input-box input:focus{border-color:var(--accent);}
+
+/* DAY SELECT MODAL */
+.day-sel-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px;}
+.day-sel-btn{padding:8px 4px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text-mid);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;}
+.day-sel-btn.sel{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+.day-sel-btn:hover:not(.sel){border-color:var(--border2);color:var(--text);}
+
+/* WEEK START OFFSET */
+.week-start-sel{display:flex;gap:6px;flex-wrap:wrap;}
+.wday-btn{padding:5px 10px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text-mid);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
+.wday-btn.sel{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+.wday-btn:hover:not(.sel){color:var(--text);}
+
+/* MOBILE NAV */
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:8px 0 calc(8px + env(safe-area-inset-bottom));justify-content:space-around;z-index:100;}
+.mnav-btn{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;font-size:10px;font-weight:700;color:var(--text-dim);cursor:pointer;padding:4px 10px;font-family:inherit;transition:color .15s;}
+.mnav-btn svg{width:20px;height:20px;}
+.mnav-btn.active{color:var(--accent);}
+
+/* CHART */
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:100px;margin-top:10px;}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.bar{width:100%;border-radius:4px 4px 0 0;transition:height .5s ease;min-height:3px;}
+.bar-label{font-size:9px;color:var(--text-dim);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;}
+.bar-val{font-size:10px;font-weight:700;color:var(--text-mid);}
+
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--surface3);border:1px solid var(--border2);color:var(--text);padding:8px 18px;border-radius:99px;font-size:13px;font-weight:600;opacity:0;transition:all .3s;z-index:999;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.empty{text-align:center;padding:30px 16px;color:var(--text-dim);}
+.empty p{font-size:13px;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">BUTİK<span>AKADEMİ</span></div>
+    <div class="login-sub" style="margin-bottom:28px">Koçluk Yönetim Platformu</div>
+    <div class="lfield"><label>Kullanıcı Adı</label><input type="text" id="loginUser" placeholder="Kullanıcı adınız" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"></div>
+    <div class="lfield"><label>Şifre</label><input type="password" id="loginPass" placeholder="Şifreniz" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div id="loginErr" style="display:none;color:var(--red);font-size:13px;margin-bottom:8px;padding:10px 14px;background:var(--red-dim);border-radius:8px"></div>
+    <button class="btn-login" onclick="doLogin()">Giriş Yap →</button>
+    <div class="login-hint">Koç: <b>emin</b> / <b>koc123</b> &nbsp;·&nbsp; Öğrenci: adınız / <b>ogrenci123</b></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appShell">
+  <div class="topbar">
+    <div class="tbar-logo">BUTİK<span>AKADEMİ</span></div>
+    <div class="tbar-nav" id="tbarNav"></div>
+    <div class="tbar-right">
+      <div class="user-pill">
+        <div class="user-dot" id="tbarDot"></div>
+        <div class="user-name" id="tbarName"></div>
+        <span class="role-badge" id="tbarRole"></span>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Çıkış</button>
+    </div>
+  </div>
+  <div class="content" id="mainContent"></div>
+</div>
+
+<!-- TASK MODAL -->
+<div class="modal-bg" id="taskModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('taskModal')">×</button>
+    <h2>Görev Ekle — <span id="tmDay"></span></h2>
+    <div class="field-row">
+      <div class="field"><label>Tür</label>
+        <select id="tmType" onchange="updateSubjectList()">
+          <option value="deneme">📊 Alan Denemesi</option>
+          <option value="soru">📚 Soru Bankası</option>
+          <option value="konu">🎯 Konu Anlatımı</option>
+          <option value="diger">⭐ Diğer</option>
+        </select>
+      </div>
+      <div class="field"><label>Sınav</label>
+        <select id="tmExam" onchange="updateSubjectList()">
+          <option value="">— Seçin —</option>
+          <option value="TYT">TYT</option>
+          <option value="AYT-SAY">AYT Sayısal</option>
+          <option value="AYT-EA">AYT Eşit Ağırlık</option>
+          <option value="AYT-SOZ">AYT Sözel</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Ders</label>
+      <select id="tmSubjectSel" style="display:none" onchange="updateBookList()"></select>
+      <input id="tmSubjectFree" placeholder="Ders / konu adı girin...">
+    </div>
+    <!-- Soru Bankası seçimi — sadece tür=soru olunca görünür -->
+    <div id="soruBankasiWrap" style="display:none">
+      <div class="field"><label>Kaynak</label>
+        <input id="tmBookSearch" placeholder="Kaynak ara..." oninput="filterBooks()" autocomplete="off"
+          style="margin-bottom:6px">
+        <div id="tmBookList" style="max-height:160px;overflow-y:auto;border:1.5px solid var(--border);border-radius:9px;background:var(--surface2)"></div>
+        <input type="hidden" id="tmBookVal">
+      </div>
+      <div class="field" id="tmTestWrap" style="display:none"><label>Test / Bölüm</label>
+        <select id="tmTestSel"></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Süre (dk)</label><input type="number" id="tmDuration" value="60" min="5"></div>
+      <div class="field"><label>Not</label><input id="tmNote" placeholder="Sayfa, konu..."></div>
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveTask()">Programa Ekle</button>
+  </div>
+</div>
+
+<!-- COACH TODO MODAL -->
+<div class="modal-bg" id="coachTodoModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('coachTodoModal')">×</button>
+    <h2>Koç Görevi — <span id="ctdDay"></span></h2>
+    <div class="field"><label>Görev</label><input id="ctdTask" placeholder="Yapılacak iş..."></div>
+    <div class="field"><label>Not (isteğe bağlı)</label><input id="ctdNote" placeholder="Detay..."></div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveCoachTodo()">Ekle</button>
+  </div>
+</div>
+
+<!-- CLEAR WEEK MODAL (day picker) -->
+<div class="modal-bg" id="clearWeekModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('clearWeekModal')">×</button>
+    <h2>Günleri Seç & Temizle</h2>
+    <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Silmek istediğin günleri seç:</p>
+    <div class="day-sel-grid" id="daySelectorGrid"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toggleAllDays()">Tümünü Seç / Bırak</button>
+      <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="confirmClearDays()">🗑 Seçilenleri Sil</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT MODAL -->
+<div class="modal-bg" id="studentModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('studentModal')">×</button>
+    <h2 id="smTitle">Yeni Öğrenci</h2>
+    <input type="hidden" id="smId">
+    <div class="field"><label>Ad Soyad</label><input id="smName" placeholder="Ad Soyad"></div>
+    <div class="field"><label>Hedef / Program</label><input id="smTarget" placeholder="TYT / AYT Hedefli"></div>
+    <div class="field-row">
+      <div class="field"><label>Kullanıcı Adı</label><input id="smUsername" type="text" placeholder="muzaffer (boş bırakılırsa ad kullanılır)"></div>
+      <div class="field"><label>Şifre</label><input id="smPass" type="text" placeholder="ogrenci123"></div>
+    </div>
+    <div class="field-row">
+      <div class="field" style="display:none"><label>placeholder</label></div>
+      <div class="field"><label>Hafta Başlangıcı</label>
+        <select id="smWeekStart">
+          <option value="0">Pazartesi</option><option value="1">Salı</option>
+          <option value="2">Çarşamba</option><option value="3">Perşembe</option>
+          <option value="4">Cuma</option><option value="5">Cumartesi</option><option value="6">Pazar</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Renk</label>
+      <div class="color-pick" id="smColorPick">
+        <div class="color-opt sel" data-c="#f0a500" style="background:#f0a500"></div>
+        <div class="color-opt" data-c="#e8622a" style="background:#e8622a"></div>
+        <div class="color-opt" data-c="#4da6ff" style="background:#4da6ff"></div>
+        <div class="color-opt" data-c="#3ecf8e" style="background:#3ecf8e"></div>
+        <div class="color-opt" data-c="#c084fc" style="background:#c084fc"></div>
+        <div class="color-opt" data-c="#f472b6" style="background:#f472b6"></div>
+      </div>
+    </div>
+    <div class="field"><label>İlerleme (%)</label>
+      <input type="range" id="smProg" min="0" max="100" value="0" style="width:100%">
+      <div class="pct-display" id="smProgVal">0%</div>
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveStudent()">Kaydet</button>
+  </div>
+</div>
+
+<!-- APPOINTMENT MODAL -->
+<div class="modal-bg" id="apptModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('apptModal')">×</button>
+    <h2 id="amTitle">Yeni Randevu</h2>
+    <input type="hidden" id="amId">
+    <div class="field"><label>Öğrenci</label><select id="amStudent"></select></div>
+    <div class="field-row">
+      <div class="field"><label>Tarih</label><input type="date" id="amDate"></div>
+      <div class="field"><label>Saat</label><input type="time" id="amTime"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Süre (dk)</label><input type="number" id="amDuration" value="45"></div>
+      <div class="field"><label>Tür</label>
+        <select id="amType">
+          <option>Haftalık Değerlendirme</option><option>Deneme Analizi</option>
+          <option>Konu Planlaması</option><option>Genel Görüşme</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Not</label><textarea id="amNote" placeholder="Randevu notları..."></textarea></div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveAppt()">Kaydet</button>
+  </div>
+</div>
+
+<!-- EXAM MODAL (student entry) -->
+<div class="modal-bg" id="examModal">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="cm('examModal')">×</button>
+    <h2 id="emTitle">Deneme Sonucu Gir</h2>
+    <input type="hidden" id="emId">
+    <div class="field-row">
+      <div class="field"><label>Sınav Adı</label><input id="emName" placeholder="TYT Denemesi #1"></div>
+      <div class="field"><label>Tarih</label><input type="date" id="emDate"></div>
+    </div>
+    <div class="field" id="emStudentWrap"><label>Öğrenci</label><select id="emStudent"></select></div>
+    <div class="field"><label>Sınav Türü</label>
+      <select id="emExamType" onchange="renderNetInputs()">
+        <option value="TYT">TYT</option>
+        <option value="AYT-SAY">AYT Sayısal</option>
+        <option value="AYT-EA">AYT Eşit Ağırlık</option>
+        <option value="AYT-SOZ">AYT Sözel</option>
+      </select>
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Net Girişi</div>
+    <div id="netInputsWrap" class="nets-input-grid"></div>
+    <div class="field" style="margin-top:12px"><label>Kendi Notun</label><textarea id="emNote" placeholder="Bu deneme hakkında düşüncelerini yaz..."></textarea></div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveExam()">Kaydet</button>
+  </div>
+</div>
+
+<!-- COACH COMMENT MODAL -->
+<div class="modal-bg" id="commentModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('commentModal')">×</button>
+    <h2>Koç Yorumu</h2>
+    <input type="hidden" id="cmExamId">
+    <div class="field"><label>Yorum</label><textarea id="cmText" placeholder="Bu deneme hakkında öğrenciye yorumunuzu yazın..." style="min-height:120px"></textarea></div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveComment()">Yorumu Kaydet</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<nav class="mobile-nav" id="mobileNav"></nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ═══════════════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════════════
+const SB_URL = 'https://imyhenrwmsmyikpollur.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
+const db = supabase.createClient(SB_URL, SB_KEY);
+
+// ═══════════════════════════════════════════════
+// CONSTANTS & DATA
+// ═══════════════════════════════════════════════
+const COACH_PASS = 'koc123';
+const STU_DEFAULT_PASS = 'ogrenci123';
+const DAYS_TR = ['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+const MONTHS_TR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+const EXAM_DEFS = {
+  TYT: ['Türkçe','Matematik','Fen','Sosyal'],
+  'AYT-SAY': ['Matematik','Fizik','Kimya','Biyoloji'],
+  'AYT-EA': ['Matematik','Edebiyat','Tarih','Coğrafya'],
+  'AYT-SOZ': ['Edebiyat','Tarih1','Tarih2','Coğrafya1','Coğrafya2','Felsefe','Din'],
+};
+
+const SUBJECT_MAP = {
+  TYT: ['Türkçe','Matematik','Fizik','Kimya','Biyoloji','Tarih','Coğrafya','Felsefe','Din'],
+  'AYT-SAY': ['Matematik','Fizik','Kimya','Biyoloji'],
+  'AYT-EA': ['Matematik','Edebiyat','Tarih','Coğrafya','Felsefe'],
+  'AYT-SOZ': ['Edebiyat','Tarih1','Tarih2','Coğrafya1','Coğrafya2','Felsefe','Din'],
+};
+
+let S = {
+  students:[], tasks:{}, appointments:[], exams:[], messages:{},
+  coachTodos:{}, weekOffset:0, calMonth:new Date().getMonth(),
+  calYear:new Date().getFullYear(), calSelDay:null, activeStuId:null, msgThread:null,
+};
+let session = { role:null, studentId:null, dbUser:null };
+let currentTab = '';
+
+// ── DB helpers ──────────────────────────────────
+async function dbQ(table, query={}) {
+  let q = db.from(table).select('*');
+  Object.entries(query).forEach(([k,v]) => { q = q.eq(k, v); });
+  const {data,error} = await q;
+  if(error) console.error(table, error);
+  return data || [];
+}
+
+async function loadAllData() {
+  showLoading(true);
+  try {
+    // Students (users with role=student)
+    const users = await dbQ('users');
+    S.students = users.filter(u=>u.role==='student').map(u=>({
+      id: u.id, name: u.full_name, target: u.target, color: u.color,
+      progress: u.progress, pass: u.password_hash, weekStart: u.week_start||0,
+      username: u.username
+    }));
+    if(!S.activeStuId && S.students.length) S.activeStuId = S.students[0].id;
+
+    // Tasks → convert to S.tasks dict
+    const tasks = await dbQ('tasks');
+    S.tasks = {};
+    tasks.forEach(t => {
+      const key = `${t.student_id}_${t.date}`;
+      if(!S.tasks[key]) S.tasks[key] = [];
+      S.tasks[key].push({
+        _id: t.id, type: t.type, exam: t.exam_type, subject: t.subject,
+        duration: t.duration, note: t.note, done: t.done
+      });
+    });
+
+    // Appointments
+    const appts = await dbQ('appointments');
+    S.appointments = appts.map(a=>({
+      id: a.id, studentId: a.student_id, date: a.date,
+      time: a.time, duration: a.duration, type: a.type, note: a.note
+    }));
+
+    // Exams
+    const exams = await dbQ('exams');
+    S.exams = exams.map(e=>({
+      id: e.id, studentId: e.student_id, name: e.name, date: e.date,
+      type: e.exam_type, nets: e.nets||{}, note: e.student_note, coachComment: e.coach_comment
+    }));
+
+    // Messages
+    const msgs = await dbQ('messages');
+    S.messages = {};
+    msgs.forEach(m => {
+      if(!S.messages[m.student_id]) S.messages[m.student_id] = [];
+      S.messages[m.student_id].push({
+        _id: m.id, from: m.from_role, text: m.text, read: m.read,
+        time: new Date(m.created_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})
+      });
+    });
+    S.messages && Object.keys(S.messages).forEach(k => S.messages[k].sort((a,b)=>a._id>b._id?1:-1));
+
+    // Coach todos
+    const todos = await dbQ('coach_todos');
+    S.coachTodos = {};
+    todos.forEach(t => {
+      if(!S.coachTodos[t.date]) S.coachTodos[t.date] = [];
+      S.coachTodos[t.date].push({ _id: t.id, task: t.task, note: t.note, done: t.done });
+    });
+
+    // Load saved UI state from localStorage (offsets etc, not data)
+    try {
+      const ui = JSON.parse(localStorage.getItem('ba_ui')||'{}');
+      if(ui.weekOffset !== undefined) S.weekOffset = ui.weekOffset;
+      if(ui.activeStuId) S.activeStuId = ui.activeStuId;
+      if(ui.calMonth !== undefined) { S.calMonth = ui.calMonth; S.calYear = ui.calYear; }
+    } catch(e) {}
+
+  } catch(e) { console.error('loadAllData', e); }
+  showLoading(false);
+}
+
+function saveUI() {
+  try { localStorage.setItem('ba_ui', JSON.stringify({ weekOffset:S.weekOffset, activeStuId:S.activeStuId, calMonth:S.calMonth, calYear:S.calYear })); } catch(e) {}
+}
+// Backward compat alias
+function saveS() { saveUI(); }
+
+function showLoading(on) {
+  let el = document.getElementById('loadingOverlay');
+  if(on && !el) {
+    el = document.createElement('div');
+    el.id = 'loadingOverlay';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(15,14,12,.8);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;backdrop-filter:blur(4px)';
+    el.innerHTML = `<div style="width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite"></div><div style="font-size:13px;color:var(--text-mid)">Yükleniyor...</div>`;
+    if(!document.getElementById('spinStyle')) {
+      const s = document.createElement('style'); s.id='spinStyle';
+      s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(s);
+    }
+    document.body.appendChild(el);
+  } else if(!on && el) { el.remove(); }
+}
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtDate(d){return d instanceof Date?d.toISOString().split('T')[0]:d;}
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
+function todayStr(){return fmtDate(new Date());}
+function netColor(v){return v>=20?'good':v>=12?'mid':'low';}
+function typeLabel(t){return{deneme:'📊 Deneme',soru:'📚 Soru',konu:'🎯 Konu',diger:'⭐ Diğer'}[t]||t;}
+function om(id){document.getElementById(id).classList.add('open');}
+function cm(id){document.getElementById(id).classList.remove('open');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2300);}
+document.querySelectorAll('.modal-bg').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
+
+// Week start for a student (0=Mon..6=Sun)
+function getWeekStart(offset, stuWeekStart=0) {
+  const t=new Date(); const dow=t.getDay(); // 0=Sun
+  // Convert JS Sunday=0 to our Mon=0 system
+  const todayIdx = dow===0?6:dow-1; // Mon=0..Sun=6
+  const diff = todayIdx - stuWeekStart;
+  const monday = new Date(t);
+  monday.setDate(t.getDate() - ((diff+7)%7) + offset*7);
+  monday.setHours(0,0,0,0);
+  return monday;
+}
+function getStudentWeekStart(){
+  const s=S.students.find(x=>x.id===S.activeStuId);
+  return s?.weekStart??0;
+}
+
+// ═══════════════════════════════════════════════
+// LOGIN — kullanıcı adı + şifre, otomatik yönlendirme
+// ═══════════════════════════════════════════════
+function loginErr(msg){
+  const el=document.getElementById('loginErr');
+  el.textContent=msg; el.style.display='block';
+  setTimeout(()=>el.style.display='none',3000);
+}
+async function doLogin(){
+  const user=document.getElementById('loginUser').value.trim().toLowerCase();
+  const pass=document.getElementById('loginPass').value;
+  if(!user||!pass)return loginErr('Kullanıcı adı ve şifre girin.');
+
+  showLoading(true);
+  const {data:rows, error} = await db.from('users').select('*').eq('username', user).single();
+  showLoading(false);
+
+  if(error || !rows) return loginErr('Kullanıcı bulunamadı.');
+  if(rows.password_hash !== pass) return loginErr('Şifre yanlış!');
+
+  session = { role: rows.role, studentId: rows.role==='student' ? rows.id : null, dbUser: rows };
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appShell').classList.add('visible');
+
+  // Tüm veriyi yükle
+  await loadAllData();
+
+  if(session.role==='student') S.activeStuId = rows.id;
+  setupShell();
+  switchTab(session.role==='coach' ? 'program' : 'portal');
+}
+function doLogout(){
+  session={role:null,studentId:null,dbUser:null};
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('appShell').classList.remove('visible');
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+}
+
+// ═══════════════════════════════════════════════
+// SHELL
+// ═══════════════════════════════════════════════
+const coachTabs=[{id:'program',lbl:'📋 Program'},{id:'todolist',lbl:'✅ To-Do'},{id:'students',lbl:'👤 Öğrenciler'},{id:'appointments',lbl:'📅 Randevular'},{id:'exams',lbl:'📊 Denemeler'},{id:'messages',lbl:'💬 Mesajlar'}];
+const stuTabs=[{id:'portal',lbl:'🏠 Ana Sayfa'},{id:'sportal',lbl:'📋 Programım'},{id:'sexams',lbl:'📊 Denemeler'},{id:'smessages',lbl:'💬 Koçuma Yaz'}];
+function setupShell(){
+  const tabs=session.role==='coach'?coachTabs:stuTabs;
+  document.getElementById('tbarNav').innerHTML=tabs.map(t=>`<button class="tbar-tab" id="tbtab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}</button>`).join('');
+  document.getElementById('mobileNav').innerHTML=tabs.slice(0,5).map(t=>`<button class="mnav-btn" id="mntab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}</button>`).join('');
+  document.getElementById('mainContent').innerHTML=tabs.map(t=>`<div class="view" id="view-${t.id}"></div>`).join('');
+  const stu=session.role==='student'?S.students.find(s=>s.id===session.studentId):null;
+  const name=session.role==='coach'?'Emin Ceylan':(stu?.name||'');
+  const initials=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const dot=document.getElementById('tbarDot');
+  dot.textContent=initials; dot.style.background=session.role==='coach'?'#f0a500':(stu?.color||'#4da6ff'); dot.style.color='#0f0e0c';
+  document.getElementById('tbarName').textContent=name;
+  document.getElementById('tbarRole').textContent=session.role==='coach'?'Koç':'Öğrenci';
+  document.getElementById('tbarRole').className='role-badge '+(session.role==='coach'?'role-coach':'role-student');
+}
+function switchTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tbar-tab,.mnav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+tab)?.classList.add('active');
+  document.getElementById('tbtab_'+tab)?.classList.add('active');
+  document.getElementById('mntab_'+tab)?.classList.add('active');
+  ({program:renderProgram,todolist:renderTodoList,students:renderStudents,appointments:renderAppointments,exams:renderExams,messages:renderMessages,portal:renderPortal,sportal:renderSPortal,sexams:renderSExams,smessages:renderSMessages})[tab]?.();
+}
+
+// ═══════════════════════════════════════════════
+// PROGRAM
+// ═══════════════════════════════════════════════
+let _taskDate='';
+function renderProgram(){
+  const el=document.getElementById('view-program');
+  const stu=S.students.find(s=>s.id===S.activeStuId);
+  const ws=stu?.weekStart??0;
+  const wStart=getWeekStart(S.weekOffset,ws);
+  const wEnd=addDays(wStart,6);
+  const today=todayStr();
+  const selOpts=S.students.map(s=>`<option value="${s.id}" ${s.id===S.activeStuId?'selected':''}>${esc(s.name)}</option>`).join('');
+  let dayCards='';
+  for(let i=0;i<7;i++){
+    const d=addDays(wStart,i);
+    const ds=fmtDate(d);
+    const isToday=ds===today;
+    const key=`${S.activeStuId}_${ds}`;
+    const tasks=S.tasks[key]||[];
+    const totalMin=tasks.reduce((s,t)=>s+Number(t.duration),0);
+    const doneMin=tasks.reduce((s,t)=>s+(t.done?Number(t.duration):0),0);
+    const dayLabel=DAYS_TR[(ws+i)%7];
+    const taskHtml=tasks.map((t,ti)=>`
+      <div class="task-card task-${t.type} ${t.done?'done':''}">
+        <div class="tc-check ${t.done?'on':''}" onclick="toggleTask('${ds}',${ti})"></div>
+        <div class="tc-body">
+          <div class="tc-type">${typeLabel(t.type)}${t.exam?' · '+t.exam:''}</div>
+          <div class="tc-subject">${esc(t.subject)}</div>
+          <div class="tc-meta">${t.duration} dk${t.note?' · '+esc(t.note):''}</div>
+        </div>
+        <button class="tc-del" onclick="deleteTask('${ds}',${ti})">✕</button>
+      </div>`).join('');
+    dayCards+=`<div class="day-col ${isToday?'today':''}">
+      <div class="day-hd">
+        <div><div class="day-name-lbl">${dayLabel.slice(0,3)}</div><div class="day-num">${d.getDate()}</div></div>
+        <span class="day-badge">${doneMin}/${totalMin}dk</span>
+      </div>
+      <div class="day-tasks-list">${taskHtml||'<div style="flex:1"></div>'}</div>
+      <button class="add-day-btn" onclick="openTaskModal('${ds}','${dayLabel}')" ${!S.activeStuId?'disabled':''}>+ Görev Ekle</button>
+    </div>`;
+  }
+  el.innerHTML=`
+    <div class="card prog-banner" style="margin-bottom:18px">
+      <div class="prog-avatar" style="background:${stu?.color||'#555'}">${stu?stu.name[0]:'?'}</div>
+      <div class="prog-meta"><h2>${stu?esc(stu.name):'Öğrenci Seçin'}</h2><p>${stu?esc(stu.target):'Program görüntülemek için öğrenci seçin'}</p></div>
+      <div class="prog-actions">
+        <select onchange="selectStu(this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 11px;font-family:inherit;font-size:13px;color:var(--text);cursor:pointer">${selOpts}</select>
+        <button class="btn btn-danger btn-sm" onclick="openClearWeekModal()">🗑 Günleri Temizle</button>
+      </div>
+    </div>
+    <div class="week-nav">
+      <button class="btn btn-ghost btn-sm" onclick="chWeek(-1)">← Önceki</button>
+      <span class="week-lbl">${wStart.getDate()} ${MONTHS_TR[wStart.getMonth()]} — ${wEnd.getDate()} ${MONTHS_TR[wEnd.getMonth()]} ${wEnd.getFullYear()}</span>
+      <button class="btn btn-ghost btn-sm" onclick="chWeek(1)">Sonraki →</button>
+      <button class="btn btn-ghost btn-sm" onclick="goToday()">Bugün</button>
+    </div>
+    <div class="week-grid">${dayCards}</div>`;
+}
+
+function selectStu(id){S.activeStuId=id||null;saveS();renderProgram();}
+function chWeek(d){S.weekOffset+=d;saveS();renderProgram();}
+function goToday(){S.weekOffset=0;saveS();renderProgram();}
+
+// CLEAR WEEK with day picker
+let _clearDaysSel=[];
+function openClearWeekModal(){
+  if(!S.activeStuId)return showToast('Önce öğrenci seçin');
+  const stu=S.students.find(s=>s.id===S.activeStuId);
+  const ws=stu?.weekStart??0;
+  const wStart=getWeekStart(S.weekOffset,ws);
+  _clearDaysSel=[];
+  let html='';
+  for(let i=0;i<7;i++){
+    const d=addDays(wStart,i);
+    const ds=fmtDate(d);
+    const dayLabel=DAYS_TR[(ws+i)%7];
+    const hasTasks=(S.tasks[`${S.activeStuId}_${ds}`]||[]).length>0;
+    html+=`<button class="day-sel-btn" id="dsbtn_${i}" data-ds="${ds}" onclick="toggleDaySel(${i},'${ds}')">
+      <div>${dayLabel.slice(0,3)}</div>
+      <div style="font-size:14px;font-weight:800">${d.getDate()}</div>
+      ${hasTasks?`<div style="font-size:9px;color:var(--accent);margin-top:2px">●</div>`:'<div style="font-size:9px;opacity:0">·</div>'}
+    </button>`;
+  }
+  document.getElementById('daySelectorGrid').innerHTML=html;
+  om('clearWeekModal');
+}
+function toggleDaySel(i,ds){
+  const btn=document.getElementById('dsbtn_'+i);
+  const idx=_clearDaysSel.indexOf(ds);
+  if(idx===-1){_clearDaysSel.push(ds);btn.classList.add('sel');}
+  else{_clearDaysSel.splice(idx,1);btn.classList.remove('sel');}
+}
+function toggleAllDays(){
+  const btns=document.querySelectorAll('.day-sel-btn');
+  if(_clearDaysSel.length===7){_clearDaysSel=[];btns.forEach(b=>b.classList.remove('sel'));}
+  else{
+    _clearDaysSel=[];
+    btns.forEach((b,i)=>{_clearDaysSel.push(b.dataset.ds);b.classList.add('sel');});
+  }
+}
+async function confirmClearDays(){
+  if(!_clearDaysSel.length)return showToast('Önce gün seçin');
+  if(!confirm(`${_clearDaysSel.length} günün görevleri silinsin mi?`))return;
+  for(const ds of _clearDaysSel){
+    await db.from('tasks').delete().eq('student_id',S.activeStuId).eq('date',ds);
+    delete S.tasks[`${S.activeStuId}_${ds}`];
+  }
+  saveUI();cm('clearWeekModal');renderProgram();showToast(`${_clearDaysSel.length} gün temizlendi`);
+}
+
+function openTaskModal(ds, dayName){
+  if(!S.activeStuId)return showToast('Önce öğrenci seçin');
+  _taskDate=ds;
+  _selectedBook=null;
+  document.getElementById('tmDay').textContent=dayName;
+  document.getElementById('tmSubjectFree').value='';
+  document.getElementById('tmDuration').value='60';
+  document.getElementById('tmNote').value='';
+  document.getElementById('tmExam').value='';
+  document.getElementById('tmType').value='deneme';
+  document.getElementById('tmSubjectSel').style.display='none';
+  document.getElementById('tmSubjectFree').style.display='';
+  document.getElementById('soruBankasiWrap').style.display='none';
+  document.getElementById('tmBookSearch').value='';
+  document.getElementById('tmBookVal').value='';
+  document.getElementById('tmBookList').innerHTML='';
+  document.getElementById('tmTestWrap').style.display='none';
+  om('taskModal');
+}
+// ═══════════════════════════════════════════════
+// SORU BANKASI VERİSİ
+// ═══════════════════════════════════════════════
+const SORU_BANKALARI = {
+  TYT: {
+    Matematik: [
+      { name:'Acil TYT Matematiğin İlacı Soru Bankası', yil:2026, testler:['Test 1 - Temel Kavramlar','Test 2 - Sayılar','Test 3 - Kesirler','Test 4 - Oran-Orantı','Test 5 - Yüzde','Test 6 - Denklemler','Test 7 - Fonksiyonlar','Test 8 - Veri Analizi'] },
+      { name:'Acil Yayınları Kurs TYT Matematik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'Aktif Matematik 0\'dan Başlayanlara', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+      { name:'Apotemi Problemler Fasikülü', yil:2026, testler:['Fasikül 1','Fasikül 2','Fasikül 3'] },
+      { name:'Aydın Yayınları 9. Sınıf Matematik Soru Bankası', yil:2026, testler:['Ünite 1','Ünite 2','Ünite 3','Ünite 4','Ünite 5'] },
+      { name:'Barış Çelenk Problemler', yil:2026, testler:['Bölüm 1 - Temel','Bölüm 2 - Orta','Bölüm 3 - İleri'] },
+      { name:'Barış TYT Matematik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8','Test 9','Test 10'] },
+      { name:'Bilgi Sarmal 10. Sınıf Matematik Soru Bankası', yil:2026, testler:['Sarmal 1','Sarmal 2','Sarmal 3','Sarmal 4'] },
+      { name:'Birey TYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'Delta TYT Matematik Soru Bankası', yil:2026, testler:['Konu 1','Konu 2','Konu 3','Konu 4','Konu 5','Konu 6'] },
+      { name:'Eis TYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+      { name:'FDD TYT Matematik', yil:2026, testler:['Fasikül A','Fasikül B','Fasikül C'] },
+      { name:'Karekök TYT Matematik Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8'] },
+      { name:'Palme TYT Matematik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4','Bölüm 5'] },
+      { name:'Sınav TYT Matematik Modüler', yil:2026, testler:['Modül 1','Modül 2','Modül 3','Modül 4'] },
+    ],
+    Türkçe: [
+      { name:'Acil TYT Türkçe Soru Bankası', yil:2026, testler:['Paragraf Testleri','Dil Bilgisi Testleri','Sözcük Bilgisi'] },
+      { name:'Birey TYT Türkçe', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'Delta TYT Türkçe', yil:2026, testler:['Paragraf 1','Paragraf 2','Dil Bilgisi 1','Dil Bilgisi 2'] },
+      { name:'Karekök TYT Türkçe Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'Palme TYT Türkçe', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3'] },
+    ],
+    Fizik: [
+      { name:'Acil TYT Fizik Soru Bankası', yil:2026, testler:['Test 1 - Kuvvet','Test 2 - Hareket','Test 3 - Enerji','Test 4 - Dalgalar'] },
+      { name:'Karekök TYT Fizik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'Delta TYT Fizik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+    ],
+    Kimya: [
+      { name:'Acil TYT Kimya Soru Bankası', yil:2026, testler:['Test 1 - Atom','Test 2 - Bağlar','Test 3 - Mol','Test 4 - Çözeltiler'] },
+      { name:'Karekök TYT Kimya', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+    ],
+    Biyoloji: [
+      { name:'Acil TYT Biyoloji Soru Bankası', yil:2026, testler:['Test 1 - Hücre','Test 2 - Canlılar','Test 3 - Ekosistem'] },
+      { name:'Karekök TYT Biyoloji', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+    ],
+    Tarih: [
+      { name:'Karekök TYT Tarih Soru Bankası', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+      { name:'Delta TYT Tarih', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3'] },
+    ],
+    Coğrafya: [
+      { name:'Karekök TYT Coğrafya', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+    ],
+    Felsefe: [
+      { name:'Karekök TYT Felsefe', yil:2026, testler:['Test 1','Test 2'] },
+    ],
+    Din: [
+      { name:'Karekök TYT Din Kültürü', yil:2026, testler:['Test 1','Test 2'] },
+    ],
+  },
+  'AYT-SAY': {
+    Matematik: [
+      { name:'Karekök AYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6','Test 7','Test 8','Test 9','Test 10'] },
+      { name:'Delta AYT Matematik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4','Bölüm 5'] },
+      { name:'Palme AYT Matematik', yil:2026, testler:['Fasikül 1','Fasikül 2','Fasikül 3','Fasikül 4'] },
+      { name:'FDD AYT Matematik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+    ],
+    Fizik: [
+      { name:'Karekök AYT Fizik', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'Delta AYT Fizik', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+    ],
+    Kimya: [
+      { name:'Karekök AYT Kimya', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+      { name:'Delta AYT Kimya', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3'] },
+    ],
+    Biyoloji: [
+      { name:'Karekök AYT Biyoloji', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+      { name:'Delta AYT Biyoloji', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3'] },
+    ],
+  },
+  'AYT-EA': {
+    Matematik: [
+      { name:'Karekök AYT Matematik (EA)', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5'] },
+    ],
+    Edebiyat: [
+      { name:'Karekök AYT Edebiyat', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+      { name:'Delta AYT Türk Dili ve Edebiyatı', yil:2026, testler:['Bölüm 1','Bölüm 2','Bölüm 3','Bölüm 4'] },
+    ],
+    Tarih: [
+      { name:'Karekök AYT Tarih', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4'] },
+    ],
+    Coğrafya: [
+      { name:'Karekök AYT Coğrafya', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+    ],
+  },
+  'AYT-SOZ': {
+    Edebiyat: [
+      { name:'Karekök AYT Edebiyat', yil:2026, testler:['Test 1','Test 2','Test 3','Test 4','Test 5','Test 6'] },
+    ],
+    Tarih1: [
+      { name:'Karekök AYT Tarih 1', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+    ],
+    Coğrafya1: [
+      { name:'Karekök AYT Coğrafya 1', yil:2026, testler:['Test 1','Test 2'] },
+    ],
+    Felsefe: [
+      { name:'Karekök AYT Felsefe Grubu', yil:2026, testler:['Test 1','Test 2','Test 3'] },
+    ],
+  },
+};
+
+let _filteredBooks = [];
+let _selectedBook = null;
+
+function updateSubjectList(){
+  const exam=document.getElementById('tmExam').value;
+  const type=document.getElementById('tmType').value;
+  const sel=document.getElementById('tmSubjectSel');
+  const free=document.getElementById('tmSubjectFree');
+  // reset book selection
+  _selectedBook=null;
+  document.getElementById('tmBookVal').value='';
+  document.getElementById('tmBookSearch').value='';
+  document.getElementById('tmBookList').innerHTML='';
+  document.getElementById('tmTestWrap').style.display='none';
+
+  if(exam && SUBJECT_MAP[exam]){
+    sel.innerHTML=SUBJECT_MAP[exam].map(s=>`<option value="${s}">${s}</option>`).join('');
+    sel.style.display='';free.style.display='none';
+  } else {
+    sel.style.display='none';free.style.display='';
+  }
+
+  // show/hide soru bankasi section
+  const isSoru=type==='soru';
+  document.getElementById('soruBankasiWrap').style.display=isSoru&&exam?'':'none';
+  if(isSoru&&exam) renderBookList('');
+}
+
+document.getElementById('tmType').addEventListener('change', updateSubjectList);
+
+function renderBookList(query){
+  const exam=document.getElementById('tmExam').value;
+  const subject=document.getElementById('tmSubjectSel').value||'';
+  const books=(SORU_BANKALARI[exam]?.[subject])||[];
+  const q=query.toLowerCase();
+  _filteredBooks=books.filter(b=>!q||b.name.toLowerCase().includes(q));
+  const el=document.getElementById('tmBookList');
+  if(!_filteredBooks.length){
+    el.innerHTML=`<div style="padding:12px;font-size:12px;color:var(--text-dim);text-align:center">Kaynak bulunamadı</div>`;
+    return;
+  }
+  el.innerHTML=_filteredBooks.map((b,i)=>`
+    <div onclick="selectBook(${i})" id="book_${i}" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;transition:background .15s;font-size:13px;font-weight:600"
+      onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background=_selectedBook===b?'var(--accent-dim)':'transparent'">
+      <span>${esc(b.name)}</span>
+      <span style="font-size:10px;font-weight:700;background:var(--green-dim);color:var(--green);padding:2px 7px;border-radius:99px;margin-left:8px;flex-shrink:0">${b.yil}</span>
+    </div>`).join('');
+}
+
+function filterBooks(){
+  const q=document.getElementById('tmBookSearch').value;
+  renderBookList(q);
+}
+
+function selectBook(idx){
+  _selectedBook=_filteredBooks[idx];
+  document.getElementById('tmBookVal').value=_selectedBook.name;
+  document.getElementById('tmBookSearch').value=_selectedBook.name;
+  document.getElementById('tmBookList').innerHTML='';
+  // show test selector
+  const testWrap=document.getElementById('tmTestWrap');
+  document.getElementById('tmTestSel').innerHTML=_selectedBook.testler.map(t=>`<option value="${t}">${t}</option>`).join('');
+  testWrap.style.display='';
+  // set note
+  document.getElementById('tmNote').value=_selectedBook.testler[0]||'';
+}
+
+document.getElementById('tmTestSel').addEventListener('change',function(){
+  document.getElementById('tmNote').value=this.value;
+});
+async function saveTask(){
+  const type=document.getElementById('tmType').value;
+  const sel=document.getElementById('tmSubjectSel');
+  const free=document.getElementById('tmSubjectFree');
+  const bookVal=document.getElementById('tmBookVal').value;
+  const testVal=document.getElementById('tmTestSel').value;
+
+  let subject='';
+  if(type==='soru' && bookVal){
+    // soru bankası seçildi
+    const dersSel=sel.style.display!=='none'?sel.value:'';
+    subject=dersSel?`${dersSel} - ${bookVal}`:`${bookVal}`;
+  } else {
+    subject=(sel.style.display!=='none'?sel.value:free.value).trim();
+  }
+  if(!subject)return showToast('Ders adı girin!');
+
+  const note=type==='soru'&&testVal?testVal:document.getElementById('tmNote').value.trim();
+
+  const payload={student_id:S.activeStuId,date:_taskDate,type,exam_type:document.getElementById('tmExam').value,subject,duration:parseInt(document.getElementById('tmDuration').value),note,done:false};
+  const {data,error}=await db.from('tasks').insert(payload).select().single();
+  if(error)return showToast('Hata: '+error.message);
+  const key=`${S.activeStuId}_${_taskDate}`;
+  if(!S.tasks[key])S.tasks[key]=[];
+  S.tasks[key].push({_id:data.id,type:data.type,exam:data.exam_type,subject:data.subject,duration:data.duration,note:data.note,done:false});
+  cm('taskModal');renderProgram();showToast('Görev eklendi ✓');
+}
+async function toggleTask(ds,idx){
+  const key=`${S.activeStuId}_${ds}`;
+  const t=S.tasks[key]?.[idx]; if(!t)return;
+  const newDone=!t.done;
+  await db.from('tasks').update({done:newDone}).eq('id',t._id);
+  t.done=newDone; renderProgram();
+}
+async function deleteTask(ds,idx){
+  const key=`${S.activeStuId}_${ds}`;
+  const t=S.tasks[key]?.[idx]; if(!t)return;
+  await db.from('tasks').delete().eq('id',t._id);
+  S.tasks[key].splice(idx,1); renderProgram(); showToast('Görev silindi');
+}
+
+// ═══════════════════════════════════════════════
+// COACH TODO LIST (dün / bugün / yarın)
+// ═══════════════════════════════════════════════
+let _ctdDate='';
+function renderTodoList(){
+  const el=document.getElementById('view-todolist');
+  const today=new Date(); today.setHours(0,0,0,0);
+  const cols=[{label:'Dün',offset:-1},{label:'Bugün',offset:0},{label:'Yarın',offset:1}];
+  let html='<div class="sh"><h2>Koç To-Do Listesi</h2></div><div class="coach-todo-strip">';
+  cols.forEach(({label,offset})=>{
+    const d=new Date(today); d.setDate(today.getDate()+offset);
+    const ds=fmtDate(d);
+    const isToday=offset===0;
+    const tasks=S.coachTodos[ds]||[];
+    const taskHtml=tasks.map((t,i)=>`
+      <div class="ctd-task-item ${t.done?'done':''}">
+        <div class="ctd-check ${t.done?'on':''}" onclick="toggleCtd('${ds}',${i})"></div>
+        <div style="flex:1">
+          <div class="ctd-subj">${esc(t.task)}</div>
+          ${t.note?`<div class="ctd-meta">${esc(t.note)}</div>`:''}
+        </div>
+        <button class="ctd-del" onclick="deleteCtd('${ds}',${i})">✕</button>
+      </div>`).join('');
+    const dateLabel=d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
+    html+=`<div class="ctd-col ${isToday?'today-col':''}">
+      <div class="ctd-day-label">${label}</div>
+      <div class="ctd-date" style="font-size:${isToday?28:20}px">${d.getDate()} ${MONTHS_TR[d.getMonth()]}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">${d.toLocaleDateString('tr-TR',{weekday:'long'})}</div>
+      ${taskHtml||`<div class="ctd-empty">${offset===-1?'Dün tamamlandı 🎉':'Henüz görev yok'}</div>`}
+      ${offset>=0?`<button class="ctd-add" onclick="openCoachTodoModal('${ds}','${label}')">+ Görev Ekle</button>`:''}
+    </div>`;
+  });
+  html+='</div>';
+  // Stats
+  const allToday=S.coachTodos[fmtDate(today)]||[];
+  const doneToday=allToday.filter(t=>t.done).length;
+  html+=`<div class="stats-row" style="margin-top:20px">
+    <div class="stat-card"><div class="stat-label">Bugün Toplam</div><div class="stat-val">${allToday.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Tamamlanan</div><div class="stat-val" style="color:var(--green)">${doneToday}</div></div>
+    <div class="stat-card"><div class="stat-label">Kalan</div><div class="stat-val" style="color:var(--accent)">${allToday.length-doneToday}</div></div>
+  </div>`;
+  el.innerHTML=html;
+}
+
+function openCoachTodoModal(ds, dayLabel){
+  _ctdDate=ds;
+  document.getElementById('ctdDay').textContent=dayLabel;
+  document.getElementById('ctdTask').value='';
+  document.getElementById('ctdNote').value='';
+  om('coachTodoModal');
+}
+async function saveCoachTodo(){
+  const task=document.getElementById('ctdTask').value.trim();
+  if(!task)return showToast('Görev adı girin!');
+  const payload={date:_ctdDate,task,note:document.getElementById('ctdNote').value.trim(),done:false};
+  const {data,error}=await db.from('coach_todos').insert(payload).select().single();
+  if(error)return showToast('Hata: '+error.message);
+  if(!S.coachTodos[_ctdDate])S.coachTodos[_ctdDate]=[];
+  S.coachTodos[_ctdDate].push({_id:data.id,task:data.task,note:data.note,done:false});
+  cm('coachTodoModal');renderTodoList();showToast('Görev eklendi ✓');
+}
+async function toggleCtd(ds,idx){
+  const t=S.coachTodos[ds]?.[idx]; if(!t)return;
+  const newDone=!t.done;
+  await db.from('coach_todos').update({done:newDone}).eq('id',t._id);
+  t.done=newDone; renderTodoList();
+}
+async function deleteCtd(ds,idx){
+  const t=S.coachTodos[ds]?.[idx]; if(!t)return;
+  await db.from('coach_todos').delete().eq('id',t._id);
+  S.coachTodos[ds].splice(idx,1); renderTodoList(); showToast('Silindi');
+}
+
+// ═══════════════════════════════════════════════
+// STUDENTS
+// ═══════════════════════════════════════════════
+function renderStudents(){
+  const el=document.getElementById('view-students');
+  const total=S.students.length;
+  const avg=total?Math.round(S.students.reduce((a,s)=>a+s.progress,0)/total):0;
+  const cards=S.students.length?S.students.map(s=>`
+    <div class="student-card">
+      <div class="sc-avatar" style="background:${s.color}">${s.name[0]}</div>
+      <div class="sc-name">${esc(s.name)}</div>
+      <div class="sc-target">${esc(s.target)}</div>
+      <div class="prog-bar-wrap"><div class="prog-bar" style="width:${s.progress}%;background:${s.color}"></div></div>
+      <div class="prog-pct">%${s.progress} tamamlandı</div>
+      <div class="sc-actions">
+        <button class="btn btn-ghost btn-sm" onclick="goProgram('${s.id}')">📋 Program</button>
+        <button class="btn btn-ghost btn-sm" onclick="openStudentModal('${s.id}')">✏️ Düzenle</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteStu('${s.id}')">🗑</button>
+      </div>
+    </div>`).join(''):'<div class="empty" style="grid-column:1/-1"><p>Henüz öğrenci yok</p></div>';
+  el.innerHTML=`
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Aktif Öğrenci</div><div class="stat-val">${total}</div></div>
+      <div class="stat-card"><div class="stat-label">Ort. İlerleme</div><div class="stat-val">%${avg}</div></div>
+    </div>
+    <div class="sh"><h2>Öğrencilerim</h2><button class="btn btn-accent" onclick="openStudentModal()">+ Yeni Öğrenci</button></div>
+    <div class="students-grid">${cards}</div>`;
+}
+function goProgram(id){S.activeStuId=id;S.weekOffset=0;saveS();switchTab('program');}
+function openStudentModal(id){
+  const s=id?S.students.find(x=>x.id===id):null;
+  document.getElementById('smTitle').textContent=s?'Öğrenciyi Düzenle':'Yeni Öğrenci';
+  document.getElementById('smId').value=id||'';
+  document.getElementById('smName').value=s?.name||'';
+  document.getElementById('smTarget').value=s?.target||'';
+  document.getElementById('smUsername').value=s?.username||'';
+  document.getElementById('smPass').value=s?.pass||STU_DEFAULT_PASS;
+  document.getElementById('smWeekStart').value=s?.weekStart??0;
+  document.getElementById('smProg').value=s?.progress||0;
+  document.getElementById('smProgVal').textContent=(s?.progress||0)+'%';
+  document.querySelectorAll('.color-opt').forEach(el=>el.classList.toggle('sel',el.dataset.c===(s?.color||'#f0a500')));
+  om('studentModal');
+}
+document.getElementById('smProg').addEventListener('input',function(){document.getElementById('smProgVal').textContent=this.value+'%';});
+document.getElementById('smColorPick').addEventListener('click',function(e){const o=e.target.closest('.color-opt');if(!o)return;document.querySelectorAll('.color-opt').forEach(el=>el.classList.remove('sel'));o.classList.add('sel');});
+async function saveStudent(){
+  const name=document.getElementById('smName').value.trim();
+  if(!name)return showToast('İsim girin!');
+  const color=document.querySelector('.color-opt.sel')?.dataset.c||'#f0a500';
+  const id=document.getElementById('smId').value;
+  const uname=document.getElementById('smUsername').value.trim().toLowerCase()||name.split(' ')[0].toLowerCase();
+  const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'Hedef belirtilmemiş',color,progress:Number(document.getElementById('smProg').value),password_hash:document.getElementById('smPass').value||STU_DEFAULT_PASS,week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:'student'};
+  if(id){
+    const {error}=await db.from('users').update(payload).eq('id',id);
+    if(error)return showToast('Hata: '+error.message);
+    const s=S.students.find(x=>x.id===id);
+    if(s)Object.assign(s,{name:payload.full_name,target:payload.target,color,progress:payload.progress,pass:payload.password_hash,weekStart:payload.week_start,username:uname});
+    showToast('Güncellendi ✓');
+  } else {
+    const {data,error}=await db.from('users').insert(payload).select().single();
+    if(error)return showToast('Hata: '+error.message);
+    S.students.push({id:data.id,name:data.full_name,target:data.target,color:data.color,progress:data.progress,pass:data.password_hash,weekStart:data.week_start||0,username:data.username});
+    if(!S.activeStuId)S.activeStuId=data.id;
+    showToast('Öğrenci eklendi ✓');
+  }
+  saveUI();cm('studentModal');renderStudents();
+}
+async function deleteStu(id){
+  if(!confirm('Bu öğrenciyi silmek istediğinizden emin misiniz?'))return;
+  const {error}=await db.from('users').delete().eq('id',id);
+  if(error)return showToast('Hata: '+error.message);
+  S.students=S.students.filter(s=>s.id!==id);
+  if(S.activeStuId===id)S.activeStuId=S.students[0]?.id||null;
+  saveUI();renderStudents();showToast('Silindi');
+}
+
+// ═══════════════════════════════════════════════
+// APPOINTMENTS
+// ═══════════════════════════════════════════════
+function renderAppointments(){
+  const el=document.getElementById('view-appointments');
+  el.innerHTML=`
+    <div class="sh"><h2>Randevular</h2><button class="btn btn-accent" onclick="openApptModal()">+ Yeni Randevu</button></div>
+    <div class="appts-layout">
+      <div class="card cp">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <span style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700" id="calMonthLbl"></span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="chCalMonth(-1)">‹</button>
+            <button class="btn btn-ghost btn-sm" onclick="chCalMonth(1)">›</button>
+          </div>
+        </div>
+        <div class="cal-dow-row">${DAYS_TR.map(d=>`<div class="cal-dow">${d.slice(0,3)}</div>`).join('')}</div>
+        <div class="cal-days-grid" id="calDaysGrid"></div>
+      </div>
+      <div>
+        <div class="card cp">
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)" id="apptListTitle">Yaklaşan Görüşmeler</div>
+          <div id="apptList"></div>
+          <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="S.calSelDay=null;renderCalDays();renderApptList()">Tümünü Göster</button>
+        </div>
+      </div>
+    </div>`;
+  renderCalDays();renderApptList();
+}
+function renderCalDays(){
+  const y=S.calYear,m=S.calMonth;
+  document.getElementById('calMonthLbl').textContent=`${MONTHS_TR[m]} ${y}`;
+  const firstDow=new Date(y,m,1).getDay();
+  const dim=new Date(y,m+1,0).getDate();
+  const ts=todayStr();
+  const apptDays=new Set(S.appointments.filter(a=>{const d=new Date(a.date);return d.getFullYear()===y&&d.getMonth()===m;}).map(a=>new Date(a.date).getDate()));
+  const pad=firstDow===0?6:firstDow-1;
+  let html='';
+  for(let i=0;i<pad;i++)html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=dim;d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    html+=`<div class="cal-day ${ds===ts?'today':''} ${ds===S.calSelDay&&ds!==ts?'selected':''} ${apptDays.has(d)?'has-appt':''}" onclick="selCalDay('${ds}')">${d}</div>`;
+  }
+  document.getElementById('calDaysGrid').innerHTML=html;
+}
+function selCalDay(ds){S.calSelDay=S.calSelDay===ds?null:ds;renderCalDays();renderApptList();}
+function chCalMonth(delta){S.calMonth+=delta;if(S.calMonth>11){S.calMonth=0;S.calYear++;}if(S.calMonth<0){S.calMonth=11;S.calYear--;}saveS();renderCalDays();}
+function renderApptList(){
+  const ts=todayStr();let appts=S.appointments;let title='Yaklaşan Görüşmeler';
+  if(S.calSelDay){appts=appts.filter(a=>a.date===S.calSelDay);title=new Date(S.calSelDay+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long'});}
+  else{appts=appts.filter(a=>a.date>=ts).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,10);}
+  document.getElementById('apptListTitle').textContent=title;
+  if(!appts.length){document.getElementById('apptList').innerHTML=`<div class="empty"><p>Randevu yok</p></div>`;return;}
+  document.getElementById('apptList').innerHTML=appts.map(a=>{
+    const stu=S.students.find(s=>s.id===a.studentId);
+    const isToday=a.date===ts;
+    const dl=isToday?'BUGÜN':new Date(a.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
+    return `<div class="appt-item" style="border-left-color:${stu?.color||'#555'}">
+      <div class="appt-when">${dl} • ${a.time} (${a.duration} dk)</div>
+      <div class="appt-name">${esc(stu?.name||'?')}</div>
+      <div class="appt-type">${esc(a.type)}</div>
+      ${a.note?`<div class="appt-note">${esc(a.note)}</div>`:''}
+      <div class="appt-actions">
+        <button class="btn btn-ghost btn-xs" onclick="openApptModal('${a.id}')">✏️</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteAppt('${a.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openApptModal(id){
+  const a=id?S.appointments.find(x=>x.id===id):null;
+  document.getElementById('amTitle').textContent=a?'Randevuyu Düzenle':'Yeni Randevu';
+  document.getElementById('amId').value=id||'';
+  document.getElementById('amStudent').innerHTML=S.students.map(s=>`<option value="${s.id}" ${a?.studentId===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
+  document.getElementById('amDate').value=a?a.date:fmtDate(new Date());
+  document.getElementById('amTime').value=a?a.time:'14:00';
+  document.getElementById('amDuration').value=a?a.duration:'45';
+  document.getElementById('amType').value=a?a.type:'Haftalık Değerlendirme';
+  document.getElementById('amNote').value=a?.note||'';
+  om('apptModal');
+}
+async function saveAppt(){
+  const stuId=document.getElementById('amStudent').value;
+  const date=document.getElementById('amDate').value;
+  const time=document.getElementById('amTime').value;
+  if(!stuId||!date||!time)return showToast('Tüm alanları doldurun!');
+  const id=document.getElementById('amId').value;
+  const payload={student_id:stuId,date,time,duration:parseInt(document.getElementById('amDuration').value),type:document.getElementById('amType').value,note:document.getElementById('amNote').value.trim()};
+  if(id){
+    await db.from('appointments').update(payload).eq('id',id);
+    const a=S.appointments.find(x=>x.id===id);
+    if(a)Object.assign(a,{studentId:stuId,date,time,duration:payload.duration,type:payload.type,note:payload.note});
+    showToast('Güncellendi ✓');
+  } else {
+    const {data,error}=await db.from('appointments').insert(payload).select().single();
+    if(error)return showToast('Hata: '+error.message);
+    S.appointments.push({id:data.id,studentId:data.student_id,date:data.date,time:data.time,duration:data.duration,type:data.type,note:data.note});
+    showToast('Randevu eklendi ✓');
+  }
+  cm('apptModal');renderAppointments();
+}
+async function deleteAppt(id){if(!confirm('Sil?'))return;await db.from('appointments').delete().eq('id',id);S.appointments=S.appointments.filter(a=>a.id!==id);renderAppointments();showToast('Silindi');}
+
+// ═══════════════════════════════════════════════
+// EXAMS (Coach view — read-only + comment)
+// ═══════════════════════════════════════════════
+function renderExams(){
+  const el=document.getElementById('view-exams');
+  const exams=[...S.exams].sort((a,b)=>b.date.localeCompare(a.date));
+  const stuFilter=S.activeStuId;
+  const filterBtns=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+    <button class="btn btn-ghost btn-sm ${!stuFilter?'btn-accent':''}" onclick="S.activeStuId=null;saveS();renderExams()">Tümü</button>
+    ${S.students.map(s=>`<button class="btn btn-ghost btn-sm" style="${s.id===stuFilter?'background:'+s.color+';color:#0f0e0c;border-color:'+s.color:''}" onclick="S.activeStuId='${s.id}';saveS();renderExams()">${esc(s.name.split(' ')[0])}</button>`).join('')}
+  </div>`;
+  const filtered=stuFilter?exams.filter(e=>e.studentId===stuFilter):exams;
+
+  // Chart for filtered student
+  let chartHtml='';
+  if(stuFilter && filtered.length>1){
+    const chartData=[...filtered].sort((a,b)=>a.date.localeCompare(b.date)).slice(-8);
+    const maxT=Math.max(...chartData.map(e=>{const f=EXAM_DEFS[e.type]||[];return f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);}));
+    const stu=S.students.find(s=>s.id===stuFilter);
+    chartHtml=`<div class="card cp" style="margin-bottom:16px">
+      <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px">📈 Net Gelişim Grafiği</div>
+      <div style="font-size:12px;color:var(--text-mid);margin-bottom:12px">${esc(stu?.name||'')} · Son ${chartData.length} deneme</div>
+      <div class="bar-chart">
+        ${chartData.map(e=>{
+          const f=EXAM_DEFS[e.type]||[];
+          const total=f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);
+          const h=maxT>0?Math.max(Math.round((total/maxT)*100),4):4;
+          const fields_html=f.map(fn=>{
+            const v=Number(e.nets?.[fn]||0);
+            const bh=maxT>0?Math.max(Math.round((v/maxT)*100),2):2;
+            return '';
+          }).join('');
+          return `<div class="bar-wrap">
+            <div class="bar-val">${total.toFixed(0)}</div>
+            <div class="bar" style="height:${h}%;background:${stu?.color||'var(--accent)'}"></div>
+            <div class="bar-label" title="${esc(e.name)}">${esc(e.name.replace(/Deneme /,'#').replace(/TYT |AYT /,''))}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <!-- Per-subject mini chart -->
+      ${(()=>{
+        const f=EXAM_DEFS[chartData[0]?.type]||[];
+        if(f.length===0)return '';
+        return `<div style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+          ${f.map(fn=>{
+            const vals=chartData.map(e=>Number(e.nets?.[fn]||0));
+            const maxV=Math.max(...vals,1);
+            return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">${fn}</div>
+              <div style="display:flex;align-items:flex-end;gap:3px;height:40px">
+                ${vals.map(v=>`<div style="flex:1;background:${stu?.color||'var(--accent)'};opacity:.7;border-radius:2px 2px 0 0;height:${Math.max(Math.round((v/maxV)*100),4)}%;min-height:3px"></div>`).join('')}
+              </div>
+              <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-top:6px;color:${netColor(vals[vals.length-1])+''}${netColor(vals[vals.length-1])==='good'?';color:var(--green)':netColor(vals[vals.length-1])==='mid'?';color:var(--accent)':';color:var(--red)'}">${vals[vals.length-1]}</div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      })()}
+    </div>`;
+  }
+
+  const list=filtered.length?filtered.map(e=>{
+    const stu=S.students.find(s=>s.id===e.studentId);
+    const fields=EXAM_DEFS[e.type]||[];
+    const total=fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0).toFixed(1);
+    const netBoxes=fields.map(f=>{const v=Number(e.nets?.[f]||0);return `<div class="net-box"><div class="net-label">${f}</div><div class="net-val ${netColor(v)}">${v}</div></div>`;}).join('');
+    return `<div class="exam-item">
+      <div class="exam-header">
+        <div><div class="exam-name">${esc(e.name)}</div><div class="exam-date">${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}</div></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="background:${stu?.color||'#555'};color:#0f0e0c;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700">${esc(stu?.name.split(' ')[0]||'?')}</span>
+          <button class="btn btn-ghost btn-xs" onclick="openCommentModal('${e.id}')">💬 Yorum</button>
+          <button class="btn btn-danger btn-xs" onclick="deleteExam('${e.id}')">🗑</button>
+        </div>
+      </div>
+      ${e.note?`<div style="font-size:12px;color:var(--text-mid);margin-bottom:10px;font-style:italic">"${esc(e.note)}"</div>`:''}
+      <div class="nets-grid">${netBoxes}</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;min-width:80px">
+          <div style="font-size:10px;color:var(--text-dim);font-weight:600;margin-bottom:3px">Toplam Net</div>
+          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800">${total}</div>
+        </div>
+        ${e.coachComment?`<div class="coach-comment-box" style="flex:1"><strong>Koç Yorumu</strong>${esc(e.coachComment)}</div>`:''}
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty"><p>Henüz deneme sonucu yok</p></div>';
+
+  el.innerHTML=`
+    <div class="sh"><h2>Deneme Takibi</h2></div>
+    ${filterBtns}${chartHtml}
+    <div>${list}</div>`;
+}
+
+function openCommentModal(examId){
+  const e=S.exams.find(x=>x.id===examId);
+  document.getElementById('cmExamId').value=examId;
+  document.getElementById('cmText').value=e?.coachComment||'';
+  om('commentModal');
+}
+async function saveComment(){
+  const id=document.getElementById('cmExamId').value;
+  const comment=document.getElementById('cmText').value.trim();
+  await db.from('exams').update({coach_comment:comment}).eq('id',id);
+  const e=S.exams.find(x=>x.id===id);
+  if(e)e.coachComment=comment;
+  cm('commentModal');renderExams();showToast('Yorum kaydedildi ✓');
+}
+async function deleteExam(id){if(!confirm('Sil?'))return;await db.from('exams').delete().eq('id',id);S.exams=S.exams.filter(e=>e.id!==id);renderExams();showToast('Silindi');}
+
+// ═══════════════════════════════════════════════
+// MESSAGES
+// ═══════════════════════════════════════════════
+function renderMessages(){
+  const el=document.getElementById('view-messages');
+  el.innerHTML=`<div class="sh" style="margin-bottom:14px"><h2>Mesajlar</h2></div>
+    <div class="msg-layout">
+      <div class="msg-sidebar">
+        <div class="msg-sidebar-hd">Öğrenciler</div>
+        ${S.students.map(s=>{
+          const thread=S.messages[s.id]||[];
+          const last=thread[thread.length-1];
+          const unread=thread.filter(m=>m.from==='student'&&!m.read).length;
+          return `<div class="msg-contact ${S.msgThread===s.id?'active':''}" onclick="selectThread('${s.id}')">
+            <div class="msg-contact-avatar" style="background:${s.color}">${s.name[0]}</div>
+            <div style="flex:1;min-width:0">
+              <div class="msg-contact-name">${esc(s.name.split(' ')[0])}</div>
+              <div class="msg-contact-last">${last?esc(last.text.slice(0,35)):'Mesaj yok'}</div>
+            </div>
+            ${unread?`<span class="msg-unread">${unread}</span>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="msg-main" id="msgMain">
+        ${S.msgThread?renderThreadHTML(S.msgThread,'coach'):'<div class="no-chat-sel">Öğrenci seçin</div>'}
+      </div>
+    </div>`;
+  if(S.msgThread) scrollMsgs();
+}
+
+async function selectThread(stuId){
+  S.msgThread=stuId;
+  // mark read
+  const unreadIds=(S.messages[stuId]||[]).filter(m=>m.from==='student'&&!m.read&&m._id).map(m=>m._id);
+  if(unreadIds.length) await db.from('messages').update({read:true}).in('id',unreadIds);
+  (S.messages[stuId]||[]).forEach(m=>{if(m.from==='student')m.read=true;});
+  document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'coach');
+  document.querySelectorAll('.msg-contact').forEach(el=>el.classList.remove('active'));
+  S.students.forEach((s,i)=>{if(s.id===stuId)document.querySelectorAll('.msg-contact')[i]?.classList.add('active');});
+  scrollMsgs();
+}
+
+function renderThreadHTML(stuId,role){
+  const stu=S.students.find(s=>s.id===stuId);
+  const thread=S.messages[stuId]||[];
+  const bubbles=thread.map(m=>{
+    const isOut=(role==='coach'&&m.from==='coach')||(role==='student'&&m.from==='student');
+    return `<div class="msg-bubble ${isOut?'out':'in'}">${esc(m.text)}<div class="msg-bubble-time">${m.time}</div></div>`;
+  }).join('');
+  return `<div class="msg-main-hd">
+    <div style="width:30px;height:30px;border-radius:8px;background:${stu?.color||'#555'};color:#0f0e0c;font-family:'Syne',sans-serif;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${stu?.name[0]||'?'}</div>
+    <div class="msg-main-hd-name">${esc(stu?.name||'')}</div>
+  </div>
+  <div class="msg-body" id="msgBody">${bubbles||'<div class="empty"><p>Henüz mesaj yok</p></div>'}</div>
+  <div class="msg-input-area">
+    <textarea class="msg-input" id="msgInput" placeholder="Mesaj yaz..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${stuId}','${role}');}"></textarea>
+    <button class="btn btn-accent" onclick="sendMsg('${stuId}','${role}')">Gönder</button>
+  </div>`;
+}
+
+async function sendMsg(stuId,role){
+  const inp=document.getElementById('msgInput');
+  const text=inp.value.trim();
+  if(!text)return;
+  const {data,error}=await db.from('messages').insert({student_id:stuId,from_role:role,text,read:false}).select().single();
+  if(error)return showToast('Gönderilemedi');
+  if(!S.messages[stuId])S.messages[stuId]=[];
+  S.messages[stuId].push({_id:data.id,from:role,text,time:new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}),read:false});
+  inp.value='';
+  if(currentTab==='messages'){document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'coach');scrollMsgs();}
+  if(currentTab==='smessages'){document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'student');scrollMsgs();}
+}
+function scrollMsgs(){setTimeout(()=>{const b=document.getElementById('msgBody');if(b)b.scrollTop=b.scrollHeight;},60);}
+
+// ═══════════════════════════════════════════════
+// STUDENT PORTAL
+// ═══════════════════════════════════════════════
+function renderPortal(){
+  const stu=S.students.find(s=>s.id===session.studentId);
+  if(!stu)return;
+  const el=document.getElementById('view-portal');
+  const today=todayStr();
+  const key=`${stu.id}_${today}`;
+  const todayTasks=S.tasks[key]||[];
+  const doneTasks=todayTasks.filter(t=>t.done).length;
+  const nextAppt=S.appointments.filter(a=>a.studentId===stu.id&&a.date>=today).sort((a,b)=>a.date.localeCompare(b.date))[0];
+  const unread=(S.messages[stu.id]||[]).filter(m=>m.from==='coach'&&!m.read).length;
+
+  el.innerHTML=`
+    <div class="portal-hero">
+      <div class="portal-avatar" style="background:${stu.color}">${stu.name[0]}</div>
+      <div class="portal-info">
+        <h1>Merhaba, ${esc(stu.name.split(' ')[0])}! 👋</h1>
+        <p>${esc(stu.target)} · ${new Date().toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</p>
+      </div>
+    </div>
+    <div class="portal-grid">
+      <div class="card cp">
+        <div class="portal-sec-title">📋 Bugünün Görevleri</div>
+        ${todayTasks.length?`
+          ${todayTasks.map((t,i)=>`
+            <div class="task-card task-${t.type} ${t.done?'done':''}" style="margin-bottom:6px">
+              <div class="tc-check ${t.done?'on':''}" onclick="stuToggleTask('${today}',${i})"></div>
+              <div class="tc-body">
+                <div class="tc-type">${typeLabel(t.type)}${t.exam?' · '+t.exam:''}</div>
+                <div class="tc-subject">${esc(t.subject)}</div>
+                <div class="tc-meta">${t.duration} dk${t.note?' · '+esc(t.note):''}</div>
+              </div>
+            </div>`).join('')}
+          <div style="margin-top:8px;font-size:12px;color:var(--text-mid)">${doneTasks}/${todayTasks.length} tamamlandı</div>
+        `:'<div class="empty"><p>Bugün için görev atanmamış</p></div>'}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card cp">
+          <div class="portal-sec-title">📈 İlerleme</div>
+          <div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${stu.color};margin-bottom:6px">%${stu.progress}</div>
+          <div class="prog-bar-wrap"><div class="prog-bar" style="width:${stu.progress}%;background:${stu.color}"></div></div>
+        </div>
+        <div class="card cp">
+          <div class="portal-sec-title">📅 Sonraki Randevu</div>
+          ${nextAppt?`<div style="font-size:12px;color:var(--text-mid);margin-bottom:3px">${new Date(nextAppt.date+'T12:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</div>
+          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700">${nextAppt.time}</div>
+          <div style="font-size:12px;color:var(--text-mid);margin-top:3px">${esc(nextAppt.type)} · ${nextAppt.duration} dk</div>`
+          :'<div style="font-size:13px;color:var(--text-dim)">Yaklaşan randevu yok</div>'}
+        </div>
+        ${unread>0?`<div class="card cp" style="border-color:var(--accent);cursor:pointer" onclick="switchTab('smessages')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:22px">💬</span>
+            <div><div style="font-weight:700">${unread} yeni mesaj</div><div style="font-size:12px;color:var(--text-mid)">Koçundan</div></div>
+          </div>
+        </div>`:''}
+      </div>
+    </div>`;
+}
+
+async function stuToggleTask(ds,idx){
+  const stu=S.students.find(s=>s.id===session.studentId);if(!stu)return;
+  const key=`${stu.id}_${ds}`;
+  const t=S.tasks[key]?.[idx]; if(!t)return;
+  const newDone=!t.done;
+  await db.from('tasks').update({done:newDone}).eq('id',t._id);
+  t.done=newDone; renderPortal();
+}
+
+// ═══════════════════════════════════════════════
+// STUDENT PROGRAM VIEW
+// ═══════════════════════════════════════════════
+function renderSPortal(){
+  const stu=S.students.find(s=>s.id===session.studentId);if(!stu)return;
+  const el=document.getElementById('view-sportal');
+  const ws=stu.weekStart??0;
+  const wStart=getWeekStart(S.weekOffset,ws);
+  const wEnd=addDays(wStart,6);
+  const today=todayStr();
+  let dayCards='';
+  for(let i=0;i<7;i++){
+    const d=addDays(wStart,i);const ds=fmtDate(d);const isToday=ds===today;
+    const key=`${stu.id}_${ds}`;const tasks=S.tasks[key]||[];
+    const totalMin=tasks.reduce((s,t)=>s+Number(t.duration),0);
+    const doneMin=tasks.reduce((s,t)=>s+(t.done?Number(t.duration):0),0);
+    const dayLabel=DAYS_TR[(ws+i)%7];
+    const taskHtml=tasks.map((t,ti)=>`
+      <div class="task-card task-${t.type} ${t.done?'done':''}">
+        <div class="tc-check ${t.done?'on':''}" onclick="stuToggleTask2('${ds}',${ti})"></div>
+        <div class="tc-body">
+          <div class="tc-type">${typeLabel(t.type)}${t.exam?' · '+t.exam:''}</div>
+          <div class="tc-subject">${esc(t.subject)}</div>
+          <div class="tc-meta">${t.duration} dk${t.note?' · '+esc(t.note):''}</div>
+        </div>
+      </div>`).join('');
+    dayCards+=`<div class="day-col ${isToday?'today':''}">
+      <div class="day-hd">
+        <div><div class="day-name-lbl">${dayLabel.slice(0,3)}</div><div class="day-num">${d.getDate()}</div></div>
+        <span class="day-badge">${doneMin}/${totalMin}dk</span>
+      </div>
+      <div class="day-tasks-list">${taskHtml||'<div class="empty" style="padding:8px 0"><p style="font-size:11px">Görev yok</p></div>'}</div>
+    </div>`;
+  }
+  el.innerHTML=`
+    <div class="week-nav" style="margin-bottom:14px">
+      <button class="btn btn-ghost btn-sm" onclick="chWeekS(-1)">← Önceki</button>
+      <span class="week-lbl">${wStart.getDate()} ${MONTHS_TR[wStart.getMonth()]} — ${wEnd.getDate()} ${MONTHS_TR[wEnd.getMonth()]} ${wEnd.getFullYear()}</span>
+      <button class="btn btn-ghost btn-sm" onclick="chWeekS(1)">Sonraki →</button>
+      <button class="btn btn-ghost btn-sm" onclick="S.weekOffset=0;saveS();renderSPortal()">Bugün</button>
+    </div>
+    <div class="week-grid">${dayCards}</div>`;
+}
+async function stuToggleTask2(ds,idx){
+  const stu=S.students.find(s=>s.id===session.studentId);if(!stu)return;
+  const key=`${stu.id}_${ds}`;
+  const t=S.tasks[key]?.[idx]; if(!t)return;
+  const newDone=!t.done;
+  await db.from('tasks').update({done:newDone}).eq('id',t._id);
+  t.done=newDone; renderSPortal();
+}
+function chWeekS(d){S.weekOffset+=d;saveUI();renderSPortal();}
+
+// ═══════════════════════════════════════════════
+// STUDENT EXAMS VIEW (enter exams)
+// ═══════════════════════════════════════════════
+function renderSExams(){
+  const stu=S.students.find(s=>s.id===session.studentId);if(!stu)return;
+  const el=document.getElementById('view-sexams');
+  const exams=[...S.exams].filter(e=>e.studentId===stu.id).sort((a,b)=>b.date.localeCompare(a.date));
+
+  let chartHtml='';
+  if(exams.length>1){
+    const chartData=[...exams].sort((a,b)=>a.date.localeCompare(b.date)).slice(-8);
+    const maxT=Math.max(...chartData.map(e=>{const f=EXAM_DEFS[e.type]||[];return f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);}),1);
+    chartHtml=`<div class="card cp" style="margin-bottom:16px">
+      <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px">📈 Net Gelişimim</div>
+      <div class="bar-chart">
+        ${chartData.map(e=>{
+          const f=EXAM_DEFS[e.type]||[];
+          const total=f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);
+          const h=Math.max(Math.round((total/maxT)*100),4);
+          return `<div class="bar-wrap">
+            <div class="bar-val">${total.toFixed(0)}</div>
+            <div class="bar" style="height:${h}%;background:${stu.color}"></div>
+            <div class="bar-label">${esc(e.name.replace('Deneme ','#').replace('TYT ','').replace('AYT ',''))}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  const list=exams.length?exams.map(e=>{
+    const fields=EXAM_DEFS[e.type]||[];
+    const total=fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0).toFixed(1);
+    const netBoxes=fields.map(f=>{const v=Number(e.nets?.[f]||0);return `<div class="net-box"><div class="net-label">${f}</div><div class="net-val ${netColor(v)}">${v}</div></div>`;}).join('');
+    return `<div class="exam-item">
+      <div class="exam-header">
+        <div><div class="exam-name">${esc(e.name)}</div><div class="exam-date">${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}</div></div>
+        <button class="btn btn-ghost btn-xs" onclick="openStudentExamModal('${e.id}')">✏️ Düzenle</button>
+      </div>
+      ${e.note?`<div style="font-size:12px;color:var(--text-mid);margin-bottom:8px;font-style:italic">"${esc(e.note)}"</div>`:''}
+      <div class="nets-grid">${netBoxes}</div>
+      <div style="margin-top:8px"><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800">Toplam: ${total}</div></div>
+      ${e.coachComment?`<div class="coach-comment-box"><strong>Koç Yorumu</strong>${esc(e.coachComment)}</div>`:''}
+    </div>`;
+  }).join(''):'<div class="empty"><p>Henüz deneme sonucu eklemediniz.<br>İlk sonucunuzu girin!</p></div>';
+
+  el.innerHTML=`
+    <div class="sh"><h2>Denemelerim</h2><button class="btn btn-accent" onclick="openStudentExamModal()">+ Sonuç Gir</button></div>
+    ${chartHtml}${list}`;
+}
+
+function openStudentExamModal(id){
+  const e=id?S.exams.find(x=>x.id===id):null;
+  document.getElementById('emTitle').textContent=e?'Sonucu Düzenle':'Deneme Sonucu Gir';
+  document.getElementById('emId').value=id||'';
+  document.getElementById('emName').value=e?.name||'';
+  document.getElementById('emDate').value=e?.date||fmtDate(new Date());
+  document.getElementById('emStudentWrap').style.display='none';
+  document.getElementById('emStudent').innerHTML=`<option value="${session.studentId}">${esc(S.students.find(s=>s.id===session.studentId)?.name||'')}</option>`;
+  document.getElementById('emExamType').value=e?.type||'TYT';
+  document.getElementById('emNote').value=e?.note||'';
+  renderNetInputs();
+  if(e?.nets)Object.entries(e.nets).forEach(([k,v])=>{const inp=document.getElementById('net_'+k);if(inp)inp.value=v;});
+  om('examModal');
+}
+function openExamModal(id){
+  document.getElementById('emStudentWrap').style.display='';
+  document.getElementById('emStudent').innerHTML=S.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  openStudentExamModal(id);
+  document.getElementById('emStudentWrap').style.display='';
+}
+function renderNetInputs(){
+  const type=document.getElementById('emExamType').value;
+  document.getElementById('netInputsWrap').innerHTML=(EXAM_DEFS[type]||[]).map(f=>`
+    <div class="net-input-box"><label>${f}</label><input type="number" id="net_${f}" value="0" min="0" max="40" step="0.5"></div>`).join('');
+}
+async function saveExam(){
+  const name=document.getElementById('emName').value.trim();
+  if(!name)return showToast('Sınav adı girin!');
+  const type=document.getElementById('emExamType').value;
+  const nets={};
+  (EXAM_DEFS[type]||[]).forEach(f=>{nets[f]=Number(document.getElementById('net_'+f)?.value||0);});
+  const id=document.getElementById('emId').value;
+  const stuId=document.getElementById('emStudent').value;
+  const payload={name,date:document.getElementById('emDate').value,student_id:stuId,exam_type:type,nets,student_note:document.getElementById('emNote').value.trim()};
+  if(id){
+    await db.from('exams').update(payload).eq('id',id);
+    const e=S.exams.find(x=>x.id===id);
+    if(e)Object.assign(e,{name:payload.name,date:payload.date,studentId:stuId,type,nets,note:payload.student_note});
+    showToast('Güncellendi ✓');
+  } else {
+    const {data,error}=await db.from('exams').insert(payload).select().single();
+    if(error)return showToast('Hata: '+error.message);
+    S.exams.push({id:data.id,studentId:data.student_id,name:data.name,date:data.date,type:data.exam_type,nets:data.nets||{},note:data.student_note,coachComment:''});
+    showToast('Deneme eklendi ✓');
+  }
+  cm('examModal');
+  if(session.role==='student')renderSExams();else renderExams();
+}
+
+// ═══════════════════════════════════════════════
+// STUDENT MESSAGES
+// ═══════════════════════════════════════════════
+async function renderSMessages(){
+  const stu=S.students.find(s=>s.id===session.studentId);if(!stu)return;
+  // mark coach messages read
+  const unreadIds=(S.messages[stu.id]||[]).filter(m=>m.from==='coach'&&!m.read&&m._id).map(m=>m._id);
+  if(unreadIds.length) await db.from('messages').update({read:true}).in('id',unreadIds);
+  (S.messages[stu.id]||[]).forEach(m=>{if(m.from==='coach')m.read=true;});
+  const el=document.getElementById('view-smessages');
+  el.innerHTML=`<div class="sh" style="margin-bottom:14px"><h2>💬 Koçuma Yaz</h2></div>
+    <div class="card" style="max-width:700px;overflow:hidden">
+      <div class="msg-main" id="msgMain" style="display:flex;flex-direction:column;min-height:420px">
+        ${renderThreadHTML(stu.id,'student')}
+      </div>
+    </div>`;
+  scrollMsgs();
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+renderNetInputs();
+
+</script>
+</body>
+</html>
