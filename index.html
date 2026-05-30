@@ -1644,8 +1644,12 @@ async function sendMsg(stuId,role){
   const inp=document.getElementById('msgInput');
   const text=inp.value.trim();
   if(!text)return;
-  const {data,error}=await db.from('messages').insert({student_id:stuId,coach_id:session.coachId||S.students.find(s=>s.id===stuId)?.coachId,from_role:role,text,read:false}).select().single();
-  if(error)return showToast('Gönderilemedi');
+  // coach_id: koç ise kendi id'si, öğrenci ise kendi coach_id'si
+  const coachId = session.coachId || S.students.find(s=>s.id===stuId)?.coachId || S.students.find(s=>s.id===session.studentId)?.coachId;
+  const {data,error}=await db.from('messages').insert({
+    student_id:stuId, coach_id:coachId, from_role:role, text, read:false
+  }).select().single();
+  if(error){ console.error('sendMsg error:',error); showToast('Hata: '+error.message); return; }
   if(!S.messages[stuId])S.messages[stuId]=[];
   S.messages[stuId].push({_id:data.id,from:role,text,time:new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}),read:false});
   inp.value='';
