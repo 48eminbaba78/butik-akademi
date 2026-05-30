@@ -1305,6 +1305,7 @@ function renderStudents(){
       <div class="sc-actions">
         <button class="btn btn-ghost btn-sm" onclick="goProgram('${s.id}')">📋 Program</button>
         <button class="btn btn-ghost btn-sm" onclick="openStudentModal('${s.id}')">✏️ Düzenle</button>
+        <button class="btn btn-ghost btn-sm" onclick="openReportModal('${s.id}')">📄 Rapor</button>
         <button class="btn btn-danger btn-sm" onclick="deleteStu('${s.id}')">🗑</button>
       </div>
     </div>`).join(''):'<div class="empty" style="grid-column:1/-1"><p>Henüz öğrenci yok</p></div>';
@@ -2857,6 +2858,311 @@ async function changePassword() {
   showToast('Şifre güncellendi ✓');
   document.getElementById('newPass1').value='';
   document.getElementById('newPass2').value='';
+}
+
+// ═══════════════════════════════════════════════
+// PDF RAPOR SİSTEMİ
+// ═══════════════════════════════════════════════
+function openReportModal(stuId) {
+  let modal = document.getElementById('reportModal');
+  if(!modal) {
+    modal = document.createElement('div');
+    modal.id = 'reportModal';
+    modal.className = 'modal-bg';
+    modal.innerHTML = `<div class="modal">
+      <button class="modal-close" onclick="cm('reportModal')">×</button>
+      <h2>📄 Performans Raporu</h2>
+      <input type="hidden" id="rpStuId">
+      <div class="field"><label>Dönem</label>
+        <select id="rpPeriod">
+          <option value="weekly">Bu Hafta</option>
+          <option value="monthly" selected>Bu Ay</option>
+          <option value="custom">Tarih Aralığı</option>
+        </select>
+      </div>
+      <div id="rpCustomDates" style="display:none">
+        <div class="field-row">
+          <div class="field"><label>Başlangıç</label><input type="date" id="rpStart"></div>
+          <div class="field"><label>Bitiş</label><input type="date" id="rpEnd"></div>
+        </div>
+      </div>
+      <div class="field"><label>Koç Notu (isteğe bağlı)</label>
+        <textarea id="rpNote" placeholder="Bu dönem için genel değerlendirmenizi yazın..." style="min-height:90px"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="previewReport()">👁 Önizle</button>
+        <button class="btn btn-accent" style="flex:1;justify-content:center" onclick="generatePDF()">⬇️ PDF İndir</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+    document.getElementById('rpPeriod').addEventListener('change',function(){
+      document.getElementById('rpCustomDates').style.display=this.value==='custom'?'':'none';
+    });
+  }
+  document.getElementById('rpStuId').value = stuId;
+  // Default tarihler
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  document.getElementById('rpStart').value = fmtDate(firstDay);
+  document.getElementById('rpEnd').value = fmtDate(now);
+  document.getElementById('rpNote').value = '';
+  om('reportModal');
+}
+
+function getReportDates() {
+  const period = document.getElementById('rpPeriod').value;
+  const now = new Date();
+  if(period==='weekly') {
+    const ws = getWeekStart(0, 0);
+    return { start: fmtDate(ws), end: fmtDate(addDays(ws,6)) };
+  } else if(period==='monthly') {
+    return { start: fmtDate(new Date(now.getFullYear(),now.getMonth(),1)), end: fmtDate(now) };
+  } else {
+    return { start: document.getElementById('rpStart').value, end: document.getElementById('rpEnd').value };
+  }
+}
+
+function buildReportHTML(stuId, preview=false) {
+  const stu = S.students.find(s=>s.id===stuId);
+  if(!stu) return '';
+  const {start, end} = getReportDates();
+  const coachNote = document.getElementById('rpNote').value.trim();
+  const brandName = S.workspace?.brand_name || 'Butik Akademi';
+  const brandColor = S.workspace?.brand_color || '#f0a500';
+  const coachName = session.dbUser?.full_name || 'Koç';
+
+  // Dönemdeki görevler
+  const allTasks = [];
+  const d = new Date(start);
+  while(fmtDate(d) <= end) {
+    const key = `${stuId}_${fmtDate(d)}`;
+    (S.tasks[key]||[]).forEach(t => allTasks.push({...t, date:fmtDate(d)}));
+    d.setDate(d.getDate()+1);
+  }
+  const totalTasks = allTasks.length;
+  const doneTasks = allTasks.filter(t=>t.done).length;
+  const pct = totalTasks > 0 ? Math.round((doneTasks/totalTasks)*100) : 0;
+  const totalMin = allTasks.filter(t=>t.done).reduce((s,t)=>s+Number(t.duration||0),0);
+
+  // Ders bazında dağılım
+  const bySubject = {};
+  allTasks.forEach(t => {
+    const k = t.subject||'Diğer';
+    if(!bySubject[k]) bySubject[k]={total:0,done:0};
+    bySubject[k].total++;
+    if(t.done) bySubject[k].done++;
+  });
+
+  // Denemeler
+  const myExams = S.exams.filter(e=>e.studentId===stuId && e.date>=start && e.date<=end)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+
+  // Randevular
+  const myAppts = S.appointments.filter(a=>a.studentId===stuId && a.date>=start && a.date<=end)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+
+  const periodLabel = `${new Date(start+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})} – ${new Date(end+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}`;
+
+  // Bar chart SVG for exams
+  let examChartSVG = '';
+  if(myExams.length > 1) {
+    const maxNet = Math.max(...myExams.map(e=>(EXAM_DEFS[e.type]||[]).reduce((s,f)=>s+Number(e.nets?.[f]||0),0)),1);
+    const w = 400, h = 80, bw = Math.min(40, (w-20)/myExams.length-4);
+    examChartSVG = `<svg width="${w}" height="${h+30}" style="overflow:visible">
+      ${myExams.map((e,i)=>{
+        const total=(EXAM_DEFS[e.type]||[]).reduce((s,f)=>s+Number(e.nets?.[f]||0),0);
+        const bh=Math.max(Math.round((total/maxNet)*(h-10)),4);
+        const x=10+i*((w-20)/myExams.length);
+        return `<rect x="${x}" y="${h-bh}" width="${bw}" height="${bh}" rx="3" fill="${brandColor}" opacity="0.85"/>
+          <text x="${x+bw/2}" y="${h-bh-4}" text-anchor="middle" font-size="10" fill="#333">${total.toFixed(0)}</text>
+          <text x="${x+bw/2}" y="${h+14}" text-anchor="middle" font-size="9" fill="#666">${esc(e.name.replace('Deneme','').replace('TYT','').replace('AYT','').trim()||String(i+1))}</text>`;
+      }).join('')}
+    </svg>`;
+  }
+
+  return `<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;background:#fff;font-size:13px;line-height:1.5;}
+  .page{max-width:800px;margin:0 auto;padding:${preview?'30px':'20px 30px'};}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:18px;border-bottom:3px solid ${brandColor};margin-bottom:24px;}
+  .brand{font-size:22px;font-weight:800;color:${brandColor};letter-spacing:-0.5px;}
+  .brand-sub{font-size:11px;color:#888;margin-top:3px;}
+  .report-title{text-align:right;}
+  .report-title h1{font-size:18px;font-weight:700;color:#1a1a1a;}
+  .report-title p{font-size:11px;color:#888;margin-top:3px;}
+  .student-hero{background:linear-gradient(135deg,${brandColor}15,${brandColor}05);border:1.5px solid ${brandColor}30;border-radius:12px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;gap:16px;}
+  .stu-avatar{width:52px;height:52px;border-radius:12px;background:${brandColor};color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .stu-name{font-size:20px;font-weight:800;}
+  .stu-target{font-size:12px;color:#666;margin-top:3px;}
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+  .stat-box{background:#f8f8f8;border:1px solid #e8e8e8;border-radius:10px;padding:12px 14px;text-align:center;}
+  .stat-box .val{font-size:26px;font-weight:800;color:${brandColor};}
+  .stat-box .lbl{font-size:10px;color:#888;margin-top:3px;text-transform:uppercase;letter-spacing:.5px;}
+  .section{margin-bottom:20px;}
+  .section-title{font-size:14px;font-weight:700;color:${brandColor};margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid ${brandColor}20;display:flex;align-items:center;gap:6px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{background:${brandColor}15;color:#333;font-weight:700;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;}
+  td{padding:7px 10px;border-bottom:1px solid #f0f0f0;}
+  tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;}
+  .badge-green{background:#e8faf3;color:#16a34a;}
+  .badge-yellow{background:#fef9ec;color:#ca8a04;}
+  .badge-red{background:#fef2f2;color:#dc2626;}
+  .prog-bar{height:8px;background:#eee;border-radius:99px;overflow:hidden;margin-top:4px;}
+  .prog-fill{height:100%;border-radius:99px;background:${brandColor};}
+  .note-box{background:#fffbeb;border:1.5px solid ${brandColor}40;border-radius:10px;padding:14px 16px;}
+  .note-box .note-header{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${brandColor};margin-bottom:6px;}
+  .footer{margin-top:30px;padding-top:14px;border-top:1px solid #eee;display:flex;justify-content:space-between;font-size:10px;color:#aaa;}
+  .progress-circle{position:relative;width:64px;height:64px;flex-shrink:0;}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.no-print{display:none!important;}}
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="brand">${esc(brandName)}</div>
+      <div class="brand-sub">Koç: ${esc(coachName)}</div>
+    </div>
+    <div class="report-title">
+      <h1>Performans Raporu</h1>
+      <p>${periodLabel}</p>
+      <p>Oluşturulma: ${new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}</p>
+    </div>
+  </div>
+
+  <!-- ÖĞRENCİ -->
+  <div class="student-hero">
+    <div class="stu-avatar">${stu.name[0]}</div>
+    <div>
+      <div class="stu-name">${esc(stu.name)}</div>
+      <div class="stu-target">${esc(stu.target)}</div>
+      <div style="margin-top:8px">
+        <div style="font-size:11px;color:#666;margin-bottom:3px">Genel İlerleme %${stu.progress}</div>
+        <div class="prog-bar" style="width:200px"><div class="prog-fill" style="width:${stu.progress}%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÖZET İSTATİSTİKLER -->
+  <div class="stats-grid">
+    <div class="stat-box"><div class="val">${totalTasks}</div><div class="lbl">Toplam Görev</div></div>
+    <div class="stat-box"><div class="val" style="color:#16a34a">${doneTasks}</div><div class="lbl">Tamamlanan</div></div>
+    <div class="stat-box"><div class="val">%${pct}</div><div class="lbl">Tamamlanma</div></div>
+    <div class="stat-box"><div class="val">${Math.round(totalMin/60)}</div><div class="lbl">Çalışma (saat)</div></div>
+  </div>
+
+  <!-- DERS BAZINDA ÇALIŞMA -->
+  ${Object.keys(bySubject).length > 0 ? `
+  <div class="section">
+    <div class="section-title">📚 Ders Bazında Çalışma</div>
+    <table>
+      <thead><tr><th>Ders</th><th>Toplam</th><th>Tamamlanan</th><th>Oran</th><th></th></tr></thead>
+      <tbody>
+        ${Object.entries(bySubject).sort((a,b)=>b[1].total-a[1].total).map(([subj,data])=>{
+          const pct2=Math.round((data.done/data.total)*100);
+          const badge=pct2>=80?'badge-green':pct2>=50?'badge-yellow':'badge-red';
+          return `<tr>
+            <td><strong>${esc(subj)}</strong></td>
+            <td>${data.total}</td>
+            <td>${data.done}</td>
+            <td><span class="badge ${badge}">%${pct2}</span></td>
+            <td style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:${pct2}%"></div></div></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>` : ''}
+
+  <!-- DENEMELER -->
+  ${myExams.length > 0 ? `
+  <div class="section">
+    <div class="section-title">📊 Deneme Sonuçları</div>
+    ${examChartSVG ? `<div style="margin-bottom:16px;padding:12px;background:#f8f8f8;border-radius:8px">${examChartSVG}</div>` : ''}
+    <table>
+      <thead><tr><th>Sınav</th><th>Tarih</th><th>Tür</th>${(EXAM_DEFS[myExams[0]?.type]||[]).map(f=>`<th>${f}</th>`).join('')}<th>Toplam</th></tr></thead>
+      <tbody>
+        ${myExams.map(e=>{
+          const fields=EXAM_DEFS[e.type]||[];
+          const total=fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0).toFixed(1);
+          return `<tr>
+            <td><strong>${esc(e.name)}</strong></td>
+            <td>${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</td>
+            <td>${esc(e.type)}</td>
+            ${fields.map(f=>{const v=Number(e.nets?.[f]||0);return `<td><span class="badge ${v>=20?'badge-green':v>=12?'badge-yellow':'badge-red'}">${v}</span></td>`;}).join('')}
+            <td><strong>${total}</strong></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>` : ''}
+
+  <!-- RANDEVULAR -->
+  ${myAppts.length > 0 ? `
+  <div class="section">
+    <div class="section-title">📅 Görüşmeler</div>
+    <table>
+      <thead><tr><th>Tarih</th><th>Saat</th><th>Tür</th><th>Süre</th></tr></thead>
+      <tbody>
+        ${myAppts.map(a=>`<tr>
+          <td>${new Date(a.date+'T12:00').toLocaleDateString('tr-TR',{weekday:'short',day:'numeric',month:'short'})}</td>
+          <td>${a.time}</td>
+          <td>${esc(a.type)}</td>
+          <td>${a.duration} dk</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>` : ''}
+
+  <!-- KOÇ NOTU -->
+  ${coachNote ? `
+  <div class="section">
+    <div class="note-box">
+      <div class="note-header">Koç Değerlendirmesi</div>
+      <div style="font-size:13px;line-height:1.7;color:#333">${esc(coachNote).replace(/\n/g,'<br>')}</div>
+      <div style="margin-top:10px;font-size:11px;color:#888">— ${esc(coachName)}</div>
+    </div>
+  </div>` : ''}
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>${esc(brandName)} · ${esc(coachName)}</span>
+    <span>${esc(stu.name)} · ${periodLabel}</span>
+    <span>Butik Akademi Platformu</span>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+function previewReport() {
+  const stuId = document.getElementById('rpStuId').value;
+  const html = buildReportHTML(stuId, true);
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(html);
+  win.document.close();
+}
+
+function generatePDF() {
+  const stuId = document.getElementById('rpStuId').value;
+  const stu = S.students.find(s=>s.id===stuId);
+  const html = buildReportHTML(stuId, false);
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>{
+    win.focus();
+    win.print();
+    // print dialog açılır, "PDF olarak kaydet" seçilir
+  }, 500);
+  cm('reportModal');
+  showToast('PDF oluşturuluyor — "PDF olarak kaydet" seçin');
 }
 
 // ═══════════════════════════════════════════════
