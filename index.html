@@ -2609,7 +2609,7 @@ function renderOnboardingStep(step, modal) {
   _obStep = step;
   const s = onboardingSteps[step];
   const total = onboardingSteps.length;
-  const dots = Array.from({length:total},(_,i)=>`<div style="width:${i===step?24:8}px;height:8px;border-radius:99px;background:${i===step?'var(--accent)':'var(--border2)';transition:width .3s}"></div>`).join('');
+  const dots = Array.from({length:total},(_,i)=>`<div style="width:${i===step?24:8}px;height:8px;border-radius:99px;background:${i===step?'var(--accent)':'var(--border2)'};transition:width .3s"></div>`).join('');
 
   modal.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border2);border-radius:24px;width:100%;max-width:480px;padding:40px;animation:fadeUp .3s ease">
     <div style="text-align:center;margin-bottom:28px">
