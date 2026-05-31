@@ -1186,14 +1186,19 @@ function updateTestSummary(){
   }
 
   suggestEl.style.display=suggestedMin>0?'':'none';
+  _suggestedDuration=suggestedMin;
   suggestEl.setAttribute('data-dur',suggestedMin);
   summaryEl.style.display='';
   if(suggestedMin>0) document.getElementById('tmDuration').value=suggestedMin;
 }
 
+let _suggestedDuration = 0;
+
 function applyDuration(){
-  const dur=document.getElementById('tmSuggestedDuration').getAttribute('data-dur');
-  if(dur) document.getElementById('tmDuration').value=dur;
+  if(_suggestedDuration>0){
+    document.getElementById('tmDuration').value=_suggestedDuration;
+    showToast('Süre uygulandı: '+_suggestedDuration+' dk');
+  }
 }
 
 // Öğrenci hız cache
@@ -1231,9 +1236,10 @@ async function saveTask(){
   const bookVal=document.getElementById('tmBookVal').value;
   const examType=document.getElementById('tmExam').value;
   const duration=parseInt(document.getElementById('tmDuration').value)||60;
+  const isPlaylist=_selectedBook?.resource_type==='playlist';
 
   let subject='';
-  if(type==='soru' && bookVal){
+  if((type==='soru'||type==='konu') && bookVal){
     const dersSel=sel.style.display!=='none'?sel.value:'';
     subject=dersSel?`${dersSel} - ${bookVal}`:`${bookVal}`;
   } else {
@@ -1241,51 +1247,40 @@ async function saveTask(){
   }
   if(!subject)return showToast('Ders adı girin!');
 
-  // Çoklu test seçimi varsa her test için ayrı görev oluştur, yoksa tek
   const checkedBoxes=[...document.querySelectorAll('#tmTestList input[type=checkbox]:checked')];
   const baseNote=document.getElementById('tmNote').value.trim();
 
-  const payloads=[];
-  if(type==='soru' && bookVal && checkedBoxes.length>0){
-    // Her seçili test için ayrı görev
-    // Toplam süreyi testlere böl
-    let totalSoru=0;
-    checkedBoxes.forEach(cb=>{
-      const t=_selectedBook?.testler[parseInt(cb.value)];
-      totalSoru+=(t?.soru||0);
+  // Her zaman TEK görev — seçili testler "not" alanında özetlenir
+  let note=baseNote;
+  if(checkedBoxes.length>0 && _selectedBook){
+    const labels=checkedBoxes.map(cb=>{
+      const t=_selectedBook.testler[parseInt(cb.value)];
+      return t?.label||t||'';
     });
-    checkedBoxes.forEach(cb=>{
-      const idx=parseInt(cb.value);
-      const t=_selectedBook?.testler[idx];
-      const label=t?.label||t||'';
-      const soru=t?.soru||0;
-      // Test süresini soru sayısına oranla böl
-      const testDur=totalSoru>0&&soru>0?Math.ceil((soru/totalSoru)*duration):Math.ceil(duration/checkedBoxes.length);
-      payloads.push({
-        student_id:S.activeStuId, coach_id:session.coachId, date:_taskDate,
-        type, exam_type:examType, subject, duration:testDur, note:label, done:false
-      });
-    });
-  } else {
-    payloads.push({
-      student_id:S.activeStuId, coach_id:session.coachId, date:_taskDate,
-      type, exam_type:examType, subject, duration, note:baseNote, done:false
-    });
+    if(isPlaylist){
+      // Playlist: "3 video: Ders 1, Ders 2, Ders 3"
+      note=`${labels.length} video: ${labels.slice(0,3).join(', ')}${labels.length>3?` +${labels.length-3} daha`:''}`;
+    } else {
+      // Soru bankası: "4 test: Test 1, Test 2..."
+      note=`${labels.length} test: ${labels.slice(0,3).join(', ')}${labels.length>3?` +${labels.length-3} daha`:''}`;
+    }
   }
+
+  const payload={
+    student_id:S.activeStuId, coach_id:session.coachId, date:_taskDate,
+    type, exam_type:examType, subject, duration, note, done:false
+  };
+
+  const {data,error}=await db.from('tasks').insert(payload).select().single();
+  if(error)return showToast('Hata: '+error.message);
 
   const key=`${S.activeStuId}_${_taskDate}`;
   if(!S.tasks[key])S.tasks[key]=[];
-  let addedCount=0;
-  for(const p of payloads){
-    const {data,error}=await db.from('tasks').insert(p).select().single();
-    if(!error && data){
-      S.tasks[key].push({_id:data.id,type:data.type,exam:data.exam_type,subject:data.subject,duration:data.duration,note:data.note,done:false});
-      addedCount++;
-    }
-  }
+  S.tasks[key].push({_id:data.id,type:data.type,exam:data.exam_type,subject:data.subject,duration:data.duration,note:data.note,done:false});
+
   cm('taskModal');
   renderProgram();
-  showToast(addedCount>1?`${addedCount} görev eklendi ✓`:'Görev eklendi ✓');
+  showToast('Görev eklendi ✓');
 }
 async function toggleTask(ds,idx){
   const key=`${S.activeStuId}_${ds}`;
