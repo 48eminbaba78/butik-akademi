@@ -55,31 +55,48 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 .login-hint{font-size:12px;color:var(--text-dim);margin-top:14px;text-align:center;line-height:1.7;}
 
 /* APP */
-#appShell{display:none;flex-direction:column;height:100%;}
+#appShell{display:none;flex-direction:row;height:100vh;overflow:hidden;}
 #appShell.visible{display:flex;}
-.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;}
-.tbar-logo{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.5px;}
-.tbar-logo span{color:var(--accent);}
-.tbar-nav{display:flex;gap:2px;}
-.tbar-tab{padding:7px 14px;border-radius:8px;border:none;background:transparent;color:var(--text-mid);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
-.tbar-tab.active{background:var(--accent-dim);color:var(--accent);}
-.tbar-tab:hover:not(.active){color:var(--text);background:var(--surface2);}
-.tbar-right{display:flex;align-items:center;gap:10px;}
-.user-pill{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:5px 12px 5px 5px;}
-.user-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;}
-.user-name{font-size:13px;font-weight:600;}
-.role-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px;}
-.role-coach{background:var(--accent-dim);color:var(--accent);}
-.role-student{background:var(--blue-dim);color:var(--blue);}
-.btn-logout{background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;}
-.btn-logout:hover{border-color:var(--red);color:var(--red);}
 
+/* ── SIDEBAR ─────────────────────────────────── */
+.sidebar{width:52px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:2px;transition:width .25s cubic-bezier(.4,0,.2,1);flex-shrink:0;overflow:hidden;z-index:50;}
+.sidebar.open{width:210px;}
+.sb-logo{width:100%;display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:6px;cursor:pointer;user-select:none;}
+.sb-logo-icon{width:28px;height:28px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#0f0e0c;flex-shrink:0;transition:background .15s;}
+.sb-logo-icon:hover{background:#fbb800;}
+.sb-logo-text{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--accent);white-space:nowrap;opacity:0;transition:opacity .2s;}
+.sidebar.open .sb-logo-text{opacity:1;}
+.sb-divider{width:28px;height:1px;background:var(--border);margin:5px auto;transition:width .25s;}
+.sidebar.open .sb-divider{width:182px;}
+.sb-item{width:100%;display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;transition:background .15s;border-left:2px solid transparent;}
+.sb-item:hover{background:var(--surface2);}
+.sb-item.active{background:var(--surface2);border-left-color:var(--accent);}
+.sb-icon{font-size:16px;width:28px;text-align:center;flex-shrink:0;}
+.sb-label{font-size:13px;font-weight:600;white-space:nowrap;opacity:0;transition:opacity .2s;color:var(--text-mid);}
+.sb-item.active .sb-label{color:var(--text);}
+.sidebar.open .sb-label{opacity:1;}
+.sb-bottom{margin-top:auto;width:100%;}
+.sb-profile{width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;transition:background .15s;}
+.sb-profile:hover{background:var(--surface2);}
+.sb-av{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#0f0e0c;flex-shrink:0;}
+.sb-pinfo{opacity:0;transition:opacity .2s;overflow:hidden;}
+.sidebar.open .sb-pinfo{opacity:1;}
+.sb-pname{font-size:12px;font-weight:700;white-space:nowrap;color:var(--text);}
+.sb-prole{font-size:10px;color:var(--accent);font-weight:700;}
+
+/* ── MAIN ────────────────────────────────────── */
+.main-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 18px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:40;}
+.tbar-title{font-size:14px;font-weight:700;color:var(--text);}
+.tbar-right{display:flex;align-items:center;gap:8px;}
+.tbar-icon-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;}
+.tbar-icon-btn:hover{border-color:var(--accent);color:var(--accent);}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;}
-.view{display:none;padding:24px;max-width:1400px;margin:0 auto;animation:fadeUp .25s ease;}
+.view{display:none;padding:22px 24px;animation:fadeUp .2s ease;}
 .view.active{display:block;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 
-/* COMPONENTS */
+/* ── COMPONENTS (korunuyor) ──────────────────── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);}
 .cp{padding:20px;}
 .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
@@ -95,11 +112,100 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 .btn-green{background:var(--green-dim);color:var(--green);border:1px solid transparent;}
 .btn-sm{padding:6px 12px;font-size:12px;border-radius:7px;}
 .btn-xs{padding:4px 9px;font-size:11px;border-radius:6px;}
-
+.role-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px;}
+.role-coach{background:var(--accent-dim);color:var(--accent);}
+.role-student{background:var(--blue-dim);color:var(--blue);}
+.role-dev{background:rgba(192,132,252,.15);color:#c084fc;}
+.btn-logout{background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;}
+.btn-logout:hover{border-color:var(--red);color:var(--red);}
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;}
 .stat-label{font-size:11px;color:var(--text-mid);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
 .stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;line-height:1;}
+
+/* ── ANA SAYFA ──────────────────────────────── */
+.greeting-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px;}
+.greeting-sub{font-size:13px;color:var(--text-mid);margin-bottom:20px;}
+.home-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.home-stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+.home-stat-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent);}
+.home-stat-lbl{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;}
+.appt-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.appt-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);}
+.appt-row:last-child{border-bottom:none;}
+.appt-time-big{font-family:'Syne',sans-serif;font-size:20px;font-weight:900;color:var(--accent);min-width:52px;}
+.appt-vbar{width:3px;height:38px;border-radius:99px;flex-shrink:0;}
+.appt-nm{font-size:13px;font-weight:700;}
+.appt-mt{font-size:11px;color:var(--text-dim);margin-top:2px;}
+
+/* ── ÖĞRENCİ ARAMA ──────────────────────────── */
+.stu-search-wrap{background:var(--surface);border:1.5px solid var(--border);border-radius:11px;display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:10px;transition:border .15s;}
+.stu-search-wrap:focus-within{border-color:var(--accent);}
+.stu-search-wrap input{background:none;border:none;outline:none;font-size:13px;font-family:inherit;color:var(--text);flex:1;}
+.stu-search-wrap input::placeholder{color:var(--text-dim);}
+.stu-empty{text-align:center;padding:50px 20px;color:var(--text-dim);}
+.stu-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:13px 15px;margin-bottom:8px;cursor:pointer;transition:all .15s;}
+.stu-row:hover{border-color:var(--border2);background:var(--surface2);}
+.stu-av{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#0f0e0c;flex-shrink:0;}
+.stu-row-info{flex:1;}
+.stu-row-name{font-size:13px;font-weight:700;}
+.stu-row-meta{font-size:11px;color:var(--text-dim);margin-top:2px;}
+.week-prog-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.week-prog-bg{flex:1;height:4px;background:var(--surface3);border-radius:99px;overflow:hidden;}
+.week-prog-fill{height:100%;border-radius:99px;}
+.week-prog-pct{font-size:10px;font-weight:700;min-width:30px;text-align:right;}
+
+/* ── ÖĞRENCİ DETAY ──────────────────────────── */
+.back-link{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--text-mid);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;margin-bottom:16px;padding:0;transition:color .15s;}
+.back-link:hover{color:var(--text);}
+.stu-detail-card{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px;}
+.stu-detail-av{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#0f0e0c;flex-shrink:0;}
+.stu-detail-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;}
+.stu-detail-meta{font-size:12px;color:var(--text-mid);margin-top:3px;}
+.stu-detail-stats{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;}
+.sds{text-align:center;}
+.sds-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--accent);}
+.sds-lbl{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;margin-top:1px;}
+.action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.action-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:all .15s;text-align:center;}
+.action-card:hover{border-color:var(--accent);background:var(--surface2);}
+.action-emoji{font-size:24px;margin-bottom:8px;}
+.action-name{font-size:12px;font-weight:700;}
+.action-sub{font-size:10px;color:var(--text-dim);margin-top:3px;}
+.week-mini-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.week-mini-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px;}
+.wm-day{background:var(--surface2);border-radius:9px;padding:8px 5px;text-align:center;border:1px solid transparent;}
+.wm-day.today{border-color:var(--accent);}
+.wm-dname{font-size:8px;color:var(--text-dim);text-transform:uppercase;font-weight:700;letter-spacing:.3px;}
+.wm-dnum{font-size:20px;font-weight:900;line-height:1.2;letter-spacing:-1px;}
+.wm-dnum.today{color:var(--accent);}
+.wm-dot{width:5px;height:5px;border-radius:50%;background:var(--border2);margin:4px auto 0;}
+.wm-dot.has{background:var(--accent);}
+
+/* ── PROFİL ─────────────────────────────────── */
+.profile-wrap{max-width:420px;margin:0 auto;}
+.profile-header-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;margin-bottom:14px;}
+.profile-av-big{width:64px;height:64px;border-radius:18px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#0f0e0c;margin:0 auto 12px;}
+.profile-big-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;}
+.profile-big-role{font-size:11px;color:var(--accent);font-weight:700;margin-top:3px;}
+.profile-fields-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;}
+.p-save-btn{width:100%;background:var(--accent);border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;font-family:inherit;color:#0f0e0c;cursor:pointer;margin-top:6px;}
+.p-save-btn:hover{background:#fbb800;}
+
+/* ── AYARLAR ─────────────────────────────────── */
+.settings-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;}
+.settings-block-title{font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
+.setting-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);}
+.setting-item:last-child{border-bottom:none;}
+.setting-item-lbl{font-size:13px;font-weight:600;}
+.setting-item-sub{font-size:11px;color:var(--text-dim);margin-top:2px;}
+.tog{width:38px;height:21px;border-radius:99px;border:none;cursor:pointer;flex-shrink:0;transition:background .2s;}
+.tog.on{background:var(--accent);}
+.tog.off{background:var(--border2);}
+.accent-palette{display:flex;gap:7px;flex-wrap:wrap;}
+.ac-dot{width:24px;height:24px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:transform .1s;}
+.ac-dot:hover{transform:scale(1.2);}
+.ac-dot.sel{border-color:var(--text);}
 
 /* COACH TODO */
 .coach-todo-strip{display:grid;grid-template-columns:1fr 2fr 1fr;gap:12px;margin-bottom:24px;}
@@ -329,20 +435,42 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 
 <!-- APP -->
 <div id="appShell">
-  <div class="topbar">
-    <div class="tbar-logo">BUTİK<span>AKADEMİ</span></div>
-    <div class="tbar-nav" id="tbarNav"></div>
-    <div class="tbar-right">
-      <div class="user-pill">
-        <div class="user-dot" id="tbarDot"></div>
-        <div class="user-name" id="tbarName"></div>
-        <span class="role-badge" id="tbarRole"></span>
-      </div>
-      <button class="btn-logout" onclick="openThemePanel()">🎨</button>
-      <button class="btn-logout" onclick="doLogout()">Çıkış</button>
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="mainSidebar">
+    <div class="sb-logo" onclick="toggleSidebar()">
+      <div class="sb-logo-icon">≡</div>
+      <span class="sb-logo-text">Butik Akademi</span>
     </div>
+    <div class="sb-divider"></div>
+    <div id="sidebarNav"></div>
+    <div class="sb-bottom">
+      <div class="sb-divider"></div>
+      <div class="sb-item" id="sb-settings" onclick="switchTab('settings')">
+        <span class="sb-icon">⚙️</span>
+        <span class="sb-label">Ayarlar</span>
+      </div>
+      <div class="sb-profile" onclick="switchTab('profile')">
+        <div class="sb-av" id="sbAv"></div>
+        <div class="sb-pinfo">
+          <div class="sb-pname" id="sbName"></div>
+          <div class="sb-prole" id="sbRole"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-wrap">
+    <div class="topbar">
+      <span class="tbar-title" id="tbarTitle">Ana Sayfa</span>
+      <div class="tbar-right">
+        <button class="tbar-icon-btn" onclick="openThemePanel()">🎨</button>
+        <button class="tbar-icon-btn" onclick="doLogout()">Çıkış</button>
+      </div>
+    </div>
+    <div class="content" id="mainContent"></div>
+    <nav class="mobile-nav" id="mobileNav"></nav>
   </div>
-  <div class="content" id="mainContent"></div>
 </div>
 
 <!-- TASK MODAL -->
@@ -798,7 +926,7 @@ async function doLogin(){
     showOnboarding(); return;
   }
 
-  const firstTab = {coach:'program', student:'portal', developer:'dev-dashboard'}[session.role] || 'portal';
+  const firstTab = {coach:'home', student:'portal', developer:'dev-dashboard'}[session.role] || 'portal';
   switchTab(firstTab);
 }
 function doLogout(){
@@ -814,45 +942,413 @@ function doLogout(){
 // ═══════════════════════════════════════════════
 // SHELL
 // ═══════════════════════════════════════════════
-const coachTabs=[{id:'program',lbl:'📋 Program'},{id:'todolist',lbl:'✅ To-Do'},{id:'students',lbl:'👤 Öğrenciler'},{id:'appointments',lbl:'📅 Randevular'},{id:'exams',lbl:'📊 Denemeler'},{id:'messages',lbl:'💬 Mesajlar'}];
-const stuTabs=[{id:'portal',lbl:'🏠 Ana Sayfa'},{id:'sportal',lbl:'📋 Programım'},{id:'sexams',lbl:'📊 Denemeler'},{id:'smessages',lbl:'💬 Koçuma Yaz'},{id:'sprofil',lbl:'👤 Profilim'}];
-const devTabs=[{id:'dev-dashboard',lbl:'📊 Dashboard'},{id:'dev-users',lbl:'👥 Kullanıcılar'},{id:'dev-resources',lbl:'📚 Kaynaklar'},{id:'dev-finance',lbl:'💰 Finans'},{id:'dev-announce',lbl:'📣 Duyurular'},{id:'dev-tickets',lbl:'🎫 Destek'}];
+// ── TAB TANIMLARI ──────────────────────────────
+const coachTabs=[
+  {id:'home',lbl:'🏠',name:'Ana Sayfa'},
+  {id:'students',lbl:'👤',name:'Öğrencilerim'},
+  {id:'messages',lbl:'💬',name:'Mesajlar'},
+  {id:'todolist',lbl:'✅',name:'To-Do'},
+];
+const stuTabs=[
+  {id:'portal',lbl:'🏠',name:'Ana Sayfa'},
+  {id:'sportal',lbl:'📋',name:'Programım'},
+  {id:'sexams',lbl:'📊',name:'Denemeler'},
+  {id:'smessages',lbl:'💬',name:'Koçuma Yaz'},
+  {id:'sprofil',lbl:'👤',name:'Profilim'},
+];
+const devTabs=[
+  {id:'dev-dashboard',lbl:'📊',name:'Dashboard'},
+  {id:'dev-users',lbl:'👥',name:'Kullanıcılar'},
+  {id:'dev-resources',lbl:'📚',name:'Kaynaklar'},
+  {id:'dev-finance',lbl:'💰',name:'Finans'},
+  {id:'dev-announce',lbl:'📣',name:'Duyurular'},
+  {id:'dev-tickets',lbl:'🎫',name:'Destek'},
+];
+
+function toggleSidebar(){
+  document.getElementById('mainSidebar').classList.toggle('open');
+}
 
 function setupShell(){
   const tabs = session.role==='coach' ? coachTabs : session.role==='developer' ? devTabs : stuTabs;
-  document.getElementById('tbarNav').innerHTML=tabs.map(t=>`<button class="tbar-tab" id="tbtab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}</button>`).join('');
-  document.getElementById('mobileNav').innerHTML=tabs.slice(0,5).map(t=>`<button class="mnav-btn" id="mntab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}</button>`).join('');
-  document.getElementById('mainContent').innerHTML=tabs.map(t=>`<div class="view" id="view-${t.id}"></div>`).join('');
+  const allTabs = [...tabs, {id:'profile',lbl:'👤',name:'Profil'}, {id:'settings',lbl:'⚙️',name:'Ayarlar'}];
+
+  // Sidebar nav
+  document.getElementById('sidebarNav').innerHTML = tabs.map(t=>`
+    <div class="sb-item" id="sbi_${t.id}" onclick="switchTab('${t.id}')">
+      <span class="sb-icon">${t.lbl}</span>
+      <span class="sb-label">${t.name}</span>
+    </div>`).join('');
+
+  // Mobile nav
+  document.getElementById('mobileNav').innerHTML = tabs.slice(0,5).map(t=>`
+    <button class="mnav-btn" id="mntab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}<span style="font-size:9px;display:block">${t.name}</span></button>`).join('');
+
+  // Content views
+  document.getElementById('mainContent').innerHTML = [
+    ...tabs,
+    {id:'student-detail'}, {id:'profile'}, {id:'settings'},
+    // program ayrı view — student-detail'dan açılır
+    {id:'program'},{id:'appointments'},{id:'exams'}
+  ].map(t=>`<div class="view" id="view-${t.id}"></div>`).join('');
+
+  // Profile pill
   const dbUser = session.dbUser;
   const stu = session.role==='student' ? S.students.find(s=>s.id===session.studentId) : null;
-  const name = dbUser?.full_name || (stu?.name) || '';
+  const name = dbUser?.full_name || stu?.name || '';
   const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const dot = document.getElementById('tbarDot');
   const roleColors = {coach:'#f0a500', student: stu?.color||'#4da6ff', developer:'#c084fc'};
-  dot.textContent=initials; dot.style.background=roleColors[session.role]||'#888'; dot.style.color='#0f0e0c';
-  document.getElementById('tbarName').textContent=name;
-  const roleLabels = {coach:'Koç', student:'Öğrenci', developer:'Developer'};
-  const roleClasses = {coach:'role-coach', student:'role-student', developer:'role-dev'};
-  document.getElementById('tbarRole').textContent=roleLabels[session.role]||session.role;
-  document.getElementById('tbarRole').className='role-badge '+(roleClasses[session.role]||'role-dev');
-  // Koç workspace adını logo olarak göster
+  const roleLabels = {coach:'KOÇ', student:'ÖĞRENCİ', developer:'DEV'};
+  document.getElementById('sbAv').textContent = initials;
+  document.getElementById('sbAv').style.background = roleColors[session.role]||'#888';
+  document.getElementById('sbName').textContent = name;
+  document.getElementById('sbRole').textContent = roleLabels[session.role]||session.role;
+
+  // Workspace logo
   if(session.role==='coach' && S.workspace?.brand_name) {
-    document.querySelector('.tbar-logo').textContent = S.workspace.brand_name;
-    document.querySelector('.tbar-logo').style.color = S.workspace.brand_color||'var(--accent)';
+    document.querySelector('.sb-logo-text').textContent = S.workspace.brand_name;
   }
+
   setTimeout(loadAnnouncements, 600);
 }
+
 function switchTab(tab){
-  currentTab=tab;
+  currentTab = tab;
+  // Sidebar active state
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
+  const activeEl = document.getElementById('sbi_'+tab) || document.getElementById('sb-'+tab);
+  if(activeEl) activeEl.classList.add('active');
+  // View
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.querySelectorAll('.tbar-tab,.mnav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('view-'+tab)?.classList.add('active');
-  document.getElementById('tbtab_'+tab)?.classList.add('active');
-  document.getElementById('mntab_'+tab)?.classList.add('active');
-  ({program:renderProgram,todolist:renderTodoList,students:renderStudents,appointments:renderAppointments,exams:renderExams,messages:renderMessages,portal:renderPortal,sportal:renderSPortal,sexams:renderSExams,smessages:renderSMessages,sprofil:renderSProfil,'dev-dashboard':renderDevDashboard,'dev-users':renderDevUsers,'dev-resources':renderDevResources,'dev-finance':renderDevFinance,'dev-announce':renderDevAnnounce,'dev-tickets':renderDevTickets})[tab]?.();
+  const viewEl = document.getElementById('view-'+tab);
+  if(viewEl) viewEl.classList.add('active');
+  // Title
+  const allTabs = [...coachTabs,...stuTabs,...devTabs,
+    {id:'profile',name:'Profil'},{id:'settings',name:'Ayarlar'},
+    {id:'student-detail',name:_currentDetailStu?.name||'Öğrenci'},
+    {id:'program',name:'Program'},{id:'appointments',name:'Randevular'},{id:'exams',name:'Denemeler'}
+  ];
+  const tabDef = allTabs.find(t=>t.id===tab);
+  document.getElementById('tbarTitle').textContent = tabDef?.name || tab;
+  // Render
+  const renderMap = {
+    home:renderHome, students:renderStudentsSearch, messages:renderMessages,
+    todolist:renderTodoList, portal:renderPortal, sportal:renderSPortal,
+    sexams:renderSExams, smessages:renderSMessages, sprofil:renderSProfil,
+    profile:renderProfile, settings:renderSettings,
+    'dev-dashboard':renderDevDashboard,'dev-users':renderDevUsers,
+    'dev-resources':renderDevResources,'dev-finance':renderDevFinance,
+    'dev-announce':renderDevAnnounce,'dev-tickets':renderDevTickets,
+    appointments:renderAppointments, exams:renderExams,
+  };
+  renderMap[tab]?.();
   if(tab==='messages'||tab==='smessages') initRealtime();
   else destroyRealtime();
 }
+
+// ── KOÇ ANA SAYFA ──────────────────────────────
+function renderHome(){
+  const el = document.getElementById('view-home');
+  const now = new Date();
+  const dayNames = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+  const monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  const todayStr = fmtDate(now);
+
+  // Unread messages
+  let unread = 0;
+  Object.values(S.messages).forEach(msgs => { unread += msgs.filter(m=>m.from==='student'&&!m.read).length; });
+
+  // Bugünkü randevular
+  const todayAppts = S.appointments.filter(a=>a.date===todayStr).sort((a,b)=>a.time.localeCompare(b.time));
+
+  el.innerHTML = `
+    <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px">
+      ${now.getHours()<12?'Günaydın':'İyi günler'}, ${session.dbUser?.full_name?.split(' ')[0]||'Koç'} 👋
+    </div>
+    <div style="font-size:13px;color:var(--text-mid);margin-bottom:20px">${dayNames[now.getDay()]}, ${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}</div>
+
+    <div class="home-stats">
+      <div class="home-stat">
+        <div class="home-stat-val">${S.students.length}</div>
+        <div class="home-stat-lbl">Aktif Öğrenci</div>
+      </div>
+      <div class="home-stat">
+        <div class="home-stat-val" style="color:var(--blue)">${todayAppts.length}</div>
+        <div class="home-stat-lbl">Bugün Randevu</div>
+      </div>
+      <div class="home-stat">
+        <div class="home-stat-val" style="color:${unread>0?'var(--red)':'var(--green)'}">${unread}</div>
+        <div class="home-stat-lbl">Okunmamış Mesaj</div>
+      </div>
+    </div>
+
+    <div class="appt-card">
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Bugünün Randevuları</div>
+      ${todayAppts.length===0?`<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px">Bugün randevu yok</div>`:''}
+      ${todayAppts.map(a=>{
+        const stu = S.students.find(s=>s.id===a.studentId);
+        return `<div class="appt-row">
+          <div class="appt-time-big">${a.time}</div>
+          <div class="appt-vbar" style="background:${stu?.color||'var(--accent)'}"></div>
+          <div style="flex:1">
+            <div class="appt-nm">${esc(stu?.name||'?')} · ${esc(a.type)}</div>
+            <div class="appt-mt">${a.duration} dk${a.meet_link?` · <a href="${esc(a.meet_link)}" target="_blank" style="color:var(--blue);text-decoration:none">${a.meet_link.includes('zoom')?'Zoom':'Meet'} linki →</a>`:''}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ── ÖĞRENCİ ARAMA ──────────────────────────────
+let _currentDetailStu = null;
+
+function renderStudentsSearch(){
+  const el = document.getElementById('view-students');
+  // Haftalık ilerleme
+  const ws = getWeekStart(0, 0);
+  const weekPct = {};
+  S.students.forEach(s=>{
+    let total=0,done=0;
+    for(let i=0;i<7;i++){
+      const tasks=S.tasks[`${s.id}_${fmtDate(addDays(ws,i))}`]||[];
+      total+=tasks.length; done+=tasks.filter(t=>t.done).length;
+    }
+    weekPct[s.id]=total>0?Math.round((done/total)*100):0;
+  });
+
+  el.innerHTML = `
+    <div class="stu-search-wrap">
+      <span style="font-size:15px;color:var(--text-dim)">🔍</span>
+      <input type="text" placeholder="Öğrenci adını yazın..." id="stuSearchInput" oninput="filterStudentSearch()" autocomplete="off">
+    </div>
+    <div id="stuSearchEmpty" class="stu-empty">
+      <div style="font-size:36px;margin-bottom:10px">👤</div>
+      <div style="font-size:13px">Öğrenci adını yazarak arama yapın</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:6px">${S.students.length} öğrenci kayıtlı</div>
+    </div>
+    <div id="stuSearchResults" style="display:none">
+      ${S.students.map(s=>{
+        const pct=weekPct[s.id]||0;
+        const pctColor=pct>=80?'var(--green)':pct>=50?'var(--accent)':'var(--red)';
+        return `<div class="stu-row" id="sturow_${s.id}" onclick="openStudentDetail('${s.id}')">
+          <div class="stu-av" style="background:${s.color}">${s.name[0]}</div>
+          <div class="stu-row-info">
+            <div class="stu-row-name">${esc(s.name)}</div>
+            <div class="stu-row-meta">${esc(s.target||'')}</div>
+            <div class="week-prog-row">
+              <div class="week-prog-bg"><div class="week-prog-fill" style="width:${pct}%;background:${pctColor}"></div></div>
+              <span class="week-prog-pct" style="color:${pctColor}">%${pct}</span>
+            </div>
+          </div>
+          <span style="font-size:16px;color:var(--text-dim)">›</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn btn-accent" style="margin-top:16px" onclick="openStudentModal()">+ Yeni Öğrenci</button>`;
+}
+
+function filterStudentSearch(){
+  const q = document.getElementById('stuSearchInput').value.trim().toLowerCase();
+  const empty = document.getElementById('stuSearchEmpty');
+  const results = document.getElementById('stuSearchResults');
+  if(!q){ results.style.display='none'; empty.style.display='block'; return; }
+  results.style.display='block'; empty.style.display='none';
+  S.students.forEach(s=>{
+    const row=document.getElementById('sturow_'+s.id);
+    if(row) row.style.display=s.name.toLowerCase().includes(q)?'flex':'none';
+  });
+}
+
+function openStudentDetail(stuId){
+  _currentDetailStu = S.students.find(s=>s.id===stuId);
+  if(!_currentDetailStu) return;
+  S.activeStuId = stuId;
+
+  const s = _currentDetailStu;
+  const ws = getWeekStart(0, s.weekStart||0);
+  let wTotal=0,wDone=0,wMin=0;
+  for(let i=0;i<7;i++){
+    const tasks=S.tasks[`${s.id}_${fmtDate(addDays(ws,i))}`]||[];
+    wTotal+=tasks.length; wDone+=tasks.filter(t=>t.done).length;
+    wMin+=tasks.reduce((sum,t)=>sum+Number(t.duration||0),0);
+  }
+  const wPct=wTotal>0?Math.round((wDone/wTotal)*100):0;
+
+  const el=document.getElementById('view-student-detail');
+  el.innerHTML=`
+    <button class="back-link" onclick="switchTab('students')">← Öğrencilerim</button>
+    <div class="stu-detail-card">
+      <div class="stu-detail-av" style="background:${s.color}">${s.name[0]}</div>
+      <div style="flex:1">
+        <div class="stu-detail-name">${esc(s.name)}</div>
+        <div class="stu-detail-meta">${esc(s.target||'')}</div>
+        <div class="stu-detail-stats">
+          <div class="sds"><div class="sds-val">${wTotal}</div><div class="sds-lbl">Bu Hafta</div></div>
+          <div class="sds"><div class="sds-val" style="color:var(--green)">${wDone}</div><div class="sds-lbl">Tamamlanan</div></div>
+          <div class="sds"><div class="sds-val" style="color:${wPct>=60?'var(--green)':'var(--accent)'}">%${wPct}</div><div class="sds-lbl">Oran</div></div>
+          <div class="sds"><div class="sds-val" style="color:var(--blue)">${Math.round(wMin/60)}s</div><div class="sds-lbl">Çalışma</div></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="switchTab('messages');setTimeout(()=>selectThread('${s.id}'),100)">💬 Mesaj</button>
+        <button class="btn btn-ghost btn-sm" onclick="openStudentModal('${s.id}')">✏️ Düzenle</button>
+      </div>
+    </div>
+
+    <div class="action-grid">
+      <div class="action-card" onclick="openStudentProgram('${s.id}')">
+        <div class="action-emoji">📋</div>
+        <div class="action-name">Haftalık Program</div>
+        <div class="action-sub">Görev ekle, düzenle</div>
+      </div>
+      <div class="action-card" onclick="openSpeedModal('${s.id}')">
+        <div class="action-emoji">⚡</div>
+        <div class="action-name">Hız Ayarları</div>
+        <div class="action-sub">Ders bazında sn/soru</div>
+      </div>
+      <div class="action-card" onclick="openReportModal('${s.id}')">
+        <div class="action-emoji">📄</div>
+        <div class="action-name">Performans Raporu</div>
+        <div class="action-sub">PDF olarak indir</div>
+      </div>
+      <div class="action-card" onclick="openStudentExams('${s.id}')">
+        <div class="action-emoji">📊</div>
+        <div class="action-name">Denemeler</div>
+        <div class="action-sub">Net girişi, grafik</div>
+      </div>
+      <div class="action-card" onclick="openStudentAppointments('${s.id}')">
+        <div class="action-emoji">📅</div>
+        <div class="action-name">Randevular</div>
+        <div class="action-sub">Meet/Zoom linki</div>
+      </div>
+      <div class="action-card" onclick="printWeeklyProgram('${s.id}')">
+        <div class="action-emoji">🖨️</div>
+        <div class="action-name">Haftalık PDF</div>
+        <div class="action-sub">A4 yazdır</div>
+      </div>
+    </div>
+
+    <div class="week-mini-card">
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Bu Haftanın Özeti</div>
+      <div class="week-mini-grid">
+        ${Array.from({length:7},(_,i)=>{
+          const d=addDays(ws,i);
+          const ds=fmtDate(d);
+          const tasks=S.tasks[`${s.id}_${ds}`]||[];
+          const isToday=ds===fmtDate(new Date());
+          const DAYS=['PAZ','SAL','ÇAR','PER','CUM','CMT','PAZ'];
+          return `<div class="wm-day${isToday?' today':''}">
+            <div class="wm-dname">${DAYS[i]}</div>
+            <div class="wm-dnum${isToday?' today':''}">${d.getDate()}</div>
+            <div class="wm-dot${tasks.length>0?' has':''}"></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  switchTab('student-detail');
+  document.getElementById('tbarTitle').textContent = s.name;
+}
+
+function openStudentProgram(stuId){
+  S.activeStuId = stuId;
+  const el = document.getElementById('view-program');
+  el.innerHTML = `<button class="back-link" onclick="switchTab('student-detail')">← ${_currentDetailStu?.name||''}</button>`;
+  el.innerHTML += document.createElement('div').innerHTML; // placeholder
+  switchTab('program');
+  document.getElementById('tbarTitle').textContent = (_currentDetailStu?.name||'')+' · Program';
+  renderProgram();
+}
+
+function openStudentExams(stuId){
+  S.activeStuId = stuId;
+  switchTab('exams');
+  document.getElementById('tbarTitle').textContent = (_currentDetailStu?.name||'')+' · Denemeler';
+  renderExams();
+}
+
+function openStudentAppointments(stuId){
+  S.activeStuId = stuId;
+  switchTab('appointments');
+  document.getElementById('tbarTitle').textContent = (_currentDetailStu?.name||'')+' · Randevular';
+  renderAppointments();
+}
+
+// ── PROFİL ─────────────────────────────────────
+function renderProfile(){
+  const el = document.getElementById('view-profile');
+  const u = session.dbUser;
+  el.innerHTML = `
+    <div class="profile-wrap">
+      <div class="profile-header-card">
+        <div class="profile-av-big">${(u?.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
+        <div class="profile-big-name">${esc(u?.full_name||'')}</div>
+        <div class="profile-big-role">${session.role==='coach'?'KOÇ':session.role==='developer'?'DEVELOPER':'ÖĞRENCİ'} · ${esc(S.workspace?.brand_name||'Butik Akademi')}</div>
+      </div>
+      <div class="profile-fields-card">
+        <div class="field"><label>Ad Soyad</label><input id="pf_name" value="${esc(u?.full_name||'')}"></div>
+        <div class="field"><label>Kullanıcı Adı</label><input id="pf_user" value="${esc(u?.username||'')}"></div>
+        ${session.role==='coach'?`<div class="field"><label>Akademi Adı</label><input id="pf_brand" value="${esc(S.workspace?.brand_name||'')}"></div>`:''}
+        <div class="field"><label>Yeni Şifre (boş bırakılırsa değişmez)</label><input type="password" id="pf_pass" placeholder="Yeni şifre..."></div>
+        <button class="p-save-btn" onclick="saveProfile()">Kaydet</button>
+      </div>
+    </div>`;
+}
+
+async function saveProfile(){
+  const name = document.getElementById('pf_name').value.trim();
+  const pass = document.getElementById('pf_pass').value;
+  const brand = document.getElementById('pf_brand')?.value?.trim();
+  if(!name) return showToast('Ad boş olamaz!');
+  const payload = {full_name:name};
+  if(pass) payload.password_hash = pass;
+  await db.from('users').update(payload).eq('id',session.dbUser.id);
+  if(brand && session.role==='coach') {
+    await db.from('workspaces').update({brand_name:brand}).eq('coach_id',session.coachId);
+    S.workspace = {...(S.workspace||{}), brand_name:brand};
+    document.querySelector('.sb-logo-text').textContent = brand;
+  }
+  session.dbUser = {...session.dbUser, full_name:name};
+  document.getElementById('sbName').textContent = name;
+  showToast('Profil kaydedildi ✓');
+}
+
+// ── AYARLAR ──────────────────────────────────────
+function renderSettings(){
+  const el = document.getElementById('view-settings');
+  const isDark = document.documentElement.getAttribute('data-theme')!=='light';
+  el.innerHTML = `
+    <div style="max-width:500px">
+      <div class="settings-block">
+        <div class="settings-block-title">Görünüm</div>
+        <div class="setting-item">
+          <div><div class="setting-item-lbl">Mod</div></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm ${isDark?'btn-accent':'btn-ghost'}" onclick="setTheme('dark');renderSettings()">🌙 Karanlık</button>
+            <button class="btn btn-sm ${!isDark?'btn-accent':'btn-ghost'}" onclick="setTheme('light');renderSettings()">☀️ Aydınlık</button>
+          </div>
+        </div>
+        <div class="setting-item">
+          <div><div class="setting-item-lbl">Accent Rengi</div></div>
+          <div class="accent-palette">
+            ${ACCENT_COLORS.map(c=>`<div class="ac-dot" onclick="applyAccent('${c.val}','${c.dim}')" style="background:${c.val}" title="${c.name}"></div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-block-title">Hesap</div>
+        <div class="setting-item">
+          <div><div class="setting-item-lbl">Kullanıcı Adı</div><div class="setting-item-sub">${esc(session.dbUser?.username||'')}</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="switchTab('profile')">Düzenle</button>
+        </div>
+        <div class="setting-item">
+          <div><div class="setting-item-lbl">Oturumu Kapat</div></div>
+          <button class="btn btn-danger btn-sm" onclick="doLogout()">Çıkış</button>
+        </div>
+      </div>
+    </div>`;
+}
+// switchTab yukarıda tanımlı (sidebar versiyonu)
 
 // ═══════════════════════════════════════════════
 // PROGRAM
@@ -1442,7 +1938,12 @@ function renderStudents(){
     <div class="sh"><h2>Öğrencilerim</h2><button class="btn btn-accent" onclick="openStudentModal()">+ Yeni Öğrenci</button></div>
     <div class="students-grid">${cards}</div>`;
 }
-function goProgram(id){S.activeStuId=id;S.weekOffset=0;saveS();switchTab('program');}
+function goProgram(id){
+  const stu = S.students.find(s=>s.id===id);
+  if(stu) { _currentDetailStu=stu; }
+  S.activeStuId=id; S.weekOffset=0; saveUI();
+  openStudentProgram(id);
+}
 function openStudentModal(id){
   const s=id?S.students.find(x=>x.id===id):null;
   document.getElementById('smTitle').textContent=s?'Öğrenciyi Düzenle':'Yeni Öğrenci';
@@ -2225,91 +2726,290 @@ async function devDeleteUser(id) {
 let _devResources = [];
 async function renderDevResources() {
   const el = document.getElementById('view-dev-resources');
-  const {data} = await db.from('resources').select('*').order('exam_type,subject,name');
+  const {data} = await db.from('resources').select('*').order('resource_type,exam_type,subject,name');
   _devResources = data||[];
 
-  const grouped = {};
-  _devResources.forEach(r=>{
-    if(!grouped[r.exam_type]) grouped[r.exam_type]={};
-    if(!grouped[r.exam_type][r.subject]) grouped[r.exam_type][r.subject]=[];
-    grouped[r.exam_type][r.subject].push(r);
-  });
+  const books = _devResources.filter(r=>r.resource_type!=='playlist');
+  const playlists = _devResources.filter(r=>r.resource_type==='playlist');
 
   el.innerHTML = `
     <div class="sh"><h2>📚 Kaynak & Müfredat Yönetimi</h2>
-      <button class="btn btn-accent" onclick="openResourceModal()">+ Kaynak Ekle</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="openResourceModal(null,'book')">+ Soru Bankası</button>
+        <button class="btn btn-accent btn-sm" onclick="openPlaylistModal()">▶ Playlist / Video Ekle</button>
+      </div>
     </div>
-    <div style="font-size:13px;color:var(--text-mid);margin-bottom:16px">Veritabanındaki kaynaklar öğrencilerin görev eklerken gördüğü kitap listesini oluşturur.</div>
-    ${Object.keys(grouped).length===0?`<div class="empty"><p>Henüz kaynak eklenmemiş.<br>+ Kaynak Ekle butonuna tıklayın.</p></div>`:''}
-    ${Object.entries(grouped).map(([exam,subjects])=>`
-      <div style="margin-bottom:20px">
-        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:10px;color:var(--accent)">${exam}</div>
-        ${Object.entries(subjects).map(([subject,books])=>`
-          <div style="margin-bottom:12px">
-            <div style="font-size:12px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${subject}</div>
-            ${books.map(b=>`
-              <div class="card" style="padding:12px 16px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:12px">
-                <div style="flex:1">
-                  <div style="font-size:13px;font-weight:700">${esc(b.name)}</div>
-                  <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${b.publisher} · ${b.year} · ${(b.tests||[]).length} test</div>
-                </div>
-                <div style="display:flex;gap:6px;align-items:center">
-                  <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${b.active?'var(--green-dim)':'var(--red-dim)'};color:${b.active?'var(--green)':'var(--red)'}">${b.active?'Aktif':'Pasif'}</span>
-                  <button class="btn btn-ghost btn-xs" onclick="openResourceModal('${b.id}')">✏️</button>
-                  <button class="btn btn-danger btn-xs" onclick="devDeleteResource('${b.id}')">🗑</button>
-                </div>
-              </div>`).join('')}
+
+    <!-- STATS -->
+    <div class="stats-row" style="margin-bottom:20px">
+      <div class="stat-card"><div class="stat-label">Soru Bankası</div><div class="stat-val">${books.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Playlist</div><div class="stat-val">${playlists.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Toplam Kaynak</div><div class="stat-val">${_devResources.length}</div></div>
+    </div>
+
+    <!-- PLAYLİSTLER -->
+    <div style="margin-bottom:24px">
+      <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        ▶ Konu Anlatımı Playlistleri <span style="font-size:12px;font-weight:400;color:var(--text-dim)">${playlists.length} playlist</span>
+      </div>
+      ${playlists.length===0?`<div class="empty"><p>Henüz playlist eklenmemiş</p></div>`:''}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+        ${playlists.map(p=>`
+          <div class="card" style="padding:14px 16px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</div>
+                <div style="font-size:11px;color:var(--text-dim)">${esc(p.publisher)} · ${p.exam_type} ${p.subject} · ${(p.tests||[]).length} video</div>
+              </div>
+              <div style="display:flex;gap:4px;flex-shrink:0">
+                <button class="btn btn-ghost btn-xs" onclick="openResourceModal('${p.id}','playlist')">✏️</button>
+                <button class="btn btn-danger btn-xs" onclick="devDeleteResource('${p.id}')" style="opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑</button>
+              </div>
+            </div>
           </div>`).join('')}
-      </div>`).join('')}`;
+      </div>
+    </div>
+
+    <!-- SORU BANKALARI -->
+    <div>
+      <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        📚 Soru Bankaları <span style="font-size:12px;font-weight:400;color:var(--text-dim)">${books.length} kitap</span>
+      </div>
+      ${books.length===0?`<div class="empty"><p>Henüz kitap eklenmemiş</p></div>`:''}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+        ${books.map(b=>`
+          <div class="card" style="padding:14px 16px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:11px;color:var(--accent);font-weight:700;margin-bottom:2px">${b.exam_type} · ${b.subject}</div>
+                <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.name)}</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${esc(b.publisher)} · ${(b.tests||[]).length} test</div>
+              </div>
+              <div style="display:flex;gap:4px;flex-shrink:0">
+                <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:${b.active?'var(--green-dim)':'var(--red-dim)'};color:${b.active?'var(--green)':'var(--red)'}">${b.active?'Aktif':'Pasif'}</span>
+                <button class="btn btn-ghost btn-xs" onclick="openResourceModal('${b.id}','book')">✏️</button>
+                <button class="btn btn-danger btn-xs" onclick="devDeleteResource('${b.id}')" style="opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑</button>
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
-function openResourceModal(id) {
+// ── PLAYLİST EKLE / YOUTUBE IMPORT ────────────
+function openPlaylistModal() {
+  let modal = document.getElementById('playlistModal');
+  if(!modal) {
+    modal = document.createElement('div');
+    modal.id = 'playlistModal';
+    modal.className = 'modal-bg';
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+  }
+  modal.innerHTML = `<div class="modal modal-lg">
+    <button class="modal-close" onclick="cm('playlistModal')">×</button>
+    <h2>▶ Playlist / Video Ekle</h2>
+
+    <!-- YouTube Import -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        <span style="background:#ff0000;color:white;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px">YT</span>
+        YouTube'dan Otomatik Çek
+      </div>
+      <div style="font-size:12px;color:var(--text-mid);margin-bottom:10px">Playlist URL'sini yapıştır, video listesi otomatik gelsin. (YouTube API Key gerekli)</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="ytApiKey" placeholder="YouTube API Key (AIza...)" style="flex:1;font-size:12px">
+        <button class="btn btn-ghost btn-sm" onclick="saveYtApiKey()">💾 Kaydet</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input id="ytPlaylistUrl" placeholder="https://youtube.com/playlist?list=PL..." style="flex:1;font-size:12px">
+        <button class="btn btn-accent btn-sm" onclick="fetchYouTubePlaylist()">Çek →</button>
+      </div>
+      <div id="ytStatus" style="font-size:12px;color:var(--text-mid);margin-top:8px"></div>
+    </div>
+
+    <!-- Manuel Giriş -->
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">✏️ Manuel Giriş</div>
+    <div class="field-row">
+      <div class="field"><label>Sınav</label>
+        <select id="plExam"><option value="TYT">TYT</option><option value="AYT-SAY">AYT Sayısal</option><option value="AYT-EA">AYT EA</option><option value="AYT-SOZ">AYT Sözel</option></select>
+      </div>
+      <div class="field"><label>Ders</label><input id="plSubject" placeholder="Matematik, Fizik..."></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Hoca / Kanal Adı</label><input id="plPublisher" placeholder="Mert Hoca, Eyüp B..."></div>
+      <div class="field"><label>Playlist Adı</label><input id="plName" placeholder="AYT Matematik Kampı 2025"></div>
+    </div>
+    <div class="field">
+      <label>Videolar <span style="color:var(--text-dim);font-weight:400">(Her satıra: Video Başlığı | YouTube Linki | Süre(dk))</span></label>
+      <textarea id="plVideos" style="min-height:200px;font-size:12px;font-family:monospace" placeholder="Ders 1 - Polinomlar | https://youtube.com/watch?v=xxx | 45&#10;Ders 2 - Türev | https://youtube.com/watch?v=yyy | 38&#10;Ders 3 - İntegral | https://youtube.com/watch?v=zzz | 52"></textarea>
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="savePlaylist()">Playlist Kaydet</button>
+  </div>`;
+
+  // Kayıtlı API key varsa doldur
+  const savedKey = localStorage.getItem('yt_api_key')||'';
+  document.getElementById('ytApiKey').value = savedKey;
+  om('playlistModal');
+}
+
+function saveYtApiKey() {
+  const key = document.getElementById('ytApiKey').value.trim();
+  if(!key) return showToast('API key girin!');
+  localStorage.setItem('yt_api_key', key);
+  showToast('API Key kaydedildi ✓');
+}
+
+async function fetchYouTubePlaylist() {
+  const url = document.getElementById('ytPlaylistUrl').value.trim();
+  const apiKey = document.getElementById('ytApiKey').value.trim() || localStorage.getItem('yt_api_key');
+  const statusEl = document.getElementById('ytStatus');
+
+  if(!apiKey) return statusEl.innerHTML = '<span style="color:var(--red)">⚠️ API Key giriniz</span>';
+  if(!url) return statusEl.innerHTML = '<span style="color:var(--red)">⚠️ Playlist URL giriniz</span>';
+
+  // Playlist ID çıkar
+  const match = url.match(/[?&]list=([^&]+)/);
+  if(!match) return statusEl.innerHTML = '<span style="color:var(--red)">⚠️ Geçersiz URL — "list=..." parametresi bulunamadı</span>';
+  const listId = match[1];
+
+  statusEl.innerHTML = '⏳ Yükleniyor...';
+  try {
+    let videos = [], nextPage = '', total = 0;
+    do {
+      const apiUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${listId}&maxResults=50&pageToken=${nextPage}&key=${apiKey}`;
+      const res = await fetch(apiUrl);
+      const data = await res.json();
+      if(data.error) throw new Error(data.error.message);
+
+      // Video ID'lerini topla
+      const ids = data.items.map(i=>i.snippet.resourceId.videoId).join(',');
+      // Süreleri çek
+      const durRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${ids}&key=${apiKey}`);
+      const durData = await durRes.json();
+      const durMap = {};
+      (durData.items||[]).forEach(v=>{
+        const iso = v.contentDetails.duration; // PT1H2M3S
+        const h = parseInt(iso.match(/(\d+)H/)?.[1]||0);
+        const m = parseInt(iso.match(/(\d+)M/)?.[1]||0);
+        const s = parseInt(iso.match(/(\d+)S/)?.[1]||0);
+        durMap[v.id] = Math.ceil((h*3600+m*60+s)/60);
+      });
+
+      data.items.forEach(item=>{
+        const vid = item.snippet.resourceId.videoId;
+        videos.push({
+          title: item.snippet.title,
+          url: `https://www.youtube.com/watch?v=${vid}`,
+          duration: durMap[vid]||0
+        });
+      });
+
+      nextPage = data.nextPageToken||'';
+      total = data.pageInfo?.totalResults||0;
+    } while(nextPage && videos.length < 200);
+
+    // Textarea'yı doldur
+    document.getElementById('plVideos').value = videos.map(v=>`${v.title} | ${v.url} | ${v.duration}`).join('\n');
+    // Playlist adını başlıktan al
+    statusEl.innerHTML = `<span style="color:var(--green)">✓ ${videos.length} video yüklendi!</span>`;
+
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--red)">⚠️ Hata: ${e.message}</span>`;
+  }
+}
+
+async function savePlaylist() {
+  const name = document.getElementById('plName').value.trim();
+  const subject = document.getElementById('plSubject').value.trim();
+  const publisher = document.getElementById('plPublisher').value.trim();
+  if(!name||!subject||!publisher) return showToast('Tüm alanları doldurun!');
+
+  const lines = document.getElementById('plVideos').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return showToast('En az 1 video girin!');
+
+  const videos = lines.map(line=>{
+    const parts = line.split('|').map(p=>p.trim());
+    return {
+      label: parts[0]||'',
+      url: parts[1]||'',
+      topic: '',
+      soru: parseInt(parts[2])||0  // dakika
+    };
+  }).filter(v=>v.label);
+
+  const payload = {
+    exam_type: document.getElementById('plExam').value,
+    subject, publisher, name,
+    year: new Date().getFullYear(),
+    tests: videos,
+    active: true,
+    resource_type: 'playlist'
+  };
+
+  const {error} = await db.from('resources').insert(payload);
+  if(error) return showToast('Hata: '+error.message);
+  showToast(`✓ "${name}" eklendi — ${videos.length} video`);
+  cm('playlistModal');
+  renderDevResources();
+}
+
+function openResourceModal(id, type='book') {
   const r = id ? _devResources.find(x=>x.id===id) : null;
-  const tests = r ? (r.tests||[]).join('\n') : '';
-  // Dynamic modal
   let modal = document.getElementById('resourceModal');
   if(!modal) {
     modal = document.createElement('div');
     modal.id = 'resourceModal';
     modal.className = 'modal-bg';
-    modal.innerHTML = `<div class="modal modal-lg">
-      <button class="modal-close" onclick="cm('resourceModal')">×</button>
-      <h2 id="rmTitle">Kaynak Ekle</h2>
-      <input type="hidden" id="rmId">
-      <div class="field-row">
-        <div class="field"><label>Sınav Türü</label>
-          <select id="rmExam"><option value="TYT">TYT</option><option value="AYT-SAY">AYT Sayısal</option><option value="AYT-EA">AYT Eşit Ağırlık</option><option value="AYT-SOZ">AYT Sözel</option></select>
-        </div>
-        <div class="field"><label>Ders</label><input id="rmSubject" placeholder="Matematik, Türkçe..."></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Yayınevi</label><input id="rmPublisher" placeholder="Karekök, İşler, Delta..."></div>
-        <div class="field"><label>Yıl</label><input type="number" id="rmYear" value="2026"></div>
-      </div>
-      <div class="field"><label>Kitap Adı</label><input id="rmName" placeholder="TYT Matematik Soru Bankası"></div>
-      <div class="field">
-        <label>Testler / Bölümler (her satıra bir tane)</label>
-        <textarea id="rmTests" style="min-height:120px" placeholder="Test 1 - Sayılar&#10;Test 2 - Kesirler&#10;Test 3 - Denklemler"></textarea>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Durum</label>
-          <select id="rmActive"><option value="true">Aktif</option><option value="false">Pasif</option></select>
-        </div>
-      </div>
-      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveResource()">Kaydet</button>
-    </div>`;
     document.body.appendChild(modal);
     modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
   }
-  document.getElementById('rmTitle').textContent = r ? 'Kaynağı Düzenle' : 'Kaynak Ekle';
-  document.getElementById('rmId').value = id||'';
+  const isPlaylist = (r?.resource_type||type)==='playlist';
+  modal.innerHTML = `<div class="modal modal-lg">
+    <button class="modal-close" onclick="cm('resourceModal')">×</button>
+    <h2 id="rmTitle">${r?'Düzenle':'Ekle'} — ${isPlaylist?'Playlist':'Soru Bankası'}</h2>
+    <input type="hidden" id="rmId" value="${id||''}">
+    <input type="hidden" id="rmType" value="${isPlaylist?'playlist':'book'}">
+    <div class="field-row">
+      <div class="field"><label>Sınav</label>
+        <select id="rmExam"><option value="TYT">TYT</option><option value="AYT-SAY">AYT Sayısal</option><option value="AYT-EA">AYT EA</option><option value="AYT-SOZ">AYT Sözel</option></select>
+      </div>
+      <div class="field"><label>Ders</label><input id="rmSubject" placeholder="Matematik, Fizik..."></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>${isPlaylist?'Hoca / Kanal':'Yayınevi'}</label><input id="rmPublisher"></div>
+      <div class="field"><label>Ad</label><input id="rmName"></div>
+    </div>
+    ${isPlaylist?`
+    <div class="field">
+      <label>Videolar <span style="color:var(--text-dim);font-weight:400">(Başlık | Link | Süre)</span></label>
+      <textarea id="rmTests" style="min-height:180px;font-size:11px;font-family:monospace"></textarea>
+    </div>`:`
+    <div class="field">
+      <label>Testler <span style="color:var(--text-dim);font-weight:400">(Her satır: Test Adı | Soru Sayısı)</span></label>
+      <textarea id="rmTests" style="min-height:180px;font-size:12px;font-family:monospace"></textarea>
+    </div>`}
+    <div class="field-row">
+      <div class="field"><label>Durum</label>
+        <select id="rmActive"><option value="true">Aktif</option><option value="false">Pasif</option></select>
+      </div>
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveResource()">Kaydet</button>
+  </div>`;
+
   document.getElementById('rmExam').value = r?.exam_type||'TYT';
   document.getElementById('rmSubject').value = r?.subject||'';
   document.getElementById('rmPublisher').value = r?.publisher||'';
-  document.getElementById('rmYear').value = r?.year||2026;
   document.getElementById('rmName').value = r?.name||'';
-  document.getElementById('rmTests').value = tests;
   document.getElementById('rmActive').value = String(r?.active!==false);
+
+  // Tests alanını doldur
+  const tests = r?.tests||[];
+  if(isPlaylist) {
+    document.getElementById('rmTests').value = tests.map(t=>`${t.label||t} | ${t.url||''} | ${t.soru||0}`).join('\n');
+  } else {
+    document.getElementById('rmTests').value = tests.map(t=>`${t.label||t} | ${t.soru||0}`).join('\n');
+  }
   om('resourceModal');
 }
 
@@ -2317,13 +3017,27 @@ async function saveResource() {
   const name = document.getElementById('rmName').value.trim();
   const subject = document.getElementById('rmSubject').value.trim();
   if(!name||!subject) return showToast('Ad ve ders zorunlu!');
-  const tests = document.getElementById('rmTests').value.split('\n').map(t=>t.trim()).filter(Boolean);
   const id = document.getElementById('rmId').value;
+  const isPlaylist = document.getElementById('rmType').value==='playlist';
+  const lines = document.getElementById('rmTests').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  let tests = [];
+  if(isPlaylist) {
+    tests = lines.map(l=>{
+      const p = l.split('|').map(x=>x.trim());
+      return {label:p[0]||'', url:p[1]||'', topic:'', soru:parseInt(p[2])||0};
+    });
+  } else {
+    tests = lines.map(l=>{
+      const p = l.split('|').map(x=>x.trim());
+      return {label:p[0]||'', soru:parseInt(p[1])||0};
+    });
+  }
   const payload = {
     exam_type: document.getElementById('rmExam').value,
     subject, publisher: document.getElementById('rmPublisher').value.trim(),
-    year: parseInt(document.getElementById('rmYear').value),
-    name, tests, active: document.getElementById('rmActive').value==='true'
+    year: new Date().getFullYear(), name, tests,
+    active: document.getElementById('rmActive').value==='true',
+    resource_type: isPlaylist?'playlist':'book'
   };
   if(id) { await db.from('resources').update(payload).eq('id',id); showToast('Güncellendi ✓'); }
   else { await db.from('resources').insert(payload); showToast('Kaynak eklendi ✓'); }
