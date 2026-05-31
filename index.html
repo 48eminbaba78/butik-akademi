@@ -21,6 +21,14 @@
   --red:#ff5c5c;--red-dim:rgba(255,92,92,.12);
   --r:14px;--shadow:0 4px 24px rgba(0,0,0,.4);--shadow-lg:0 8px 32px rgba(0,0,0,.5);
 }
+[data-theme="light"] {
+  --bg:#f0ede8;--surface:#ffffff;--surface2:#f5f2ee;--surface3:#ebe7e0;
+  --border:#ddd8d0;--border2:#ccc8c0;
+  --text:#1a1714;--text-mid:#6b6460;--text-dim:#a39e9a;
+  --shadow:0 4px 24px rgba(0,0,0,.08);--shadow-lg:0 8px 32px rgba(0,0,0,.12);
+  --green-dim:rgba(62,207,142,.15);--blue-dim:rgba(77,166,255,.15);
+  --red-dim:rgba(255,92,92,.15);
+}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
 body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);display:flex;flex-direction:column;}
@@ -330,6 +338,7 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
         <div class="user-name" id="tbarName"></div>
         <span class="role-badge" id="tbarRole"></span>
       </div>
+      <button class="btn-logout" onclick="openThemePanel()">🎨</button>
       <button class="btn-logout" onclick="doLogout()">Çıkış</button>
     </div>
   </div>
@@ -494,6 +503,14 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
       </div>
     </div>
     <div class="field"><label>Not</label><textarea id="amNote" placeholder="Randevu notları..."></textarea></div>
+    <div class="field">
+      <label>Toplantı Linki</label>
+      <div style="display:flex;gap:6px">
+        <input id="amMeetLink" placeholder="https://meet.google.com/... veya Zoom linki" style="flex:1">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('amMeetLink').value=generateMeetLink()" title="Google Meet linki oluştur">Meet</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('amMeetLink').value=generateZoomLink()" title="Zoom linki oluştur">Zoom</button>
+      </div>
+    </div>
     <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveAppt()">Kaydet</button>
   </div>
 </div>
@@ -1376,25 +1393,51 @@ function renderStudents(){
   const el=document.getElementById('view-students');
   const total=S.students.length;
   const avg=total?Math.round(S.students.reduce((a,s)=>a+s.progress,0)/total):0;
-  const cards=S.students.length?S.students.map(s=>`
-    <div class="student-card">
+
+  // Haftalık ilerleme hesapla
+  const ws=getWeekStart(0,0);
+  const weekStats={};
+  S.students.forEach(s=>{
+    let wTotal=0,wDone=0;
+    for(let i=0;i<7;i++){
+      const tasks=S.tasks[`${s.id}_${fmtDate(addDays(ws,i))}`]||[];
+      wTotal+=tasks.length; wDone+=tasks.filter(t=>t.done).length;
+    }
+    weekStats[s.id]={total:wTotal,done:wDone,pct:wTotal>0?Math.round((wDone/wTotal)*100):0};
+  });
+
+  const avgWeek=total?Math.round(S.students.reduce((a,s)=>a+(weekStats[s.id]?.pct||0),0)/total):0;
+
+  const cards=S.students.length?S.students.map(s=>{
+    const ws2=weekStats[s.id]||{total:0,done:0,pct:0};
+    const pctColor=ws2.pct>=80?'var(--green)':ws2.pct>=50?'var(--accent)':'var(--red)';
+    return `<div class="student-card">
       <div class="sc-avatar" style="background:${s.color}">${s.name[0]}</div>
       <div class="sc-name">${esc(s.name)}</div>
       <div class="sc-target">${esc(s.target)}</div>
-      <div class="prog-bar-wrap"><div class="prog-bar" style="width:${s.progress}%;background:${s.color}"></div></div>
-      <div class="prog-pct">%${s.progress} tamamlandı</div>
+      <!-- Haftalık ilerleme -->
+      <div style="width:100%;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-mid);margin-bottom:4px">
+          <span>Bu Hafta</span>
+          <span style="color:${pctColor};font-weight:700">${ws2.done}/${ws2.total} görev · %${ws2.pct}</span>
+        </div>
+        <div class="prog-bar-wrap"><div class="prog-bar" style="width:${ws2.pct}%;background:${pctColor}"></div></div>
+      </div>
       <div class="sc-actions">
         <button class="btn btn-ghost btn-sm" onclick="goProgram('${s.id}')">📋 Program</button>
         <button class="btn btn-ghost btn-sm" onclick="openStudentModal('${s.id}')">✏️ Düzenle</button>
         <button class="btn btn-ghost btn-sm" onclick="openSpeedModal('${s.id}')">⚡ Hız</button>
         <button class="btn btn-ghost btn-sm" onclick="openReportModal('${s.id}')">📄 Rapor</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteStu('${s.id}')">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="printWeeklyProgram('${s.id}')" title="Haftalık program PDF">🖨️</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteStu('${s.id}')" title="Öğrenciyi Sil" style="opacity:.4;padding:4px 7px" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.4">🗑</button>
       </div>
-    </div>`).join(''):'<div class="empty" style="grid-column:1/-1"><p>Henüz öğrenci yok</p></div>';
+    </div>`;
+  }).join(''):'<div class="empty" style="grid-column:1/-1"><p>Henüz öğrenci yok</p></div>';
+
   el.innerHTML=`
     <div class="stats-row">
       <div class="stat-card"><div class="stat-label">Aktif Öğrenci</div><div class="stat-val">${total}</div></div>
-      <div class="stat-card"><div class="stat-label">Ort. İlerleme</div><div class="stat-val">%${avg}</div></div>
+      <div class="stat-card"><div class="stat-label">Bu Hafta Ort.</div><div class="stat-val" style="color:var(--accent)">%${avgWeek}</div><div style="font-size:11px;color:var(--text-dim);margin-top:3px">görev tamamlama</div></div>
     </div>
     <div class="sh"><h2>Öğrencilerim</h2><button class="btn btn-accent" onclick="openStudentModal()">+ Yeni Öğrenci</button></div>
     <div class="students-grid">${cards}</div>`;
@@ -1513,6 +1556,10 @@ function renderApptList(){
       <div class="appt-name">${esc(stu?.name||'?')}</div>
       <div class="appt-type">${esc(a.type)}</div>
       ${a.note?`<div class="appt-note">${esc(a.note)}</div>`:''}
+      ${a.meet_link?`<div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+        <a href="${esc(a.meet_link)}" target="_blank" style="font-size:11px;background:var(--blue-dim);color:var(--blue);padding:3px 10px;border-radius:99px;text-decoration:none;font-weight:700">${a.meet_link.includes('zoom')?'🎥 Zoom':`📹 Meet`}</a>
+        <button class="btn btn-ghost btn-xs" onclick="copyToClipboard('${esc(a.meet_link)}')">Kopyala</button>
+      </div>`:''}
       <div class="appt-actions">
         <button class="btn btn-ghost btn-xs" onclick="openApptModal('${a.id}')">✏️</button>
         <button class="btn btn-danger btn-xs" onclick="deleteAppt('${a.id}')">🗑</button>
@@ -1530,6 +1577,7 @@ function openApptModal(id){
   document.getElementById('amDuration').value=a?a.duration:'45';
   document.getElementById('amType').value=a?a.type:'Haftalık Değerlendirme';
   document.getElementById('amNote').value=a?.note||'';
+  document.getElementById('amMeetLink').value=a?.meet_link||'';
   om('apptModal');
 }
 async function saveAppt(){
@@ -1538,7 +1586,7 @@ async function saveAppt(){
   const time=document.getElementById('amTime').value;
   if(!stuId||!date||!time)return showToast('Tüm alanları doldurun!');
   const id=document.getElementById('amId').value;
-  const payload={student_id:stuId,coach_id:session.coachId,date,time,duration:parseInt(document.getElementById('amDuration').value),type:document.getElementById('amType').value,note:document.getElementById('amNote').value.trim()};
+  const payload={student_id:stuId,coach_id:session.coachId,date,time,duration:parseInt(document.getElementById('amDuration').value),type:document.getElementById('amType').value,note:document.getElementById('amNote').value.trim(),meet_link:document.getElementById('amMeetLink').value.trim()};
   if(id){
     await db.from('appointments').update(payload).eq('id',id);
     const a=S.appointments.find(x=>x.id===id);
@@ -3317,9 +3365,156 @@ function generatePDF() {
   showToast('PDF oluşturuluyor — "PDF olarak kaydet" seçin');
 }
 
+
+// ═══════════════════════════════════════════════
+// HAFTALIK PROGRAM PDF
+// ═══════════════════════════════════════════════
+function printWeeklyProgram(stuId) {
+  const stu=S.students.find(s=>s.id===stuId);
+  if(!stu) return;
+  const wsOff=stu?.weekStart??0;
+  const wStart=getWeekStart(S.weekOffset,wsOff);
+  const wEnd=addDays(wStart,6);
+  const brandName=S.workspace?.brand_name||'Butik Akademi';
+  const brandColor=S.workspace?.brand_color||'#f0a500';
+  const DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+  const MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  const typeColors={deneme:'#f59e0b',soru:'#60a5fa',konu:'#34d399',diger:'#c084fc'};
+  const typeLabels={deneme:'Deneme',soru:'Soru Bankası',konu:'Konu Anlatımı',diger:'Diğer'};
+  let totalTasks=0,doneTasks=0,totalMin=0;
+  let dayColumns='';
+  for(let i=0;i<7;i++){
+    const d=addDays(wStart,i);
+    const ds=fmtDate(d);
+    const dayLabel=DAYS[(wsOff+i)%7];
+    const tasks=S.tasks[`${stuId}_${ds}`]||[];
+    totalTasks+=tasks.length; doneTasks+=tasks.filter(t=>t.done).length;
+    totalMin+=tasks.reduce((s,t)=>s+Number(t.duration||0),0);
+    const isToday=ds===fmtDate(new Date());
+    dayColumns+=`<div style="min-width:0;border-right:1px solid #f0ede8;padding:0 8px">
+      <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${dayLabel}</div>
+      <div style="font-size:20px;font-weight:900;color:${isToday?brandColor:'#1a1a1a'};margin-bottom:8px;line-height:1">${d.getDate()}</div>
+      ${tasks.length===0?`<div style="font-size:11px;color:#ddd;padding:8px 0">—</div>`:''}
+      ${tasks.map(t=>`<div style="margin-bottom:5px;padding:7px 9px;border-radius:7px;background:${typeColors[t.type]||'#888'}18;border-left:3px solid ${typeColors[t.type]||'#888'}">
+        <div style="font-size:9px;font-weight:700;color:${typeColors[t.type]||'#888'};text-transform:uppercase">${typeLabels[t.type]||''}${t.exam?' · '+t.exam:''}</div>
+        <div style="font-size:11px;font-weight:700;color:#1a1a1a;margin-top:1px;line-height:1.3">${esc(t.subject)}</div>
+        ${t.note?`<div style="font-size:9px;color:#888;margin-top:1px">${esc(t.note.slice(0,40))}</div>`:''}
+        <div style="font-size:9px;color:#aaa;margin-top:2px">${t.duration}dk ${t.done?'✓':''}</div>
+      </div>`).join('')}
+    </div>`;
+  }
+  const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a1a;padding:20px;}
+    @media print{.no-print{display:none!important;}@page{size:A4 landscape;margin:8mm;}}
+  </style></head><body>
+  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid ${brandColor};padding-bottom:12px;margin-bottom:16px">
+    <div><div style="font-size:20px;font-weight:800;color:${brandColor}">${esc(brandName)}</div>
+    <div style="font-size:13px;font-weight:700;margin-top:2px">Haftalık Çalışma Programı</div></div>
+    <div style="text-align:right">
+      <div style="font-size:14px;font-weight:800">${esc(stu.name)}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px">${wStart.getDate()} ${MONTHS[wStart.getMonth()]} – ${wEnd.getDate()} ${MONTHS[wEnd.getMonth()]} ${wEnd.getFullYear()}</div>
+      <div style="font-size:11px;color:#888">${doneTasks}/${totalTasks} görev · ${Math.round(totalMin/60)} saat</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin-bottom:16px">${dayColumns}</div>
+  <div style="display:flex;gap:14px;font-size:10px;color:#888">
+    ${Object.entries(typeLabels).map(([k,v])=>`<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${typeColors[k]};margin-right:4px"></span>${v}</span>`).join('')}
+  </div>
+  <div class="no-print" style="margin-top:16px">
+    <button onclick="window.print()" style="background:${brandColor};color:#0f0e0c;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🖨️ PDF İndir / Yazdır</button>
+  </div>
+  </body></html>`;
+  const win=window.open('','_blank','width=1200,height=850');
+  win.document.write(html); win.document.close();
+  setTimeout(()=>win.focus(),300);
+}
+
+// ═══════════════════════════════════════════════
+// ZOOM / MEET LİNK
+// ═══════════════════════════════════════════════
+function generateMeetLink(){
+  const c='abcdefghijklmnopqrstuvwxyz';
+  const seg=()=>Array.from({length:3},()=>c[Math.floor(Math.random()*c.length)]).join('');
+  return `https://meet.google.com/${seg()}-${seg()}-${seg()}`;
+}
+function generateZoomLink(){
+  return `https://zoom.us/j/${Math.floor(Math.random()*9000000000)+1000000000}`;
+}
+function copyToClipboard(text){
+  navigator.clipboard.writeText(text).then(()=>showToast('Link kopyalandı ✓')).catch(()=>{
+    const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');el.remove();showToast('Link kopyalandı ✓');
+  });
+}
+
+// ═══════════════════════════════════════════════
+// TEMA SİSTEMİ
+// ═══════════════════════════════════════════════
+const ACCENT_COLORS=[
+  {name:'Altın',val:'#f0a500',dim:'rgba(240,165,0,.12)'},
+  {name:'Turuncu',val:'#e8622a',dim:'rgba(232,98,42,.12)'},
+  {name:'Mavi',val:'#4da6ff',dim:'rgba(77,166,255,.12)'},
+  {name:'Yeşil',val:'#3ecf8e',dim:'rgba(62,207,142,.12)'},
+  {name:'Mor',val:'#c084fc',dim:'rgba(192,132,252,.12)'},
+  {name:'Pembe',val:'#f472b6',dim:'rgba(244,114,182,.12)'},
+  {name:'Kırmızı',val:'#ff5c5c',dim:'rgba(255,92,92,.12)'},
+  {name:'Turkuaz',val:'#06b6d4',dim:'rgba(6,182,212,.12)'},
+];
+
+function loadTheme(){
+  try{
+    const s=JSON.parse(localStorage.getItem('ba_theme')||'{}');
+    if(s.theme) document.documentElement.setAttribute('data-theme',s.theme);
+    if(s.accent) applyAccent(s.accent,s.accentDim,false);
+  }catch(e){}
+}
+
+function applyAccent(val,dim,save=true){
+  document.documentElement.style.setProperty('--accent',val);
+  document.documentElement.style.setProperty('--accent-dim',dim||'rgba(240,165,0,.12)');
+  if(save){try{const s=JSON.parse(localStorage.getItem('ba_theme')||'{}');s.accent=val;s.accentDim=dim;localStorage.setItem('ba_theme',JSON.stringify(s));}catch(e){}}
+}
+
+function setTheme(theme){
+  document.documentElement.setAttribute('data-theme',theme);
+  try{const s=JSON.parse(localStorage.getItem('ba_theme')||'{}');s.theme=theme;localStorage.setItem('ba_theme',JSON.stringify(s));}catch(e){}
+  document.querySelectorAll('.theme-btn').forEach(b=>{
+    const active=b.dataset.theme===theme;
+    b.style.background=active?'var(--accent-dim)':'';
+    b.style.borderColor=active?'var(--accent)':'';
+    b.style.color=active?'var(--accent)':'';
+  });
+}
+
+function openThemePanel(){
+  let panel=document.getElementById('themePanel');
+  if(panel){panel.remove();return;}
+  panel=document.createElement('div');
+  panel.id='themePanel';
+  const isDark=document.documentElement.getAttribute('data-theme')!=='light';
+  panel.style.cssText='position:fixed;top:60px;right:12px;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:18px;z-index:300;box-shadow:var(--shadow-lg);min-width:230px;animation:fadeUp .2s ease';
+  panel.innerHTML=`
+    <div style="font-family:\'Syne\',sans-serif;font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)">🎨 Tema Ayarları</div>
+    <div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Mod</div>
+    <div style="display:flex;gap:6px;margin-bottom:16px">
+      <button class="theme-btn btn btn-ghost btn-sm" data-theme="dark" onclick="setTheme('dark')" style="${isDark?'background:var(--accent-dim);border-color:var(--accent);color:var(--accent)':''}">🌙 Karanlık</button>
+      <button class="theme-btn btn btn-ghost btn-sm" data-theme="light" onclick="setTheme('light')" style="${!isDark?'background:var(--accent-dim);border-color:var(--accent);color:var(--accent)':''}">☀️ Aydınlık</button>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Accent Rengi</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">
+      ${ACCENT_COLORS.map(c=>`<div onclick="applyAccent('${c.val}','${c.dim}');document.getElementById('themePanel').remove()" title="${c.name}"
+        style="width:28px;height:28px;border-radius:8px;background:${c.val};cursor:pointer;transition:transform .1s"
+        onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform=''"></div>`).join('')}
+    </div>
+    <button onclick="document.getElementById('themePanel').remove()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);border-radius:8px;padding:7px;font-family:inherit;font-size:12px;cursor:pointer">Kapat</button>`;
+  document.body.appendChild(panel);
+  setTimeout(()=>document.addEventListener('click',function h(e){if(!panel.contains(e.target)&&!e.target.closest('[onclick*=openThemePanel]')){panel.remove();document.removeEventListener('click',h);}},true),150);
+}
+
 // ═══════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════
+loadTheme();
 renderNetInputs();
 
 </script>
