@@ -528,15 +528,25 @@ async function saveAllContent(){
   const btn=document.querySelector('[onclick="saveAllContent()"]');
   if(btn){btn.textContent='⏳ Kaydediliyor...';btn.disabled=true;}
   let hasError=false;
+  let saved=0;
   for(const key of Object.keys(contentLabels)){
     const val=document.getElementById('ci_'+key)?.value?.trim()||'';
     _content[key]=val;
-    const {error}=await db.from('site_content')
-      .upsert({key,value:val,updated_at:new Date().toISOString()},{onConflict:'key'});
-    if(error){console.error('Content save error:',key,error);hasError=true;}
+    try{
+      // Önce var mı kontrol et
+      const {data:existing}=await db.from('site_content').select('id').eq('key',key).single();
+      let error;
+      if(existing){
+        ({error}=await db.from('site_content').update({value:val}).eq('key',key));
+      } else {
+        ({error}=await db.from('site_content').insert({key,value:val}));
+      }
+      if(error){console.error('Save error:',key,error);hasError=true;}
+      else saved++;
+    }catch(e){console.error('Exception:',key,e);hasError=true;}
   }
   if(btn){btn.textContent='💾 Tümünü Kaydet';btn.disabled=false;}
-  showToast(hasError?'Bazı alanlar kaydedilemedi!':'İçerik kaydedildi ✓',!hasError);
+  showToast(hasError?`${saved} kayıt tamam, bazıları hatalı`:`✓ ${saved} alan kaydedildi`,!hasError);
 }
 
 // ── BLOG ──────────────────────────────────────

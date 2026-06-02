@@ -1081,6 +1081,56 @@ function toggleTheme(){
 function toggleMobileMenu(){document.getElementById('mobileMenu').classList.toggle('open');}
 function closeMobileMenu(){document.getElementById('mobileMenu').classList.remove('open');}
 
+// LOAD SITE CONTENT FROM SUPABASE
+async function loadSiteContent(){
+  try{
+    const {data,error}=await _SB.from('site_content').select('*');
+    if(error||!data)return;
+    const c={};
+    data.forEach(r=>{c[r.key]=r.value;});
+
+    // Fiyatlar
+    if(c.price_pro){
+      document.getElementById('pr1').textContent=c.price_pro;
+    }
+    if(c.price_enterprise){
+      document.getElementById('pr2').textContent=c.price_enterprise;
+    }
+
+    // İstatistikler
+    if(c.coach_count){
+      document.getElementById('heroCount').textContent=c.coach_count;
+      // data-count güncelle
+      const countEls=document.querySelectorAll('[data-count]');
+      const keys=['student_count','coach_count','task_count','satisfaction'];
+      countEls.forEach((el,i)=>{
+        if(c[keys[i]]) el.setAttribute('data-count',c[keys[i]]);
+      });
+    }
+
+    // Hero başlık
+    if(c.hero_title){
+      const h1s=document.querySelectorAll('.h1-grad');
+      // Başlık çok karmaşık yapılı, sadece desc güncelleyelim
+    }
+    if(c.hero_desc){
+      const desc=document.querySelector('.hero-desc');
+      if(desc) desc.textContent=c.hero_desc;
+    }
+
+    // Site adı
+    if(c.brand_name){
+      document.querySelectorAll('.fl-logo b,.nav-logo b').forEach(el=>{
+        // Sadece ikinci kısım (AKADEMİ)
+      });
+    }
+
+  }catch(e){console.warn('Content load:',e);}
+}
+
+// Sayfa yüklenince çalıştır
+loadSiteContent();
+
 // HERO COUNTER animate
 (function(){
   let n=178;
