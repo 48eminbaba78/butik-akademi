@@ -525,13 +525,18 @@ function renderContent(){
 }
 
 async function saveAllContent(){
-  const updates=Object.keys(contentLabels).map(key=>{
+  const btn=document.querySelector('[onclick="saveAllContent()"]');
+  if(btn){btn.textContent='⏳ Kaydediliyor...';btn.disabled=true;}
+  let hasError=false;
+  for(const key of Object.keys(contentLabels)){
     const val=document.getElementById('ci_'+key)?.value?.trim()||'';
     _content[key]=val;
-    return db.from('site_content').upsert({key,value:val},{onConflict:'key'});
-  });
-  await Promise.all(updates);
-  showToast('İçerik kaydedildi ✓');
+    const {error}=await db.from('site_content')
+      .upsert({key,value:val,updated_at:new Date().toISOString()},{onConflict:'key'});
+    if(error){console.error('Content save error:',key,error);hasError=true;}
+  }
+  if(btn){btn.textContent='💾 Tümünü Kaydet';btn.disabled=false;}
+  showToast(hasError?'Bazı alanlar kaydedilemedi!':'İçerik kaydedildi ✓',!hasError);
 }
 
 // ── BLOG ──────────────────────────────────────
@@ -702,7 +707,9 @@ function showToast(msg,ok=true){
   const t=document.getElementById('toast');
   t.textContent=msg;t.style.display='block';
   t.style.borderColor=ok?'var(--acc3)':'var(--red)';
-  setTimeout(()=>t.style.display='none',2800);
+  t.style.color=ok?'var(--text)':'var(--red)';
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.style.display='none',3000);
 }
 </script>
 </body>

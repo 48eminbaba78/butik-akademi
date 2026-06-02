@@ -933,13 +933,15 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     </div>
   </div>
   <div class="footer-bottom">
-    <div class="footer-copy">© 2026 Butik Akademi. Tüm hakları saklıdır.</div>
+    <div class="footer-copy">© 2026 Butik Akademi. Tüm hakları saklıdır. <a href="site_admin.html" style="color:transparent;font-size:8px;text-decoration:none;opacity:.15" title="">⚙</a></div>
     <div class="footer-made">🇹🇷 Türkiye'de üretildi</div>
   </div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+
+const _SB=supabase.createClient('https://imyhenrwmsmyikpollur.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34');
 // NAV scroll + active section highlight
 const _sections=["features","how","pricing","faq","register"];
 const _navLinks=document.querySelectorAll(".nav-center a");
@@ -1025,11 +1027,11 @@ function goReg(){document.getElementById('register').scrollIntoView({behavior:'s
 // FORM SUBMIT
 async function submitReg(){
   const fn=document.getElementById('rFN').value.trim();
-  const ln=document.getElementById('rLN').value.trim();
+  const ln=(document.getElementById('rLN')?.value||'').trim();
   const brand=document.getElementById('rBrand').value.trim();
   const email=document.getElementById('rEmail').value.trim();
-  const phone=document.getElementById('rPhone').value.trim();
-  const count=document.getElementById('rCount').value;
+  const phone=(document.getElementById('rPhone')?.value||'').trim();
+  const count=document.getElementById('rCount')?.value||'';
   const btn=document.getElementById('regBtn');
   if(!fn||!brand||!email){
     btn.style.background='#ff5c7a';btn.textContent='Zorunlu alanları doldurun!';
@@ -1043,25 +1045,29 @@ async function submitReg(){
   }
   btn.textContent='Gönderiliyor...';btn.disabled=true;
   try{
-    const {error}=await _SB.from('leads').insert({
+    const {data,error}=await _SB.from('leads').insert({
       first_name:fn,last_name:ln,brand_name:brand,
-      email,phone,student_count:count,plan:selectedPlan,
+      email,phone,student_count:count,
+      plan:typeof selectedPlan!=='undefined'?selectedPlan:'pro',
       status:'pending',source:'landing'
-    });
-    if(error&&error.code==='23505'){
-      btn.style.background='#ff5c7a';
-      btn.textContent='Bu e-posta zaten kayıtlı!';
-      btn.disabled=false;
-      setTimeout(()=>{btn.style.background='';btn.textContent='Ücretsiz Hesap Oluştur →';},3000);
-      return;
+    }).select();
+    if(error){
+      if(error.code==='23505'){
+        btn.style.background='#ff5c7a';
+        btn.textContent='Bu e-posta zaten kayıtlı!';
+        btn.disabled=false;
+        setTimeout(()=>{btn.style.background='';btn.textContent='Ücretsiz Hesap Oluştur →';},3000);
+        return;
+      }
+      console.error('Supabase error:',error);
     }
-  }catch(e){console.warn('DB error:',e);}
+  }catch(e){console.error('DB error:',e);}
   document.getElementById('regForm').style.display='none';
   document.getElementById('regSuccess').style.display='block';
+  btn.disabled=false;
 }
 
 
-const _SB=supabase.createClient('https://imyhenrwmsmyikpollur.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34');
 
 // THEME
 let isDark=true;

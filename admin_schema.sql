@@ -1,3 +1,5 @@
+-- ══════════════════════════════════════════
+-- BUTIK AKADEMİ — Site Yönetim Tabloları
 -- Supabase SQL Editor'da çalıştır
 -- ══════════════════════════════════════════
 
@@ -52,7 +54,7 @@ create table if not exists announcements (
   link_text text
 );
 
--- Varsayılan içerik ekle
+-- Varsayılan içerik
 insert into site_content (key, value) values
   ('hero_title', 'Öğrencilerinizi profesyonel yönetin'),
   ('hero_desc', 'Haftalık program, deneme takibi, gerçek zamanlı mesajlaşma, PDF raporlar.'),
@@ -72,48 +74,33 @@ insert into blog_posts (title, slug, excerpt, category, cover_emoji, read_time, 
   ('Öğrenci ile Sağlıklı İletişim', 'ogrenci-iletisim', 'İletişim kalitesi başarıyı belirler.', 'İletişim', '💬', 4, true)
 on conflict (slug) do nothing;
 
--- RLS (Row Level Security) - anon okuyabilsin
+-- ── RLS AKTİF ET ──────────────────────────
 alter table leads enable row level security;
 alter table blog_posts enable row level security;
 alter table site_content enable row level security;
 alter table announcements enable row level security;
 
--- Anon insert leads (form gönderimi)
-create policy if not exists "anon insert leads"
-  on leads for insert to anon with check (true);
+-- ── POLİTİKALAR (drop + create) ───────────
+-- LEADS
+drop policy if exists "anon_leads_all" on leads;
+create policy "anon_leads_all"
+  on leads for all to anon
+  using (true) with check (true);
 
--- Anon select blog/content/announces
-create policy if not exists "anon select blogs"
-  on blog_posts for select to anon using (published = true);
+-- BLOG POSTS
+drop policy if exists "anon_blogs_all" on blog_posts;
+create policy "anon_blogs_all"
+  on blog_posts for all to anon
+  using (true) with check (true);
 
-create policy if not exists "anon select content"
-  on site_content for select to anon using (true);
+-- SITE CONTENT
+drop policy if exists "anon_content_all" on site_content;
+create policy "anon_content_all"
+  on site_content for all to anon
+  using (true) with check (true);
 
-create policy if not exists "anon select announces"
-  on announcements for select to anon using (active = true);
-
--- Service role (admin panel) tüm erişim
-create policy if not exists "service all leads"
-  on leads for all to service_role using (true);
-
-create policy if not exists "service all blogs"
-  on blog_posts for all to service_role using (true);
-
-create policy if not exists "service all content"
-  on site_content for all to service_role using (true);
-
-create policy if not exists "service all announces"
-  on announcements for all to service_role using (true);
-
--- !! GELİŞTİRME İÇİN: anon key ile tam erişim (sonra kısıtla)
-create policy if not exists "anon all leads dev"
-  on leads for all to anon using (true) with check (true);
-
-create policy if not exists "anon all blogs dev"
-  on blog_posts for all to anon using (true) with check (true);
-
-create policy if not exists "anon all content dev"
-  on site_content for all to anon using (true) with check (true);
-
-create policy if not exists "anon all announces dev"
-  on announcements for all to anon using (true) with check (true);
+-- ANNOUNCEMENTS
+drop policy if exists "anon_announces_all" on announcements;
+create policy "anon_announces_all"
+  on announcements for all to anon
+  using (true) with check (true);
