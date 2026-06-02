@@ -984,7 +984,7 @@ const nb=document.querySelector('.numbers');if(nb)cObs.observe(nb);
 
 // BILLING TOGGLE
 let yearly=false;
-const prices=[[0,0],[299,249],[699,579]];
+let prices=[[0,0],[299,249],[699,579]]; // Supabase'den güncellenir
 function toggleBill(){
   yearly=!yearly;
   const t=document.getElementById('btTrack');
@@ -1082,54 +1082,60 @@ function toggleMobileMenu(){document.getElementById('mobileMenu').classList.togg
 function closeMobileMenu(){document.getElementById('mobileMenu').classList.remove('open');}
 
 // LOAD SITE CONTENT FROM SUPABASE
+let _siteContent = {};
 async function loadSiteContent(){
   try{
     const {data,error}=await _SB.from('site_content').select('*');
-    if(error||!data)return;
-    const c={};
-    data.forEach(r=>{c[r.key]=r.value;});
+    if(error||!data){ console.warn('site_content load error:',error); return; }
+    data.forEach(r=>{ _siteContent[r.key]=r.value; });
 
-    // Fiyatlar
-    if(c.price_pro){
-      document.getElementById('pr1').textContent=c.price_pro;
-    }
-    if(c.price_enterprise){
-      document.getElementById('pr2').textContent=c.price_enterprise;
-    }
+    // Fiyatlar — hem array'i güncelle hem direkt HTML'e yaz
+    const pPro = parseInt(_siteContent.price_pro)||299;
+    const pEnt = parseInt(_siteContent.price_enterprise)||699;
+    const pProY = Math.round(pPro*10/12);
+    const pEntY = Math.round(pEnt*10/12);
+
+    // Global prices array güncelle (billing toggle için)
+    prices[1][0]=pPro; prices[1][1]=pProY;
+    prices[2][0]=pEnt; prices[2][1]=pEntY;
+
+    // Direkt HTML'e yaz (yearly durumuna göre)
+    const prEl1=document.getElementById('pr1');
+    const prEl2=document.getElementById('pr2');
+    if(prEl1) prEl1.textContent = yearly ? pProY : pPro;
+    if(prEl2) prEl2.textContent = yearly ? pEntY : pEnt;
 
     // İstatistikler
-    if(c.coach_count){
-      document.getElementById('heroCount').textContent=c.coach_count;
-      // data-count güncelle
-      const countEls=document.querySelectorAll('[data-count]');
-      const keys=['student_count','coach_count','task_count','satisfaction'];
-      countEls.forEach((el,i)=>{
-        if(c[keys[i]]) el.setAttribute('data-count',c[keys[i]]);
-      });
+    const countMap={
+      0:'student_count', 1:'coach_count',
+      2:'task_count',    3:'satisfaction'
+    };
+    document.querySelectorAll('[data-count]').forEach((el,i)=>{
+      const key=countMap[i];
+      if(key&&_siteContent[key]){
+        const val=parseInt(_siteContent[key]);
+        el.setAttribute('data-count',val);
+        // Eğer zaten animasyon bitmişse direkt yaz
+        if(el.textContent!='0') el.textContent=val>=1000?val.toLocaleString('tr-TR'):val;
+      }
+    });
+
+    // Hero badge koç sayısı
+    if(_siteContent.coach_count){
+      document.getElementById('heroCount').textContent=_siteContent.coach_count;
     }
 
-    // Hero başlık
-    if(c.hero_title){
-      const h1s=document.querySelectorAll('.h1-grad');
-      // Başlık çok karmaşık yapılı, sadece desc güncelleyelim
-    }
-    if(c.hero_desc){
+    // Hero desc
+    if(_siteContent.hero_desc){
       const desc=document.querySelector('.hero-desc');
-      if(desc) desc.textContent=c.hero_desc;
+      if(desc) desc.textContent=_siteContent.hero_desc;
     }
 
-    // Site adı
-    if(c.brand_name){
-      document.querySelectorAll('.fl-logo b,.nav-logo b').forEach(el=>{
-        // Sadece ikinci kısım (AKADEMİ)
-      });
-    }
-
-  }catch(e){console.warn('Content load:',e);}
+  }catch(e){ console.warn('loadSiteContent error:',e); }
 }
 
 // Sayfa yüklenince çalıştır
-loadSiteContent();
+document.addEventListener('DOMContentLoaded', ()=>{ loadSiteContent(); });
 
 // HERO COUNTER animate
 (function(){
