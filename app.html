@@ -445,7 +445,7 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
     </div>
     <div class="sb-divider"></div>
     <div id="sidebarNav"></div>
-    <div class="sb-item" onclick="window.open('site_admin.html','_blank')">
+    <div class="sb-item" id="sb-site-admin" style="display:none" onclick="window.open('site_admin.html','_blank')">
       <span class="sb-icon">🌐</span>
       <span class="sb-label">Site Yönetimi</span>
     </div>
@@ -1021,6 +1021,10 @@ function setupShell(){
   if(session.role==='coach' && S.workspace?.brand_name) {
     document.querySelector('.sb-logo-text').textContent = S.workspace.brand_name;
   }
+
+  // Site Yönetimi — sadece developer
+  const siteAdminBtn = document.getElementById('sb-site-admin');
+  if(siteAdminBtn) siteAdminBtn.style.display = session.role==='developer' ? 'flex' : 'none';
 
   setTimeout(loadAnnouncements, 600);
 }
@@ -2340,9 +2344,17 @@ function scrollMsgs(){setTimeout(()=>{const b=document.getElementById('msgBody')
 // STUDENT PORTAL
 // ═══════════════════════════════════════════════
 function renderPortal(){
-  const stu=S.students.find(s=>s.id===session.studentId);
-  if(!stu)return;
   const el=document.getElementById('view-portal');
+  if(!el) return;
+  const stu=S.students.find(s=>s.id===session.studentId);
+  if(!stu){
+    el.innerHTML=`<div class="empty" style="padding:60px 20px;text-align:center">
+      <div style="font-size:36px;margin-bottom:12px">⏳</div>
+      <p>Profil yükleniyor...</p>
+    </div>`;
+    setTimeout(()=>{ if(S.students.length) renderPortal(); }, 1000);
+    return;
+  }
   const today=todayStr();
   const key=`${stu.id}_${today}`;
   const todayTasks=S.tasks[key]||[];
