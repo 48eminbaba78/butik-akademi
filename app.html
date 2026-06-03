@@ -755,7 +755,6 @@ async function loadAllData() {
     if(session.role==='coach') {
       const {data:ws, error:wsErr} = await db.from('workspaces').select('*').eq('coach_id', coachId).single();
       S.workspace = ws || null;
-      // PGRST116 = satır yok, normal durum — diğer hatalarda log
       if(wsErr && wsErr.code !== 'PGRST116') console.warn('workspaces:', wsErr.message);
     }
 
@@ -961,9 +960,8 @@ async function doLogin(){
 
   // Koç ilk girişte onboarding
   if(session.role==='coach' && S.workspace && !S.workspace.onboarding_done) {
+    switchTab('home'); // arkada home'u render et, modal üstüne gelir
     showOnboarding();
-    // Onboarding arkasında home tab'ı yükle, modal kapanınca görünür olsun
-    switchTab('home');
     return;
   }
 
@@ -4382,62 +4380,6 @@ function generateWeeklyPDF(){
   printWeeklyProgramWithNote(S.activeStuId, note);
 }
 
-function printWeeklyProgramWithNote(stuId, coachNote){
-  const stu=S.students.find(s=>s.id===stuId);
-  const wStart=getWeekStart(S.weekOffset,wsOff);
-  const wEnd=addDays(wStart,6);
-  const brandName=S.workspace?.brand_name||'Butik Akademi';
-  const brandColor=S.workspace?.brand_color||'#f0a500';
-  const DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
-  const MONTHS2=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
-  const typeColors={deneme:'#f59e0b',soru:'#60a5fa',konu:'#34d399',diger:'#c084fc'};
-  const typeLabels3={deneme:'Deneme',soru:'Soru Bankası',konu:'Konu Anlatımı',diger:'Diğer'};
-  let totalTasks=0,doneTasks=0,totalMin=0;
-  let dayColumns='';
-  for(let i=0;i<7;i++){
-    const d=addDays(wStart,i);const ds=fmtDate(d);const dayLabel=DAYS[(wsOff+i)%7];
-    const tasks=S.tasks[`${stuId}_${ds}`]||[];
-    totalTasks+=tasks.length; doneTasks+=tasks.filter(t=>t.done).length;
-    totalMin+=tasks.reduce((s,t)=>s+Number(t.duration||0),0);
-    const isToday=ds===fmtDate(new Date());
-    dayColumns+=`<div style="min-width:0;border-right:1px solid #f0ede8;padding:0 8px">
-      <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${dayLabel.slice(0,3)}</div>
-      <div style="font-size:20px;font-weight:900;color:${isToday?brandColor:'#1a1a1a'};margin-bottom:8px;line-height:1">${d.getDate()}</div>
-      ${tasks.length===0?`<div style="font-size:11px;color:#ddd;padding:8px 0">—</div>`:''}
-      ${tasks.map(t=>`<div style="margin-bottom:5px;padding:6px 8px;border-radius:7px;background:${typeColors[t.type]||'#888'}18;border-left:3px solid ${typeColors[t.type]||'#888'}">
-        <div style="font-size:9px;font-weight:700;color:${typeColors[t.type]||'#888'};text-transform:uppercase">${typeLabels3[t.type]||''}</div>
-        <div style="font-size:11px;font-weight:700;color:#1a1a1a;margin-top:1px">${esc(t.subject)}</div>
-        <div style="font-size:9px;color:#aaa;margin-top:1px">${t.duration}dk</div>
-      </div>`).join('')}
-    </div>`;
-  }
-  const noteSection = coachNote ? `<div style="margin-top:16px;padding:12px;background:#fffbeb;border:1px solid ${brandColor}40;border-radius:8px">
-    <div style="font-size:10px;font-weight:700;color:${brandColor};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Koç Notu</div>
-    <div style="font-size:12px;line-height:1.6;color:#333">${esc(coachNote).replace(/\n/g,'<br>')}</div>
-  </div>` : '';
-  const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><style>
-    *{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a1a;padding:20px;}
-    @media print{.no-print{display:none!important;}@page{size:A4 landscape;margin:8mm;}}
-  </style></head><body>
-  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid ${brandColor};padding-bottom:12px;margin-bottom:16px">
-    <div><div style="font-size:20px;font-weight:800;color:${brandColor}">${esc(brandName)}</div>
-    <div style="font-size:13px;font-weight:700;margin-top:2px">Haftalık Çalışma Programı</div></div>
-    <div style="text-align:right">
-      <div style="font-size:14px;font-weight:800">${esc(stu.name)}</div>
-      <div style="font-size:11px;color:#888;margin-top:2px">${wStart.getDate()} ${MONTHS2[wStart.getMonth()]} – ${wEnd.getDate()} ${MONTHS2[wEnd.getMonth()]} ${wEnd.getFullYear()}</div>
-      <div style="font-size:11px;color:#888">${doneTasks}/${totalTasks} görev · ${Math.round(totalMin/60)} saat</div>
-    </div>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin-bottom:12px">${dayColumns}</div>
-  ${noteSection}
-  <div class="no-print" style="margin-top:16px">
-    <button onclick="window.print()" style="background:${brandColor};color:#0f0e0c;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🖨️ PDF İndir / Yazdır</button>
-  </div>
-  </body></html>`;
-  const win=window.open('','_blank','width=1200,height=850');
-  win.document.write(html); win.document.close();
-  setTimeout(()=>win.focus(),300);
-}
 function printWeeklyProgramWithNote(stuId, coachNote){
   const stu=S.students.find(s=>s.id===stuId);
   if(!stu) return;
