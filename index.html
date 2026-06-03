@@ -1134,8 +1134,12 @@ async function loadSiteContent(){
   }catch(e){ console.warn('loadSiteContent error:',e); }
 }
 
-// Sayfa yüklenince çalıştır
-document.addEventListener('DOMContentLoaded', ()=>{ loadSiteContent(); });
+// Sayfa yüklenince çalıştır — DOM hazır olduktan sonra
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',loadSiteContent);
+} else {
+  setTimeout(loadSiteContent, 100);
+}
 
 // HERO COUNTER animate
 (function(){

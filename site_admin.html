@@ -496,8 +496,88 @@ async function saveLeadModal(id){
 async function updateLeadStatus(id,status){
   await db.from('leads').update({status}).eq('id',id);
   const l=_leads.find(x=>x.id===id);if(l)l.status=status;
+
+  // Onaylanınca otomatik koç hesabı oluştur
+  if(status==='approved' && l){
+    await createCoachAccount(l);
+  }
+
   await loadLeads();renderLeads();renderDashboard();
-  showToast(status==='approved'?'Onaylandı ✓':'Reddedildi');
+  showToast(status==='approved'?'Onaylandı + hesap oluşturuldu ✓':'Reddedildi');
+}
+
+async function createCoachAccount(lead){
+  try{
+    // Kullanıcı adı oluştur
+    const username = (lead.first_name||'').toLowerCase().replace(/\s+/g,'') + Math.floor(Math.random()*100);
+    const defaultPass = 'Koc' + Math.floor(Math.random()*10000);
+
+    // Workspace var mı kontrol et
+    const {data:existUser} = await db.from('users').select('id').eq('email',lead.email).single();
+    if(existUser){ showToast('Bu e-posta zaten kayıtlı'); return; }
+
+    // Koç hesabı oluştur
+    const {data:newUser, error} = await db.from('users').insert({
+      full_name: lead.first_name + ' ' + (lead.last_name||''),
+      username,
+      password_hash: defaultPass,
+      role: 'coach',
+      email: lead.email
+    }).select().single();
+
+    if(error){ console.error('Coach create error:', error); return; }
+
+    // Workspace oluştur
+    await db.from('workspaces').insert({
+      coach_id: newUser.id,
+      brand_name: lead.brand_name,
+      brand_color: '#f0a500'
+    });
+
+    // Lead'e notları ekle
+    await db.from('leads').update({
+      notes: `Hesap oluşturuldu.\nKullanıcı adı: ${username}\nŞifre: ${defaultPass}`,
+      status: 'approved'
+    }).eq('id', lead.id);
+
+    // Admin'e bilgi göster
+    showCoachCreatedModal(lead.first_name, username, defaultPass, lead.email);
+  }catch(e){
+    console.error('createCoachAccount error:', e);
+    showToast('Hesap oluşturulurken hata: '+e.message, false);
+  }
+}
+
+function showCoachCreatedModal(name, username, pass, email){
+  let modal = document.getElementById('coachCreatedModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'coachCreatedModal';
+    modal.className = 'modal-bg';
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+  }
+  const appUrl = window.location.origin + window.location.pathname.replace('site_admin.html','app.html');
+  const mailBody = encodeURIComponent(`Merhaba ${name},\n\nButik Akademi hesabınız hazır!\n\nGiriş adresi: ${appUrl}\nKullanıcı adı: ${username}\nŞifre: ${pass}\n\nİyi koçluklar!\nButik Akademi Ekibi`);
+
+  modal.innerHTML = `<div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="document.getElementById('coachCreatedModal').classList.remove('open')">×</button>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:40px;margin-bottom:8px">✅</div>
+      <h2>${esc(name)} için hesap oluşturuldu!</h2>
+    </div>
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div><div style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Kullanıcı Adı</div>
+        <div style="font-size:16px;font-weight:800;color:var(--acc)">${esc(username)}</div></div>
+        <div><div style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Şifre</div>
+        <div style="font-size:16px;font-weight:800;color:var(--acc)">${esc(pass)}</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--dim)">Giriş: ${appUrl}</div>
+    </div>
+    <a href="mailto:${esc(email)}?subject=Butik Akademi Hesabınız Hazır&body=${mailBody}" class="btn" style="width:100%;justify-content:center;background:var(--acc);color:#07060a;padding:12px;border-radius:11px;text-decoration:none;font-size:14px;font-weight:700">✉️ E-posta Gönder</a>
+  </div>`;
+  document.getElementById('coachCreatedModal').classList.add('open');
 }
 
 // ── CONTENT ───────────────────────────────────

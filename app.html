@@ -770,9 +770,15 @@ async function loadAllData() {
       : (await stuQuery).data || [];
 
     S.students = stuData.map(u=>({
-      id: u.id, name: u.full_name, target: u.target, color: u.color,
-      progress: u.progress, pass: u.password_hash, weekStart: u.week_start||0,
-      username: u.username, coachId: u.coach_id
+      id: u.id,
+      name: u.full_name || u.username || 'Öğrenci',
+      target: u.target || '',
+      color: u.color || '#4da6ff',
+      progress: u.progress || 0,
+      pass: u.password_hash,
+      weekStart: u.week_start || 0,
+      username: u.username,
+      coachId: u.coach_id
     }));
     if(!S.activeStuId && S.students.length) S.activeStuId = S.students[0].id;
 
@@ -931,7 +937,24 @@ async function doLogin(){
 
   await loadAllData();
 
-  if(session.role==='student') S.activeStuId = rows.id;
+  // Öğrenci için: kendi datasını kesin set et
+  if(session.role==='student'){
+    S.activeStuId = rows.id;
+    session.studentId = rows.id;
+    // S.students boşsa kendini ekle
+    if(!S.students.find(s=>s.id===rows.id)){
+      S.students.push({
+        id: rows.id,
+        name: rows.full_name || rows.username || 'Öğrenci',
+        target: rows.target || '',
+        color: rows.color || '#4da6ff',
+        progress: rows.progress || 0,
+        weekStart: rows.week_start || 0,
+        username: rows.username,
+        coachId: rows.coach_id
+      });
+    }
+  }
   setupShell();
 
   // Koç ilk girişte onboarding
@@ -2034,24 +2057,80 @@ async function saveStudent(){
   if(!name)return showToast('İsim girin!');
   const color=document.querySelector('.color-opt.sel')?.dataset.c||'#f0a500';
   const id=document.getElementById('smId').value;
-  const uname=document.getElementById('smUsername').value.trim().toLowerCase()||name.split(' ')[0].toLowerCase();
-  const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'Hedef belirtilmemiş',color,progress:Number(document.getElementById('smProg').value),password_hash:document.getElementById('smPass').value||STU_DEFAULT_PASS,week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:'student',coach_id:session.coachId};
+  const uname=document.getElementById('smUsername').value.trim().toLowerCase()||name.split(' ')[0].toLowerCase()+Math.floor(Math.random()*100);
+  const pass=document.getElementById('smPass').value||STU_DEFAULT_PASS;
+  const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'Hedef belirtilmemiş',color,progress:Number(document.getElementById('smProg').value),password_hash:pass,week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:'student',coach_id:session.coachId};
   if(id){
     const {error}=await db.from('users').update(payload).eq('id',id);
     if(error)return showToast('Hata: '+error.message);
     const s=S.students.find(x=>x.id===id);
     if(s)Object.assign(s,{name:payload.full_name,target:payload.target,color,progress:payload.progress,pass:payload.password_hash,weekStart:payload.week_start,username:uname});
     showToast('Güncellendi ✓');
+    saveUI();cm('studentModal');renderStudentsSearch();
   } else {
     const {data,error}=await db.from('users').insert(payload).select().single();
     if(error)return showToast('Hata: '+error.message);
-    S.students.push({id:data.id,name:data.full_name,target:data.target,color:data.color,progress:data.progress,pass:data.password_hash,weekStart:data.week_start||0,username:data.username});
+    S.students.push({id:data.id,name:data.full_name,target:data.target,color:data.color,progress:data.progress||0,pass:data.password_hash,weekStart:data.week_start||0,username:data.username});
     if(!S.activeStuId)S.activeStuId=data.id;
-    showToast('Öğrenci eklendi ✓');
+    saveUI();cm('studentModal');
+    // Davet bilgisi göster
+    showInviteInfo(data.full_name, uname, pass);
   }
-  saveUI();cm('studentModal');renderStudents();
 }
-async function deleteStu(id){
+// ── ÖĞRENCİ DAVET BİLGİSİ ──────────────────────
+function showInviteInfo(name, username, pass){
+  let modal = document.getElementById('inviteModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'inviteModal';
+    modal.className = 'modal-bg';
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+  }
+  const siteUrl = window.location.origin + window.location.pathname.replace('app.html','');
+  const loginUrl = `${siteUrl}app.html`;
+  const whatsappText = encodeURIComponent(`Merhaba ${name}! 🎓\n\nSeni Butik Akademi platformuna ekledim.\n\n📱 Giriş adresi: ${loginUrl}\n👤 Kullanıcı adı: ${username}\n🔑 Şifre: ${pass}\n\nGiriş yaptıktan sonra programını görebileceksin!`);
+
+  modal.innerHTML = `<div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="cm('inviteModal');renderStudentsSearch()">×</button>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:40px;margin-bottom:8px">🎉</div>
+      <h2>${esc(name)} eklendi!</h2>
+      <p style="font-size:13px;color:var(--text-mid);margin-top:6px">Öğrencine aşağıdaki bilgileri paylaş</p>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Kullanıcı Adı</div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--accent)">${esc(username)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Şifre</div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--accent)">${esc(pass)}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Giriş Adresi</div>
+        <div style="font-size:12px;color:var(--blue);word-break:break-all">${loginUrl}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="copyInvite('${esc(username)}','${esc(pass)}','${loginUrl}')">📋 Kopyala</button>
+      <a href="https://wa.me/?text=${whatsappText}" target="_blank" class="btn btn-accent" style="flex:1;justify-content:center;text-decoration:none">💬 WhatsApp ile Gönder</a>
+    </div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="cm('inviteModal');renderStudentsSearch()">Tamam</button>
+  </div>`;
+  om('inviteModal');
+}
+
+function copyInvite(username, pass, url){
+  const text = `Giriş adresi: ${url}\nKullanıcı adı: ${username}\nŞifre: ${pass}`;
+  navigator.clipboard.writeText(text).then(()=>showToast('Kopyalandı ✓')).catch(()=>{
+    const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');el.remove();showToast('Kopyalandı ✓');
+  });
+}
   if(!confirm('Bu öğrenciyi silmek istediğinizden emin misiniz?'))return;
   const {error}=await db.from('users').delete().eq('id',id);
   if(error)return showToast('Hata: '+error.message);
@@ -2346,15 +2425,23 @@ function scrollMsgs(){setTimeout(()=>{const b=document.getElementById('msgBody')
 function renderPortal(){
   const el=document.getElementById('view-portal');
   if(!el) return;
-  const stu=S.students.find(s=>s.id===session.studentId);
+
+  // Öğrenciyi bul — önce studentId ile, yoksa activeStuId ile
+  let stu = S.students.find(s=>s.id===session.studentId);
+  if(!stu && S.students.length > 0) stu = S.students[0];
+
   if(!stu){
-    el.innerHTML=`<div class="empty" style="padding:60px 20px;text-align:center">
+    el.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--text-mid)">
       <div style="font-size:36px;margin-bottom:12px">⏳</div>
-      <p>Profil yükleniyor...</p>
+      <p style="font-size:14px">Profil yükleniyor...</p>
     </div>`;
-    setTimeout(()=>{ if(S.students.length) renderPortal(); }, 1000);
+    setTimeout(()=>{ if(S.students.length) renderPortal(); }, 800);
     return;
   }
+
+  // studentId'yi güncelle
+  if(!session.studentId) session.studentId = stu.id;
+  S.activeStuId = stu.id;
   const today=todayStr();
   const key=`${stu.id}_${today}`;
   const todayTasks=S.tasks[key]||[];
