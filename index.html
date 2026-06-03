@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Butik Akademi — Koçluk Yönetim Platformu</title>
+<meta name="description" content="Türkiye'nin koçluk yönetim platformu. Haftalık program, TYT/AYT deneme takibi, anlık mesajlaşma, PDF raporlar. 180+ koç kullanıyor. 14 gün ücretsiz deneyin.">
+<meta name="keywords" content="koçluk platformu, öğrenci yönetimi, TYT takibi, AYT deneme, haftalık program, YKS koç">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://butikakademi.app/">
+<meta property="og:title" content="Butik Akademi — Koçluk Yönetim Platformu">
+<meta property="og:description" content="Türkiye'nin koçluk yönetim platformu. Öğrencilerinizi profesyonelce yönetin. 14 gün ücretsiz deneyin.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://butikakademi.app/">
+<meta property="og:site_name" content="Butik Akademi">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Butik Akademi — Koçluk Yönetim Platformu">
+<meta name="twitter:description" content="Haftalık program, deneme takibi, PDF raporlar. 180+ koç kullanıyor.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f0a500'/><text y='.9em' font-size='80' x='10'>B</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -374,7 +387,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     <a href="#faq">SSS</a>
   </div>
   <div class="nav-right">
-    <button class="theme-toggle" onclick="toggleTheme()" title="Tema değiştir" aria-label="Tema değiştir"><span id="themeIcon">☀️</span></button><a href="app.html" class="btn-ghost-sm">Giriş Yap</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Tema değiştir" aria-label="Tema değiştir"><span id="themeIcon">☀️</span></button><a href="app.html" class="btn-ghost-sm">Koç Girişi</a>
     <a href="#register" class="btn-acc-sm">Ücretsiz Başla →</a>
   </div>
 </nav>
@@ -851,7 +864,6 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
           <div style="font-size:11px;color:var(--acc3);font-weight:700;background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.2);padding:3px 10px;border-radius:99px;">● Aktif</div>
         </div>
       </div>
-      </div>
     </div>
 
     <div class="reveal d1">
@@ -866,6 +878,15 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
         <div class="ff"><label>Akademi / Koçluk Adı *</label><input type="text" id="rBrand" placeholder="Örn: Emin Koçluk, Başarı Akademi"></div>
         <div class="ff"><label>E-posta *</label><input type="email" id="rEmail" placeholder="email@domain.com"></div>
         <div class="ff"><label>Telefon</label><input type="tel" id="rPhone" placeholder="0532 000 00 00"></div>
+        <div class="ff"><label>Kaç öğrenciniz var?</label>
+          <select id="rCount">
+            <option value="">Seçiniz</option>
+            <option value="1-5">1–5 öğrenci</option>
+            <option value="6-15">6–15 öğrenci</option>
+            <option value="16-30">16–30 öğrenci</option>
+            <option value="30+">30+ öğrenci</option>
+          </select>
+        </div>
 
         <div class="ff">
           <label>Plan seçin</label>
@@ -919,7 +940,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
         <a href="about.html">Hakkımızda</a>
         <a href="blog.html">Blog</a>
         <a href="contact.html">İletişim</a>
-        <a href="#">Kariyer</a>
+        <a href="contact.html">Kariyer</a>
       </div>
     </div>
     <div>
@@ -941,6 +962,9 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 
+// NOT: Bu anon key public'tir (Supabase tasarımı). Güvenlik tamamen
+// Supabase Dashboard > Authentication > Row Level Security (RLS) politikalarına dayanır.
+// site_admin.html erişimi için mutlaka auth.uid() bazlı RLS aktif olmalıdır.
 const _SB=supabase.createClient('https://imyhenrwmsmyikpollur.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34');
 // NAV scroll + active section highlight
 const _sections=["features","how","pricing","faq","register"];
@@ -997,14 +1021,31 @@ function toggleBill(){
   document.getElementById('pd2').textContent=yearly?'Yıllık faturalandırma':'Dershane veya merkez';
 }
 
-// URGENCY TIMER
-let secs=167;
-const timerEl=document.getElementById('priceTimer');
-setInterval(()=>{
-  secs--;if(secs<0)secs=599;
-  const m=Math.floor(secs/60),s=secs%60;
-  timerEl.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-},1000);
+// URGENCY TIMER — session başına bir kez çalışır, sıfırlanmaz
+(function(){
+  const KEY='ba_urgency_end';
+  let endTs=parseInt(sessionStorage.getItem(KEY)||'0');
+  if(!endTs||endTs<Date.now()){
+    endTs=Date.now()+9*60*1000; // 9 dakika
+    sessionStorage.setItem(KEY,endTs);
+  }
+  const timerEl=document.getElementById('priceTimer');
+  const urgencyEl=timerEl?.closest('.urgency');
+  function tick(){
+    const left=Math.max(0,Math.round((endTs-Date.now())/1000));
+    if(!timerEl)return;
+    if(left===0){
+      if(urgencyEl){
+        urgencyEl.innerHTML='<div class="urgency-fire">🔥</div><div class="urgency-text">Bu hafta <strong style="color:var(--acc)">23 koç</strong> daha platforma katıldı. Siz de başlayın!</div>';
+      }
+      return;
+    }
+    const m=Math.floor(left/60),s=left%60;
+    timerEl.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    setTimeout(tick,1000);
+  }
+  tick();
+})();
 
 // FAQ
 function toggleFaq(el){

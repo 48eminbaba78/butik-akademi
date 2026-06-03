@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Blog — Butik Akademi</title>
+<meta name="description" content="Koçluk, öğrenci yönetimi ve eğitim üzerine pratik yazılar. Haftalık program, deneme analizi, iletişim ve dijital koçluk ipuçları.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://butikakademi.app/blog.html">
+<meta property="og:title" content="Blog — Butik Akademi">
+<meta property="og:description" content="Koçluk ve eğitim üzerine pratik yazılar. Haftalık program, deneme analizi, motivasyon ve daha fazlası.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://butikakademi.app/blog.html">
+<meta property="og:site_name" content="Butik Akademi">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f0a500'/><text y='.9em' font-size='80' x='10'>B</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -111,11 +120,11 @@ footer a{color:var(--acc);text-decoration:none;}
 </div>
 <script>
 function openPost(card){
-  const title=card.querySelector('.blog-card-title').textContent;
+  const title=card.querySelector('.blog-title').textContent;
   const excerpt=card.querySelector('.blog-excerpt').textContent;
   const tag=card.querySelector('.blog-tag').textContent;
   const emoji=card.querySelector('.blog-thumb').textContent;
-  const meta=card.querySelectorAll('.blog-card-meta span');
+  const meta=card.querySelectorAll('.blog-meta span');
   document.getElementById('postContent').innerHTML=`
     <div style="font-size:48px;margin-bottom:16px">${emoji}</div>
     <div style="font-size:11px;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${tag}</div>

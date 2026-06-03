@@ -753,8 +753,10 @@ async function loadAllData() {
 
     // Workspace
     if(session.role==='coach') {
-      const {data:ws} = await db.from('workspaces').select('*').eq('coach_id', coachId).single();
-      S.workspace = ws;
+      const {data:ws, error:wsErr} = await db.from('workspaces').select('*').eq('coach_id', coachId).single();
+      S.workspace = ws || null;
+      // PGRST116 = satır yok, normal durum — diğer hatalarda log
+      if(wsErr && wsErr.code !== 'PGRST116') console.warn('workspaces:', wsErr.message);
     }
 
     // Students — sadece bu koçun öğrencileri
@@ -807,7 +809,7 @@ async function loadAllData() {
     } else {
       apptsData = (await db.from('appointments').select('*')).data || [];
     }
-    S.appointments = apptsData.map(a=>({ id:a.id, studentId:a.student_id, date:a.date, time:a.time, duration:a.duration, type:a.type, note:a.note }));
+    S.appointments = apptsData.map(a=>({ id:a.id, studentId:a.student_id, date:a.date, time:a.time, duration:a.duration, type:a.type, note:a.note, meet_link:a.meet_link||'' }));
 
     // Exams
     let examsData = [];
@@ -959,7 +961,10 @@ async function doLogin(){
 
   // Koç ilk girişte onboarding
   if(session.role==='coach' && S.workspace && !S.workspace.onboarding_done) {
-    showOnboarding(); return;
+    showOnboarding();
+    // Onboarding arkasında home tab'ı yükle, modal kapanınca görünür olsun
+    switchTab('home');
+    return;
   }
 
   const firstTab = {coach:'home', student:'portal', developer:'dev-dashboard'}[session.role] || 'portal';
@@ -3789,8 +3794,9 @@ async function advanceOnboarding(step, skip) {
   if(nextStep >= onboardingSteps.length) {
     // Onboarding tamamlandı
     await db.from('workspaces').update({onboarding_done:true}).eq('coach_id', session.coachId);
+    if(S.workspace) S.workspace.onboarding_done = true;
     modal.remove();
-    switchTab('program');
+    switchTab('home');
     showToast('🎉 Hoş geldiniz! Platformunuz hazır.');
     return;
   }
