@@ -2131,6 +2131,7 @@ function copyInvite(username, pass, url){
     const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');el.remove();showToast('Kopyalandı ✓');
   });
 }
+async function deleteStu(id){
   if(!confirm('Bu öğrenciyi silmek istediğinizden emin misiniz?'))return;
   const {error}=await db.from('users').delete().eq('id',id);
   if(error)return showToast('Hata: '+error.message);
