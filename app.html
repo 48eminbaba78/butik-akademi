@@ -243,7 +243,7 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 
 .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;}
 @media(max-width:1100px){.week-grid{grid-template-columns:repeat(4,1fr);}}
-@media(max-width:640px){.week-grid{grid-template-columns:repeat(2,1fr);}.tbar-nav{display:none;}.mobile-nav{display:flex!important;}.content{padding-bottom:64px;}}
+@media(max-width:640px){.week-grid{grid-template-columns:repeat(2,1fr);}.tbar-nav{display:none;}.mobile-nav{display:flex!important;}.content{padding-bottom:64px;}.view{padding:14px 16px;}.home-stats{grid-template-columns:1fr;}.stu-detail-card{flex-direction:column;}.action-grid{grid-template-columns:repeat(2,1fr);}}
 
 .day-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;min-height:190px;transition:border-color .2s;}
 .day-col.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
@@ -695,7 +695,6 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 </div>
 
 <div class="toast" id="toast"></div>
-<nav class="mobile-nav" id="mobileNav"></nav>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1068,7 +1067,7 @@ function switchTab(tab){
   // Title
   const allTabs = [...coachTabs,...stuTabs,...devTabs,
     {id:'profile',name:'Profil'},{id:'settings',name:'Ayarlar'},
-    {id:'student-detail',name:_currentDetailStu?.name||'Öğrenci'},
+    {id:'student-detail',name:S.students.find(s=>s.id===S.activeStuId)?.name||'Öğrenci'},
     {id:'program',name:'Program'},{id:'appointments',name:'Randevular'},{id:'exams',name:'Denemeler'}
   ];
   const tabDef = allTabs.find(t=>t.id===tab);
@@ -1144,8 +1143,6 @@ function renderHome(){
 }
 
 // ── ÖĞRENCİ ARAMA ──────────────────────────────
-let _currentDetailStu = null;
-
 function renderStudentsSearch(){
   const el = document.getElementById('view-students');
   // Haftalık ilerleme
@@ -1204,11 +1201,10 @@ function filterStudentSearch(){
 }
 
 function openStudentDetail(stuId){
-  _currentDetailStu = S.students.find(s=>s.id===stuId);
-  if(!_currentDetailStu) return;
+  if(!S.students.find(s=>s.id===stuId)) return;
   S.activeStuId = stuId;
 
-  const s = _currentDetailStu;
+  const s = S.students.find(s=>s.id===S.activeStuId);
   const ws = getWeekStart(0, s.weekStart||0);
   let wTotal=0,wDone=0,wMin=0;
   for(let i=0;i<7;i++){
@@ -1319,25 +1315,26 @@ function openStudentDetail(stuId){
 
 function openStudentProgram(stuId){
   S.activeStuId = stuId;
+  const _stuName = S.students.find(s=>s.id===S.activeStuId)?.name||'';
   const el = document.getElementById('view-program');
-  el.innerHTML = `<button class="back-link" onclick="switchTab('student-detail')">← ${_currentDetailStu?.name||''}</button>`;
+  el.innerHTML = `<button class="back-link" onclick="switchTab('student-detail')">← ${_stuName}</button>`;
   el.innerHTML += document.createElement('div').innerHTML; // placeholder
   switchTab('program');
-  document.getElementById('tbarTitle').textContent = (_currentDetailStu?.name||'')+' · Program';
+  document.getElementById('tbarTitle').textContent = _stuName+' · Program';
   renderProgram();
 }
 
 function openStudentExams(stuId){
   S.activeStuId = stuId;
   switchTab('exams');
-  document.getElementById('tbarTitle').textContent = (_currentDetailStu?.name||'')+' · Denemeler';
+  document.getElementById('tbarTitle').textContent = (S.students.find(s=>s.id===S.activeStuId)?.name||'')+' · Denemeler';
   renderExams();
 }
 
 function openStudentAppointments(stuId){
   S.activeStuId = stuId;
   switchTab('appointments');
-  document.getElementById('tbarTitle').textContent = (_currentDetailStu?.name||'')+' · Randevular';
+  document.getElementById('tbarTitle').textContent = (S.students.find(s=>s.id===S.activeStuId)?.name||'')+' · Randevular';
   renderAppointments();
 }
 
@@ -1977,62 +1974,9 @@ async function deleteCtd(ds,idx){
 // ═══════════════════════════════════════════════
 // STUDENTS
 // ═══════════════════════════════════════════════
-function renderStudents(){
-  const el=document.getElementById('view-students');
-  const total=S.students.length;
-  const avg=total?Math.round(S.students.reduce((a,s)=>a+s.progress,0)/total):0;
-
-  // Haftalık ilerleme hesapla
-  const ws=getWeekStart(0,0);
-  const weekStats={};
-  S.students.forEach(s=>{
-    let wTotal=0,wDone=0;
-    for(let i=0;i<7;i++){
-      const tasks=S.tasks[`${s.id}_${fmtDate(addDays(ws,i))}`]||[];
-      wTotal+=tasks.length; wDone+=tasks.filter(t=>t.done).length;
-    }
-    weekStats[s.id]={total:wTotal,done:wDone,pct:wTotal>0?Math.round((wDone/wTotal)*100):0};
-  });
-
-  const avgWeek=total?Math.round(S.students.reduce((a,s)=>a+(weekStats[s.id]?.pct||0),0)/total):0;
-
-  const cards=S.students.length?S.students.map(s=>{
-    const ws2=weekStats[s.id]||{total:0,done:0,pct:0};
-    const pctColor=ws2.pct>=80?'var(--green)':ws2.pct>=50?'var(--accent)':'var(--red)';
-    return `<div class="student-card">
-      <div class="sc-avatar" style="background:${s.color}">${s.name[0]}</div>
-      <div class="sc-name">${esc(s.name)}</div>
-      <div class="sc-target">${esc(s.target)}</div>
-      <!-- Haftalık ilerleme -->
-      <div style="width:100%;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-mid);margin-bottom:4px">
-          <span>Bu Hafta</span>
-          <span style="color:${pctColor};font-weight:700">${ws2.done}/${ws2.total} görev · %${ws2.pct}</span>
-        </div>
-        <div class="prog-bar-wrap"><div class="prog-bar" style="width:${ws2.pct}%;background:${pctColor}"></div></div>
-      </div>
-      <div class="sc-actions">
-        <button class="btn btn-ghost btn-sm" onclick="goProgram('${s.id}')">📋 Program</button>
-        <button class="btn btn-ghost btn-sm" onclick="openStudentModal('${s.id}')">✏️ Düzenle</button>
-        <button class="btn btn-ghost btn-sm" onclick="openSpeedModal('${s.id}')">⚡ Hız</button>
-        <button class="btn btn-ghost btn-sm" onclick="openReportModal('${s.id}')">📄 Rapor</button>
-        <button class="btn btn-ghost btn-sm" onclick="printWeeklyProgram('${s.id}')" title="Haftalık program PDF">🖨️</button>
-        <button class="btn btn-danger btn-xs" onclick="deleteStu('${s.id}')" title="Öğrenciyi Sil" style="opacity:.4;padding:4px 7px" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.4">🗑</button>
-      </div>
-    </div>`;
-  }).join(''):'<div class="empty" style="grid-column:1/-1"><p>Henüz öğrenci yok</p></div>';
-
-  el.innerHTML=`
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-label">Aktif Öğrenci</div><div class="stat-val">${total}</div></div>
-      <div class="stat-card"><div class="stat-label">Bu Hafta Ort.</div><div class="stat-val" style="color:var(--accent)">%${avgWeek}</div><div style="font-size:11px;color:var(--text-dim);margin-top:3px">görev tamamlama</div></div>
-    </div>
-    <div class="sh"><h2>Öğrencilerim</h2><button class="btn btn-accent" onclick="openStudentModal()">+ Yeni Öğrenci</button></div>
-    <div class="students-grid">${cards}</div>`;
-}
+// renderStudents → renderStudentsSearch alias (tek render yolu)
+function renderStudents(){ renderStudentsSearch(); }
 function goProgram(id){
-  const stu = S.students.find(s=>s.id===id);
-  if(stu) { _currentDetailStu=stu; }
   S.activeStuId=id; S.weekOffset=0; saveUI();
   openStudentProgram(id);
 }

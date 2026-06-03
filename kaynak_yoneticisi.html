@@ -111,9 +111,33 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;font-weight:600;box-shadow:var(--shadow);z-index:999;animation:fadeUp .2s ease;}
 </style>
+<style>
+/* ── LOGIN GATE ── */
+#kaynak-login{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+.kl-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:360px;}
+.kl-logo{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--accent);margin-bottom:4px;}
+.kl-sub{font-size:12px;color:var(--text-dim);margin-bottom:28px;}
+.kl-label{display:block;font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.kl-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none;transition:border .15s;margin-bottom:14px;}
+.kl-input:focus{border-color:var(--accent);}
+.kl-btn{width:100%;background:var(--accent);color:#0f0e0c;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:4px;}
+.kl-err{font-size:12px;color:#ff5c5c;margin-top:10px;display:none;text-align:center;}
+</style>
 </head>
 <body>
-<div class="app">
+<!-- LOGIN GATE -->
+<div id="kaynak-login">
+  <div class="kl-card">
+    <div class="kl-logo">BUTİK<span style="color:var(--text)">AKADEMİ</span></div>
+    <div class="kl-sub">Kaynak Yöneticisi — Yetkili Giriş</div>
+    <label class="kl-label">Şifre</label>
+    <input class="kl-input" type="password" id="klPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')kaynakLogin()">
+    <button class="kl-btn" onclick="kaynakLogin()">Giriş →</button>
+    <div class="kl-err" id="klErr">Şifre hatalı</div>
+  </div>
+</div>
+
+<div class="app" id="kaynakApp" style="display:none">
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="logo">
@@ -382,11 +406,34 @@ const SB_URL = 'https://imyhenrwmsmyikpollur.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
 const db = supabase.createClient(SB_URL, SB_KEY);
 
+// ── LOGIN GATE ───────────────────────────────────
+const _KR_HASH = '07cf99a32383fa51aedb193252e8815d09cf3f36cd72b95b08e966f681af0ba8'; // kaynak2026
+
+async function kaynakLogin() {
+  const p = document.getElementById('klPass').value;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p));
+  const hash = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  if(hash === _KR_HASH) {
+    sessionStorage.setItem('kaynak_auth', '1');
+    document.getElementById('kaynak-login').style.display = 'none';
+    document.getElementById('kaynakApp').style.display = 'grid';
+    initKaynak();
+  } else {
+    const err = document.getElementById('klErr');
+    err.style.display = 'block';
+    setTimeout(() => err.style.display='none', 2500);
+  }
+}
+
+if(sessionStorage.getItem('kaynak_auth')) {
+  document.getElementById('kaynak-login').style.display = 'none';
+  document.getElementById('kaynakApp').style.display = 'grid';
+}
 let _allResources = [];
 let _fetchedVideos = [];
 
 // ── INIT ────────────────────────────────────────
-(async () => {
+async function initKaynak() {
   try {
     const { data } = await db.from('resources').select('id').limit(1);
     document.getElementById('connStatus').innerHTML = '<span style="color:var(--green)">✓ Bağlandı</span>';
@@ -411,7 +458,10 @@ let _fetchedVideos = [];
     const lines = document.getElementById('pl_videos').value.split('\n').filter(l=>l.trim());
     document.getElementById('pl_count').textContent = lines.length + ' video';
   });
-})();
+}
+
+// Oturum açıksa otomatik init
+if(sessionStorage.getItem('kaynak_auth')) { initKaynak(); }
 
 // ── NAVIGATION ──────────────────────────────────
 function showPage(page) {
