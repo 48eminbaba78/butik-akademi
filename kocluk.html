@@ -92,9 +92,9 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 .tbar-icon-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;}
 .tbar-icon-btn:hover{border-color:var(--accent);color:var(--accent);}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;}
-.view{display:none;padding:22px 24px;animation:fadeUp .2s ease;}
-.view.active{display:block;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.view{display:none;padding:22px 24px;}
+.view.active{display:block;animation:fadeUp .25s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
 
 /* ── COMPONENTS (korunuyor) ──────────────────── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);}
@@ -750,9 +750,9 @@ async function loadAllData() {
 
     // Workspace
     if(session.role==='coach') {
-      const {data:ws, error:wsErr} = await db.from('workspaces').select('*').eq('coach_id', coachId).single();
-      S.workspace = ws || null;
-      if(wsErr && wsErr.code !== 'PGRST116') console.warn('workspaces:', wsErr.message);
+      const {data:ws,error:wsErr}=await db.from('workspaces').select('*').eq('coach_id',coachId).single();
+      S.workspace=ws||null;
+      if(wsErr&&wsErr.code!=='PGRST116') console.warn('workspaces:',wsErr.message);
     }
 
     // Students — sadece bu koçun öğrencileri
@@ -934,7 +934,7 @@ async function doLogin(){
 
   // Koç ilk girişte onboarding
   if(session.role==='coach' && S.workspace && !S.workspace.onboarding_done) {
-    switchTab('home'); // arkada home'u render et, modal üstüne gelir
+    switchTab('home');
     showOnboarding();
     return;
   }
@@ -1113,6 +1113,8 @@ function renderHome(){
 }
 
 // ── ÖĞRENCİ ARAMA ──────────────────────────────
+
+
 function renderStudentsSearch(){
   const el = document.getElementById('view-students');
   // Haftalık ilerleme
@@ -1285,12 +1287,12 @@ function openStudentDetail(stuId){
 
 function openStudentProgram(stuId){
   S.activeStuId = stuId;
-  const _stuName = S.students.find(s=>s.id===S.activeStuId)?.name||'';
   const el = document.getElementById('view-program');
-  el.innerHTML = `<button class="back-link" onclick="switchTab('student-detail')">← ${_stuName}</button>`;
+  const _sn=S.students.find(s=>s.id===S.activeStuId)?.name||'';
+  el.innerHTML = `<button class="back-link" onclick="switchTab('student-detail')">← ${_sn}</button>`;
   el.innerHTML += document.createElement('div').innerHTML; // placeholder
   switchTab('program');
-  document.getElementById('tbarTitle').textContent = _stuName+' · Program';
+  document.getElementById('tbarTitle').textContent = (S.students.find(s=>s.id===S.activeStuId)?.name||'')+' · Program';
   renderProgram();
 }
 
@@ -1944,7 +1946,6 @@ async function deleteCtd(ds,idx){
 // ═══════════════════════════════════════════════
 // STUDENTS
 // ═══════════════════════════════════════════════
-// renderStudents → alias
 function renderStudents(){ renderStudentsSearch(); }
 function goProgram(id){
   S.activeStuId=id; S.weekOffset=0; saveUI();
@@ -3633,7 +3634,7 @@ async function advanceOnboarding(step, skip) {
   if(nextStep >= onboardingSteps.length) {
     // Onboarding tamamlandı
     await db.from('workspaces').update({onboarding_done:true}).eq('coach_id', session.coachId);
-    if(S.workspace) S.workspace.onboarding_done = true;
+    if(S.workspace) S.workspace.onboarding_done=true;
     modal.remove();
     switchTab('home');
     showToast('🎉 Hoş geldiniz! Platformunuz hazır.');

@@ -92,9 +92,9 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 .tbar-icon-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;}
 .tbar-icon-btn:hover{border-color:var(--accent);color:var(--accent);}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;}
-.view{display:none;padding:22px 24px;animation:fadeUp .2s ease;}
-.view.active{display:block;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.view{display:none;padding:22px 24px;}
+.view.active{display:block;animation:fadeUp .25s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
 
 /* ── COMPONENTS (korunuyor) ──────────────────── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);}
@@ -1091,7 +1091,9 @@ function switchTab(tab){
 // ── KOÇ ANA SAYFA ──────────────────────────────
 function renderHome(){
   const el = document.getElementById('view-home');
-  if(!el){ console.warn('view-home bulunamadı'); return; }
+  if(!el){ console.error('[renderHome] view-home div bulunamadı!'); return; }
+  console.log('[renderHome] çağrıldı, students:', S.students.length);
+  try{
   const now = new Date();
   const dayNames = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
   const monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
@@ -1140,6 +1142,13 @@ function renderHome(){
         </div>`;
       }).join('')}
     </div>`;
+  }catch(err){
+    console.error('[renderHome] hata:', err);
+    el.innerHTML = `<div style="padding:24px;color:var(--text)">
+      <div style="font-size:20px;font-weight:800;margin-bottom:8px">İyi günler, ${session.dbUser?.full_name||'Koç'} 👋</div>
+      <div style="font-size:13px;color:var(--text-mid)">Yükleme hatası oluştu. Konsolu kontrol edin.</div>
+    </div>`;
+  }
 }
 
 // ── ÖĞRENCİ ARAMA ──────────────────────────────
@@ -1315,12 +1324,12 @@ function openStudentDetail(stuId){
 
 function openStudentProgram(stuId){
   S.activeStuId = stuId;
-  const _stuName = S.students.find(s=>s.id===S.activeStuId)?.name||'';
   const el = document.getElementById('view-program');
-  el.innerHTML = `<button class="back-link" onclick="switchTab('student-detail')">← ${_stuName}</button>`;
+  const _sn = S.students.find(s=>s.id===S.activeStuId)?.name||'';
+  el.innerHTML = `<button class="back-link" onclick="switchTab('student-detail')">← ${_sn}</button>`;
   el.innerHTML += document.createElement('div').innerHTML; // placeholder
   switchTab('program');
-  document.getElementById('tbarTitle').textContent = _stuName+' · Program';
+  document.getElementById('tbarTitle').textContent = (S.students.find(s=>s.id===S.activeStuId)?.name||'')+' · Program';
   renderProgram();
 }
 
@@ -1974,9 +1983,9 @@ async function deleteCtd(ds,idx){
 // ═══════════════════════════════════════════════
 // STUDENTS
 // ═══════════════════════════════════════════════
-// renderStudents → renderStudentsSearch alias (tek render yolu)
 function renderStudents(){ renderStudentsSearch(); }
 function goProgram(id){
+  const stu = S.students.find(s=>s.id===id);
   S.activeStuId=id; S.weekOffset=0; saveUI();
   openStudentProgram(id);
 }
