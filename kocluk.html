@@ -1027,23 +1027,30 @@ function setupShell(){
 
 function switchTab(tab){
   currentTab = tab;
-  // Sidebar active state
+
+  // ── Sidebar ───────────────────────────────────
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
   const activeEl = document.getElementById('sbi_'+tab) || document.getElementById('sb-'+tab);
   if(activeEl) activeEl.classList.add('active');
-  // View
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+
+  // ── View: CSS class + JS inline style ile zorla ─
+  document.querySelectorAll('.view').forEach(v=>{ v.classList.remove('active'); v.style.display='none'; });
   const viewEl = document.getElementById('view-'+tab);
-  if(viewEl) viewEl.classList.add('active');
-  // Title
+  if(viewEl){ viewEl.classList.add('active'); viewEl.style.display='block'; }
+  else console.warn('[switchTab] view-'+tab+' yok');
+
+  // ── Başlık ────────────────────────────────────
+  const _sn = S.students.find(s=>s.id===S.activeStuId)?.name||'Öğrenci';
   const allTabs = [...coachTabs,...stuTabs,...devTabs,
     {id:'profile',name:'Profil'},{id:'settings',name:'Ayarlar'},
-    {id:'student-detail',name:S.students.find(s=>s.id===S.activeStuId)?.name||'Öğrenci'},
+    {id:'student-detail',name:_sn},
     {id:'program',name:'Program'},{id:'appointments',name:'Randevular'},{id:'exams',name:'Denemeler'}
   ];
   const tabDef = allTabs.find(t=>t.id===tab);
-  document.getElementById('tbarTitle').textContent = tabDef?.name || tab;
-  // Render
+  const tbarEl = document.getElementById('tbarTitle');
+  if(tbarEl) tbarEl.textContent = tabDef?.name || tab;
+
+  // ── Render ────────────────────────────────────
   const renderMap = {
     home:renderHome, students:renderStudentsSearch, messages:renderMessages,
     todolist:renderTodoList, portal:renderPortal, sportal:renderSPortal,
@@ -1054,6 +1061,7 @@ function switchTab(tab){
     'dev-announce':renderDevAnnounce,'dev-tickets':renderDevTickets,
     appointments:renderAppointments, exams:renderExams,
   };
+  console.log('[switchTab]', tab);
   renderMap[tab]?.();
   if(tab==='messages'||tab==='smessages') initRealtime();
   else destroyRealtime();
