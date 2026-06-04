@@ -93,8 +93,8 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 .tbar-icon-btn:hover{border-color:var(--accent);color:var(--accent);}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;}
 .view{display:none;padding:22px 24px;}
-.view.active{display:block;animation:fadeUp .25s ease both;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.view.active{display:block!important;animation:viewIn .2s ease;}
+@keyframes viewIn{from{transform:translateY(5px);}to{transform:none;}}
 
 /* ── COMPONENTS (korunuyor) ──────────────────── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);}
@@ -243,7 +243,7 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 
 .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;}
 @media(max-width:1100px){.week-grid{grid-template-columns:repeat(4,1fr);}}
-@media(max-width:640px){.week-grid{grid-template-columns:repeat(2,1fr);}.tbar-nav{display:none;}.mobile-nav{display:flex!important;}.content{padding-bottom:64px;}.view{padding:14px 16px;}.home-stats{grid-template-columns:1fr;}.stu-detail-card{flex-direction:column;}.action-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:640px){.week-grid{grid-template-columns:repeat(2,1fr);}.tbar-nav{display:none;}.mobile-nav{display:flex!important;}.content{padding-bottom:64px;}.view{padding:14px 16px;}.home-stats{grid-template-columns:1fr;}.action-grid{grid-template-columns:repeat(2,1fr);}}
 
 .day-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;min-height:190px;transition:border-color .2s;}
 .day-col.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
@@ -266,6 +266,15 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 .tc-del{position:absolute;top:4px;right:4px;background:transparent;border:none;cursor:pointer;color:var(--text-dim);font-size:11px;padding:2px 4px;border-radius:4px;opacity:0;transition:opacity .15s;}
 .task-card:hover .tc-del{opacity:1;}
 .tc-del:hover{background:var(--red-dim);color:var(--red);}
+/* 3-nokta menü */
+.tc-menu-btn{position:absolute;top:4px;right:4px;background:transparent;border:none;cursor:pointer;color:var(--text-dim);font-size:15px;padding:1px 5px;border-radius:4px;opacity:0;transition:opacity .15s;line-height:1;letter-spacing:1px;}
+.task-card:hover .tc-menu-btn{opacity:1;}
+.tc-menu-btn:hover{background:var(--surface3);color:var(--text);}
+.tc-dropdown{position:fixed;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:var(--shadow-lg);z-index:800;min-width:140px;overflow:hidden;animation:fadeUp .12s ease;}
+.tc-dropdown button{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px;border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--text);font-family:inherit;transition:background .1s;text-align:left;}
+.tc-dropdown button:hover{background:var(--surface2);}
+.tc-dropdown button.danger{color:var(--red);}
+.tc-dropdown button.danger:hover{background:var(--red-dim);}
 .task-deneme{background:#1e1500;border-color:#3a2800;color:#f59e0b;}
 .task-soru{background:#001428;border-color:#002a52;color:#60a5fa;}
 .task-konu{background:#001a0d;border-color:#003320;color:#34d399;}
@@ -445,7 +454,10 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
     </div>
     <div class="sb-divider"></div>
     <div id="sidebarNav"></div>
-    <div class="sb-bottom">
+    <div class="sb-item" id="sb-site-admin" style="display:none" onclick="window.open('site_admin.html','_blank')">
+      <span class="sb-icon">🌐</span>
+      <span class="sb-label">Site Yönetimi</span>
+    </div>
       <div class="sb-divider"></div>
       <div class="sb-item" id="sb-settings" onclick="switchTab('settings')">
         <span class="sb-icon">⚙️</span>
@@ -692,7 +704,6 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 </div>
 
 <div class="toast" id="toast"></div>
-<nav class="mobile-nav" id="mobileNav"></nav>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -768,9 +779,15 @@ async function loadAllData() {
       : (await stuQuery).data || [];
 
     S.students = stuData.map(u=>({
-      id: u.id, name: u.full_name, target: u.target, color: u.color,
-      progress: u.progress, pass: u.password_hash, weekStart: u.week_start||0,
-      username: u.username, coachId: u.coach_id
+      id: u.id,
+      name: u.full_name || u.username || 'Öğrenci',
+      target: u.target || '',
+      color: u.color || '#4da6ff',
+      progress: u.progress || 0,
+      pass: u.password_hash,
+      weekStart: u.week_start || 0,
+      username: u.username,
+      coachId: u.coach_id
     }));
     if(!S.activeStuId && S.students.length) S.activeStuId = S.students[0].id;
 
@@ -910,8 +927,14 @@ function loginErr(msg){
   el.textContent=msg; el.style.display='block';
   setTimeout(()=>el.style.display='none',3000);
 }
+// SHA-256 hash yardımcı fonksiyonu
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
 async function doLogin(){
-  const user=document.getElementById('loginUser').value.trim().toLowerCase();
+  const user=document.getElementById('loginUser').value.trim().toLowerCase().replace(/\u0307/g,'');
   const pass=document.getElementById('loginPass').value;
   if(!user||!pass)return loginErr('Kullanıcı adı ve şifre girin.');
 
@@ -920,27 +943,47 @@ async function doLogin(){
   showLoading(false);
 
   if(error || !rows) return loginErr('Kullanıcı bulunamadı.');
-  if(rows.password_hash !== pass) return loginErr('Şifre yanlış!');
+
+  // Hash karşılaştırması + geriye dönük düz metin desteği (geçiş dönemi)
+  const passHash = await sha256(pass);
+  const isHashMatch = rows.password_hash === passHash;
+  const isPlainMatch = rows.password_hash === pass; // eski kayıtlar için
+  if(!isHashMatch && !isPlainMatch) return loginErr('Şifre yanlış!');
+
+  // Düz metin ile giriş yapıldıysa hash'e otomatik güncelle
+  if(isPlainMatch && !isHashMatch){
+    await db.from('users').update({password_hash: passHash}).eq('id', rows.id);
+    console.log('[auth] Şifre otomatik hashlendi');
+  }
 
   const coachId = rows.role==='coach' ? rows.id : rows.role==='student' ? rows.coach_id : null;
   session = { role: rows.role, studentId: rows.role==='student' ? rows.id : null, dbUser: rows, coachId };
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appShell').classList.add('visible');
 
-  await loadAllData();
-
-  if(session.role==='student') S.activeStuId = rows.id;
-  setupShell();
-
-  // Koç ilk girişte onboarding
-  if(session.role==='coach' && S.workspace && !S.workspace.onboarding_done) {
-    switchTab('home');
-    showOnboarding();
-    return;
+  try {
+    await loadAllData();
+    if(session.role==='student'){
+      S.activeStuId = rows.id;
+      session.studentId = rows.id;
+      if(!S.students.find(s=>s.id===rows.id)){
+        S.students.push({ id:rows.id, name:rows.full_name||rows.username||'Öğrenci', target:rows.target||'', color:rows.color||'#4da6ff', progress:rows.progress||0, weekStart:rows.week_start||0, username:rows.username, coachId:rows.coach_id });
+      }
+    }
+    setupShell();
+    if(session.role==='coach' && S.workspace && !S.workspace.onboarding_done) {
+      switchTab('home');
+      showOnboarding();
+      return;
+    }
+    const firstTab = {coach:'home', student:'portal', developer:'dev-dashboard'}[session.role] || 'portal';
+    setTimeout(()=>switchTab(firstTab), 50);
+  } catch(e) {
+    console.error('[doLogin] HATA:', e);
+    loginErr('Hata: ' + e.message);
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('appShell').classList.remove('visible');
   }
-
-  const firstTab = {coach:'home', student:'portal', developer:'dev-dashboard'}[session.role] || 'portal';
-  switchTab(firstTab);
 }
 function doLogout(){
   destroyRealtime();
@@ -1019,38 +1062,35 @@ function setupShell(){
 
   // Workspace logo
   if(session.role==='coach' && S.workspace?.brand_name) {
-    document.querySelector('.sb-logo-text').textContent = S.workspace.brand_name;
+    const _lt=document.querySelector('.sb-logo-text'); if(_lt) _lt.textContent=S.workspace.brand_name;
   }
+
+  // Site Yönetimi — sadece developer
+  const siteAdminBtn = document.getElementById('sb-site-admin');
+  if(siteAdminBtn) siteAdminBtn.style.display = session.role==='developer' ? 'flex' : 'none';
 
   setTimeout(loadAnnouncements, 600);
 }
 
 function switchTab(tab){
   currentTab = tab;
-
-  // ── Sidebar ───────────────────────────────────
+  // Sidebar active state
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
   const activeEl = document.getElementById('sbi_'+tab) || document.getElementById('sb-'+tab);
   if(activeEl) activeEl.classList.add('active');
-
-  // ── View: CSS class + JS inline style ile zorla ─
-  document.querySelectorAll('.view').forEach(v=>{ v.classList.remove('active'); v.style.display='none'; });
+  // View
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const viewEl = document.getElementById('view-'+tab);
-  if(viewEl){ viewEl.classList.add('active'); viewEl.style.display='block'; }
-  else console.warn('[switchTab] view-'+tab+' yok');
-
-  // ── Başlık ────────────────────────────────────
-  const _sn = S.students.find(s=>s.id===S.activeStuId)?.name||'Öğrenci';
+  if(viewEl) viewEl.classList.add('active');
+  // Title
   const allTabs = [...coachTabs,...stuTabs,...devTabs,
     {id:'profile',name:'Profil'},{id:'settings',name:'Ayarlar'},
-    {id:'student-detail',name:_sn},
+    {id:'student-detail',name:S.students.find(s=>s.id===S.activeStuId)?.name||'Öğrenci'},
     {id:'program',name:'Program'},{id:'appointments',name:'Randevular'},{id:'exams',name:'Denemeler'}
   ];
   const tabDef = allTabs.find(t=>t.id===tab);
-  const tbarEl = document.getElementById('tbarTitle');
-  if(tbarEl) tbarEl.textContent = tabDef?.name || tab;
-
-  // ── Render ────────────────────────────────────
+  document.getElementById('tbarTitle').textContent = tabDef?.name || tab;
+  // Render
   const renderMap = {
     home:renderHome, students:renderStudentsSearch, messages:renderMessages,
     todolist:renderTodoList, portal:renderPortal, sportal:renderSPortal,
@@ -1061,7 +1101,6 @@ function switchTab(tab){
     'dev-announce':renderDevAnnounce,'dev-tickets':renderDevTickets,
     appointments:renderAppointments, exams:renderExams,
   };
-  console.log('[switchTab]', tab);
   renderMap[tab]?.();
   if(tab==='messages'||tab==='smessages') initRealtime();
   else destroyRealtime();
@@ -1070,6 +1109,9 @@ function switchTab(tab){
 // ── KOÇ ANA SAYFA ──────────────────────────────
 function renderHome(){
   const el = document.getElementById('view-home');
+  if(!el){ console.error('[renderHome] view-home yok'); return; }
+  console.log('[renderHome] çağrıldı, students:', S.students.length);
+  try{
   const now = new Date();
   const dayNames = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
   const monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
@@ -1118,11 +1160,10 @@ function renderHome(){
         </div>`;
       }).join('')}
     </div>`;
+  }catch(err){ console.error('[renderHome] HATA:',err); el.innerHTML=`<div style='padding:24px;color:var(--text)'><b>İyi günler 👋</b><p style='color:var(--text-mid);margin-top:6px'>Hata: ${err.message}</p></div>`; }
 }
 
 // ── ÖĞRENCİ ARAMA ──────────────────────────────
-
-
 function renderStudentsSearch(){
   const el = document.getElementById('view-students');
   // Haftalık ilerleme
@@ -1297,7 +1338,7 @@ function openStudentProgram(stuId){
   S.activeStuId = stuId;
   const el = document.getElementById('view-program');
   const _sn=S.students.find(s=>s.id===S.activeStuId)?.name||'';
-  el.innerHTML = `<button class="back-link" onclick="switchTab('student-detail')">← ${_sn}</button>`;
+  el.innerHTML=`<button class="back-link" onclick="switchTab('student-detail')">← ${_sn}</button>`;
   el.innerHTML += document.createElement('div').innerHTML; // placeholder
   switchTab('program');
   document.getElementById('tbarTitle').textContent = (S.students.find(s=>s.id===S.activeStuId)?.name||'')+' · Program';
@@ -1345,7 +1386,7 @@ async function saveProfile(){
   const brand = document.getElementById('pf_brand')?.value?.trim();
   if(!name) return showToast('Ad boş olamaz!');
   const payload = {full_name:name};
-  if(pass) payload.password_hash = pass;
+  if(pass) payload.password_hash = await sha256(pass);
   await db.from('users').update(payload).eq('id',session.dbUser.id);
   if(brand && session.role==='coach') {
     await db.from('workspaces').update({brand_name:brand}).eq('coach_id',session.coachId);
@@ -1424,7 +1465,7 @@ function renderProgram(){
           <div class="tc-subject">${esc(t.subject)}</div>
           <div class="tc-meta">${t.duration} dk</div>
         </div>
-        <button class="tc-del" onclick="event.stopPropagation();deleteTask('${ds}',${ti})">✕</button>
+        <button class="tc-menu-btn" onclick="event.stopPropagation();showTaskMenu('${ds}',${ti},this)">⋯</button>
       </div>`).join('');
     dayCards+=`<div class="day-col ${isToday?'today':''}">
       <div class="day-hd">
@@ -1871,6 +1912,53 @@ async function toggleTask(ds,idx){
   await db.from('tasks').update({done:newDone}).eq('id',t._id);
   t.done=newDone; renderProgram();
 }
+// ── GÖREV 3-NOKTA MENÜSÜ ───────────────────────
+let _tcDropdown = null;
+function closeTaskMenu(){ if(_tcDropdown){ _tcDropdown.remove(); _tcDropdown=null; } }
+document.addEventListener('click', closeTaskMenu);
+
+function showTaskMenu(ds, idx, btn){
+  closeTaskMenu();
+  const rect = btn.getBoundingClientRect();
+  const drop = document.createElement('div');
+  drop.className = 'tc-dropdown';
+  drop.innerHTML = `
+    <button onclick="closeTaskMenu();openTaskDetail('${ds}',${idx},'coach')">✏️ Düzenle</button>
+    <button onclick="closeTaskMenu();copyTask('${ds}',${idx})">📋 Kopyala</button>
+    <button class="danger" onclick="closeTaskMenu();deleteTask('${ds}',${idx})">🗑 Kaldır</button>`;
+  // Ekran sınırını kontrol et
+  const top = rect.bottom + 4;
+  const left = Math.min(rect.left, window.innerWidth - 155);
+  drop.style.cssText = `top:${top}px;left:${left}px;`;
+  document.body.appendChild(drop);
+  _tcDropdown = drop;
+  // Propagation'ı durdur ki document click kapatamasın
+  setTimeout(()=>drop.addEventListener('click', e=>e.stopPropagation()), 0);
+}
+
+async function copyTask(ds, idx){
+  const key = `${S.activeStuId}_${ds}`;
+  const t = S.tasks[key]?.[idx];
+  if(!t) return;
+  const {data,error} = await db.from('tasks').insert({
+    student_id: S.activeStuId,
+    coach_id: session.coachId,
+    date: ds,
+    type: t.type,
+    exam_type: t.exam||null,
+    subject: t.subject,
+    duration: t.duration,
+    note: t.note||null,
+    done: false,
+    task_items: t.task_items||null
+  }).select().single();
+  if(error) return showToast('Kopyalama başarısız');
+  if(!S.tasks[key]) S.tasks[key]=[];
+  S.tasks[key].push({ _id:data.id, type:data.type, exam:data.exam_type, subject:data.subject, duration:data.duration, note:data.note, done:false, student_note:'', task_items:data.task_items||null });
+  renderProgram();
+  showToast('Görev kopyalandı');
+}
+
 async function deleteTask(ds,idx){
   const key=`${S.activeStuId}_${ds}`;
   const t=S.tasks[key]?.[idx]; if(!t)return;
@@ -1984,22 +2072,80 @@ async function saveStudent(){
   if(!name)return showToast('İsim girin!');
   const color=document.querySelector('.color-opt.sel')?.dataset.c||'#f0a500';
   const id=document.getElementById('smId').value;
-  const uname=document.getElementById('smUsername').value.trim().toLowerCase()||name.split(' ')[0].toLowerCase();
-  const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'Hedef belirtilmemiş',color,progress:Number(document.getElementById('smProg').value),password_hash:document.getElementById('smPass').value||STU_DEFAULT_PASS,week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:'student',coach_id:session.coachId};
+  const uname=document.getElementById('smUsername').value.trim().toLowerCase()||name.split(' ')[0].toLowerCase()+Math.floor(Math.random()*100);
+  const passRaw=document.getElementById('smPass').value||STU_DEFAULT_PASS;
+  const pass = await sha256(passRaw);
+  const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'Hedef belirtilmemiş',color,progress:Number(document.getElementById('smProg').value),password_hash:pass,week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:'student',coach_id:session.coachId};
   if(id){
     const {error}=await db.from('users').update(payload).eq('id',id);
     if(error)return showToast('Hata: '+error.message);
     const s=S.students.find(x=>x.id===id);
     if(s)Object.assign(s,{name:payload.full_name,target:payload.target,color,progress:payload.progress,pass:payload.password_hash,weekStart:payload.week_start,username:uname});
     showToast('Güncellendi ✓');
+    saveUI();cm('studentModal');renderStudentsSearch();
   } else {
     const {data,error}=await db.from('users').insert(payload).select().single();
     if(error)return showToast('Hata: '+error.message);
-    S.students.push({id:data.id,name:data.full_name,target:data.target,color:data.color,progress:data.progress,pass:data.password_hash,weekStart:data.week_start||0,username:data.username});
+    S.students.push({id:data.id,name:data.full_name,target:data.target,color:data.color,progress:data.progress||0,pass:data.password_hash,weekStart:data.week_start||0,username:data.username});
     if(!S.activeStuId)S.activeStuId=data.id;
-    showToast('Öğrenci eklendi ✓');
+    saveUI();cm('studentModal');
+    // Davet bilgisi göster
+    showInviteInfo(data.full_name, uname, pass);
   }
-  saveUI();cm('studentModal');renderStudents();
+}
+// ── ÖĞRENCİ DAVET BİLGİSİ ──────────────────────
+function showInviteInfo(name, username, pass){
+  let modal = document.getElementById('inviteModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'inviteModal';
+    modal.className = 'modal-bg';
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+  }
+  const siteUrl = window.location.origin + window.location.pathname.replace('app.html','');
+  const loginUrl = `${siteUrl}app.html`;
+  const whatsappText = encodeURIComponent(`Merhaba ${name}! 🎓\n\nSeni Butik Akademi platformuna ekledim.\n\n📱 Giriş adresi: ${loginUrl}\n👤 Kullanıcı adı: ${username}\n🔑 Şifre: ${pass}\n\nGiriş yaptıktan sonra programını görebileceksin!`);
+
+  modal.innerHTML = `<div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="cm('inviteModal');renderStudentsSearch()">×</button>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:40px;margin-bottom:8px">🎉</div>
+      <h2>${esc(name)} eklendi!</h2>
+      <p style="font-size:13px;color:var(--text-mid);margin-top:6px">Öğrencine aşağıdaki bilgileri paylaş</p>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Kullanıcı Adı</div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--accent)">${esc(username)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Şifre</div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--accent)">${esc(pass)}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Giriş Adresi</div>
+        <div style="font-size:12px;color:var(--blue);word-break:break-all">${loginUrl}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="copyInvite('${esc(username)}','${esc(pass)}','${loginUrl}')">📋 Kopyala</button>
+      <a href="https://wa.me/?text=${whatsappText}" target="_blank" class="btn btn-accent" style="flex:1;justify-content:center;text-decoration:none">💬 WhatsApp ile Gönder</a>
+    </div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="cm('inviteModal');renderStudentsSearch()">Tamam</button>
+  </div>`;
+  om('inviteModal');
+}
+
+function copyInvite(username, pass, url){
+  const text = `Giriş adresi: ${url}\nKullanıcı adı: ${username}\nŞifre: ${pass}`;
+  navigator.clipboard.writeText(text).then(()=>showToast('Kopyalandı ✓')).catch(()=>{
+    const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');el.remove();showToast('Kopyalandı ✓');
+  });
 }
 async function deleteStu(id){
   if(!confirm('Bu öğrenciyi silmek istediğinizden emin misiniz?'))return;
@@ -2294,9 +2440,25 @@ function scrollMsgs(){setTimeout(()=>{const b=document.getElementById('msgBody')
 // STUDENT PORTAL
 // ═══════════════════════════════════════════════
 function renderPortal(){
-  const stu=S.students.find(s=>s.id===session.studentId);
-  if(!stu)return;
   const el=document.getElementById('view-portal');
+  if(!el) return;
+
+  // Öğrenciyi bul — önce studentId ile, yoksa activeStuId ile
+  let stu = S.students.find(s=>s.id===session.studentId);
+  if(!stu && S.students.length > 0) stu = S.students[0];
+
+  if(!stu){
+    el.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--text-mid)">
+      <div style="font-size:36px;margin-bottom:12px">⏳</div>
+      <p style="font-size:14px">Profil yükleniyor...</p>
+    </div>`;
+    setTimeout(()=>{ if(S.students.length) renderPortal(); }, 800);
+    return;
+  }
+
+  // studentId'yi güncelle
+  if(!session.studentId) session.studentId = stu.id;
+  S.activeStuId = stu.id;
   const today=todayStr();
   const key=`${stu.id}_${today}`;
   const todayTasks=S.tasks[key]||[];
@@ -3491,7 +3653,8 @@ async function saveStudentDev(){
   const color=document.querySelector('.color-opt.sel')?.dataset.c||'#f0a500';
   const id=document.getElementById('smId').value;
   const uname=document.getElementById('smUsername').value.trim().toLowerCase()||name.split(' ')[0].toLowerCase();
-  const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'',color,progress:Number(document.getElementById('smProg').value),password_hash:document.getElementById('smPass').value||'123456',week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:roleEl.value};
+  const _passRaw2=document.getElementById('smPass').value||'123456'; const _ph2=await sha256(_passRaw2);
+  const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'',color,progress:Number(document.getElementById('smProg').value),password_hash:_ph2,week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:roleEl.value};
   if(id){
     const {error}=await db.from('users').update(payload).eq('id',id);
     if(error)return showToast('Hata: '+error.message);
@@ -3630,7 +3793,8 @@ async function advanceOnboarding(step, skip) {
     if(step===3) {
       const name = document.getElementById('ob_stuname')?.value?.trim();
       const uname = document.getElementById('ob_stuuser')?.value?.trim() || name?.split(' ')[0]?.toLowerCase();
-      const pass = document.getElementById('ob_stupass')?.value || 'ogrenci123';
+      const _obPassRaw = document.getElementById('ob_stupass')?.value || 'ogrenci123';
+      const pass = await sha256(_obPassRaw);
       if(name) {
         const {data} = await db.from('users').insert({full_name:name, username:uname, password_hash:pass, role:'student', coach_id:session.coachId, color:'#4da6ff', target:'', progress:0, week_start:0}).select().single();
         if(data) S.students.push({id:data.id, name:data.full_name, target:'', color:'#4da6ff', progress:0, pass, weekStart:0, username:uname, coachId:session.coachId});
@@ -3642,7 +3806,7 @@ async function advanceOnboarding(step, skip) {
   if(nextStep >= onboardingSteps.length) {
     // Onboarding tamamlandı
     await db.from('workspaces').update({onboarding_done:true}).eq('coach_id', session.coachId);
-    if(S.workspace) S.workspace.onboarding_done=true;
+    if(S.workspace) S.workspace.onboarding_done = true;
     modal.remove();
     switchTab('home');
     showToast('🎉 Hoş geldiniz! Platformunuz hazır.');
