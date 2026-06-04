@@ -93,8 +93,8 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);dis
 .tbar-icon-btn:hover{border-color:var(--accent);color:var(--accent);}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;}
 .view{display:none;padding:22px 24px;}
-.view.active{display:block;animation:fadeUp .25s ease both;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.view.active{display:block!important;animation:fadeUp .25s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 
 /* ── COMPONENTS (korunuyor) ──────────────────── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);}
@@ -919,7 +919,7 @@ function loginErr(msg){
   setTimeout(()=>el.style.display='none',3000);
 }
 async function doLogin(){
-  const user=document.getElementById('loginUser').value.trim().toLowerCase();
+  const user=document.getElementById('loginUser').value.trim().toLowerCase().replace(/\u0307/g,'');
   const pass=document.getElementById('loginPass').value;
   if(!user||!pass)return loginErr('Kullanıcı adı ve şifre girin.');
 
@@ -935,37 +935,45 @@ async function doLogin(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appShell').classList.add('visible');
 
-  await loadAllData();
+  try {
+    await loadAllData();
 
-  // Öğrenci için: kendi datasını kesin set et
-  if(session.role==='student'){
-    S.activeStuId = rows.id;
-    session.studentId = rows.id;
-    // S.students boşsa kendini ekle
-    if(!S.students.find(s=>s.id===rows.id)){
-      S.students.push({
-        id: rows.id,
-        name: rows.full_name || rows.username || 'Öğrenci',
-        target: rows.target || '',
-        color: rows.color || '#4da6ff',
-        progress: rows.progress || 0,
-        weekStart: rows.week_start || 0,
-        username: rows.username,
-        coachId: rows.coach_id
-      });
+    // Öğrenci için: kendi datasını kesin set et
+    if(session.role==='student'){
+      S.activeStuId = rows.id;
+      session.studentId = rows.id;
+      if(!S.students.find(s=>s.id===rows.id)){
+        S.students.push({
+          id: rows.id,
+          name: rows.full_name || rows.username || 'Öğrenci',
+          target: rows.target || '',
+          color: rows.color || '#4da6ff',
+          progress: rows.progress || 0,
+          weekStart: rows.week_start || 0,
+          username: rows.username,
+          coachId: rows.coach_id
+        });
+      }
     }
-  }
-  setupShell();
 
-  // Koç ilk girişte onboarding
-  if(session.role==='coach' && S.workspace && !S.workspace.onboarding_done) {
-    switchTab('home'); // arkada home'u render et, modal üstüne gelir
-    showOnboarding();
-    return;
-  }
+    setupShell();
 
-  const firstTab = {coach:'home', student:'portal', developer:'dev-dashboard'}[session.role] || 'portal';
-  setTimeout(()=>switchTab(firstTab), 50);
+    // Koç ilk girişte onboarding
+    if(session.role==='coach' && S.workspace && !S.workspace.onboarding_done) {
+      switchTab('home');
+      showOnboarding();
+      return;
+    }
+
+    const firstTab = {coach:'home', student:'portal', developer:'dev-dashboard'}[session.role] || 'portal';
+    setTimeout(()=>switchTab(firstTab), 50);
+
+  } catch(e) {
+    console.error('[doLogin] Kritik hata:', e);
+    loginErr('Sistem hatası: ' + e.message + ' — Konsolu kontrol edin.');
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('appShell').classList.remove('visible');
+  }
 }
 function doLogout(){
   destroyRealtime();
@@ -1008,43 +1016,56 @@ function toggleSidebar(){
 }
 
 function setupShell(){
+  console.log('[setupShell] başladı, rol:', session.role);
   const tabs = session.role==='coach' ? coachTabs : session.role==='developer' ? devTabs : stuTabs;
-  const allTabs = [...tabs, {id:'profile',lbl:'👤',name:'Profil'}, {id:'settings',lbl:'⚙️',name:'Ayarlar'}];
 
-  // Sidebar nav
-  document.getElementById('sidebarNav').innerHTML = tabs.map(t=>`
+  // Sidebar nav — null-safe
+  const sidebarNav = document.getElementById('sidebarNav');
+  if(sidebarNav) sidebarNav.innerHTML = tabs.map(t=>`
     <div class="sb-item" id="sbi_${t.id}" onclick="switchTab('${t.id}')">
       <span class="sb-icon">${t.lbl}</span>
       <span class="sb-label">${t.name}</span>
     </div>`).join('');
+  else console.error('[setupShell] sidebarNav bulunamadı');
 
-  // Mobile nav
-  document.getElementById('mobileNav').innerHTML = tabs.slice(0,5).map(t=>`
+  // Mobile nav — null-safe
+  const mobileNav = document.getElementById('mobileNav');
+  if(mobileNav) mobileNav.innerHTML = tabs.slice(0,5).map(t=>`
     <button class="mnav-btn" id="mntab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}<span style="font-size:9px;display:block">${t.name}</span></button>`).join('');
+  else console.error('[setupShell] mobileNav bulunamadı');
 
-  // Content views
-  document.getElementById('mainContent').innerHTML = [
-    ...tabs,
-    {id:'student-detail'}, {id:'profile'}, {id:'settings'},
-    // program ayrı view — student-detail'dan açılır
-    {id:'program'},{id:'appointments'},{id:'exams'}
-  ].map(t=>`<div class="view" id="view-${t.id}"></div>`).join('');
+  // Content views — null-safe
+  const mainContent = document.getElementById('mainContent');
+  if(mainContent) {
+    mainContent.innerHTML = [
+      ...tabs,
+      {id:'student-detail'}, {id:'profile'}, {id:'settings'},
+      {id:'program'},{id:'appointments'},{id:'exams'}
+    ].map(t=>`<div class="view" id="view-${t.id}"></div>`).join('');
+    console.log('[setupShell] view divleri oluşturuldu:', mainContent.children.length);
+  } else {
+    console.error('[setupShell] mainContent bulunamadı!');
+    throw new Error('mainContent elementi DOM\'da yok');
+  }
 
-  // Profile pill
+  // Profile pill — null-safe
   const dbUser = session.dbUser;
   const stu = session.role==='student' ? S.students.find(s=>s.id===session.studentId) : null;
   const name = dbUser?.full_name || stu?.name || '';
-  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const initials = name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || '?';
   const roleColors = {coach:'#f0a500', student: stu?.color||'#4da6ff', developer:'#c084fc'};
   const roleLabels = {coach:'KOÇ', student:'ÖĞRENCİ', developer:'DEV'};
-  document.getElementById('sbAv').textContent = initials;
-  document.getElementById('sbAv').style.background = roleColors[session.role]||'#888';
-  document.getElementById('sbName').textContent = name;
-  document.getElementById('sbRole').textContent = roleLabels[session.role]||session.role;
+  const sbAv = document.getElementById('sbAv');
+  const sbName = document.getElementById('sbName');
+  const sbRole = document.getElementById('sbRole');
+  if(sbAv){ sbAv.textContent = initials; sbAv.style.background = roleColors[session.role]||'#888'; }
+  if(sbName) sbName.textContent = name;
+  if(sbRole) sbRole.textContent = roleLabels[session.role]||session.role;
 
-  // Workspace logo
+  // Workspace logo — null-safe
   if(session.role==='coach' && S.workspace?.brand_name) {
-    document.querySelector('.sb-logo-text').textContent = S.workspace.brand_name;
+    const logoText = document.querySelector('.sb-logo-text');
+    if(logoText) logoText.textContent = S.workspace.brand_name;
   }
 
   // Site Yönetimi — sadece developer
@@ -1052,9 +1073,11 @@ function setupShell(){
   if(siteAdminBtn) siteAdminBtn.style.display = session.role==='developer' ? 'flex' : 'none';
 
   setTimeout(loadAnnouncements, 600);
+  console.log('[setupShell] tamamlandı');
 }
 
 function switchTab(tab){
+  console.log('[switchTab]', tab);
   currentTab = tab;
   // Sidebar active state
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
@@ -1064,14 +1087,17 @@ function switchTab(tab){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const viewEl = document.getElementById('view-'+tab);
   if(viewEl) viewEl.classList.add('active');
+  else console.warn('[switchTab] view-'+tab+' bulunamadı');
   // Title
+  const _stuName = S.students.find(s=>s.id===S.activeStuId)?.name||'Öğrenci';
   const allTabs = [...coachTabs,...stuTabs,...devTabs,
     {id:'profile',name:'Profil'},{id:'settings',name:'Ayarlar'},
-    {id:'student-detail',name:S.students.find(s=>s.id===S.activeStuId)?.name||'Öğrenci'},
+    {id:'student-detail',name:_stuName},
     {id:'program',name:'Program'},{id:'appointments',name:'Randevular'},{id:'exams',name:'Denemeler'}
   ];
   const tabDef = allTabs.find(t=>t.id===tab);
-  document.getElementById('tbarTitle').textContent = tabDef?.name || tab;
+  const tbarTitle = document.getElementById('tbarTitle');
+  if(tbarTitle) tbarTitle.textContent = tabDef?.name || tab;
   // Render
   const renderMap = {
     home:renderHome, students:renderStudentsSearch, messages:renderMessages,
@@ -1091,8 +1117,8 @@ function switchTab(tab){
 // ── KOÇ ANA SAYFA ──────────────────────────────
 function renderHome(){
   const el = document.getElementById('view-home');
-  if(!el){ console.error('[renderHome] view-home div bulunamadı!'); return; }
-  console.log('[renderHome] çağrıldı, students:', S.students.length);
+  if(!el){ console.error('[renderHome] view-home bulunamadı!'); return; }
+  console.log('[renderHome] çalışıyor, öğrenci:', S.students.length);
   try{
   const now = new Date();
   const dayNames = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
@@ -1143,10 +1169,10 @@ function renderHome(){
       }).join('')}
     </div>`;
   }catch(err){
-    console.error('[renderHome] hata:', err);
-    el.innerHTML = `<div style="padding:24px;color:var(--text)">
-      <div style="font-size:20px;font-weight:800;margin-bottom:8px">İyi günler, ${session.dbUser?.full_name||'Koç'} 👋</div>
-      <div style="font-size:13px;color:var(--text-mid)">Yükleme hatası oluştu. Konsolu kontrol edin.</div>
+    console.error('[renderHome] HATA:', err);
+    el.innerHTML=`<div style="padding:24px;color:var(--text)">
+      <b style="font-size:18px">İyi günler, ${session.dbUser?.full_name?.split(' ')[0]||'Koç'} 👋</b>
+      <p style="font-size:13px;color:var(--text-mid);margin-top:8px">Hata: ${err.message}</p>
     </div>`;
   }
 }
@@ -1325,7 +1351,7 @@ function openStudentDetail(stuId){
 function openStudentProgram(stuId){
   S.activeStuId = stuId;
   const el = document.getElementById('view-program');
-  const _sn = S.students.find(s=>s.id===S.activeStuId)?.name||'';
+  const _sn=S.students.find(s=>s.id===S.activeStuId)?.name||'';
   el.innerHTML = `<button class="back-link" onclick="switchTab('student-detail')">← ${_sn}</button>`;
   el.innerHTML += document.createElement('div').innerHTML; // placeholder
   switchTab('program');
@@ -1985,7 +2011,6 @@ async function deleteCtd(ds,idx){
 // ═══════════════════════════════════════════════
 function renderStudents(){ renderStudentsSearch(); }
 function goProgram(id){
-  const stu = S.students.find(s=>s.id===id);
   S.activeStuId=id; S.weekOffset=0; saveUI();
   openStudentProgram(id);
 }
@@ -4327,8 +4352,8 @@ function openWeeklyPDFModal(){
 }
 
 function generateWeeklyPDF(){
-  const note = document.getElementById('pdfNote').value.trim();
-  // Geçici olarak rapor modalındaki note alanını kullan
+  if(!S.activeStuId) return showToast('Önce bir öğrenci seçin');
+  const note = document.getElementById('pdfNote')?.value.trim()||'';
   cm('weeklyPDFModal');
   printWeeklyProgramWithNote(S.activeStuId, note);
 }
