@@ -637,7 +637,18 @@ function typeLabel(t){return{deneme:'📊 Deneme',soru:'📚 Soru',konu:'🎯 Ko
 function om(id){document.getElementById(id).classList.add('open');}
 function cm(id){document.getElementById(id).classList.remove('open');}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2300);}
-document.querySelectorAll('.modal-bg').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
+// Click-outside ve Escape tuşu ile tüm modalları (statik & dinamik) kapatma desteği
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-bg')) {
+    e.target.classList.remove('open');
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-bg.open').forEach(el => el.classList.remove('open'));
+  }
+});
+
 
 // Week start for a student (0=Mon..6=Sun)
 function getWeekStart(offset, stuWeekStart=0) {

@@ -103,7 +103,7 @@ async function testCoach(browser) {
     log(todayCol > 0 ? '✅' : '⚠️', 'KOÇ', 'PROGRAM', `Bugün vurgulanmış: ${todayCol > 0}`);
 
     // Hafta navigasyonu
-    const weekNav = await page.locator('.week-nav, [onclick*="changeWeek"]').count();
+    const weekNav = await page.locator('.week-nav, [onclick*="chWeek"], [onclick*="chWeekS"]').count();
     log(weekNav > 0 ? '✅' : '⚠️', 'KOÇ', 'PROGRAM', `Hafta navigasyonu: ${weekNav > 0}`);
 
     // Tarih etiketi
@@ -225,12 +225,13 @@ async function testCoach(browser) {
         const durEl = await page.locator('#tdDuration, .td-duration').textContent().catch(() => '');
         log('ℹ️', 'KOÇ', 'DETAY-MODAL', `Süre: "${durEl.trim()}"`);
 
-        await page.keyboard.press('Escape');
+        // Close detail modal
+        await page.locator('#taskDetailModal .modal-close').click();
         await page.waitForTimeout(400);
       }
 
       // 7. HAFTA DEĞİŞTİRME
-      const prevBtn = page.locator('[onclick*="changeWeek(-1)"], .week-prev, button:has-text("←")').first();
+      const prevBtn = page.locator('[onclick*="chWeek(-1)"], [onclick*="chWeekS(-1)"], .week-prev').first();
       if (await prevBtn.count() > 0) {
         const lblBefore = await page.locator('.week-lbl').textContent().catch(() => '');
         await prevBtn.click();
@@ -239,7 +240,7 @@ async function testCoach(browser) {
         log(lblBefore !== lblAfter ? '✅' : '⚠️', 'KOÇ', 'HAFTA-NAV', `Önceki hafta: "${lblBefore.trim()}" → "${lblAfter.trim()}"`);
         await ss(page, 'k11_prev_week');
         // Geri gel
-        const nextBtn = page.locator('[onclick*="changeWeek(1)"], .week-next, button:has-text("→")').first();
+        const nextBtn = page.locator('[onclick*="chWeek(1)"], [onclick*="chWeekS(1)"], .week-next').first();
         if (await nextBtn.count() > 0) await nextBtn.click();
         await page.waitForTimeout(700);
       }
@@ -618,7 +619,7 @@ async function testMobile(browser) {
               log(modalOk ? '✅' : '⚠️', 'MOBİL', 'GÖREV-EKLE', `Modal mobilde açılıyor: ${modalOk}`);
               if (modalOk) {
                 await ss(page, 'm05_task_modal');
-                await page.keyboard.press('Escape');
+                await page.locator('#taskModal .modal-close').click();
                 await page.waitForTimeout(400);
               }
             }
