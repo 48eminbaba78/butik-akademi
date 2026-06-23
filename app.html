@@ -48,12 +48,6 @@
             Google ile Giriş Yap
           </button>
           
-          <!-- Quick Demo Entry (sandbox modda göster) -->
-          <div class="demo-quick-wrap" id="demoQuickWrap" style="display:none">
-            <button class="btn-demo-quick coach" onclick="simOAuthLogin('demokoc')">⚡ Demo Koç Girişi 🎓</button>
-            <button class="btn-demo-quick student" onclick="simOAuthLogin('demoogrenci')">⚡ Demo Öğrenci Girişi 📚</button>
-          </div>
-          
           <div class="login-divider"><span>veya e-posta ile</span></div>
 
           <!-- E-posta / Kullanıcı adı toggle -->
@@ -144,22 +138,6 @@
 
     <!-- Account Chooser List -->
     <div class="g-chooser">
-      <button class="g-account-row" onclick="simOAuthLogin('demokoc')">
-        <div class="g-avatar">A</div>
-        <div class="g-info">
-          <span class="g-name">Ahmet Şahin</span>
-          <span class="g-email">ahmet.sahin@gmail.com <span>[Koç]</span></span>
-        </div>
-      </button>
-      
-      <button class="g-account-row" onclick="simOAuthLogin('demoogrenci')">
-        <div class="g-avatar student">C</div>
-        <div class="g-info">
-          <span class="g-name">Can Yılmaz</span>
-          <span class="g-email">can.yilmaz@gmail.com <span>[Öğrenci]</span></span>
-        </div>
-      </button>
-      
       <button class="g-account-row" onclick="simOAuthLogin('new')">
         <div class="g-avatar new">+</div>
         <div class="g-info">
@@ -198,9 +176,6 @@
     <div class="lfield"><label>Yeni Şifre</label><input type="password" id="newPasswordInput" placeholder="En az 8 karakter"></div>
     <button class="btn-login" onclick="updateUserPassword()">Şifreyi Güncelle →</button>
     <div id="resetPasswordMsg" style="display:none;font-size:12px;margin-top:10px;padding:10px;border-radius:8px"></div>
-  </div>
-</div>�fırlama Linki Gönder →</button>
-    <div id="forgotMsg" style="display:none;font-size:12px;margin-top:10px;padding:10px;border-radius:8px"></div>
   </div>
 </div>
 
