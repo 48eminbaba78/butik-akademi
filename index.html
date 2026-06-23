@@ -1077,7 +1077,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
           <div class="tc-av" style="background:#f0a500">AŞ</div>
           <div>
             <div class="tc-name">Ahmet Şahin</div>
-            <div class="tc-role">YKS Sayısal Koçu · İstanbul (simkoc1)</div>
+            <div class="tc-role">YKS Sayısal Koçu · İstanbul</div>
             <div class="tc-verified">✓ Pilot Süreç Kullanıcısı</div>
           </div>
         </div>
@@ -1089,7 +1089,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
           <div class="tc-av" style="background:#60b4ff">EY</div>
           <div>
             <div class="tc-name">Elif Yılmaz</div>
-            <div class="tc-role">LGS/YKS Rehberlik Uzmanı · Ankara (simkoc2)</div>
+            <div class="tc-role">LGS/YKS Rehberlik Uzmanı · Ankara</div>
             <div class="tc-verified">✓ Pilot Süreç Kullanıcısı</div>
           </div>
         </div>
@@ -1101,7 +1101,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
           <div class="tc-av" style="background:#3ecf8e">MD</div>
           <div>
             <div class="tc-name">Mustafa Demir</div>
-            <div class="tc-role">Matematik Eğitmeni &amp; Koç · İzmir (simkoc3)</div>
+            <div class="tc-role">Matematik Eğitmeni &amp; Koç · İzmir</div>
             <div class="tc-verified">✓ Pilot Süreç Kullanıcısı</div>
           </div>
         </div>
@@ -1152,9 +1152,8 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 
     <!-- Urgency -->
     <div class="urgency reveal" style="margin-top:28px">
-      <div class="urgency-fire">🔥</div>
-      <div class="urgency-text">Bu ay <strong style="color:var(--acc)">23 koç</strong> daha platforma katıldı.</div>
-      <div>Fiyatlar <div class="urgency-counter" id="priceTimer" style="display:inline">02:47</div> sonra artacak</div>
+      <div class="urgency-fire">🎯</div>
+      <div class="urgency-text">14 gün ücretsiz deneyin. Kredi kartı gerekmez, istediğiniz zaman iptal edin.</div>
     </div>
 
     <div class="billing-toggle reveal">
@@ -1556,31 +1555,6 @@ function toggleBill(){
   document.getElementById('pd2').textContent=yearly?'Yıllık faturalandırma':'Dershane veya merkez';
 }
 
-// URGENCY TIMER — session başına bir kez çalışır, sıfırlanmaz
-(function(){
-  const KEY='ba_urgency_end';
-  let endTs=parseInt(sessionStorage.getItem(KEY)||'0');
-  if(!endTs||endTs<Date.now()){
-    endTs=Date.now()+9*60*1000; // 9 dakika
-    sessionStorage.setItem(KEY,endTs);
-  }
-  const timerEl=document.getElementById('priceTimer');
-  const urgencyEl=timerEl?.closest('.urgency');
-  function tick(){
-    const left=Math.max(0,Math.round((endTs-Date.now())/1000));
-    if(!timerEl)return;
-    if(left===0){
-      if(urgencyEl){
-        urgencyEl.innerHTML='<div class="urgency-fire">🔥</div><div class="urgency-text">Bu hafta <strong style="color:var(--acc)">23 koç</strong> daha platforma katıldı. Siz de başlayın!</div>';
-      }
-      return;
-    }
-    const m=Math.floor(left/60),s=left%60;
-    timerEl.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    setTimeout(tick,1000);
-  }
-  tick();
-})();
 
 // FAQ
 function toggleFaq(el){

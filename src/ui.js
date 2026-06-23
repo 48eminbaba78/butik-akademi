@@ -6051,7 +6051,6 @@ window.loadTheme = loadTheme;
 window.applyAccent = applyAccent;
 window.setTheme = setTheme;
 window.openThemePanel = openThemePanel;
-window.h = h;
 window.initAIChatForRole = initAIChatForRole;
 window.toggleAIChat = toggleAIChat;
 window.aiQuickSend = aiQuickSend;
