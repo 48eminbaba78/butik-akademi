@@ -2136,27 +2136,56 @@ async function regenerateIgPostPanel() {
   try {
     const prompt = `Sen Rostrum Akademi'nin Instagram içerik yazarısın.
 
-KİMİZ: Rostrum Akademi, Türkiye'deki bağımsız YKS koçlarına özel bir SaaS platformudur. Koçların öğrenci takibini, ders planlamasını ve iletişimini tek yerden yönetmesini sağlarız. Hedef kitle: Excel ve WhatsApp ile çalışmaktan yorulmuş, işini büyütmek isteyen bağımsız özel ders koçları.
+KİMİZ:
+Rostrum Akademi, Türkiye'deki bağımsız YKS koçlarına özel bir yönetim platformudur.
+Koç; öğrenci takibini, ders planlamasını ve ilerleme raporlarını tek yerden görür.
+Hedef kitle: Excel ve WhatsApp ile çalışmaktan yorulmuş, işini büyütmek isteyen bireysel koçlar.
+Lansman dönemi: Temmuz–Eylül 2026. İçerik tonu bilinç oluşturma öncelikli; satış odaklı değil.
+İçeriğin bir kısmı YKS öğrencilerine de değer taşımalı: sınav psikolojisi, TYT-AYT dengesi, motivasyon, ders tavsiyeleri.
 
 TON KURALLARI:
 - Profesyonel ama soğuk değil. Koçun yanında duran bir ekip gibi konuş.
-- Klişeden kaçın: "Başarıya ulaş", "Hayallerinin peşinden koş" gibi ifadeler YASAK.
-- Rakamlarla konuş: "Haftada 3 saat" > "Çok zaman kazanırsın"
-- Kahraman koçtur, yazılım arka plandaki araçtır.
-- "Bizi takip et" yasak → "erken erişim listesine katıl" de.
-- "En iyi platform" gibi kanıtlanmamış iddialar yasak.
-- İngilizce terim karışımı (SaaS, dashboard, feature) yasak → Türkçe karşılık kullan.
-- Emoji: az ve anlamlı. Dekoratif emoji yasak.
-- Hashtag: 5-8 adet, mikro ve niş. #özelkoç #ykskoçu #eğitimteknolojisi gibi. Genel hashtaglerden kaçın.
+- Klişe yasak: "Başarıya ulaş", "Hayallerinin peşinden git", "Fark yarat" → bunları ASLA yazma.
+- Rakamlarla düşün: "Haftada 3 saat" > "Çok zaman kazanırsın".
+- Kahraman koçtur; Rostrum arka plandaki sistemdir.
+- Öğrenci başarısını asla sahiplenme. Doğru: "Koç takip edebildi, öğrenci odaklanabildi."
+- "Bizi takip et" yasak → "Erken erişim listesine katıl" de.
+- "En iyi platform" gibi kanıtlanmamış iddia yasak.
+- İngilizce jargon (dashboard, feature, SaaS) yasak → Türkçe karşılık kullan.
+- Emoji: yalnızca vurgu için → veya ✓. Dekoratif emoji yasak.
 
-GÖREV: "${d.type}" tipinde yepyeni bir Instagram içeriği üret.
-- "quote": Kısa, vurucu, klişesiz bir söz (max 12 kelime).
-- "author": "Rostrum Akademi" veya ilgili yazar.
-- "caption": İlk cümle kaydırma durdurucu olmalı (soru, istatistik veya keskin gözlem). 3-5 kısa paragraf. Son satır net CTA.
-- Eğer tip "tactic" veya "seasonal" ise: "title" (başlık), "subtitle" (alt başlık) ve "points" (3 madde, her biri "title" ve "desc", desc max 12 kelime).
-- Eğer tip "comparison" ise: "title": "KLASIK vs DİJİTAL", "subtitle": "Kağıt Program vs Rostrum Akademi".
-- Eğer tip "countdown" ise: YKS 2027'ye ${d.days_left} gün kaldı bilgisini kullan.
+POST YAZIM KURALLARI:
+- İlk cümle kaydırma durdurucu: soru, istatistik veya keskin gözlem.
+- Gövde: 3–5 kısa paragraf, her biri tek fikir.
+- CTA son satırda, tek cümle, net.
+- 6–9 hashtag. Çekirdek (her zaman): #ykskoçu #özelkoç #yks2027. Rotasyonel (içeriğe göre seç 3–5): #tytpuanı #aytpuanı #koçlukplatformu #öğrencitakibi #sınavmotivasyonu #ykshazırlık #eğitimteknolojisi #sınavkoçu
 
+HİKAYE KURALLARI:
+Hikâye posttaki içeriği TEKRAR ETMEZ, genişletir.
+Post "neden" diyorsa → hikâye "nasıl" ı gösterir.
+Slayt 01 → Kanca: tek cümle, soru ya da şaşırtan gerçek.
+Slayt 02–03 → Geliştirme: problem veya çözümü somutlaştır.
+Slayt 04 → Koçun aklında kalacak bir içgörü. Rostrum değil, meslek.
+Slayt 05 → CTA: tek aksiyon, tek bağlantı.
+
+GÖREV: "${d.type}" tipinde içerik üret.
+Eğer tip "countdown" ise: YKS 2027'ye ${d.days_left} gün kaldı bilgisini kullan.
+Eğer tip "tactic" veya "seasonal" ise: "title", "subtitle", "points" (3 madde, title + desc, desc max 12 kelime) ekle.
+Eğer tip "comparison" ise: "title" ve "subtitle" ekle.
+
+JSON formatında dön. Aşağıdaki tüm alanları içer:
+{
+  "quote": "görselde kullanılacak kısa vurucu söz (max 12 kelime)",
+  "author": "Rostrum Akademi",
+  "post_text": "sadece post metni, hashtag yok",
+  "hashtags": "#ykskoçu #özelkoç #yks2027 ...",
+  "story_slides": ["slayt 1 metni", "slayt 2 metni", "slayt 3 metni", "slayt 4 metni", "slayt 5 / CTA metni"],
+  "tasarim_notu": "renk ve tipografi önerisi",
+  "hafta_gerekce": "hangi tema haftası ve neden uygun",
+  "title": "varsa başlık",
+  "subtitle": "varsa alt başlık",
+  "points": [{"title": "...", "desc": "..."}]
+}
 Sadece ham JSON döndür, başka açıklama ekleme.`;
     const response = await fetch('/api/ai-chat', {
       method: 'POST',
@@ -2176,7 +2205,14 @@ Sadece ham JSON döndür, başka açıklama ekleme.`;
       const parsed = JSON.parse(jsonMatch[0]);
       d.quote = parsed.quote || d.quote;
       d.author = parsed.author || d.author;
-      d.caption = parsed.caption || d.caption;
+      if (parsed.post_text) {
+        d.caption = parsed.post_text + (parsed.hashtags ? '\n\n' + parsed.hashtags : '');
+      } else if (parsed.caption) {
+        d.caption = parsed.caption;
+      }
+      if (parsed.story_slides) d.story_slides = parsed.story_slides;
+      if (parsed.tasarim_notu) d.tasarim_notu = parsed.tasarim_notu;
+      if (parsed.hafta_gerekce) d.hafta_gerekce = parsed.hafta_gerekce;
       if (parsed.title) d.title = parsed.title;
       if (parsed.subtitle) d.subtitle = parsed.subtitle;
       if (parsed.points) d.points = parsed.points;
@@ -2185,39 +2221,66 @@ Sadece ham JSON döndür, başka açıklama ekleme.`;
     console.warn('IG regeneration — offline fallback:', e.message);
     const fallbacks = [
       {
-        quote: "İyi bir koç öğrencilerini, harika bir koç zamanını yönetir.",
+        quote: "İyi bir koç öğrencilerini yönetir, harika bir koç zamanını.",
         author: "Rostrum Akademi",
-        caption: "YKS 2027'ye hazırlık sürecinde koçluk işinizi dijitalleştirin! 🚀 Rostrum Akademi ile haftalık programları saniyeler içinde oluşturun, öğrencilerinizin netlerini anlık takip edin.\n\n#rostrumakademi #ykskocluk #yks2027 #edtech",
-        title: "DİJİTAL KOÇLUK",
-        subtitle: "Zamanı Koçunuza Geri Kazandırın",
+        caption: "Haftada kaç saat programlarla uğraşıyorsunuz?\n\nÇoğu koç bu soruya 'çok' diyor — ama saymadıkça görmüyor. Öğrenci takibi, veli mesajları, ders planları… hepsi ayrı ayrı, hepsi yeniden.\n\nRostrum Akademi bu süreçleri tek panelde toplar. Koç haftalık planları dakikalar içinde kurar, öğrenci netlerini anlık görür, veliye tek tıkla rapor gönderir.\n\n→ Erken erişim için bağlantı profilde.\n\n#ykskoçu #özelkoç #yks2027 #öğrencitakibi #koçlukplatformu #sınavkoçu",
+        title: "ZAMAN KRİZİ",
+        subtitle: "Koçların Söylemediği Gerçek",
+        story_slides: [
+          "Haftada kaç saatiniz kağıt işe gidiyor?",
+          "Planlama, mesajlaşma, rapor — her biri ayrı ekran, ayrı dosya.",
+          "Rostrum Akademi bunları tek yere toplar.\nÖğrenci neti düştüğünde, sistem sizi uyarır.",
+          "Koçluk zamanı koçluk için kullanılmalı.\nGeri kalanı sistem yönetir.",
+          "Erken erişim açık.\nrostrumakademi.app 01/05"
+        ],
+        tasarim_notu: "Koyu arka plan, tek renk vurgu. İlk slaytta büyük soru metni, ortada hizalı.",
+        hafta_gerekce: "Hafta 1 — Acı nokta. Koçun gerçek zaman problemi üzerinden bilinç oluşturma.",
         points: [
-          { title: "Süreci Otomatikleştirin", desc: "Haftalık planları saniyeler içinde oluşturun, zaman kazanın." },
-          { title: "Veli İletişimini Çözün", desc: "Tek tıkla PDF raporlarla velilere profesyonel sunum yapın." },
-          { title: "Kapasitenizi Artırın", desc: "Dijital altyapı ile daha fazla öğrenciye üst düzey koçluk verin." }
+          { title: "Program Yönetimi", desc: "Haftalık planları dakikalar içinde kur, paylaş." },
+          { title: "Net Takibi", desc: "TYT/AYT netleri otomatik kayıt, anlık kıyaslama." },
+          { title: "Veli Raporu", desc: "Tek tıkla PDF rapor, mesaj şablonu hazır." }
         ]
       },
       {
-        quote: "Başarı, doğru strateji ile doğru zamanda buluştuğunda gelir.",
+        quote: "Öğrencinin neti düştüğünde, onu ilk gören koçtur.",
         author: "Rostrum Akademi",
-        caption: "YKS 2027 maratonu uzun. Öğrencilerinizin TYT/AYT deneme analizlerini saniyeler içinde yapın. 🎯 Rostrum Akademi ile veli ve öğrenci takibi artık çok kolay!\n\n#yks2027 #ykskocluk #rostrumakademi #tytayt",
-        title: "ANALİZ GÜCÜ",
-        subtitle: "Veriye Dayalı Koçluk Sistemi",
+        caption: "Bir öğrencinizin Matematik neti 3 hafta üst üste düşse, ne zaman fark edersiniz?\n\nEğer cevabınız 'veliden haber alınca' ise — bu post tam size.\n\nRostrum Akademi'de her deneme sonrası TYT/AYT netleri sisteme girilir, düşüş otomatik işaretlenir. Koç müdahale edecek vakti bulur, öğrenci sürüklenmez.\n\n✓ Analiz sistemi, ✓ müdahale zamanlaması, ✓ veli bilgilendirmesi — hepsi aynı yerde.\n\n→ 14 günlük deneme için bağlantı profilde.\n\n#ykskoçu #özelkoç #yks2027 #tytpuanı #aytpuanı #sınavkoçu #ykshazırlık",
+        title: "NET ANALİZİ",
+        subtitle: "Düşüşü Erken Gör, Erken Müdahale Et",
+        story_slides: [
+          "Öğrencinizin neti 3 haftadır düşüyor. Bunu biliyor musunuz?",
+          "Veliden duymayı bekliyorsanız, geç kalmış olabilirsiniz.",
+          "Rostrum'da her deneme neti sisteme girer.\nDüşüş anında koça bildirim gider.",
+          "Erken müdahale, öğrenci motivasyonunu korur.\nBu fark en çok Nisan-Haziran döneminde hissedilir.",
+          "Deneme sürümü açık — bağlantı profilde.\nrostrumakademi.app 01/05"
+        ],
+        tasarim_notu: "Kırmızıdan yeşile geçiş grafik öğesi kullanılabilir (düşüş → toparlanma). Sade, bilgi ağırlıklı.",
+        hafta_gerekce: "Hafta 2 — Platform özelliği. Net takip sistemi somut örnekle anlatıldı.",
         points: [
-          { title: "Net Takibi", desc: "Her deneme sonrası TYT/AYT netlerini otomatik kaydedin." },
-          { title: "Eksik Konu Analizi", desc: "Yapay zeka hangi konulara odaklanılacağını belirler." },
-          { title: "Veli Raporu", desc: "PDF raporla veliye haftalık ilerlemeyi gönderin." }
+          { title: "Düşüş Tespiti", desc: "3 haftada düşen net otomatik işaretlenir." },
+          { title: "Konu Analizi", desc: "Hangi ünite sorun çıkarıyor, sistem gösterir." },
+          { title: "Hızlı Müdahale", desc: "Koç uyarıldığında öğrenci henüz sürüklenmemiştir." }
         ]
       },
       {
-        quote: "Kurumsallaşmak, koçluk kalitesini artırmanın ilk adımıdır.",
+        quote: "TYT'de yüksek net, AYT'yi taşımaz — ikisini birlikte yönetmek gerek.",
         author: "Rostrum Akademi",
-        caption: "Koçluk işinizi büyütmek ve haftada 10 saat kazanmak için Rostrum Akademi'yi keşfedin. 14 gün ücretsiz deneyin! 🏆\n\n#yks2027 #rostrumakademi #koclukyazilimi #tytayt",
-        title: "KURUMSAL KOÇLUK",
-        subtitle: "Daha Az Efor, Daha Fazla Öğrenci",
+        caption: "YKS 2027 iki ayrı sınav — ama çoğu koç programı tek bir boyutta düşünüyor.\n\nTYT netini yukarı çekerken AYT konuları geride kalır. AYT'ye odaklanırken TYT körleşir. Bu denge, koçun en zor işi.\n\nRostrum Akademi'de TYT ve AYT takibi ayrı tutulur, haftalık program bu dengeye göre kurulur. Öğrenci ikisini aynı anda götürür — koç ikisini aynı anda görür.\n\n→ Erken erişim listesine katıl, bağlantı profilde.\n\n#ykskoçu #özelkoç #yks2027 #tytpuanı #aytpuanı #ykshazırlık #sınavkoçu",
+        title: "TYT vs AYT DENGESİ",
+        subtitle: "İki Sınavı Aynı Anda Götürmek",
+        story_slides: [
+          "TYT yükselirken AYT neden geri kalıyor?",
+          "Çünkü iki sınavın ritmi farklı — ama çoğu program bunu görmez.",
+          "Rostrum'da TYT ve AYT netleri ayrı izlenir.\nHaftalık dağılım koçun kararıyla şekillenir.",
+          "İçgörü: En iyi YKS sonuçları,\nTYT'yi erken kilitleyen koçlardan geliyor.",
+          "Bağlantı profilde — erken erişim açık.\nrostrumakademi.app 01/05"
+        ],
+        tasarim_notu: "İki bölümlü görsel: sol TYT, sağ AYT. Denge metaforu. Koyu zemin, net kontrast.",
+        hafta_gerekce: "Hafta 3 — YKS içgörüsü. Koça değer katan sınav dengesi bilgisi.",
         points: [
-          { title: "Program Yönetimi", desc: "Tüm öğrencilerin haftalık planları tek panelden." },
-          { title: "Mesaj Şablonları", desc: "Velilere hızlı, profesyonel mesajlar gönderin." },
-          { title: "Gelir Takibi", desc: "Ödemeler ve abonelikler otomatik kayıt altında." }
+          { title: "TYT Takibi", desc: "Sayısal/sözel dağılım ayrı ayrı izlenir." },
+          { title: "AYT Analizi", desc: "Alan bazlı net hedefleri haftalık kıyaslanır." },
+          { title: "Denge Programı", desc: "Koç iki sınavı tek panelden dengeli yönetir." }
         ]
       }
     ];
