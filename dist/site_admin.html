@@ -557,16 +557,21 @@ tr:hover td{background:var(--s2);}
             <!-- Sağ: Önizleme Paneli -->
             <div>
               <div class="card" style="padding:20px;background:var(--s1);border:1px solid var(--bd);border-radius:14px;position:sticky;top:80px">
-                <h3 style="margin-bottom:14px;color:var(--acc)">📱 Canlı Post Önizlemesi</h3>
-                <div id="igPanelPreviewContainer" style="width:100%;aspect-ratio:1;background:#000;display:flex;align-items:center;justify-content:center;border-radius:8px;overflow:hidden;border:1px solid var(--bd)">
-                  <span style="color:var(--dim)">Önizlemek için bir taslak seçin</span>
+                <h3 style="margin-bottom:4px;color:var(--acc)">📱 Önizleme</h3>
+                <div id="igPanelPreviewContainer" style="width:100%;aspect-ratio:1;background:#07060a;display:flex;align-items:center;justify-content:center;border-radius:10px;overflow:hidden;border:1px solid var(--bd);margin-bottom:12px">
+                  <span style="color:var(--dim);font-size:12px">Önizlemek için sol taraftan bir taslak seçin</span>
                 </div>
-                <div style="margin-top:14px;font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px">Açıklama Metni (Caption)</div>
-                <textarea id="igPanelCaptionPreview" style="margin-top:6px;font-size:12px;color:var(--text);background:var(--s2);border:1px solid var(--bd);padding:10px;border-radius:8px;min-height:100px;width:100%;box-sizing:border-box;font-family:inherit;outline:none" placeholder="Açıklama..."></textarea>
-                <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-                  <button class="btn btn-green" id="btnPanelApproveIg" style="flex:1;justify-content:center;min-width:140px" disabled onclick="publishIgPostPanel(false)">🚀 Post Yayınla</button>
-                  <button class="btn" id="btnPanelStoryIg" style="flex:1;justify-content:center;min-width:140px;background:#833ab4;color:#fff" disabled onclick="publishIgPostPanel(true)">📱 Hikaye Paylaş</button>
-                  <button class="btn btn-ghost" id="btnPanelRejectIg" style="flex:1;justify-content:center;min-width:140px" disabled onclick="regenerateIgPostPanel()">🔄 Yeniden Üret</button>
+
+                <div style="font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px">Açıklama Metni (Caption)</div>
+                <textarea id="igPanelCaptionPreview" style="font-size:12px;color:var(--text);background:var(--s2);border:1px solid var(--bd);padding:10px;border-radius:8px;min-height:90px;width:100%;box-sizing:border-box;font-family:inherit;outline:none;resize:vertical" placeholder="Açıklama metni burada görünecek..."></textarea>
+
+                <div style="font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin:12px 0 6px">Üretim</div>
+                <button class="btn btn-ghost" id="btnPanelRejectIg" style="width:100%;justify-content:center" disabled onclick="regenerateIgPostPanel()">🔄 Yeniden Üret (AI)</button>
+
+                <div style="font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin:12px 0 6px">Dağıtım</div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-green" id="btnPanelApproveIg" style="flex:1;justify-content:center" disabled onclick="publishIgPostPanel(false)">🚀 Post Yayınla</button>
+                  <button class="btn" id="btnPanelStoryIg" style="flex:1;justify-content:center;background:#833ab4;color:#fff" disabled onclick="publishIgPostPanel(true)">📱 Hikaye</button>
                 </div>
               </div>
             </div>
@@ -2210,13 +2215,15 @@ async function regenerateIgPostPanel() {
     d.points = rnd.points;
   }
 
+  d.status = 'pending';
+
   try {
     await db.from('platform_settings').upsert({ key: 'instagram_drafts', value: _igDrafts });
   } catch(e){}
 
   btn.textContent = '🔄 Yeniden Üret';
   btn.disabled = false;
-  showToast('✨ Gönderi Gemini AI ile yeniden tasarlandı! ✓');
+  showToast('✨ İçerik yeniden üretildi — artık yayınlayabilirsiniz! ✓');
   selectIgPanelDraft(_selectedIgPanelDraftId);
 }
 
