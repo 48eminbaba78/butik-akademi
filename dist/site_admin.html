@@ -187,8 +187,7 @@ tr:hover td{background:var(--s2);}
     <div class="sb-item" onclick="switchView('leads',this)"><span class="ic">👥</span>Başvurular<span class="sb-badge" id="pendingBadge">0</span></div>
     <div class="sb-item" onclick="switchView('users',this)"><span class="ic">👤</span>Kullanıcı Yönetimi</div>
     <div class="sb-item" onclick="switchView('revenue',this)"><span class="ic">💰</span>Gelir & Abonelikler</div>
-    <div class="sb-item" onclick="switchView('agents',this)"><span class="ic">🤖</span>Ajan Onay Paneli</div>
-    <div class="sb-item" onclick="switchView('instagram',this)"><span class="ic">📸</span>Instagram Yönetimi</div>
+    <div class="sb-item" onclick="switchView('instagram',this)"><span class="ic">🤖</span>Yapay Zeka & Pazarlama</div>
     <div class="sb-item" onclick="switchView('matches',this)"><span class="ic">🤝</span>Eşleşmeler</div>
     <div class="sb-item" onclick="switchView('profiles',this)"><span class="ic">🔍</span>Profil Yönetimi</div>
     <div class="sb-section">İçerik</div>
@@ -532,57 +531,6 @@ tr:hover td{background:var(--s2);}
         </div>
       </div>
 
-      <!-- AJAN ONAY PANELİ -->
-      <div class="view" id="view-agents">
-        <div class="page-h">🤖 Ajan Yönetim & Onay Paneli</div>
-        <div class="page-sub">Pazarlama maillerini ve Instagram gönderilerini yayından önce inceleyin, düzenleyin ve onaylayın</div>
-        
-        <div class="tab-h" style="display:flex;gap:12px;margin-bottom:20px;border-bottom:1px solid var(--bd);padding-bottom:10px;margin-top:14px">
-          <button class="btn btn-ghost" id="tab-agent-email" onclick="switchAgentTab('email')" style="font-weight:600">✉️ Outreach E-Postaları</button>
-          <button class="btn btn-ghost" id="tab-agent-instagram" onclick="switchAgentTab('instagram')" style="font-weight:600">📸 Instagram Gönderileri</button>
-        </div>
-
-        <!-- E-POSTA ONAY GRUBU -->
-        <div id="agent-email-section" style="display:none">
-          <div class="card tbl-wrap">
-            <table>
-              <thead><tr><th>Kurum / Koç Adı</th><th>E-posta</th><th>Kaynak</th><th>Tarih</th><th>İşlem</th></tr></thead>
-              <tbody id="agentEmailsTable"><tr><td colspan="5" class="loading">Taslaklar yükleniyor...</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- INSTAGRAM ONAY GRUBU -->
-        <div id="agent-instagram-section" style="display:none">
-          <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px" id="igAgentGrid">
-            <!-- Sol: Taslak Listesi -->
-            <div>
-              <div class="card tbl-wrap" style="padding:0">
-                <table style="margin:0">
-                  <thead><tr><th>İçerik Türü</th><th>Açıklama/Özet</th><th>Sınav Kalan Gün</th><th>İşlem</th></tr></thead>
-                  <tbody id="agentIgTable"><tr><td colspan="4" class="loading">Taslaklar yükleniyor...</td></tr></tbody>
-                </table>
-              </div>
-            </div>
-            <!-- Sağ: Önizleme Paneli -->
-            <div>
-              <div class="card" style="padding:20px;background:var(--s1);border:1px solid var(--bd);border-radius:14px;position:sticky;top:80px">
-                <h3 style="margin-bottom:14px;color:var(--acc)">📱 Canlı Post Önizlemesi</h3>
-                <div id="igPostPreviewContainer" style="width:100%;aspect-ratio:1;background:#000;display:flex;align-items:center;justify-content:center;border-radius:8px;overflow:hidden;border:1px solid var(--bd)">
-                  <span style="color:var(--dim)">Önizlemek için bir taslak seçin</span>
-                </div>
-                <div style="margin-top:14px;font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px">Açıklama Metni (Caption)</div>
-                <textarea id="igCaptionPreview" style="margin-top:6px;font-size:12px;color:var(--text);background:var(--s2);border:1px solid var(--bd);padding:10px;border-radius:8px;min-height:100px;width:100%;box-sizing:border-box;font-family:inherit;outline:none" placeholder="Açıklama..."></textarea>
-                <div style="display:flex;gap:8px;margin-top:14px">
-                  <button class="btn btn-green" id="btnApproveIg" style="flex:1;justify-content:center" disabled onclick="approveIgPost()">✅ Onayla & Yayınla</button>
-                  <button class="btn btn-ghost" id="btnRejectIg" style="flex:1;justify-content:center" disabled onclick="regenerateIgPost()">🔄 Yeniden Üret</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- INSTAGRAM YÖNETİM & OTOMASYON PANELİ -->
       <div class="view" id="view-instagram">
         <div class="page-h">📸 Instagram Yönetim &amp; Otomasyon</div>
@@ -853,10 +801,9 @@ function switchView(id,el){
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('view-'+id)?.classList.add('active');
   el?.classList.add('active');
-  const titles={dashboard:'Dashboard',leads:'Başvurular',users:'Kullanıcı Yönetimi',revenue:'Gelir & Abonelikler',agents:'Ajan Onay Paneli',instagram:'Instagram Yönetimi',content:'Site İçeriği',blog:'Blog Yazıları',announce:'Duyurular',matches:'Eşleşmeler',profiles:'Profil Yönetimi'};
+  const titles={dashboard:'Dashboard',leads:'Başvurular',users:'Kullanıcı Yönetimi',revenue:'Gelir & Abonelikler',instagram:'Yapay Zeka & Pazarlama',content:'Site İçeriği',blog:'Blog Yazıları',announce:'Duyurular',matches:'Eşleşmeler',profiles:'Profil Yönetimi'};
   document.getElementById('topbarTitle').textContent=titles[id]||id;
   if(id==='leads')renderLeads();
-  if(id==='agents')loadAndRenderAgents();
   if(id==='instagram')loadAndRenderInstagramPanel();
   if(id==='content')renderContent();
   if(id==='blog')renderBlogs();
@@ -1824,16 +1771,19 @@ let _igDrafts = [];
 let _selectedIgId = null;
 
 // Hazır Instagram Görsel ve Konsept Şablonları (Mock Data ve Dinamik SVG'ler)
+const YKS_DATE = new Date('2027-06-20T00:00:00');
+const _dLeft = Math.max(0, Math.ceil((YKS_DATE - new Date()) / (1000 * 60 * 60 * 24)));
+
 const DEFAULT_IG_DRAFTS = [
   {
     id: "ig_1",
     type: "countdown",
     title: "YKS Sayaç & Motivasyon",
-    days_left: 45,
+    days_left: _dLeft,
     quote: "Zorluklar, başarının değerini artıran süslerdir. Bugün attığın her adım yarınki zaferindir.",
     author: "Rostrum Akademi AI",
     status: "pending",
-    caption: "YKS'ye son 45 gün! ⏳ Sınav yaklaştıkça stresin artması normaldir ama unutma; kazananlar yorulunca bırakanlar değil, hedefe odaklananlardır. Rostrum Akademi ile haftalık programını yap, eksiklerini tamamla, netlerini uçur. 🚀\n\n#yks2026 #ykssayac #ykskocluk #derscalismagunlugu #rostrumakademi"
+    caption: `YKS'ye son ${_dLeft} gün! ⏳ Sınav yaklaştıkça stresin artması normaldir ama unutma; kazananlar yorulunca bırakanlar değil, hedefe odaklananlardır. Rostrum Akademi ile haftalık programını yap, eksiklerini tamamla, netlerini uçur. 🚀\n\n#yks2027 #ykssayac #ykskocluk #derscalismagunlugu #rostrumakademi`
   },
   {
     id: "ig_2",
@@ -1843,7 +1793,7 @@ const DEFAULT_IG_DRAFTS = [
     quote: "Matematik - Limit & Süreklilik",
     author: "Limit & Süreklilik",
     status: "pending",
-    caption: "Matematikte Limit ve Süreklilik konusunu bitiremeyenler buraya! 📈 İşte sınavda net getiren 3 altın kural:\n1. Limit tanımını grafik çizerek çalışın.\n2. Sağdan ve soldan yaklaşma kurallarını oturtun.\n3. Süreklilik ile limit arasındaki bağı mutlaka kavrayın.\n\nRostrum Akademi YouTube entegrasyonu ile Mert Hoca veya Eyüp B. playlistlerini tek tıkla programına ekle, zaman kaybetmeden hemen başla! 💻\n\n#yksmatematik #yks2026 #limitvesureklilik #tytayt #rostrumakademi"
+    caption: "Matematikte Limit ve Süreklilik konusunu bitiremeyenler buraya! 📈 İşte sınavda net getiren 3 altın kural:\n1. Limit tanımını grafik çizerek çalışın.\n2. Sağdan ve soldan yaklaşma kurallarını oturtun.\n3. Süreklilik ile limit arasındaki bağı mutlaka kavrayın.\n\nRostrum Akademi YouTube entegrasyonu ile Mert Hoca veya Eyüp B. playlistlerini tek tıkla programına ekle, zaman kaybetmeden hemen başla! 💻\n\n#yksmatematik #yks2027 #limitvesureklilik #tytayt #rostrumakademi"
   },
   {
     id: "ig_3",
@@ -1853,7 +1803,7 @@ const DEFAULT_IG_DRAFTS = [
     quote: "Kağıt vs Dijital",
     author: "Kağıt vs Dijital",
     status: "pending",
-    caption: "Hala defter köşesinde veya saman kağıdına yazılmış programlarla mı çalışıyorsunuz? 🤦‍♂️\n\n❌ Dağınık kağıt programlar kaybolur, takibi zordur, veli gelişimden habersizdir.\n✅ Rostrum Akademi Dijital PDF programları ise markalıdır, telefondan anlık takip edilir, veliye grafiklerle otomatik gönderilir.\n\nKoçlar için zaman kazandıran, öğrenciler için başarı getiren sistem! 🏆\n\n#ykskocluk #rostrumakademi #dersprogrami #yks2026 #yksdanismanlik"
+    caption: "Hala defter köşesinde veya saman kağıdına yazılmış programlarla mı çalışıyorsunuz? 🤦‍♂️\n\n❌ Dağınık kağıt programlar kaybolur, takibi zordur, veli gelişimden habersizdir.\n✅ Rostrum Akademi Dijital PDF programları ise markalıdır, telefondan anlık takip edilir, veliye grafiklerle otomatik gönderilir.\n\nKoçlar için zaman kazandıran, öğrenciler için başarı getiren sistem! 🏆\n\n#ykskocluk #rostrumakademi #dersprogrami #yks2027 #yksdanismanlik"
   },
   {
     id: "ig_4",
@@ -1867,273 +1817,6 @@ const DEFAULT_IG_DRAFTS = [
   }
 ];
 
-function switchAgentTab(tab) {
-  _activeAgentTab = tab;
-  document.getElementById('tab-agent-email').classList.remove('btn-acc');
-  document.getElementById('tab-agent-email').classList.add('btn-ghost');
-  document.getElementById('tab-agent-instagram').classList.remove('btn-acc');
-  document.getElementById('tab-agent-instagram').classList.add('btn-ghost');
-  
-  document.getElementById('tab-agent-' + tab).classList.remove('btn-ghost');
-  document.getElementById('tab-agent-' + tab).classList.add('btn-acc');
-
-  document.getElementById('agent-email-section').style.display = tab === 'email' ? 'block' : 'none';
-  document.getElementById('agent-instagram-section').style.display = tab === 'instagram' ? 'block' : 'none';
-  
-  if(tab === 'email') renderAgentEmails();
-  if(tab === 'instagram') renderAgentInstagram();
-}
-
-async function loadAndRenderAgents() {
-  // 1. E-posta Taslaklarını Yükle (leads tablosundan status='drafted' olanları çek)
-  try {
-    const { data } = await db.from('leads').select('*').eq('status', 'drafted').order('created_at', { ascending: false });
-    _emailDrafts = data || [];
-    if(_emailDrafts.length === 0) {
-      // Otomatik olarak test için taslak e-posta oluştur
-      const mockLead = {
-        first_name: "Yunus",
-        last_name: "Emre",
-        brand_name: "Yunus Danışmanlık",
-        email: "yunus.emre@danismanlik.com",
-        phone: "0532 111 22 33",
-        plan: "pro",
-        student_count: 15,
-        status: "drafted",
-        notes: "Otomatik üretilen test taslağı",
-        source: "google_search",
-        pitch_text: `Konu: Koçluk süreçlerinizi dijitalleştirin (Yunus Danışmanlık özel)\n\nMerhaba Yunus Hocam,\n\nInstagram'da bireysel YKS koçluğu üzerine yaptığınız başarılı çalışmaları takip ediyoruz. Öğrenci takipleri ve veli bilgilendirmeleri yaparken ne kadar yoğun zaman harcadığınızı biliyoruz.\n\nRostrum Akademi olarak, koçların bu operasyonel yükünü %80 azaltan bir sistem tasarladık. Kendi markanızla velilere otomatik gelişim raporları (PDF) gönderebilir, YouTube playlistlerini saniyeler içinde programlaştırabilirsiniz. Üstelik öğrencileriniz için entegre AI Ders Asistanı da sunuyoruz.\n\nYunus Danışmanlık markası altında sistemi 14 gün ücretsiz denemek ister misiniz? Uygun olduğunuzda 5 dakikalık bir demo seansı planlayabiliriz.\n\nİyi çalışmalar,\nCaner — Rostrum Akademi Müşteri İlişkileri`
-      };
-      const { data: inserted, error: insErr } = await db.from('leads').insert(mockLead).select();
-      if(insErr) console.warn('Mock lead insert error:', insErr);
-      if(inserted && inserted[0]) _emailDrafts.push(inserted[0]);
-    }
-  } catch (e) {
-    console.error('Email drafts load error:', e);
-  }
-
-  // 2. Instagram Taslaklarını Yükle
-  try {
-    const { data } = await db.from('platform_settings').select('value').eq('key', 'instagram_drafts').maybeSingle();
-    if (data && data.value) {
-      _igDrafts = data.value;
-    } else {
-      // Eğer veritabanı boşsa varsayılan taslakları yükle ve kaydet
-      _igDrafts = DEFAULT_IG_DRAFTS;
-      await db.from('platform_settings').upsert({ key: 'instagram_drafts', value: _igDrafts });
-    }
-  } catch (e) {
-    console.error('Instagram drafts load error:', e);
-    _igDrafts = DEFAULT_IG_DRAFTS;
-  }
-
-  // Arayüzü çiz
-  switchAgentTab(_activeAgentTab);
-}
-
-function renderAgentEmails() {
-  const tbody = document.getElementById('agentEmailsTable');
-  if (_emailDrafts.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:24px">✉️ Onay bekleyen soğuk satış e-posta taslağı bulunmamaktadır. <br><span style="font-size:11px">Ajan yeni leads bulduğunda burada görünecektir.</span></td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = _emailDrafts.map(d => `
-    <tr>
-      <td><strong>${esc(d.brand_name)}</strong><br><span style="font-size:11px;color:var(--dim)">${esc(d.first_name)} ${esc(d.last_name||'')}</span></td>
-      <td>${esc(d.email)}</td>
-      <td><span class="role-badge role-dev">${esc(d.source)}</span></td>
-      <td>${new Date(d.created_at).toLocaleDateString('tr-TR')}</td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="openEmailPreviewModal('${d.id}')">🔍 İncele & Onayla</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function renderAgentInstagram() {
-  const tbody = document.getElementById('agentIgTable');
-  tbody.innerHTML = _igDrafts.map(d => {
-    let typeLabel = '';
-    if(d.type==='countdown') typeLabel = '⏳ YKS Sayaç';
-    else if(d.type==='tactic') typeLabel = '💡 Ders Taktiği';
-    else if(d.type==='comparison') typeLabel = '⚖️ Karşılaştırma';
-    else if(d.type==='seasonal') typeLabel = '☀️ Mevsimsel/Gündem';
-
-    const isSelected = _selectedIgId === d.id ? 'style="background:rgba(240,165,0,.08)"' : '';
-    const statusText = d.status === 'published' ? '<span style="color:var(--acc3)">Yayınlandı</span>' : '⏳ Bekliyor';
-
-    return `
-      <tr onclick="selectIgDraft('${d.id}')" ${isSelected} class="cursor-pointer">
-        <td><strong>${typeLabel}</strong></td>
-        <td>${esc(d.title)}</td>
-        <td>YKS - ${d.days_left} Gün</td>
-        <td><strong>${statusText}</strong></td>
-      </tr>
-    `;
-  }).join('');
-}
-
-function selectIgDraft(id) {
-  _selectedIgId = id;
-  renderAgentInstagram();
-
-  const d = _igDrafts.find(x => x.id === id);
-  if (!d) return;
-
-  // Görseli tarayıcıda canlı oluştur (SVG Kodu ile)
-  const previewContainer = document.getElementById('igPostPreviewContainer');
-  previewContainer.innerHTML = getPostSvg(d.type, d.days_left, d.quote, d.author, d.title);
-  
-  document.getElementById('igCaptionPreview').value = d.caption;
-
-  // Butonları aktif et
-  document.getElementById('btnApproveIg').disabled = false;
-  document.getElementById('btnRejectIg').disabled = false;
-  
-  if (d.status === 'published') {
-    document.getElementById('btnApproveIg').textContent = '✅ Zaten Yayınlandı';
-    document.getElementById('btnApproveIg').disabled = true;
-  } else {
-    document.getElementById('btnApproveIg').textContent = '✅ Onayla & Yayınla';
-    document.getElementById('btnApproveIg').disabled = false;
-  }
-}
-
-async function approveIgPost() {
-  if(!_selectedIgId) return;
-  const d = _igDrafts.find(x => x.id === _selectedIgId);
-  if(!d) return;
-
-  d.status = 'published';
-  d.caption = document.getElementById('igCaptionPreview').value;
-
-  // Veritabanını güncelle
-  try {
-    await db.from('platform_settings').upsert({ key: 'instagram_drafts', value: _igDrafts });
-  } catch(e) {
-    console.error('Save IG drafts error:', e);
-  }
-
-  showToast('📸 Gönderi Instagram Graph API ile paylaşıldı! (Simüle edildi) ✓');
-  selectIgDraft(_selectedIgId);
-}
-
-// Gemini ile Gönderiyi Yeniden Üretme
-async function regenerateIgPost() {
-  if(!_selectedIgId) return;
-  const d = _igDrafts.find(x => x.id === _selectedIgId);
-  if(!d) return;
-
-  const btn = document.getElementById('btnRejectIg');
-  btn.textContent = '⏳ Üretiliyor...';
-  btn.disabled = true;
-
-  try {
-    const prompt = `YKS sınavına ${d.days_left} gün kaldı. Bana koçluk sayfasında yayınlamak için ${d.type} tipinde yepyeni, motivasyonel ve Türkçe bir söz ("quote") ve bir yazar ("author") üret. Ayrıca Instagram için etkileyici bir açıklama metni ("caption") yaz.
-    Ek olarak:
-    - Eğer tip "tactic" veya "seasonal" ise, "title" (ana başlık), "subtitle" (alt başlık) ve "points" adında 3 maddelik bir dizi (her biri "title" ve "desc" alanları içeren, desc maks 15 kelime) üret.
-    - Eğer tip "comparison" ise "title": "BÜYÜK KARŞILAŞTIRMA" ve "subtitle": "Klasik Kağıt Program vs Rostrum Akademi" alanlarını dön.
-    JSON formatında dön. Lütfen sadece ham JSON dön.`;
-    const response = await fetch('/api/ai-chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: prompt }],
-        userRole: 'developer'
-      })
-    });
-
-    if (response.ok) {
-      const resData = await response.json();
-      let cleanText = resData.reply;
-      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        d.quote = parsed.quote || d.quote;
-        d.author = parsed.author || d.author;
-        d.caption = parsed.caption || d.caption;
-        if (parsed.title) d.title = parsed.title;
-        if (parsed.subtitle) d.subtitle = parsed.subtitle;
-        if (parsed.points) d.points = parsed.points;
-      } else {
-        d.quote = "Sınırlarını aşmak için çalışmaya devam et.";
-        d.author = "Rostrum Akademi AI";
-      }
-    }
-  } catch (e) {
-    console.warn('Gemini IG regeneration error, fallback to random text:', e);
-    d.quote = "Gelecek, bugünden ona hazırlananlarındır. Kalan gün sayısını başarı basamaklarına dönüştür.";
-    d.author = "Rostrum Akademi";
-  }
-
-  // Veritabanına kaydet
-  try {
-    await db.from('platform_settings').upsert({ key: 'instagram_drafts', value: _igDrafts });
-  } catch(e){}
-
-  btn.textContent = '🔄 Yeniden Üret';
-  btn.disabled = false;
-  showToast('✨ Gönderi Gemini AI ile yeniden tasarlandı! ✓');
-  selectIgDraft(_selectedIgId);
-}
-
-// E-posta Taslak Önizleme Modalı
-function openEmailPreviewModal(leadId) {
-  const d = _emailDrafts.find(x => x.id === leadId);
-  if(!d) return;
-
-  let modal = document.getElementById('emailPreviewModal');
-  if(!modal) {
-    modal = document.createElement('div');
-    modal.id = 'emailPreviewModal';
-    modal.className = 'modal-bg';
-    document.body.appendChild(modal);
-    modal.addEventListener('click', e => { if(e.target===modal) modal.classList.remove('open'); });
-  }
-
-  modal.innerHTML = `
-    <div class="modal" style="max-width:600px">
-      <button class="modal-close" onclick="closeModal('emailPreviewModal')">×</button>
-      <div style="margin-bottom:14px">
-        <h2 style="color:var(--acc)">✉️ Soğuk Satış E-Posta Önizleme</h2>
-        <div style="font-size:12px;color:var(--dim);margin-top:4px">Alıcı: <strong>${esc(d.brand_name)} (${esc(d.email)})</strong></div>
-      </div>
-      <div class="field">
-        <label>E-posta İçeriği (Düzenleyebilirsiniz)</label>
-        <textarea id="emailDraftText" style="min-height:300px;width:100%;background:var(--s2);border:1px solid var(--bd);color:var(--text);border-radius:10px;padding:12px;font-family:inherit;line-height:1.6;box-sizing:border-box">${esc(d.pitch_text)}</textarea>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:20px">
-        <button class="btn btn-green" style="flex:1.5;justify-content:center" onclick="sendEmailDraft('${d.id}')">🚀 Onayla & Gönder</button>
-        <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeModal('emailPreviewModal')">Kapat</button>
-      </div>
-    </div>
-  `;
-  openModal('emailPreviewModal');
-}
-
-async function sendEmailDraft(leadId) {
-  const d = _emailDrafts.find(x => x.id === leadId);
-  if(!d) return;
-
-  const editedText = document.getElementById('emailDraftText').value;
-
-  // Veritabanını güncelle
-  try {
-    await db.from('leads').update({
-      pitch_text: editedText,
-      status: 'contacted'
-    }).eq('id', leadId);
-  } catch(e) {
-    console.error('Send email error:', e);
-  }
-
-  closeModal('emailPreviewModal');
-  showToast('✉️ E-posta başarıyla gönderildi! (Simüle edildi) ✓');
-  loadAndRenderAgents();
-}
-
-// Canlı Dinamik Görsel Çizimi (B2B Premium SVG Şablonları)
 function getPostSvg(type, daysLeft, quote, author, title) {
   // Kelimeleri satırlara böl
   const words = quote.split(' ');
@@ -2457,10 +2140,14 @@ async function regenerateIgPostPanel() {
   btn.disabled = true;
 
   try {
-    const prompt = `YKS sınavına ${d.days_left} gün kaldı. Bana koçluk sayfasında yayınlamak için ${d.type} tipinde yepyeni, motivasyonel ve Türkçe bir söz ("quote") ve bir yazar ("author") üret. Ayrıca Instagram için etkileyici bir açıklama metni ("caption") yaz.
+    const prompt = `Biz eğitim kurumlarına ve YKS (Yükseköğretim Kurumları Sınavı) koçlarına SaaS çözümü sunan Rostrum Akademi'yiz. 
+    YKS sistemi; TYT (Temel Yeterlilik Testi) ve AYT (Alan Yeterlilik Testleri) olmak üzere 2 ana oturumdan oluşmaktadır. Hedef sınav olan YKS 2027'nin tahmini tarihi 19-20 Haziran 2027'dir.
+    
+    Bana koçluk yazılımı/platformu satışını destekleyecek ${d.type} tipinde yepyeni, B2B SaaS odaklı ve Türkçe bir söz ("quote") ve bir yazar ("author") üret. 
+    Ayrıca Instagram için koçları ve eğitimcileri platformumuzu denemeye davet eden (koçlara zaman kazandıran, öğrencilerin YKS TYT/AYT netlerini artıran sistem vurgulu) etkileyici bir açıklama metni ("caption") yaz.
     Ek olarak:
-    - Eğer tip "tactic" veya "seasonal" ise, "title" (ana başlık), "subtitle" (alt başlık) ve "points" adında 3 maddelik bir dizi (her biri "title" ve "desc" alanları içeren, desc maks 15 kelime) üret.
-    - Eğer tip "comparison" ise "title": "BÜYÜK KARŞILAŞTIRMA" ve "subtitle": "Klasik Kağıt Program vs Rostrum Akademi" alanlarını dön.
+    - Eğer tip "tactic" veya "seasonal" ise, "title" (ana başlık), "subtitle" (alt başlık) ve "points" adında 3 maddelik bir dizi (her biri "title" ve "desc" alanları içeren, desc maks 15 kelime) üret (Örn: Eğitim Kurumunu Büyütmenin 3 Yolu).
+    - Eğer tip "comparison" ise "title": "BÜYÜK KARŞILAŞTIRMA" ve "subtitle": "Klasik Kağıt Program vs Rostrum Akademi SaaS" alanlarını dön.
     JSON formatında dön. Lütfen sadece ham JSON dön.`;
     const response = await fetch('/api/ai-chat', {
       method: 'POST',
@@ -2486,9 +2173,35 @@ async function regenerateIgPostPanel() {
       }
     }
   } catch (e) {
-    console.warn('IG regeneration error:', e);
-    d.quote = "Gelecek, bugünden ona hazırlananlarındır.";
-    d.author = "Rostrum Akademi";
+    console.warn('IG regeneration error (Offline Mode Simulation):', e);
+    // Vercel backend olmadan yerel test için offline fallback havuzu
+    const fallbacks = [
+      {
+        quote: "Başarı, hazırlık ve fırsatın buluştuğu noktadır.",
+        author: "Rostrum 2027",
+        caption: "YKS 2027'ye hazırlanan öğrencilerinizin netlerini uçurmaya hazır mısınız? 🚀 Rostrum Akademi'nin yapay zeka destekli koçluk paneli ile tanışın. Kağıt programları çöpe atın, dijitalleşin! 💡\n\n#yks2027 #ykskocluk #rostrumakademi #tytayt",
+        title: "DİJİTAL KOÇLUK"
+      },
+      {
+        quote: "Öğrencini tanı, başarıyı tasarla.",
+        author: "Koçluk Vizyonu",
+        caption: "YKS 2027 maratonu uzun. Öğrencilerinizin TYT/AYT deneme analizlerini saniyeler içinde yapıp onlara özel eksik konu listeleri çıkarmak istemez misiniz? 🎯 Rostrum Akademi ile veli ve öğrenci takibi artık çok kolay!\n\n#yks2027 #ykskocluk #eğitim #rostrumakademi",
+        title: "ANALİZ GÜCÜ"
+      },
+      {
+        quote: "Gelecek, bugünden ona hazırlananlarındır.",
+        author: "Rostrum Akademi",
+        caption: "Öğrencileriniz YKS 2027 hedeflerine doğru koşarken, siz onların ilerlemesini anlık takip edin. Rostrum Akademi SaaS çözümü ile kurumsal kimliğinizi güçlendirin! 🏆 Hemen 14 günlük ücretsiz denemeye başlayın.\n\n#yks2027 #rostrumakademi #koclukyazilimi #tytayt",
+        title: "HEDEFE DOĞRU"
+      }
+    ];
+    const rnd = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+    d.quote = rnd.quote;
+    d.author = rnd.author;
+    d.caption = rnd.caption;
+    if(d.type === 'tactic' || d.type === 'seasonal') {
+       d.title = rnd.title;
+    }
   }
 
   try {
