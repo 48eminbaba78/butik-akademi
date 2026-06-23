@@ -547,6 +547,10 @@ tr:hover td{background:var(--s2);}
           <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px">
             <!-- Sol: Taslak Listesi -->
             <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <span style="font-size:12px;color:var(--dim)">Taslağa tıklayarak önizleme ve yayınlama yapın</span>
+                <button class="btn btn-ghost" id="btnRegenAll" onclick="regenerateAllDrafts()" style="font-size:12px;padding:5px 12px">🔄 Tümünü Yenile</button>
+              </div>
               <div class="card tbl-wrap" style="padding:0">
                 <table style="margin:0">
                   <thead><tr><th>İçerik Türü</th><th>Açıklama/Özet</th><th>Sayaç Kalan Gün</th><th>Durum</th></tr></thead>
@@ -2303,6 +2307,25 @@ Sadece ham JSON döndür, başka açıklama ekleme.`;
   btn.disabled = false;
   showToast('✨ İçerik yeniden üretildi — artık yayınlayabilirsiniz! ✓');
   selectIgPanelDraft(_selectedIgPanelDraftId);
+}
+
+// ── TÜMÜNÜ YENİLE ──
+async function regenerateAllDrafts() {
+  const btn = document.getElementById('btnRegenAll');
+  btn.textContent = '⏳ Yenileniyor...';
+  btn.disabled = true;
+  let done = 0;
+  for (const d of _igDrafts) {
+    _selectedIgPanelDraftId = d.id;
+    await regenerateIgPostPanel();
+    done++;
+    btn.textContent = `⏳ ${done}/${_igDrafts.length}`;
+  }
+  _selectedIgPanelDraftId = _igDrafts[0]?.id;
+  selectIgPanelDraft(_selectedIgPanelDraftId);
+  btn.textContent = '🔄 Tümünü Yenile';
+  btn.disabled = false;
+  showToast('✨ Tüm taslaklar yenilendi! ✓');
 }
 
 // ── OTOMASYON KURALLARI ──
