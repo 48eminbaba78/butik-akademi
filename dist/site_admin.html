@@ -563,9 +563,10 @@ tr:hover td{background:var(--s2);}
                 </div>
                 <div style="margin-top:14px;font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px">Açıklama Metni (Caption)</div>
                 <textarea id="igPanelCaptionPreview" style="margin-top:6px;font-size:12px;color:var(--text);background:var(--s2);border:1px solid var(--bd);padding:10px;border-radius:8px;min-height:100px;width:100%;box-sizing:border-box;font-family:inherit;outline:none" placeholder="Açıklama..."></textarea>
-                <div style="display:flex;gap:8px;margin-top:14px">
-                  <button class="btn btn-green" id="btnPanelApproveIg" style="flex:1;justify-content:center" disabled onclick="publishIgPostPanel()">🚀 Onayla &amp; Yayınla</button>
-                  <button class="btn btn-ghost" id="btnPanelRejectIg" style="flex:1;justify-content:center" disabled onclick="regenerateIgPostPanel()">🔄 Yeniden Üret</button>
+                <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+                  <button class="btn btn-green" id="btnPanelApproveIg" style="flex:1;justify-content:center;min-width:140px" disabled onclick="publishIgPostPanel(false)">🚀 Post Yayınla</button>
+                  <button class="btn" id="btnPanelStoryIg" style="flex:1;justify-content:center;min-width:140px;background:#833ab4;color:#fff" disabled onclick="publishIgPostPanel(true)">📱 Hikaye Paylaş</button>
+                  <button class="btn btn-ghost" id="btnPanelRejectIg" style="flex:1;justify-content:center;min-width:140px" disabled onclick="regenerateIgPostPanel()">🔄 Yeniden Üret</button>
                 </div>
               </div>
             </div>
@@ -1817,175 +1818,108 @@ const DEFAULT_IG_DRAFTS = [
   }
 ];
 
-function getPostSvg(type, daysLeft, quote, author, title) {
-  // Kelimeleri satırlara böl
-  const words = quote.split(' ');
-  let lines = [];
-  let currentLine = '';
-  words.forEach(w => {
-    if ((currentLine + ' ' + w).length > 25) { lines.push(currentLine); currentLine = w; }
-    else { currentLine = currentLine ? currentLine + ' ' + w : w; }
-  });
-  if (currentLine) lines.push(currentLine);
-  lines = lines.slice(0, 3);
-  const textElements = lines.map((line, idx) => 
-    `<text x="250" y="${220 + (idx * 30)}" text-anchor="middle" fill="#f0eaf8" font-family="system-ui, sans-serif" font-size="20" font-weight="600" letter-spacing="-0.3">${line}</text>`
-  ).join('\n');
+function getPostSvg(d) {
+  const type = d.type, daysLeft = d.days_left, quote = d.quote || '', author = d.author || '', title = d.title || '', subtitle = d.subtitle || '', points = d.points;
 
-  if(type === 'countdown') {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
-      <rect width="500" height="500" fill="#07060a"/>
-      <defs>
-        <radialGradient id="mesh1" cx="20%" cy="20%" r="60%"><stop offset="0%" stop-color="#f0a500" stop-opacity="0.1"/><stop offset="100%" stop-color="#07060a" stop-opacity="0"/></radialGradient>
-        <radialGradient id="mesh2" cx="80%" cy="80%" r="50%"><stop offset="0%" stop-color="#c084fc" stop-opacity="0.08"/><stop offset="100%" stop-color="#07060a" stop-opacity="0"/></radialGradient>
-        <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f0a500"/><stop offset="100%" stop-color="#c084fc"/></linearGradient>
-      </defs>
-      <rect width="500" height="500" fill="url(#mesh1)"/>
-      <rect width="500" height="500" fill="url(#mesh2)"/>
-      <path d="M 0,90 L 500,90 M 0,410 L 500,410 M 90,0 L 90,500 M 410,0 L 410,500" stroke="#ffffff" stroke-opacity="0.02" stroke-width="1"/>
-      <text x="250" y="60" text-anchor="middle" fill="#f0eaf8" font-family="system-ui, sans-serif" font-size="12" font-weight="800" letter-spacing="3">ROSTRUM AKADEMİ</text>
-      <circle cx="250" cy="72" r="2" fill="#f0a500"/>
-      <g transform="translate(250, 140)">
-        <circle cx="0" cy="0" r="45" fill="none" stroke="#2d2a3a" stroke-width="2"/>
-        <circle cx="0" cy="0" r="45" fill="none" stroke="url(#textGrad)" stroke-width="4" stroke-dasharray="280" stroke-dashoffset="70"/>
-        <text x="0" y="6" text-anchor="middle" fill="#f0eaf8" font-family="system-ui, sans-serif" font-size="30" font-weight="900">${daysLeft}</text>
-        <text x="0" y="20" text-anchor="middle" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="6" font-weight="700" letter-spacing="1">GÜN KALDI</text>
-      </g>
-      <g>${textElements}
-        <text x="250" y="${260 + (lines.length * 30)}" text-anchor="middle" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="11" font-weight="500" font-style="italic">— ${author}</text>
-      </g>
-      <rect x="190" y="440" width="120" height="20" rx="10" fill="#17151e" stroke="#2d2a3a" stroke-width="0.5"/>
-      <text x="250" y="454" text-anchor="middle" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="7" font-weight="600" letter-spacing="0.5">rostrumakademi.app</text>
-    </svg>`;
-  } 
-  
-  if (type === 'tactic') {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
-      <rect width="500" height="500" fill="#07060a"/>
-      <defs>
-        <radialGradient id="mesh3" cx="50%" cy="20%" r="50%"><stop offset="0%" stop-color="#c084fc" stop-opacity="0.12"/><stop offset="100%" stop-color="#07060a" stop-opacity="0"/></radialGradient>
-      </defs>
-      <rect width="500" height="500" fill="url(#mesh3)"/>
-      <text x="250" y="50" text-anchor="middle" fill="#c084fc" font-family="system-ui, sans-serif" font-size="11" font-weight="800" letter-spacing="3">BRANŞ TAKTİKLERİ</text>
-      <text x="250" y="85" text-anchor="middle" fill="#f0eaf8" font-family="system-ui, sans-serif" font-size="22" font-weight="900" letter-spacing="-0.5">LİMİT &amp; SÜREKLİLİK</text>
-      <text x="250" y="105" text-anchor="middle" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="11">YKS Matematik Net Artıran 3 Kural</text>
-      
-      <!-- Kart 1 -->
-      <g transform="translate(40, 130)">
-        <rect width="420" height="70" rx="8" fill="#121018" stroke="#2d2a3a" stroke-width="1"/>
-        <text x="20" y="40" fill="#f0a500" font-family="system-ui, sans-serif" font-size="24" font-weight="900">1</text>
-        <text x="50" y="30" fill="#f0eaf8" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Grafik Çizmeyi İhmal Etmeyin</text>
-        <text x="50" y="48" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="10">Limit sorularında sağdan/soldan yaklaşmayı grafik üzerinden görün.</text>
-      </g>
-      <!-- Kart 2 -->
-      <g transform="translate(40, 215)">
-        <rect width="420" height="70" rx="8" fill="#121018" stroke="#2d2a3a" stroke-width="1"/>
-        <text x="20" y="40" fill="#f0a500" font-family="system-ui, sans-serif" font-size="24" font-weight="900">2</text>
-        <text x="50" y="30" fill="#f0eaf8" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Sağdan &amp; Soldan Eşitlik Kuralı</text>
-        <text x="50" y="48" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="10">Limit olması için sağ ve sol limitlerin eşit olması zorunludur.</text>
-      </g>
-      <!-- Kart 3 -->
-      <g transform="translate(40, 300)">
-        <rect width="420" height="70" rx="8" fill="#121018" stroke="#2d2a3a" stroke-width="1"/>
-        <text x="20" y="40" fill="#f0a500" font-family="system-ui, sans-serif" font-size="24" font-weight="900">3</text>
-        <text x="50" y="30" fill="#f0eaf8" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Süreklilik Bağlantısı</text>
-        <text x="50" y="48" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="10">Süreklilik için o noktada limit olması ve değere eşit olması gerekir.</text>
-      </g>
+  const hdr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="100%" height="100%">
+    <rect width="1080" height="1080" fill="#07060a"/>
+    <defs>
+      <radialGradient id="rg1" cx="20%" cy="20%" r="60%"><stop offset="0%" stop-color="#f0a500" stop-opacity="0.12"/><stop offset="100%" stop-color="#07060a" stop-opacity="0"/></radialGradient>
+      <radialGradient id="rg2" cx="80%" cy="80%" r="50%"><stop offset="0%" stop-color="#c084fc" stop-opacity="0.1"/><stop offset="100%" stop-color="#07060a" stop-opacity="0"/></radialGradient>
+      <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f0a500"/><stop offset="100%" stop-color="#c084fc"/></linearGradient>
+    </defs>
+    <rect width="1080" height="1080" fill="url(#rg1)"/>
+    <rect width="1080" height="1080" fill="url(#rg2)"/>
+    <path d="M0,180 L1080,180 M0,900 L1080,900 M180,0 L180,1080 M900,0 L900,1080" stroke="#ffffff" stroke-opacity="0.025" stroke-width="1.5"/>
+    <text x="540" y="96" text-anchor="middle" fill="#f0eaf8" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="800" letter-spacing="6">ROSTRUM AKADEMİ</text>
+    <circle cx="540" cy="116" r="4" fill="#f0a500"/>`;
 
-      <text x="250" y="420" text-anchor="middle" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="10">Rostrum Akademi YouTube Entegrasyonu ile Hemen Programla!</text>
-      <rect x="190" y="445" width="120" height="20" rx="10" fill="#17151e" stroke="#2d2a3a" stroke-width="0.5"/>
-      <text x="250" y="459" text-anchor="middle" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="7" font-weight="600" letter-spacing="0.5">rostrumakademi.app</text>
-    </svg>`;
+  const ftr = `
+    <rect x="380" y="988" width="320" height="44" rx="22" fill="#17151e" stroke="#2d2a3a" stroke-width="1.5"/>
+    <text x="540" y="1016" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="600" letter-spacing="1.5">rostrumakademi.app</text>
+  </svg>`;
+
+  if (type === 'countdown') {
+    const words = quote.split(' '); let lines = [], cur = '';
+    words.forEach(w => { if ((cur+' '+w).length > 26) { lines.push(cur); cur=w; } else { cur = cur ? cur+' '+w : w; } });
+    if (cur) lines.push(cur); lines = lines.slice(0,4);
+    const txts = lines.map((l,i) => `<text x="540" y="${620+i*58}" text-anchor="middle" fill="#f0eaf8" font-family="Arial,Helvetica,sans-serif" font-size="38" font-weight="600">${l}</text>`).join('');
+    return `${hdr}
+      <circle cx="540" cy="350" r="170" fill="none" stroke="#2d2a3a" stroke-width="6"/>
+      <circle cx="540" cy="350" r="170" fill="none" stroke="url(#lg1)" stroke-width="10" stroke-dasharray="1068" stroke-dashoffset="267" stroke-linecap="round"/>
+      <text x="540" y="308" text-anchor="middle" fill="#f0eaf8" font-family="Arial,Helvetica,sans-serif" font-size="116" font-weight="900">${daysLeft}</text>
+      <text x="540" y="374" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" letter-spacing="5">GUN KALDI</text>
+      <text x="540" y="545" text-anchor="middle" fill="#f0a500" font-family="Georgia,serif" font-size="130" fill-opacity="0.18">"</text>
+      ${txts}
+      <text x="540" y="${645+lines.length*58}" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="24" font-style="italic">— ${author}</text>
+    ${ftr}`;
+  }
+
+  if (type === 'tactic' || type === 'seasonal') {
+    const pts = points || [{title:'Adım 1',desc:'Bu alanı düzenlemek için Yeniden Üret butonunu kullanın.'},{title:'Adım 2',desc:'Yapay zeka içerikleri otomatik olarak üretir.'},{title:'Adım 3',desc:'Ardından onaylayıp Instagram\'a gönderin.'}];
+    const ac = type==='seasonal' ? '#ff8c00' : '#c084fc';
+    const lbl = type==='seasonal' ? 'YAZ REHBERI' : 'BRANS TAKTIKLERI';
+    const ttl = (title||lbl).toUpperCase().substring(0,28);
+    const sub = (subtitle||quote||'').substring(0,52);
+    const p0t=(pts[0]?.title||'').substring(0,32), p0d=(pts[0]?.desc||'').substring(0,58);
+    const p1t=(pts[1]?.title||'').substring(0,32), p1d=(pts[1]?.desc||'').substring(0,58);
+    const p2t=(pts[2]?.title||'').substring(0,32), p2d=(pts[2]?.desc||'').substring(0,58);
+    return `${hdr}
+      <text x="540" y="185" text-anchor="middle" fill="${ac}" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="800" letter-spacing="4">${lbl}</text>
+      <text x="540" y="252" text-anchor="middle" fill="#f0eaf8" font-family="Arial,Helvetica,sans-serif" font-size="48" font-weight="900">${ttl}</text>
+      <text x="540" y="302" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="26">${sub}</text>
+      <g transform="translate(90,365)">
+        <rect width="900" height="148" rx="18" fill="#121018" stroke="#2d2a3a" stroke-width="1.5"/>
+        <circle cx="66" cy="74" r="30" fill="${ac}" fill-opacity="0.14"/>
+        <text x="66" y="84" text-anchor="middle" fill="${ac}" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="900">1</text>
+        <text x="122" y="58" fill="#f0eaf8" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="700">${p0t}</text>
+        <text x="122" y="98" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="20">${p0d}</text>
+      </g>
+      <g transform="translate(90,535)">
+        <rect width="900" height="148" rx="18" fill="#121018" stroke="#2d2a3a" stroke-width="1.5"/>
+        <circle cx="66" cy="74" r="30" fill="${ac}" fill-opacity="0.14"/>
+        <text x="66" y="84" text-anchor="middle" fill="${ac}" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="900">2</text>
+        <text x="122" y="58" fill="#f0eaf8" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="700">${p1t}</text>
+        <text x="122" y="98" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="20">${p1d}</text>
+      </g>
+      <g transform="translate(90,705)">
+        <rect width="900" height="148" rx="18" fill="#121018" stroke="#2d2a3a" stroke-width="1.5"/>
+        <circle cx="66" cy="74" r="30" fill="${ac}" fill-opacity="0.14"/>
+        <text x="66" y="84" text-anchor="middle" fill="${ac}" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="900">3</text>
+        <text x="122" y="58" fill="#f0eaf8" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="700">${p2t}</text>
+        <text x="122" y="98" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="20">${p2d}</text>
+      </g>
+    ${ftr}`;
   }
 
   if (type === 'comparison') {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
-      <rect width="500" height="500" fill="#07060a"/>
-      <text x="250" y="50" text-anchor="middle" fill="#f0a500" font-family="system-ui, sans-serif" font-size="12" font-weight="800" letter-spacing="3">BÜYÜK KARŞILAŞTIRMA</text>
-      <text x="250" y="85" text-anchor="middle" fill="#f0eaf8" font-family="system-ui, sans-serif" font-size="20" font-weight="900">Kağıt Programlar vs Rostrum Akademi</text>
-      
-      <!-- Sol Taraf (Kağıt) -->
-      <g transform="translate(30, 120)">
-        <rect width="200" height="280" rx="12" fill="#151214" stroke="#4a1a1f" stroke-width="1.5"/>
-        <text x="100" y="40" text-anchor="middle" fill="#ff5c7a" font-family="system-ui, sans-serif" font-size="16" font-weight="800">❌ KAĞIT PROGRAM</text>
-        <circle cx="100" cy="90" r="30" fill="#ff5c7a" fill-opacity="0.1"/>
-        <text x="100" y="96" text-anchor="middle" fill="#ff5c7a" font-family="system-ui, sans-serif" font-size="22" font-weight="900">📝</text>
-        <g fill="#a09ab8" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">
-          <text x="100" y="160">• Çabuk kaybolur &amp; yırtılır</text>
-          <text x="100" y="185">• Süre hesabı manuel yapılır</text>
-          <text x="100" y="210">• Veliye raporlanamaz</text>
-          <text x="100" y="235">• Sürekli zaman kaybettirir</text>
-        </g>
+    return `${hdr}
+      <text x="540" y="200" text-anchor="middle" fill="#f0a500" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="800" letter-spacing="4">BUYUK KARSILASTIRMA</text>
+      <text x="540" y="268" text-anchor="middle" fill="#f0eaf8" font-family="Arial,Helvetica,sans-serif" font-size="38" font-weight="900">Kagit Program vs Rostrum Akademi</text>
+      <g transform="translate(55,315)">
+        <rect width="450" height="600" rx="24" fill="#151214" stroke="#4a1a1f" stroke-width="2.5"/>
+        <text x="225" y="66" text-anchor="middle" fill="#ff5c7a" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="800">KAGIT PROGRAM</text>
+        <circle cx="225" cy="170" r="56" fill="#ff5c7a" fill-opacity="0.1"/>
+        <text x="225" y="195" text-anchor="middle" fill="#ff5c7a" font-family="Arial,Helvetica,sans-serif" font-size="58">X</text>
+        <text x="225" y="300" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="21">Kaybolur ve yirtilir</text>
+        <text x="225" y="354" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="21">Manuel sure hesabi</text>
+        <text x="225" y="408" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="21">Veliye raporlanamaz</text>
+        <text x="225" y="462" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="21">Surekli zaman kaybi</text>
       </g>
-
-      <!-- Sağ Taraf (Rostrum Akademi) -->
-      <g transform="translate(270, 120)">
-        <rect width="200" height="280" rx="12" fill="#101815" stroke="#1f4a38" stroke-width="1.5"/>
-        <text x="100" y="40" text-anchor="middle" fill="#3ecf8e" font-family="system-ui, sans-serif" font-size="16" font-weight="800">✅ DİJİTAL PDF</text>
-        <circle cx="100" cy="90" r="30" fill="#3ecf8e" fill-opacity="0.1"/>
-        <text x="100" y="96" text-anchor="middle" fill="#3ecf8e" font-family="system-ui, sans-serif" font-size="22" font-weight="900">📱</text>
-        <g fill="#a09ab8" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">
-          <text x="100" y="160">• Kaybolmaz, cepte taşınır</text>
-          <text x="100" y="185">• Akıllı süre tahmini yapar</text>
-          <text x="100" y="210">• Veliye otomatik grafik iletir</text>
-          <text x="100" y="235">• Koça haftada 4 saat kazandırır</text>
-        </g>
+      <g transform="translate(575,315)">
+        <rect width="450" height="600" rx="24" fill="#101815" stroke="#1f4a38" stroke-width="2.5"/>
+        <text x="225" y="66" text-anchor="middle" fill="#3ecf8e" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="800">ROSTRUM AKADEMİ</text>
+        <circle cx="225" cy="170" r="56" fill="#3ecf8e" fill-opacity="0.1"/>
+        <text x="225" y="195" text-anchor="middle" fill="#3ecf8e" font-family="Arial,Helvetica,sans-serif" font-size="58">✓</text>
+        <text x="225" y="300" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="21">Kaybolmaz, cepte</text>
+        <text x="225" y="354" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="21">Akilli sure tahmini</text>
+        <text x="225" y="408" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="21">Veliye otomatik grafik</text>
+        <text x="225" y="462" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="21">Haftada 4 saat kazanc</text>
       </g>
-
-      <text x="250" y="435" text-anchor="middle" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="10">Koçluğunuzu Dijitalleştirin, Zaman Kazanın!</text>
-      <rect x="190" y="450" width="120" height="20" rx="10" fill="#17151e" stroke="#2d2a3a" stroke-width="0.5"/>
-      <text x="250" y="464" text-anchor="middle" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="7" font-weight="600" letter-spacing="0.5">rostrumakademi.app</text>
-    </svg>`;
+    ${ftr}`;
   }
 
-  if (type === 'seasonal') {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
-      <rect width="500" height="500" fill="#07060a"/>
-      <defs>
-        <radialGradient id="meshSummer" cx="80%" cy="20%" r="60%"><stop offset="0%" stop-color="#ff8c00" stop-opacity="0.15"/><stop offset="100%" stop-color="#07060a" stop-opacity="0"/></radialGradient>
-      </defs>
-      <rect width="500" height="500" fill="url(#meshSummer)"/>
-      <text x="250" y="50" text-anchor="middle" fill="#ff8c00" font-family="system-ui, sans-serif" font-size="12" font-weight="800" letter-spacing="3">YAZ KAMPINDAYIZ ☀️</text>
-      <text x="250" y="85" text-anchor="middle" fill="#f0eaf8" font-family="system-ui, sans-serif" font-size="20" font-weight="900">Sıcakta Odaklanma Rehberi</text>
-      
-      <!-- Grafik Öğeler: Güneş & İçecek -->
-      <g transform="translate(250, 150)" stroke="#ff8c00" stroke-width="1.5" fill="none">
-        <circle cx="0" cy="0" r="15"/>
-        <line x1="0" y1="-20" x2="0" y2="-28"/>
-        <line x1="0" y1="20" x2="0" y2="28"/>
-        <line x1="-20" y1="0" x2="-28" y2="0"/>
-        <line x1="20" y1="0" x2="28" y2="0"/>
-        <line x1="-14" y1="-14" x2="-20" y2="-20"/>
-        <line x1="14" y1="14" x2="20" y2="20"/>
-        <line x1="-14" y1="14" x2="-20" y2="20"/>
-        <line x1="14" y1="-14" x2="20" y2="-20"/>
-      </g>
-
-      <g transform="translate(50, 220)" fill="#f0eaf8" font-family="system-ui, sans-serif" font-size="12">
-        <!-- Madde 1 -->
-        <circle cx="20" cy="15" r="8" fill="#ff8c00" stroke="none"/>
-        <text x="20" y="19" text-anchor="middle" fill="#000" font-size="10" font-weight="900">1</text>
-        <text x="40" y="18" font-weight="700">Sabah Erken Çalışın (06:00 - 09:00)</text>
-        <text x="40" y="34" fill="#a09ab8" font-size="10">Günün en serin saatlerinde odaklanma gücünüzü 2 katına çıkarın.</text>
-
-        <!-- Madde 2 -->
-        <circle cx="20" cy="75" r="8" fill="#ff8c00" stroke="none"/>
-        <text x="20" y="79" text-anchor="middle" fill="#000" font-size="10" font-weight="900">2</text>
-        <text x="40" y="78" font-weight="700">Masanızı ve Zihninizi Sadeleştirin</text>
-        <text x="40" y="94" fill="#a09ab8" font-size="10">Sadece çalışacağınız dersin kaynağı ve serin suyunuz masada kalsın.</text>
-
-        <!-- Madde 3 -->
-        <circle cx="20" cy="135" r="8" fill="#ff8c00" stroke="none"/>
-        <text x="20" y="139" text-anchor="middle" fill="#000" font-size="10" font-weight="900">3</text>
-        <text x="40" y="138" font-weight="700">Pomodoro Metodu ile Beyni Dinlendirin</text>
-        <text x="40" y="154" fill="#a09ab8" font-size="10">25 dakika çalışıp 5 dakika serin molalar vererek zihni zinde tutun.</text>
-      </g>
-
-      <text x="250" y="425" text-anchor="middle" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="10">Hayallerine giden yolda yaz kampını Rostrum Akademi ile yönet! 🚀</text>
-      <rect x="190" y="445" width="120" height="20" rx="10" fill="#17151e" stroke="#2d2a3a" stroke-width="0.5"/>
-      <text x="250" y="459" text-anchor="middle" fill="#a09ab8" font-family="system-ui, sans-serif" font-size="7" font-weight="600" letter-spacing="0.5">rostrumakademi.app</text>
-    </svg>`;
-  }
+  return `${hdr}${ftr}`;
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -2066,66 +2000,85 @@ function selectIgPanelDraft(id) {
   if (!d) return;
 
   const previewContainer = document.getElementById('igPanelPreviewContainer');
-  previewContainer.innerHTML = getPostSvg(d.type, d.days_left, d.quote, d.author, d.title);
+  previewContainer.innerHTML = getPostSvg(d);
   
   document.getElementById('igPanelCaptionPreview').value = d.caption;
 
   document.getElementById('btnPanelApproveIg').disabled = false;
+  document.getElementById('btnPanelStoryIg').disabled = false;
   document.getElementById('btnPanelRejectIg').disabled = false;
-  
+
   if (d.status === 'published') {
-    document.getElementById('btnPanelApproveIg').textContent = '🚀 Zaten Yayınlandı';
+    document.getElementById('btnPanelApproveIg').textContent = '✓ Yayınlandı';
     document.getElementById('btnPanelApproveIg').disabled = true;
   } else {
-    document.getElementById('btnPanelApproveIg').textContent = '🚀 Onayla & Yayınla';
+    document.getElementById('btnPanelApproveIg').textContent = '🚀 Post Yayınla';
     document.getElementById('btnPanelApproveIg').disabled = false;
   }
 }
 
-async function publishIgPostPanel() {
+async function publishIgPostPanel(isStory = false) {
   if(!_selectedIgPanelDraftId) return;
   const d = _igDrafts.find(x => x.id === _selectedIgPanelDraftId);
   if(!d) return;
 
-  const btn = document.getElementById('btnPanelApproveIg');
-  btn.textContent = '⏳ Yayınlanıyor...';
+  const btnId = isStory ? 'btnPanelStoryIg' : 'btnPanelApproveIg';
+  const btn = document.getElementById(btnId);
+  btn.textContent = '⏳ Hazırlanıyor...';
   btn.disabled = true;
 
   const editedCaption = document.getElementById('igPanelCaptionPreview').value;
 
   try {
+    // Görsel tarayıcıda canvas ile üret (font sorunu olmaz)
+    const svgEl = document.querySelector('#igPanelPreviewContainer svg');
+    if (!svgEl) throw new Error('Önizleme SVG bulunamadı. Lütfen bir taslak seçin.');
+
+    const svgStr = new XMLSerializer().serializeToString(svgEl);
+    const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+
+    const imageBase64 = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1080; canvas.height = 1080;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#07060a';
+        ctx.fillRect(0, 0, 1080, 1080);
+        ctx.drawImage(img, 0, 0, 1080, 1080);
+        URL.revokeObjectURL(svgUrl);
+        resolve(canvas.toDataURL('image/jpeg', 0.95).split(',')[1]);
+      };
+      img.onerror = (e) => { URL.revokeObjectURL(svgUrl); reject(new Error('Görsel render hatası')); };
+      img.src = svgUrl;
+    });
+
+    btn.textContent = '⏳ Yayınlanıyor...';
+
     const response = await fetch('/api/publish-instagram', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        draftId: d.id,
-        caption: editedCaption,
-        type: d.type,
-        daysLeft: d.days_left,
-        quote: d.quote,
-        author: d.author,
-        title: d.title
-      })
+      body: JSON.stringify({ draftId: d.id, caption: isStory ? '' : editedCaption, imageBase64, isStory })
     });
 
     if (response.ok) {
-      d.status = 'published';
-      d.caption = editedCaption;
-      await db.from('platform_settings').upsert({ key: 'instagram_drafts', value: _igDrafts });
-      showToast('📸 Gönderi Instagram Graph API ile başarıyla paylaşıldı! ✓');
+      if (!isStory) {
+        d.status = 'published';
+        d.caption = editedCaption;
+        await db.from('platform_settings').upsert({ key: 'instagram_drafts', value: _igDrafts });
+      }
+      showToast(isStory ? '📱 Hikaye başarıyla paylaşıldı! ✓' : '📸 Gönderi Instagram\'da yayınlandı! ✓');
     } else {
       const errRes = await response.json();
       showToast('Hata: ' + (errRes.message || 'Yayınlanamadı'), false);
     }
   } catch(e) {
     console.error('Publish error:', e);
-    d.status = 'published';
-    d.caption = editedCaption;
-    await db.from('platform_settings').upsert({ key: 'instagram_drafts', value: _igDrafts });
-    showToast('📸 Paylaşım simüle edildi ve kaydedildi! ✓');
+    showToast('Hata: ' + e.message, false);
   }
 
-  btn.textContent = '🚀 Onayla & Yayınla';
+  btn.textContent = isStory ? '📱 Hikaye Paylaş' : '🚀 Post Yayınla';
   btn.disabled = false;
   selectIgPanelDraft(_selectedIgPanelDraftId);
 }
