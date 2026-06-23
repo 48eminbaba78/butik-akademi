@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#f0a500">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rostrum Akademi">
+<title>Rostrum Akademi</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/app-9PKoRyLW.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/app-c6XBbaRX.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-split">
+    <!-- Sol: Marka paneli -->
+    <div class="login-brand">
+      <div class="lb-logo">ROSTRUM <span>AKADEMİ</span></div>
+      <div class="lb-tagline">Koçluk süreçlerini<br>profesyonelleştirin.</div>
+      <div class="lb-features">
+        <div class="lb-feat">✓ Haftalık program & görev yönetimi</div>
+        <div class="lb-feat">✓ TYT / AYT deneme takibi</div>
+        <div class="lb-feat">✓ AI koçluk asistanı</div>
+        <div class="lb-feat">✓ PDF raporlar & mesajlaşma</div>
+      </div>
+      <div class="lb-badge">🎓 YKS koçluğu için akıllı platform</div>
+    </div>
+    <!-- Sağ: Form paneli -->
+    <div class="login-form-panel">
+      <div class="login-box">
+        <div class="login-logo">ROSTRUM <span>AKADEMİ</span></div>
+
+        <!-- Mode tabs: Giriş / Kayıt -->
+        <div class="login-mode-tabs">
+          <button class="lmt active" id="lmtLogin" onclick="setAuthMode('login')">Giriş Yap</button>
+          <button class="lmt" id="lmtRegister" onclick="setAuthMode('register')">Hesap Oluştur</button>
+        </div>
+
+        <!-- ── GİRİŞ PANELİ ── -->
+        <div id="loginPanel">
+          <!-- Google -->
+          <button class="btn-google" onclick="loginWithGoogle()">
+            <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58Z"/></svg>
+            Google ile Giriş Yap
+          </button>
+          
+          <!-- Quick Demo Entry (sandbox modda göster) -->
+          <div class="demo-quick-wrap" id="demoQuickWrap" style="display:none">
+            <button class="btn-demo-quick coach" onclick="simOAuthLogin('demokoc')">⚡ Demo Koç Girişi 🎓</button>
+            <button class="btn-demo-quick student" onclick="simOAuthLogin('demoogrenci')">⚡ Demo Öğrenci Girişi 📚</button>
+          </div>
+          
+          <div class="login-divider"><span>veya e-posta ile</span></div>
+
+          <!-- E-posta / Kullanıcı adı toggle -->
+          <div class="login-tabs" id="loginTabs">
+            <button class="login-tab active" onclick="setLoginMode('email')">E-posta</button>
+            <button class="login-tab" onclick="setLoginMode('username')">Kullanıcı Adı</button>
+          </div>
+          <div id="loginEmailField" class="lfield"><label>E-posta Adresi</label><input type="email" id="loginEmail" placeholder="ornek@gmail.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"></div>
+          <div id="loginUserField" class="lfield" style="display:none"><label>Kullanıcı Adı</label><input type="text" id="loginUser" placeholder="kullanici_adi" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"></div>
+          <div class="lfield"><label>Şifre</label><input type="password" id="loginPass" placeholder="Şifreniz" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+          <div id="loginErr" style="display:none;color:var(--red);font-size:13px;margin-bottom:8px;padding:10px 14px;background:var(--red-dim);border-radius:8px"></div>
+          <button class="btn-login" onclick="doLogin()">Giriş Yap →</button>
+          <a class="login-forgot" onclick="showForgotPassword()">Şifremi Unuttum</a>
+        </div>
+
+        <!-- ── KAYIT PANELİ ── -->
+        <div id="registerPanel" style="display:none">
+          <button class="btn-google" onclick="loginWithGoogle()">
+            <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58Z"/></svg>
+            Google ile Kayıt Ol
+          </button>
+          <div class="login-divider"><span>veya e-posta ile</span></div>
+          <div class="lfield"><label>Ad Soyad</label><input type="text" id="regName" placeholder="Adınız Soyadınız" autocomplete="name"></div>
+          <div class="lfield"><label>E-posta</label><input type="email" id="regEmail" placeholder="ornek@gmail.com" autocomplete="email"></div>
+          <div class="lfield"><label>Şifre</label><input type="password" id="regPass" placeholder="En az 8 karakter" autocomplete="new-password"></div>
+          <div class="lfield">
+            <label>Hesap Türü</label>
+            <div class="reg-role-btns">
+              <button class="reg-role-btn" id="rrbCoach" onclick="setRegRole('coach')">
+                <span style="font-size:20px">🎓</span>
+                <span class="rrb-name">Koç</span>
+                <span class="rrb-sub">Öğrenci yönet</span>
+              </button>
+              <button class="reg-role-btn" id="rrbStudent" onclick="setRegRole('student')">
+                <span style="font-size:20px">📚</span>
+                <span class="rrb-name">Öğrenci</span>
+                <span class="rrb-sub">Koç davet eder</span>
+              </button>
+            </div>
+          </div>
+          <div id="regErr" style="display:none;color:var(--red);font-size:13px;margin-bottom:8px;padding:10px 14px;background:var(--red-dim);border-radius:8px"></div>
+          <button class="btn-login" onclick="doRegister()">Kayıt Ol →</button>
+          <div id="regSuccess" style="display:none;text-align:center;padding:16px;background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);border-radius:10px;margin-top:8px;font-size:13px;color:#3ecf8e;line-height:1.6"></div>
+          <div class="login-hint">Kayıt olarak <a href="/terms.html" target="_blank" style="color:var(--accent)">Kullanım Koşulları</a>'nı kabul etmiş olursunuz.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- YENİ KULLANICI ONBOARDING (Google OAuth sonrası) -->
+<div id="newUserOnboarding" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px;max-width:440px;width:100%;animation:fadeUp .3s ease">
+    <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Son bir adım! 👋</div>
+    <div style="font-size:13px;color:var(--text-mid);margin-bottom:24px">Google hesabınız: <strong id="onbEmail"></strong></div>
+    <div class="lfield"><label>Ad Soyad</label><input type="text" id="onbName" placeholder="Adınız Soyadınız"></div>
+    <div class="lfield">
+      <label>Hesap Türü</label>
+      <div class="reg-role-btns">
+        <button class="reg-role-btn" id="onbRoleCoach" onclick="setOnbRole('coach')">
+          <span style="font-size:20px">🎓</span>
+          <span class="rrb-name">Koç</span>
+          <span class="rrb-sub">Öğrenci yönet</span>
+        </button>
+        <button class="reg-role-btn" id="onbRoleStudent" onclick="setOnbRole('student')">
+          <span style="font-size:20px">📚</span>
+          <span class="rrb-name">Öğrenci</span>
+          <span class="rrb-sub">Koç davet eder</span>
+        </button>
+      </div>
+    </div>
+    <div id="onbErr" style="display:none;color:var(--red);font-size:13px;margin-bottom:8px;padding:10px;background:var(--red-dim);border-radius:8px"></div>
+    <button class="btn-login" onclick="completeOnboarding()">Hesabı Oluştur →</button>
+  </div>
+</div>
+
+<!-- GOOGLE AUTH SIMULATOR MODAL -->
+<div id="googleSimulatorModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);z-index:2100;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:32px;max-width:400px;width:100%;box-shadow:var(--shadow-lg);animation:fadeUp .25s ease;position:relative">
+    <button onclick="closeGoogleSimulator()" style="position:absolute;top:16px;right:18px;background:transparent;border:none;color:var(--text-mid);font-size:24px;cursor:pointer;line-height:1">×</button>
+    
+    <!-- Google Logo & Sign-in title -->
+    <div style="text-align:center;margin-bottom:20px">
+      <svg width="24" height="24" viewBox="0 0 18 18" style="margin-bottom:12px"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58Z"/></svg>
+      <h3 style="font-family:'Inter',sans-serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">Google ile oturum açın</h3>
+      <p style="font-size:12.5px;color:var(--text-mid)">Rostrum Akademi uygulamasına devam etmek için</p>
+    </div>
+
+    <!-- Account Chooser List -->
+    <div class="g-chooser">
+      <button class="g-account-row" onclick="simOAuthLogin('demokoc')">
+        <div class="g-avatar">A</div>
+        <div class="g-info">
+          <span class="g-name">Ahmet Şahin</span>
+          <span class="g-email">ahmet.sahin@gmail.com <span>[Koç]</span></span>
+        </div>
+      </button>
+      
+      <button class="g-account-row" onclick="simOAuthLogin('demoogrenci')">
+        <div class="g-avatar student">C</div>
+        <div class="g-info">
+          <span class="g-name">Can Yılmaz</span>
+          <span class="g-email">can.yilmaz@gmail.com <span>[Öğrenci]</span></span>
+        </div>
+      </button>
+      
+      <button class="g-account-row" onclick="simOAuthLogin('new')">
+        <div class="g-avatar new">+</div>
+        <div class="g-info">
+          <span class="g-name" style="color:var(--text-mid)">Başka bir hesap kullan</span>
+          <span class="g-email">Yeni kayıt akışını başlatın</span>
+        </div>
+      </button>
+      
+      <button class="g-account-row" onclick="triggerRealGoogleLogin()" style="border-top: 1.5px solid var(--border)">
+        <div class="g-avatar" style="background:#4285F4;color:#fff">G</div>
+        <div class="g-info">
+          <span class="g-name" style="color:var(--accent)">Gerçek Google Hesabını Kullan</span>
+          <span class="g-email">Supabase OAuth yönlendirmesini başlatın</span>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD MODAL -->
+<div class="modal-bg" id="forgotPassModal">
+  <div class="modal" style="max-width:400px">
+    <button class="modal-close" onclick="cm('forgotPassModal')">×</button>
+    <div style="font-size:18px;font-weight:700;margin-bottom:12px">🔑 Şifre Sıfırlama</div>
+    <div class="lfield"><label>E-posta Adresi</label><input type="email" id="forgotEmail" placeholder="Kayıtlı e-posta adresiniz"></div>
+    <button class="btn-login" onclick="sendResetEmail()">Sıfırlama Linki Gönder →</button>
+    <div id="forgotMsg" style="display:none;font-size:12px;margin-top:10px;padding:10px;border-radius:8px"></div>
+  </div>
+</div>
+
+<!-- RESET PASSWORD MODAL -->
+<div class="modal-bg" id="resetPasswordModal">
+  <div class="modal" style="max-width:400px">
+    <button class="modal-close" onclick="cm('resetPasswordModal')">×</button>
+    <div style="font-size:18px;font-weight:700;margin-bottom:12px">🔒 Yeni Şifre Belirle</div>
+    <div class="lfield"><label>Yeni Şifre</label><input type="password" id="newPasswordInput" placeholder="En az 8 karakter"></div>
+    <button class="btn-login" onclick="updateUserPassword()">Şifreyi Güncelle →</button>
+    <div id="resetPasswordMsg" style="display:none;font-size:12px;margin-top:10px;padding:10px;border-radius:8px"></div>
+  </div>
+</div>�fırlama Linki Gönder →</button>
+    <div id="forgotMsg" style="display:none;font-size:12px;margin-top:10px;padding:10px;border-radius:8px"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appShell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="mainSidebar">
+    <div class="sb-logo" onclick="toggleSidebar()">
+      <div class="sb-logo-icon">≡</div>
+      <span class="sb-logo-text">Rostrum Akademi</span>
+    </div>
+    <div class="sb-divider"></div>
+    <div id="sidebarNav"></div>
+    <div class="sb-item" id="sb-site-admin" style="display:none" onclick="window.open('site_admin.html','_blank')">
+      <span class="sb-icon">🌐</span>
+      <span class="sb-label">Site Yönetimi</span>
+    </div>
+    <div class="sb-bottom">
+      <div class="sb-divider"></div>
+      <div class="sb-item" id="sb-settings" onclick="switchTab('settings')">
+        <span class="sb-icon">⚙️</span>
+        <span class="sb-label">Ayarlar</span>
+      </div>
+      <div class="sb-profile" onclick="switchTab('profile')">
+        <div class="sb-av" id="sbAv"></div>
+        <div class="sb-pinfo">
+          <div class="sb-pname" id="sbName"></div>
+          <div class="sb-prole" id="sbRole"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-wrap">
+    <div class="topbar">
+      <span class="tbar-title" id="tbarTitle">Ana Sayfa</span>
+      <div class="tbar-right">
+        <button class="tbar-icon-btn" onclick="openThemePanel()">🎨</button>
+        <button class="tbar-icon-btn" onclick="doLogout()">Çıkış</button>
+      </div>
+    </div>
+    <div class="content" id="mainContent"></div>
+    <nav class="mobile-nav" id="mobileNav"></nav>
+  </div>
+</div>
+
+<!-- TASK MODAL -->
+<div class="modal-bg" id="taskModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('taskModal')">×</button>
+    <h2>Görev Ekle — <span id="tmDay"></span></h2>
+    <div class="field-row">
+      <div class="field"><label>Tür</label>
+        <select id="tmType" onchange="updateSubjectList()">
+          <option value="konu">🎯 Konu Anlatımı</option>
+          <option value="soru">📚 Soru Bankası</option>
+          <option value="deneme">📊 Alan Denemesi</option>
+          <option value="diger">⭐ Diğer</option>
+        </select>
+      </div>
+      <div class="field"><label>Sınav</label>
+        <select id="tmExam" onchange="updateSubjectList()">
+          <option value="">— Seçin —</option>
+          <option value="TYT">TYT</option>
+          <option value="AYT-SAY">AYT Sayısal</option>
+          <option value="AYT-EA">AYT Eşit Ağırlık</option>
+          <option value="AYT-SOZ">AYT Sözel</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Ders</label>
+      <select id="tmSubjectSel" style="display:none" onchange="updateBookList()"></select>
+      <input id="tmSubjectFree" placeholder="Ders / konu adı girin...">
+    </div>
+
+    <!-- Soru Bankası / Konu Anlatımı seçimi -->
+    <div id="soruBankasiWrap" style="display:none">
+      <div class="field">
+        <label id="tmBookLabel">Kaynak Ara</label>
+        <input id="tmBookSearch" placeholder="Kitap adı veya yayınevi..." oninput="filterBooks()" autocomplete="off">
+        <div id="tmBookList" style="display:none;position:relative;z-index:10;background:var(--surface2);border:1.5px solid var(--accent);border-radius:9px;margin-top:4px;max-height:200px;overflow-y:auto;box-shadow:var(--shadow-lg)"></div>
+        <input type="hidden" id="tmBookVal">
+      </div>
+
+      <div id="tmTestWrap" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label id="tmTestLabel" style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px">Test Seç (çoklu)</label>
+          <div style="display:flex;gap:6px">
+            <button type="button" class="btn btn-ghost btn-xs" onclick="selectAllTests()">Tümü</button>
+            <button type="button" class="btn btn-ghost btn-xs" onclick="clearAllTests()">Temizle</button>
+          </div>
+        </div>
+        <div id="tmTestList" style="max-height:200px;overflow-y:auto;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:4px"></div>
+        <div id="tmTestSummary" style="margin-top:8px;padding:10px 12px;background:var(--accent-dim);border:1px solid rgba(240,165,0,.3);border-radius:8px;font-size:12px;display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0" id="tmSummaryRow">
+            <span id="tmTestSummaryText" style="font-weight:600"></span>
+            <span id="tmSuggestedDuration" style="color:var(--accent);font-weight:700;cursor:pointer" onclick="applyDuration()" title="Önerilen süreyi uygula">⏱ Uygula</span>
+          </div>
+          <div id="tmSpeedRow" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(240,165,0,.2)">
+            <div style="font-size:10px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">İzleme Hızı</div>
+            <div style="display:flex;gap:6px">
+              <button type="button" onclick="selectModalSpeed('1x')" data-mspeed="1x" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid var(--accent);background:var(--accent-dim);color:var(--accent);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer" class="speed-active">1x</button>
+              <button type="button" onclick="selectModalSpeed('1.25x')" data-mspeed="1.25x" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text-mid);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">1.25x</button>
+              <button type="button" onclick="selectModalSpeed('1.5x')" data-mspeed="1.5x" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text-mid);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">1.5x</button>
+              <button type="button" onclick="selectModalSpeed('2x')" data-mspeed="2x" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text-mid);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">2x</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Süre + Not yan yana -->
+    <div style="display:grid;grid-template-columns:100px 1fr;gap:10px;margin-top:12px">
+      <div class="field">
+        <label>Süre (dk)</label>
+        <input type="number" id="tmDuration" value="60" min="5">
+      </div>
+      <div class="field">
+        <label>Not</label>
+        <textarea id="tmNote" placeholder="Sayfa aralığı, konu notu, özel talimat..." style="min-height:42px;resize:none;line-height:1.4"></textarea>
+      </div>
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveTask()">Programa Ekle</button>
+  </div>
+</div>
+
+<!-- COACH TODO MODAL -->
+<div class="modal-bg" id="coachTodoModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('coachTodoModal')">×</button>
+    <h2>Koç Görevi — <span id="ctdDay"></span></h2>
+    <div class="field"><label>Görev</label><input id="ctdTask" placeholder="Yapılacak iş..."></div>
+    <div class="field"><label>Not (isteğe bağlı)</label><input id="ctdNote" placeholder="Detay..."></div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveCoachTodo()">Ekle</button>
+  </div>
+</div>
+
+<!-- CLEAR WEEK MODAL (day picker) -->
+<div class="modal-bg" id="clearWeekModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('clearWeekModal')">×</button>
+    <h2>Günleri Seç & Temizle</h2>
+    <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Silmek istediğin günleri seç:</p>
+    <div class="day-sel-grid" id="daySelectorGrid"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toggleAllDays()">Tümünü Seç / Bırak</button>
+      <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="confirmClearDays()">🗑 Seçilenleri Sil</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT MODAL -->
+<div class="modal-bg" id="studentModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('studentModal')">×</button>
+    <h2 id="smTitle">Yeni Öğrenci</h2>
+    <input type="hidden" id="smId">
+    <div class="field"><label>Ad Soyad</label><input id="smName" placeholder="Ad Soyad"></div>
+    <div class="field"><label>Hedef / Program</label><input id="smTarget" placeholder="TYT / AYT Hedefli"></div>
+    <div class="field-row">
+      <div class="field"><label>Kullanıcı Adı</label><input id="smUsername" type="text" placeholder="muzaffer (boş bırakılırsa ad kullanılır)"></div>
+      <div class="field"><label>Şifre</label><input id="smPass" type="text" placeholder="ogrenci123"></div>
+    </div>
+    <div class="field-row">
+      <div class="field" style="display:none"><label>placeholder</label></div>
+      <div class="field"><label>Hafta Başlangıcı</label>
+        <select id="smWeekStart">
+          <option value="0">Pazartesi</option><option value="1">Salı</option>
+          <option value="2">Çarşamba</option><option value="3">Perşembe</option>
+          <option value="4">Cuma</option><option value="5">Cumartesi</option><option value="6">Pazar</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Renk</label>
+      <div class="color-pick" id="smColorPick">
+        <div class="color-opt sel" data-c="#f0a500" style="background:#f0a500"></div>
+        <div class="color-opt" data-c="#e8622a" style="background:#e8622a"></div>
+        <div class="color-opt" data-c="#4da6ff" style="background:#4da6ff"></div>
+        <div class="color-opt" data-c="#3ecf8e" style="background:#3ecf8e"></div>
+        <div class="color-opt" data-c="#c084fc" style="background:#c084fc"></div>
+        <div class="color-opt" data-c="#f472b6" style="background:#f472b6"></div>
+      </div>
+    </div>
+    <div class="field"><label>İlerleme (%)</label>
+      <input type="range" id="smProg" min="0" max="100" value="0" style="width:100%">
+      <div class="pct-display" id="smProgVal">0%</div>
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveStudent()">Kaydet</button>
+  </div>
+</div>
+
+<!-- APPOINTMENT MODAL -->
+<div class="modal-bg" id="apptModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('apptModal')">×</button>
+    <h2 id="amTitle">Yeni Randevu</h2>
+    <input type="hidden" id="amId">
+    <div class="field"><label>Öğrenci</label><select id="amStudent"></select></div>
+    <div class="field-row">
+      <div class="field"><label>Tarih</label><input type="date" id="amDate"></div>
+      <div class="field"><label>Saat</label><input type="time" id="amTime"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Süre (dk)</label><input type="number" id="amDuration" value="45"></div>
+      <div class="field"><label>Tür</label>
+        <select id="amType">
+          <option>Haftalık Değerlendirme</option><option>Deneme Analizi</option>
+          <option>Konu Planlaması</option><option>Genel Görüşme</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Not</label><textarea id="amNote" placeholder="Randevu notları..."></textarea></div>
+    <div class="field">
+      <label>Toplantı Linki</label>
+      <div style="display:flex;gap:6px">
+        <input id="amMeetLink" placeholder="https://meet.google.com/... veya Zoom linki" style="flex:1">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('amMeetLink').value=generateMeetLink()" title="Google Meet linki oluştur">Meet</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('amMeetLink').value=generateZoomLink()" title="Zoom linki oluştur">Zoom</button>
+      </div>
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveAppt()">Kaydet</button>
+  </div>
+</div>
+
+<!-- EXAM MODAL (student entry) -->
+<div class="modal-bg" id="examModal">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="cm('examModal')">×</button>
+    <h2 id="emTitle">Deneme Sonucu Gir</h2>
+    <input type="hidden" id="emId">
+    <div class="field-row">
+      <div class="field"><label>Sınav Adı</label><input id="emName" placeholder="TYT Denemesi #1"></div>
+      <div class="field"><label>Tarih</label><input type="date" id="emDate"></div>
+    </div>
+    <div class="field" id="emStudentWrap"><label>Öğrenci</label><select id="emStudent"></select></div>
+    <div class="field"><label>Sınav Türü</label>
+      <select id="emExamType" onchange="renderNetInputs()">
+        <option value="TYT">TYT</option>
+        <option value="AYT-SAY">AYT Sayısal</option>
+        <option value="AYT-EA">AYT Eşit Ağırlık</option>
+        <option value="AYT-SOZ">AYT Sözel</option>
+      </select>
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Net Girişi</div>
+    <div id="netInputsWrap" class="nets-input-grid"></div>
+    <div class="field" style="margin-top:12px"><label>Kendi Notun</label><textarea id="emNote" placeholder="Bu deneme hakkında düşüncelerini yaz..."></textarea></div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveExam()">Kaydet</button>
+  </div>
+</div>
+
+<!-- COACH COMMENT MODAL -->
+<div class="modal-bg" id="commentModal">
+  <div class="modal">
+    <button class="modal-close" onclick="cm('commentModal')">×</button>
+    <h2>Koç Yorumu</h2>
+    <input type="hidden" id="cmExamId">
+    <div class="field"><label>Yorum</label><textarea id="cmText" placeholder="Bu deneme hakkında öğrenciye yorumunuzu yazın..." style="min-height:120px"></textarea></div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveComment()">Yorumu Kaydet</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- AI CHAT -->
+<div id="aiChatBubble" onclick="toggleAIChat()" title="AI Koç Asistanı" style="display:none">🤖</div>
+<div id="aiChatPanel">
+  <div class="ai-header">
+    <div class="ai-header-avatar">🤖</div>
+    <div class="ai-header-info">
+      <div class="ai-header-name">AI Koç Asistanı</div>
+      <div class="ai-header-status">● Çevrimiçi</div>
+    </div>
+    <button class="ai-header-close" onclick="toggleAIChat()">✕</button>
+  </div>
+  <div class="ai-messages" id="aiMessages">
+    <div class="ai-welcome">
+      <div class="ai-welcome-emoji">🎓</div>
+      <div class="ai-welcome-title">Merhaba! Ben AI Koç Asistanın</div>
+      <div class="ai-welcome-sub">Ders çalışma planı, deneme analizi, soru çözümü ve motivasyon konularında sana yardımcı olabilirim.</div>
+      <div class="ai-quick-btns">
+        <button class="ai-quick-btn" onclick="aiQuickSend('Haftalık çalışma planı öner')">📋 Plan Öner</button>
+        <button class="ai-quick-btn" onclick="aiQuickSend('Deneme sonuçlarımı analiz et')">📊 Deneme Analizi</button>
+        <button class="ai-quick-btn" onclick="aiQuickSend('Beni motive et')">💪 Motivasyon</button>
+        <button class="ai-quick-btn" onclick="aiQuickSend('Zayıf konularımı tespit et')">🎯 Zayıf Konular</button>
+      </div>
+    </div>
+  </div>
+  <div class="ai-typing" id="aiTyping"><span></span><span></span><span></span></div>
+  <div class="ai-input-bar">
+    <textarea id="aiInput" placeholder="Mesajınızı yazın..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIMessage()}"></textarea>
+    <button class="ai-send-btn" id="aiSendBtn" onclick="sendAIMessage()">➤</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="config.js"></script>
+</body>
+</html>
