@@ -2759,16 +2759,6 @@ async function publishIgPost(isStory = false) {
         : getStorySvg(d);
       const imageBase64 = await svgToJpegBase64(svgStr, 1080, carouselSlides.length > 0 ? 1080 : 1920);
       fetchBody = { caption: '', imageBase64, isStory: true };
-    } else if (carouselSlides.length > 1) {
-      // Carousel post
-      btn.textContent = '⏳ Görseller hazırlanıyor...';
-      showToast(`${carouselSlides.length} slayt hazırlanıyor...`);
-      const base64Slides = [];
-      for (let i = 0; i < carouselSlides.length; i++) {
-        const svgStr = getCarouselSlideSvg(carouselSlides[i], i, carouselSlides.length);
-        base64Slides.push(await svgToJpegBase64(svgStr, 1080, 1080));
-      }
-      fetchBody = { caption, slides: base64Slides, isCarousel: true };
     } else {
       // Tek görsel post
       const svgStr = getCarouselSlideSvg(carouselSlides[0] || { type: 'hook', headline: d.quote || '' }, 0, 1);
@@ -3364,18 +3354,13 @@ async function publishManualPost(isStory) {
   btn.disabled = true;
 
   try {
-    // Tüm slaytları canvas ile JPEG'e çevir
-    showToast('Görseller hazırlanıyor...');
-    const base64Slides = [];
-    for (let i = 0; i < _mpSlides.length; i++) {
-      const svgStr = getCarouselSlideSvg(_mpSlides[i], i, _mpSlides.length);
-      const b64 = await svgToJpegBase64(svgStr, 1080, 1080);
-      base64Slides.push(b64);
-    }
+    // Kanca slaytını (01) tek görsel olarak gönder — Meta carousel için ek izin gerekiyor
+    showToast('Görsel hazırlanıyor...');
+    const slideIndex = isStory ? Math.min(0, _mpSlides.length - 1) : 0;
+    const svgStr = getCarouselSlideSvg(_mpSlides[slideIndex] || { type: 'hook', headline: '' }, slideIndex, _mpSlides.length);
+    const imageBase64 = await svgToJpegBase64(svgStr, 1080, 1080);
 
-    const body = isStory
-      ? { imageBase64: base64Slides[0], caption: fullCaption, isStory: true }
-      : { slides: base64Slides, caption: fullCaption, isCarousel: true };
+    const body = { imageBase64, caption: isStory ? '' : fullCaption, isStory };
 
     const res = await fetch('/api/publish-instagram', {
       method: 'POST',
@@ -3385,7 +3370,7 @@ async function publishManualPost(isStory) {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || data.message || 'Yayın hatası');
 
-    showToast(isStory ? '📱 Hikaye yayınlandı ✓' : '🚀 Carousel yayınlandı ✓');
+    showToast(isStory ? '📱 Hikaye yayınlandı ✓' : '🚀 Post yayınlandı ✓');
     enableMpPublish(false);
     _mpGenerated = false;
   } catch (e) {
