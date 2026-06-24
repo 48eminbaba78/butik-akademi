@@ -2592,18 +2592,27 @@ function selectIgPost(id) {
   const p = _igPosts.find(x => x.id === id);
   if (!p) return;
 
-  // Önizleme — carousel slayt 0 önce dene, yoksa eski post SVG
-  const slides = Array.isArray(p.story_slides) ? p.story_slides : [];
-  const carouselSlides = parseCarouselSlides(slides);
-  const previewContainer = document.getElementById('igPanelPreviewContainer');
-  if (carouselSlides.length > 0) {
-    const svgStr = getCarouselSlideSvg(carouselSlides[0], 0, carouselSlides.length);
-    previewContainer.innerHTML = `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}" style="width:100%;height:100%;object-fit:cover"/>`;
-  } else {
-    const d = p.preview_data || { type: p.content_type, days_left: _igMemory?.yks_days_remaining || 360 };
-    d.type = d.type || p.content_type;
-    previewContainer.innerHTML = getPostSvg(d);
+  // Önizleme — her zaman yeni carousel tasarımıyla göster
+  const d = p.preview_data || {};
+  const rawSlides = Array.isArray(p.story_slides) ? p.story_slides : [];
+  let carouselSlides = parseCarouselSlides(rawSlides);
+
+  // story_slides yoksa preview_data'dan anlık carousel üret
+  if (carouselSlides.length === 0) {
+    const hook = d.quote || p.caption?.split('\n')[0]?.substring(0, 80) || 'YKS koçluğunda yeni bir dönem';
+    const pts = (d.points || []).map(pt => [pt.title || String(pt), pt.desc || '']);
+    carouselSlides = [
+      { type: 'hook', headline: hook },
+      { type: 'content', headline: d.title || 'Neden Önemli?', points: pts.slice(0, 3) },
+      { type: 'content', headline: d.subtitle || 'Çözüm', points: pts.slice(3, 5) },
+      { type: 'insight', quote: d.quote || hook },
+      { type: 'cta', cta_text: 'Erken erişim açık — Yeniden Üret ile özelleştir' }
+    ];
   }
+
+  const previewContainer = document.getElementById('igPanelPreviewContainer');
+  const svgStr = getCarouselSlideSvg(carouselSlides[0], 0, carouselSlides.length);
+  previewContainer.innerHTML = `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}" style="width:100%;height:100%;object-fit:cover"/>`;
 
   // Caption + hashtag
   const fullCaption = p.caption || '';
@@ -2675,7 +2684,20 @@ function selectStorySlide(n) {
   document.getElementById('igStorySlideText').value = text;
 
   // Carousel preview güncelle
-  const carouselSlides = parseCarouselSlides(rawSlides);
+  let carouselSlides = parseCarouselSlides(rawSlides);
+  if (carouselSlides.length === 0 && _selectedIgPostId) {
+    const pp = _igPosts.find(x => x.id === _selectedIgPostId);
+    const dd = pp?.preview_data || {};
+    const hook = dd.quote || pp?.caption?.split('\n')[0]?.substring(0, 80) || '';
+    const pts = (dd.points || []).map(pt => [pt.title || String(pt), pt.desc || '']);
+    carouselSlides = [
+      { type: 'hook', headline: hook },
+      { type: 'content', headline: dd.title || 'Detaylar', points: pts.slice(0, 3) },
+      { type: 'content', headline: dd.subtitle || '', points: pts.slice(3, 5) },
+      { type: 'insight', quote: hook },
+      { type: 'cta', cta_text: 'Erken erişim açık' }
+    ];
+  }
   if (carouselSlides.length > 0) {
     const idx = Math.min(n, carouselSlides.length - 1);
     const svgStr = getCarouselSlideSvg(carouselSlides[idx], idx, carouselSlides.length);
