@@ -545,7 +545,7 @@ tr:hover td{background:var(--s2);}
               YKS · <span id="igTopbarCountdown">…</span> gün kaldı
             </div>
           </div>
-          <span style="font-size:11px;color:rgba(230,237,243,0.3)">rostrumakademi.app</span>
+          <span style="font-size:11px;color:rgba(230,237,243,0.3)">rostrumakademi.com</span>
         </div>
 
         <!-- IG TAB BAR -->
@@ -2103,7 +2103,7 @@ function getPostSvg(d) {
 
   const ftr = `
     <rect x="380" y="988" width="320" height="44" rx="22" fill="#17151e" stroke="#2d2a3a" stroke-width="1.5"/>
-    <text x="540" y="1016" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="600" letter-spacing="1.5">rostrumakademi.app</text>
+    <text x="540" y="1016" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="600" letter-spacing="1.5">rostrumakademi.com</text>
   </svg>`;
 
   if (type === 'countdown') {
@@ -2218,7 +2218,7 @@ function getStorySvg(d) {
     ${txts}
     <text x="540" y="${1040+lines.length*70}" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="28" font-style="italic">— ${author||'Rostrum Akademi'}</text>
     <rect x="240" y="1680" width="600" height="80" rx="40" fill="url(#sgrad)"/>
-    <text x="540" y="1730" text-anchor="middle" fill="#07060a" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="900">rostrumakademi.app</text>
+    <text x="540" y="1730" text-anchor="middle" fill="#07060a" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="900">rostrumakademi.com</text>
     <text x="540" y="1820" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="20">14 gun ucretsiz deneyin</text>
   </svg>`;
 }
@@ -2247,7 +2247,7 @@ function _svgEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&
 function _carouselFooter(n, total) {
   return `
     <rect x="0" y="1072" width="1080" height="2" fill="rgba(244,162,97,0.22)" rx="1"/>
-    <text x="60" y="1056" font-size="22" fill="rgba(230,237,243,0.18)" font-family="Arial,system-ui,sans-serif">rostrumakademi.app</text>
+    <text x="60" y="1056" font-size="22" fill="rgba(230,237,243,0.18)" font-family="Arial,system-ui,sans-serif">rostrumakademi.com</text>
     <text x="1020" y="1056" font-size="22" fill="rgba(230,237,243,0.18)" font-family="Arial,system-ui,sans-serif" text-anchor="end">${String(n+1).padStart(2,'0')}/${String(total).padStart(2,'0')}</text>`;
 }
 
@@ -2351,7 +2351,7 @@ function carouselSlide_CTA(ctaText, n, total) {
   <rect x="0" y="0" width="1080" height="4" fill="#F4A261"/>
   ${_carouselHeader()}
   ${textEls}
-  <text x="540" y="${startY + totalH + 80}" font-size="54" font-weight="800" fill="#F4A261" font-family="Arial,system-ui,sans-serif" text-anchor="middle">rostrumakademi.app</text>
+  <text x="540" y="${startY + totalH + 80}" font-size="54" font-weight="800" fill="#F4A261" font-family="Arial,system-ui,sans-serif" text-anchor="middle">rostrumakademi.com</text>
   <text x="540" y="${startY + totalH + 148}" font-size="26" fill="rgba(244,162,97,0.42)" font-family="Arial,system-ui,sans-serif" text-anchor="middle">→ Profildeki bağlantıya tıkla</text>
   <rect x="0" y="1072" width="1080" height="4" fill="#F4A261"/>
   <text x="1020" y="1056" font-size="22" fill="rgba(230,237,243,0.18)" font-family="Arial,system-ui,sans-serif" text-anchor="end">${String(n+1).padStart(2,'0')}/${String(total).padStart(2,'0')}</text>
@@ -2957,7 +2957,7 @@ Sadece ham JSON döndür, başka açıklama ekleme.`;
           "Planlama, mesajlaşma, rapor — her biri ayrı ekran, ayrı dosya.",
           "Rostrum Akademi bunları tek yere toplar.\nÖğrenci neti düştüğünde, sistem sizi uyarır.",
           "Koçluk zamanı koçluk için kullanılmalı.\nGeri kalanı sistem yönetir.",
-          "Erken erişim açık.\nrostrumakademi.app 01/05"
+          "Erken erişim açık.\nrostrumakademi.com 01/05"
         ],
         tasarim_notu: "Koyu arka plan, tek renk vurgu. İlk slaytta büyük soru metni, ortada hizalı.",
         hafta_gerekce: "Hafta 1 — Acı nokta. Koçun gerçek zaman problemi üzerinden bilinç oluşturma.",
@@ -2978,7 +2978,7 @@ Sadece ham JSON döndür, başka açıklama ekleme.`;
           "Veliden duymayı bekliyorsanız, geç kalmış olabilirsiniz.",
           "Rostrum'da her deneme neti sisteme girer.\nDüşüş anında koça bildirim gider.",
           "Erken müdahale, öğrenci motivasyonunu korur.\nBu fark en çok Nisan-Haziran döneminde hissedilir.",
-          "Deneme sürümü açık — bağlantı profilde.\nrostrumakademi.app 01/05"
+          "Deneme sürümü açık — bağlantı profilde.\nrostrumakademi.com 01/05"
         ],
         tasarim_notu: "Kırmızıdan yeşile geçiş grafik öğesi kullanılabilir (düşüş → toparlanma). Sade, bilgi ağırlıklı.",
         hafta_gerekce: "Hafta 2 — Platform özelliği. Net takip sistemi somut örnekle anlatıldı.",
@@ -2999,7 +2999,7 @@ Sadece ham JSON döndür, başka açıklama ekleme.`;
           "Çünkü iki sınavın ritmi farklı — ama çoğu program bunu görmez.",
           "Rostrum'da TYT ve AYT netleri ayrı izlenir.\nHaftalık dağılım koçun kararıyla şekillenir.",
           "İçgörü: En iyi YKS sonuçları,\nTYT'yi erken kilitleyen koçlardan geliyor.",
-          "Bağlantı profilde — erken erişim açık.\nrostrumakademi.app 01/05"
+          "Bağlantı profilde — erken erişim açık.\nrostrumakademi.com 01/05"
         ],
         tasarim_notu: "İki bölümlü görsel: sol TYT, sağ AYT. Denge metaforu. Koyu zemin, net kontrast.",
         hafta_gerekce: "Hafta 3 — YKS içgörüsü. Koça değer katan sınav dengesi bilgisi.",
