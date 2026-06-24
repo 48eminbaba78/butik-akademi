@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════
 // ROSTRUM AKADEMI — INSTAGRAM PUBLISH API
-// Görsel tarayıcıda üretilip base64 olarak gönderilir.
-// Bu endpoint sadece Storage yükleme + Meta Graph API çağrısı yapar.
+// Tek görsel (isStory), çoklu slayt carousel (isCarousel) destekler.
+// Görseller tarayıcıda üretilip base64 olarak gönderilir.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from '@supabase/supabase-js';
@@ -10,28 +10,82 @@ const SB_URL = 'https://imyhenrwmsmyikpollur.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
 const db = createClient(SB_URL, SB_KEY);
 
+async function uploadImage(base64, fileName) {
+  const buffer = Buffer.from(base64, 'base64');
+  const { error } = await db.storage
+    .from('platform_assets')
+    .upload(`instagram_posts/${fileName}`, buffer, {
+      contentType: 'image/jpeg',
+      cacheControl: '3600',
+      upsert: true
+    });
+  if (error) throw new Error('Storage yüklemesi başarısız: ' + error.message);
+  const { data: { publicUrl } } = db.storage
+    .from('platform_assets')
+    .getPublicUrl(`instagram_posts/${fileName}`);
+  return publicUrl;
+}
+
+async function createMediaContainer(accountId, accessToken, params) {
+  const res = await fetch(`https://graph.facebook.com/v20.0/${accountId}/media`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...params, access_token: accessToken })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error('Meta Container Hatası: ' + data.error.message);
+  return data.id;
+}
+
+async function waitForContainer(containerId, accessToken, maxAttempts = 12) {
+  let statusCode = 'IN_PROGRESS';
+  let attempts = 0;
+  while (statusCode === 'IN_PROGRESS' && attempts < maxAttempts) {
+    await new Promise(r => setTimeout(r, 3000));
+    const res = await fetch(
+      `https://graph.facebook.com/v20.0/${containerId}?fields=status_code&access_token=${accessToken}`
+    );
+    const data = await res.json();
+    statusCode = data.status_code || 'ERROR';
+    attempts++;
+    console.log(`[API] Container ${containerId} status (${attempts}): ${statusCode}`);
+  }
+  if (statusCode !== 'FINISHED') {
+    throw new Error(`Container hazırlanamadı. Durum: ${statusCode}`);
+  }
+}
+
+async function publishContainer(accountId, accessToken, creationId) {
+  const res = await fetch(`https://graph.facebook.com/v20.0/${accountId}/media_publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ creation_id: creationId, access_token: accessToken })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error('Meta Publish Hatası: ' + data.error.message);
+  return data.id;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Only POST allowed' });
   }
 
-  const { caption, imageBase64, isStory } = req.body;
+  const { caption, imageBase64, isStory, slides, isCarousel } = req.body;
 
-  if (!imageBase64) {
-    return res.status(400).json({ message: 'imageBase64 parametresi eksik.' });
+  if (!imageBase64 && (!slides || slides.length === 0)) {
+    return res.status(400).json({ message: 'imageBase64 veya slides parametresi eksik.' });
   }
 
   try {
-    // 1. Credentials Supabase'den oku
+    // 1. Credentials
     const { data: credData, error: credError } = await db
       .from('platform_settings')
       .select('value')
       .eq('key', 'instagram_credentials')
       .maybeSingle();
 
-    if (credError) {
-      return res.status(500).json({ message: 'Kimlik bilgileri okunamadı: ' + credError.message });
-    }
+    if (credError) return res.status(500).json({ message: 'Kimlik bilgileri okunamadı: ' + credError.message });
 
     const creds = credData?.value;
     if (!creds?.instagram_account_id || !creds?.instagram_access_token) {
@@ -42,88 +96,68 @@ export default async function handler(req, res) {
 
     const accountId = creds.instagram_account_id;
     const accessToken = creds.instagram_access_token;
+    const ts = Date.now();
 
-    // 2. Base64 → Buffer → Supabase Storage
-    const imageBuffer = Buffer.from(imageBase64, 'base64');
-    const fileName = `ig-${isStory ? 'story' : 'post'}-${Date.now()}.jpg`;
-
-    const { error: uploadError } = await db.storage
-      .from('platform_assets')
-      .upload(`instagram_posts/${fileName}`, imageBuffer, {
-        contentType: 'image/jpeg',
-        cacheControl: '3600',
-        upsert: true
-      });
-
-    if (uploadError) {
-      return res.status(500).json({
-        message: `Storage yüklemesi başarısız: ${uploadError.message}`
-      });
-    }
-
-    const { data: { publicUrl } } = db.storage
-      .from('platform_assets')
-      .getPublicUrl(`instagram_posts/${fileName}`);
-
-    console.log('[API] Görsel URL:', publicUrl);
-
-    // 3. Instagram Graph API v20.0 — Container oluştur
-    const mediaParams = { image_url: publicUrl, access_token: accessToken };
+    // ── HIKAYE (tek görsel) ──
     if (isStory) {
-      mediaParams.media_type = 'STORIES';
-    } else {
-      mediaParams.caption = caption || '';
+      const imageUrl = await uploadImage(imageBase64, `story-${ts}.jpg`);
+      console.log('[API] Hikaye URL:', imageUrl);
+      const containerId = await createMediaContainer(accountId, accessToken, {
+        image_url: imageUrl, media_type: 'STORIES'
+      });
+      await waitForContainer(containerId, accessToken);
+      const publishedId = await publishContainer(accountId, accessToken, containerId);
+      console.log('[API] Hikaye yayınlandı! ID:', publishedId);
+      return res.status(200).json({ success: true, id: publishedId, imageUrl });
     }
 
-    const containerRes = await fetch(`https://graph.facebook.com/v20.0/${accountId}/media`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(mediaParams)
+    // ── CAROUSEL (5 slayt) ──
+    if (isCarousel && slides && slides.length > 0) {
+      console.log(`[API] Carousel başlatılıyor: ${slides.length} slayt`);
+
+      // Her slaytı yükle ve child container oluştur
+      const childIds = [];
+      for (let i = 0; i < slides.length; i++) {
+        const imageUrl = await uploadImage(slides[i], `carousel-${ts}-slide${i+1}.jpg`);
+        console.log(`[API] Slayt ${i+1} URL:`, imageUrl);
+        const childId = await createMediaContainer(accountId, accessToken, {
+          image_url: imageUrl,
+          is_carousel_item: true
+        });
+        await waitForContainer(childId, accessToken);
+        childIds.push(childId);
+        console.log(`[API] Slayt ${i+1} child container: ${childId}`);
+      }
+
+      // Carousel container oluştur
+      const carouselId = await createMediaContainer(accountId, accessToken, {
+        media_type: 'CAROUSEL',
+        children: childIds.join(','),
+        caption: caption || ''
+      });
+      console.log('[API] Carousel container ID:', carouselId);
+      await waitForContainer(carouselId, accessToken, 15);
+
+      // Yayınla
+      const publishedId = await publishContainer(accountId, accessToken, carouselId);
+      console.log('[API] Carousel yayınlandı! ID:', publishedId);
+      return res.status(200).json({ success: true, id: publishedId, slideCount: slides.length });
+    }
+
+    // ── TEK GÖRSEL POST ──
+    const imageUrl = await uploadImage(imageBase64, `post-${ts}.jpg`);
+    console.log('[API] Post URL:', imageUrl);
+    const containerId = await createMediaContainer(accountId, accessToken, {
+      image_url: imageUrl,
+      caption: caption || ''
     });
-
-    const containerData = await containerRes.json();
-    if (containerData.error) {
-      return res.status(400).json({ message: 'Meta Hatası (Container): ' + containerData.error.message });
-    }
-
-    const creationId = containerData.id;
-    console.log('[API] Container ID:', creationId);
-
-    // 4. Container FINISHED olana kadar bekle (max 30 sn)
-    let statusCode = 'IN_PROGRESS';
-    let attempts = 0;
-    while (statusCode === 'IN_PROGRESS' && attempts < 10) {
-      await new Promise(r => setTimeout(r, 3000));
-      const statusRes = await fetch(
-        `https://graph.facebook.com/v20.0/${creationId}?fields=status_code&access_token=${accessToken}`
-      );
-      const statusData = await statusRes.json();
-      statusCode = statusData.status_code || 'ERROR';
-      attempts++;
-      console.log(`[API] Container status (${attempts}): ${statusCode}`);
-    }
-
-    if (statusCode !== 'FINISHED') {
-      return res.status(400).json({ message: `Container hazırlanamadı. Durum: ${statusCode}` });
-    }
-
-    // 5. Yayınla
-    const publishRes = await fetch(`https://graph.facebook.com/v20.0/${accountId}/media_publish`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ creation_id: creationId, access_token: accessToken })
-    });
-
-    const publishData = await publishRes.json();
-    if (publishData.error) {
-      return res.status(400).json({ message: 'Meta Hatası (Publish): ' + publishData.error.message });
-    }
-
-    console.log('[API] Yayınlandı! ID:', publishData.id);
-    return res.status(200).json({ success: true, id: publishData.id, imageUrl: publicUrl });
+    await waitForContainer(containerId, accessToken);
+    const publishedId = await publishContainer(accountId, accessToken, containerId);
+    console.log('[API] Post yayınlandı! ID:', publishedId);
+    return res.status(200).json({ success: true, id: publishedId, imageUrl });
 
   } catch (err) {
-    console.error('Publish Instagram API error:', err);
+    console.error('[API] Publish Instagram error:', err);
     return res.status(500).json({ message: 'Sunucu hatası: ' + err.message });
   }
 }
