@@ -33,7 +33,10 @@ async function createMediaContainer(accountId, accessToken, params) {
     body: JSON.stringify({ ...params, access_token: accessToken })
   });
   const data = await res.json();
-  if (data.error) throw new Error('Meta Container Hatası: ' + data.error.message);
+  if (data.error) {
+    console.error('[Meta] Container error full:', JSON.stringify(data.error));
+    throw new Error(`Meta Container Hatası [${data.error.code}/${data.error.error_subcode||''}]: ${data.error.message}`);
+  }
   return data.id;
 }
 
