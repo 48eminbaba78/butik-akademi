@@ -2297,7 +2297,7 @@ async function saveStudent(){
   if(!name)return showToast('İsim girin!');
   const color=document.querySelector('.color-opt.sel')?.dataset.c||'#f0a500';
   const id=document.getElementById('smId').value;
-  const uname=document.getElementById('smUsername').value.trim().toLowerCase()||name.split(' ')[0].toLowerCase()+Math.floor(Math.random()*100);
+  const uname=normalizeUsername(document.getElementById('smUsername').value.trim())||(normalizeUsername(name.split(' ')[0])+Math.floor(Math.random()*100));
   const passRaw=document.getElementById('smPass').value||STU_DEFAULT_PASS;
   const pass = await sha256(passRaw);
   const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'Hedef belirtilmemiş',color,progress:Number(document.getElementById('smProg').value),password_hash:pass,week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:'student',coach_id:session.coachId};
@@ -6412,7 +6412,7 @@ let _coachSelectedResource = null;
 async function saveStudentDev(){
   const id=document.getElementById('smId').value;
   const name=document.getElementById('smName').value.trim();
-  const uname=document.getElementById('smUsername').value.trim().toLowerCase();
+  const uname=normalizeUsername(document.getElementById('smUsername').value.trim());
   const passRaw=document.getElementById('smPass').value;
   const role=document.getElementById('smRole').value;
   const target=document.getElementById('smTarget').value.trim();
