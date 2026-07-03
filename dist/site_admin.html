@@ -63,6 +63,7 @@ body{font-family:'Geist',sans-serif;background:var(--bg);color:var(--text);min-h
 .content{padding:24px;}
 .view{display:none;}
 .view.active{display:block;}
+#view-instagram.active{display:flex;}
 
 /* COMPONENTS */
 .page-h{font-size:22px;font-weight:800;margin-bottom:4px;}
@@ -230,8 +231,8 @@ tr:hover td{background:var(--s2);}
           <div class="stat"><div class="stat-val" id="st-approved" style="color:var(--acc3)">—</div><div class="stat-lbl">Onaylanan</div></div>
           <div class="stat"><div class="stat-val" id="st-posts" style="color:var(--acc4)">—</div><div class="stat-lbl">Blog Yazısı</div></div>
           <div class="stat"><div class="stat-val" id="st-announce" style="color:var(--acc2)">—</div><div class="stat-lbl">Aktif Duyuru</div></div>
-          <div class="stat"><div class="stat-val" id="st-active-visitors" style="color:var(--acc3)">18</div><div class="stat-lbl">Canlı Ziyaretçi</div></div>
-          <div class="stat"><div class="stat-val" id="st-latency" style="color:var(--acc4)">14ms</div><div class="stat-lbl">Sunucu Gecikmesi</div></div>
+          <div class="stat"><div class="stat-val" id="st-coaches" style="color:var(--acc3)">—</div><div class="stat-lbl">Toplam Koç</div></div>
+          <div class="stat"><div class="stat-val" id="st-students" style="color:var(--acc4)">—</div><div class="stat-lbl">Toplam Öğrenci</div></div>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
@@ -250,114 +251,32 @@ tr:hover td{background:var(--s2);}
           </div>
         </div>
 
-        <!-- CANLI ANALİTİK & TRAFİK -->
-        <div class="sh" style="margin-top:24px;"><div style="font-size:15px;font-weight:800;color:var(--acc)">⚡ Canlı Analitik &amp; Trafik</div></div>
-        <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:14px;margin-bottom:20px;">
-          <!-- SVG VISITOR CHART -->
-          <div class="card">
-            <div class="sh">
-              <div style="font-size:13px;font-weight:700">📈 Günlük Ziyaretçi Grafiği (Son 7 Gün)</div>
-              <div style="font-size:11px;color:var(--dim)">Toplam: 12,450 Ziyaretçi</div>
-            </div>
-            <div style="height:160px;display:flex;align-items:center;justify-content:center;margin-top:10px;">
-              <svg width="100%" height="100%" viewBox="0 0 400 150" preserveAspectRatio="none" style="overflow:visible;">
-                <defs>
-                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="var(--acc)" stop-opacity="0.3"></stop>
-                    <stop offset="100%" stop-color="var(--acc)" stop-opacity="0.05"></stop>
-                  </linearGradient>
-                </defs>
-                <!-- Grid Lines -->
-                <line x1="10" y1="20" x2="390" y2="20" stroke="var(--bd)" stroke-width="0.5" stroke-dasharray="3,3" />
-                <line x1="10" y1="60" x2="390" y2="60" stroke="var(--bd)" stroke-width="0.5" stroke-dasharray="3,3" />
-                <line x1="10" y1="100" x2="390" y2="100" stroke="var(--bd)" stroke-width="0.5" stroke-dasharray="3,3" />
-                <line x1="10" y1="130" x2="390" y2="130" stroke="var(--bd)" stroke-width="0.5" />
-                
-                <!-- Path Area -->
-                <path d="M 10 130 Q 70 80, 130 95 T 250 40 T 310 60 T 390 10 L 390 130 Z" fill="url(#chartGrad)" />
-                <!-- Path Line -->
-                <path d="M 10 130 Q 70 80, 130 95 T 250 40 T 310 60 T 390 10" fill="none" stroke="var(--acc)" stroke-width="2.5" />
-                
-                <!-- Dots -->
-                <circle cx="10" cy="130" r="4" fill="var(--acc)" />
-                <circle cx="70" cy="80" r="4" fill="var(--acc)" />
-                <circle cx="130" cy="95" r="4" fill="var(--acc)" />
-                <circle cx="190" cy="70" r="4" fill="var(--acc)" />
-                <circle cx="250" cy="40" r="4" fill="var(--acc)" />
-                <circle cx="310" cy="60" r="4" fill="var(--acc)" />
-                <circle cx="390" cy="10" r="4" fill="var(--acc)" />
-                
-                <!-- Tooltips/Texts -->
-                <text x="70" y="65" fill="var(--text)" font-size="8" font-family="inherit" text-anchor="middle">1,240</text>
-                <text x="130" y="80" fill="var(--text)" font-size="8" font-family="inherit" text-anchor="middle">1,020</text>
-                <text x="250" y="25" fill="var(--text)" font-size="8" font-family="inherit" text-anchor="middle">2,890</text>
-                <text x="390" y="25" fill="var(--text)" font-size="8" font-family="inherit" text-anchor="end">4,120</text>
-              </svg>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:10px;padding:0 5px;">
-              <span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz (Bugün)</span>
+        <!-- GERÇEK VERİ ÖZETİ -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px;">
+          <div class="card" style="border-color:rgba(240,165,0,.2)">
+            <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📋 Başvuru Dağılımı</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--mid)">Bekleyen</span><span id="ds-pending" style="font-weight:700;color:var(--acc)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--mid)">Onaylanan</span><span id="ds-approved" style="font-weight:700;color:var(--acc3)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--mid)">İletişimde</span><span id="ds-contacted" style="font-weight:700;color:var(--acc4)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--mid)">Reddedilen</span><span id="ds-rejected" style="font-weight:700;color:var(--red)">—</span></div>
             </div>
           </div>
-          
-          <!-- LIVE TRAFFIC LOG -->
-          <div class="card">
-            <div class="sh">
-              <div style="font-size:13px;font-weight:700">🖥️ Canlı Trafik Log Simülatörü</div>
-              <div style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:8px;height:8px;background:var(--acc3);border-radius:50%;animation:pulse 1.3s infinite;"></span><span style="font-size:11px;color:var(--acc3)">Canlı</span></div>
-            </div>
-            <div id="trafficLogContainer" style="height:160px;overflow-y:auto;background:var(--s2);border:1px solid var(--bd);border-radius:10px;font-family:'Courier New',Courier,monospace;font-size:11px;color:#85e89d;padding:10px;margin-top:10px;display:flex;flex-direction:column;gap:4px;">
-              <div>[13:14:02] Ziyaretçi: /index.html [200 OK] (IP: 176.234.*.*)</div>
-              <div>[13:14:15] Ziyaretçi: /koc_bul.html [200 OK] (IP: 85.105.*.*)</div>
-              <div>[13:14:38] Başvuru Formu: match_requests tablosuna ekleme yapıldı.</div>
+          <div class="card" style="border-color:rgba(62,207,142,.2)">
+            <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">👥 Kullanıcı Özeti</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--mid)">Toplam Koç</span><span id="ds-coaches" style="font-weight:700;color:var(--acc3)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--mid)">Toplam Öğrenci</span><span id="ds-students" style="font-weight:700;color:var(--acc4)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--mid)">Bu Hafta Yeni</span><span id="ds-new-week" style="font-weight:700;color:var(--acc2)">—</span></div>
             </div>
           </div>
-        </div>
-
-        <!-- POPULAR PAGES TABLE -->
-        <div class="card" style="margin-bottom:20px;">
-          <div class="sh"><div style="font-size:13px;font-weight:700">🌐 En Çok Ziyaret Edilen Sayfalar</div></div>
-          <div class="tbl-wrap">
-            <table style="font-size:12px;">
-              <thead>
-                <tr>
-                  <th>SAYFA ADRESI</th>
-                  <th>GÖRÜNTÜLENME</th>
-                  <th>TEKİL ZİYARETÇİ</th>
-                  <th>ORTALAMA SÜRE</th>
-                  <th>HEMEN ÇIKMA ORANI</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><a href="index.html" target="_blank" style="color:var(--acc4);text-decoration:none">/index.html (Ana Sayfa)</a></td>
-                  <td>5,420</td>
-                  <td>4,120</td>
-                  <td>1dk 45sn</td>
-                  <td style="color:var(--acc3)">28.4%</td>
-                </tr>
-                <tr>
-                  <td><a href="koc_bul.html" target="_blank" style="color:var(--acc4);text-decoration:none">/koc_bul.html (Koç Bulucu)</a></td>
-                  <td>3,840</td>
-                  <td>2,950</td>
-                  <td>3dk 12sn</td>
-                  <td style="color:var(--acc3)">15.2%</td>
-                </tr>
-                <tr>
-                  <td><a href="blog.html" target="_blank" style="color:var(--acc4);text-decoration:none">/blog.html (Akademik Blog)</a></td>
-                  <td>2,150</td>
-                  <td>1,840</td>
-                  <td>2dk 30sn</td>
-                  <td style="color:var(--acc3)">42.1%</td>
-                </tr>
-                <tr>
-                  <td><a href="app.html" target="_blank" style="color:var(--acc4);text-decoration:none">/app.html (Koçluk Portalı)</a></td>
-                  <td>1,040</td>
-                  <td>850</td>
-                  <td>18dk 45sn</td>
-                  <td style="color:var(--acc3)">4.8%</td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="card" style="border-color:rgba(192,132,252,.2)">
+            <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🤝 Eşleşmeler</div>
+            <div id="ds-matches-loading" style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--mid)">Bekleyen</span><span id="ds-match-pending" style="font-weight:700;color:var(--acc)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--mid)">Eşleştirildi</span><span id="ds-match-matched" style="font-weight:700;color:var(--acc4)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--mid)">Tamamlandı</span><span id="ds-match-done" style="font-weight:700;color:var(--acc3)">—</span></div>
+            </div>
           </div>
         </div>
       </div>
@@ -532,7 +451,7 @@ tr:hover td{background:var(--s2);}
       </div>
 
       <!-- INSTAGRAM YÖNETİM & OTOMASYON PANELİ -->
-      <div class="view" id="view-instagram" style="padding:0;display:flex;flex-direction:column;height:calc(100vh - 60px);overflow:hidden">
+      <div class="view" id="view-instagram" style="padding:0;flex-direction:column;height:calc(100vh - 60px);overflow:hidden">
 
         <!-- IG TOPBAR -->
         <div style="display:flex;align-items:center;gap:16px;padding:12px 24px;background:#0D1117;border-bottom:0.5px solid rgba(255,255,255,0.08);flex-shrink:0">
@@ -746,6 +665,27 @@ tr:hover td{background:var(--s2);}
               <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="testIgConnection()">🔍 Bağlantıyı Test Et</button>
               <button class="btn" style="flex:1.2;justify-content:center;background:var(--acc);color:#07060a;font-weight:700" onclick="saveIgConfig()">💾 Ayarları Kaydet</button>
             </div>
+            <div style="margin-top:12px;padding:14px;background:rgba(62,207,142,.06);border:1px solid rgba(62,207,142,.2);border-radius:10px">
+              <div style="font-size:12px;font-weight:700;color:#3ecf8e;margin-bottom:6px">🌐 Ana Sayfa Instagram Beslemesi</div>
+              <div style="font-size:11px;color:rgba(230,237,243,.5);margin-bottom:10px">Son 6 gönderiyi çekip ana sayfada göstermek için besleyi güncelle. Token kaydedilmiş olmalı.</div>
+              <button class="btn" style="width:100%;justify-content:center;background:rgba(62,207,142,.15);color:#3ecf8e;border:1px solid rgba(62,207,142,.3);font-weight:700" onclick="refreshPublicIgFeed()">🔄 Ana Sayfa Beslemesini Güncelle</button>
+              <div id="igFeedRefreshStatus" style="font-size:11px;margin-top:8px;color:rgba(230,237,243,.4)"></div>
+            </div>
+            
+            <div class="card" style="padding:24px;background:var(--s1);border:1px solid var(--bd);border-radius:14px;margin-top:20px">
+              <h3 style="margin-bottom:16px;color:var(--acc)">🤖 Yapay Zeka (Groq & Gemini) Bağlantı Ayarları</h3>
+              <div class="ff">
+                <label>Groq API Key</label>
+                <input type="password" id="cfgGroqApiKey" placeholder="gsk_...">
+              </div>
+              <div class="ff">
+                <label>Gemini API Key (Arayüz Fallback)</label>
+                <input type="password" id="cfgGeminiApiKey" placeholder="AIzaSy...">
+              </div>
+              <div style="display:flex;gap:10px;margin-top:20px">
+                <button class="btn" style="width:100%;justify-content:center;background:var(--acc);color:#07060a;font-weight:700" onclick="saveAiConfig()">💾 Yapay Zeka Ayarlarını Kaydet</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -781,6 +721,27 @@ tr:hover td{background:var(--s2);}
                 <button id="mp-tone-zeka" onclick="setManualTone('zeka')"
                   style="flex:1;padding:7px;background:none;border:0.5px solid rgba(255,255,255,0.1);border-radius:7px;font-size:11px;color:rgba(230,237,243,0.4);cursor:pointer;font-family:inherit">🧠 YKS Zekası</button>
               </div>
+            </div>
+
+            <!-- Fotoğraf yükle bölümü -->
+            <div style="border: 1.5px dashed rgba(244,162,97,0.25); border-radius: 12px; padding: 18px; background: rgba(255,255,255,0.01)">
+              <div style="font-size:10px;font-weight:700;color:rgba(244,162,97,0.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📁 VEYA FOTOĞRAF YÜKLE (AI AÇIKLAMA ÜRET)</div>
+              <div style="display:flex;gap:12px;align-items:center">
+                <input type="file" id="mpImageUpload" accept="image/*" onchange="handleMpImageUpload(this)" style="display:none">
+                <button onclick="document.getElementById('mpImageUpload').click()"
+                  style="padding:10px 16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:12px;color:#e6edf3;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;gap:6px">
+                  <span>📷 Fotoğraf Seç</span>
+                </button>
+                <span id="mpImageName" style="font-size:11px;color:rgba(230,237,243,0.4)">Seçilen dosya yok</span>
+              </div>
+              <div id="mpImagePreviewContainer" style="display:none;margin-top:12px;position:relative;width:120px;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.1)">
+                <img id="mpImagePreview" style="width:100%;height:100%;object-fit:cover">
+                <button onclick="removeMpImage()" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.75);border:none;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold">×</button>
+              </div>
+              <button id="mpGenerateFromImageBtn" onclick="generateCaptionFromImage()"
+                style="display:none;width:100%;padding:11px;background:#60b4ff;border:none;border-radius:8px;font-size:12px;font-weight:700;color:#07060a;cursor:pointer;font-family:inherit;margin-top:12px;letter-spacing:.3px">
+                🤖 Görseli Yapay Zeka ile Analiz Et & Açıklama Üret →
+              </button>
             </div>
 
             <!-- Koçun fikri -->
@@ -1059,7 +1020,6 @@ async function init(){
   await Promise.all([loadLeads(),loadContent(),loadBlogs(),loadAnnounces()]);
   renderDashboard();
   document.getElementById('lastSync').textContent='Son sync: '+new Date().toLocaleTimeString('tr-TR');
-  initTrafficSimulator();
 }
 async function syncAll(){await init();showToast('Yenilendi ✓');}
 
@@ -1614,11 +1574,40 @@ async function deleteAnnounce(id){
 
 // ── DASHBOARD ────────────────────────────────
 function renderDashboard(){
-  document.getElementById('st-leads').textContent=_leads.length;
-  document.getElementById('st-pending').textContent=_leads.filter(l=>l.status==='pending').length+' bekliyor';
-  document.getElementById('st-approved').textContent=_leads.filter(l=>l.status==='approved').length;
-  document.getElementById('st-posts').textContent=_blogs.filter(b=>b.published).length;
-  document.getElementById('st-announce').textContent=_announces.filter(a=>a.active).length;
+  const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+
+  setEl('st-leads',    _leads.length);
+  setEl('st-pending',  _leads.filter(l=>l.status==='pending').length+' bekliyor');
+  setEl('st-approved', _leads.filter(l=>l.status==='approved').length);
+  setEl('st-posts',    _blogs.filter(b=>b.published).length);
+  setEl('st-announce', _announces.filter(a=>a.active).length);
+
+  // Başvuru dağılım özeti (gerçek veri)
+  setEl('ds-pending',   _leads.filter(l=>l.status==='pending').length);
+  setEl('ds-approved',  _leads.filter(l=>l.status==='approved').length);
+  setEl('ds-contacted', _leads.filter(l=>l.status==='contacted').length);
+  setEl('ds-rejected',  _leads.filter(l=>l.status==='rejected').length);
+
+  // Kullanıcı özeti + üst stat kartları (Supabase'den gerçek veri)
+  db.from('users').select('id,role,created_at').then(({data})=>{
+    const users=data||[];
+    const coaches=users.filter(u=>u.role==='coach');
+    const students=users.filter(u=>u.role==='student');
+    const weekAgo=new Date(Date.now()-7*24*3600*1000).toISOString();
+    setEl('st-coaches',  coaches.length);
+    setEl('st-students', students.length);
+    setEl('ds-coaches',  coaches.length);
+    setEl('ds-students', students.length);
+    setEl('ds-new-week', users.filter(u=>u.created_at>weekAgo).length);
+  });
+
+  // Eşleşme özeti (Supabase'den gerçek veri)
+  db.from('match_requests').select('status').then(({data})=>{
+    const m=data||[];
+    setEl('ds-match-pending', m.filter(x=>x.status==='pending').length);
+    setEl('ds-match-matched', m.filter(x=>x.status==='matched').length);
+    setEl('ds-match-done',    m.filter(x=>x.status==='completed').length);
+  });
 
   // Son 5 başvuru
   const recent=_leads.slice(0,5);
@@ -2466,7 +2455,7 @@ function switchIgPanelTab(tab) {
   document.getElementById('ig-config-section').style.display = tab === 'config' ? 'block' : 'none';
   document.getElementById('ig-manual-section').style.display = tab === 'manual' ? 'flex' : 'none';
   if (tab === 'rules') loadAndRenderIgRules();
-  if (tab === 'config') loadIgConfig();
+  if (tab === 'config') { loadIgConfig(); loadAiConfig(); }
   if (tab === 'manual') initManualPostTab();
 }
 
@@ -3063,6 +3052,132 @@ let _mpCurrentSlide = 0;
 let _mpSlides = [];
 let _mpGenerated = false;
 
+let _uploadedImageBase64 = null;
+
+function handleMpImageUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  document.getElementById('mpImageName').textContent = file.name;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result.split(',')[1];
+    _uploadedImageBase64 = base64;
+
+    // Show preview and button
+    document.getElementById('mpImagePreview').src = e.target.result;
+    document.getElementById('mpImagePreviewContainer').style.display = 'block';
+    document.getElementById('mpGenerateFromImageBtn').style.display = 'block';
+
+    // Set preview in container
+    const previewContainer = document.getElementById('mpPreviewContainer');
+    if (previewContainer) {
+      previewContainer.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover" />`;
+    }
+
+    _mpGenerated = true;
+    enableMpPublish(true);
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeMpImage() {
+  _uploadedImageBase64 = null;
+  document.getElementById('mpImageUpload').value = '';
+  document.getElementById('mpImageName').textContent = 'Seçilen dosya yok';
+  document.getElementById('mpImagePreviewContainer').style.display = 'none';
+  document.getElementById('mpGenerateFromImageBtn').style.display = 'none';
+
+  // Restore container preview
+  const previewContainer = document.getElementById('mpPreviewContainer');
+  if (previewContainer) {
+    previewContainer.innerHTML = `<span style="font-size:11px;color:rgba(230,237,243,0.2);text-align:center;padding:16px;line-height:1.6">İçerik oluşturunca<br>carousel önizlenir</span>`;
+  }
+
+  _mpGenerated = false;
+  enableMpPublish(false);
+}
+
+async function generateCaptionFromImage() {
+  if (!_uploadedImageBase64) return;
+
+  const btn = document.getElementById('mpGenerateFromImageBtn');
+  const origText = btn.textContent;
+  btn.textContent = '⏳ Görsel Analiz Ediliyor...';
+  btn.disabled = true;
+
+  try {
+    // 1. Get Gemini Key from platform_settings
+    const { data } = await db.from('platform_settings').select('value').eq('key', 'ai_settings').maybeSingle();
+    const geminiKey = data?.value?.gemini_api_key;
+
+    if (!geminiKey) {
+      showToast('Hata: Gemini API Key tanımlı değil. Lütfen "Bağlantı Ayarları" sekmesinden kaydedin.', false);
+      return;
+    }
+
+    // 2. Call Gemini Vision model directly
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+    const prompt = `Görseldeki eğitim/öğretim içeriğini analiz et. Rostrum Akademi markasının YKS eğitim koçluğu hesabı için bu görselin altına gelecek ilgi çekici, bilgilendirici ve profesyonel bir Instagram post açıklaması (caption) ve en az 6 adet ilgili hashtag üret. Çıktı olarak sadece şu JSON formatını döndür, markdown içermesin:
+{
+  "caption": "açıklama metni",
+  "hashtags": "#hashtag1 #hashtag2 ..."
+}`;
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  mimeType: 'image/jpeg',
+                  data: _uploadedImageBase64
+                }
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
+      })
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Gemini API Hatası: ${resp.status}`);
+    }
+
+    const resData = await resp.json();
+    const textReply = resData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    // Parse json
+    const jsonMatch = textReply.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('JSON bulunamadı');
+    const p = JSON.parse(jsonMatch[0]);
+
+    // Fill form
+    const captionEl = document.getElementById('mpCaptionEdit');
+    const hashtagsEl = document.getElementById('mpHashtagEdit');
+    if (captionEl) captionEl.value = p.caption || '';
+    if (hashtagsEl) hashtagsEl.value = p.hashtags || '';
+
+    // Show generated section
+    document.getElementById('mpGeneratedSection').style.display = 'flex';
+    showToast('✨ Açıklama ve hashtag\'ler üretildi! ✓');
+  } catch (e) {
+    console.error('Image caption generation error:', e);
+    showToast('Hata: ' + e.message, false);
+  } finally {
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
+}
+
 function initManualPostTab() {
   // Mevcut içerik varsa butonları açık bırak
   const hasContent = (document.getElementById('mpSlide0')?.value || '').trim().length > 0;
@@ -3549,7 +3664,7 @@ Sadece ham JSON döndür.`;
 
 async function publishManualPost(isStory) {
   parseManualSlides();
-  if (!_mpGenerated && _mpSlides.every(s => !(s.headline || s.quote || s.cta_text))) {
+  if (!_uploadedImageBase64 && !_mpGenerated && _mpSlides.every(s => !(s.headline || s.quote || s.cta_text))) {
     showToast('Önce içerik oluşturun veya slayt metinlerini doldurun.', false);
     return;
   }
@@ -3567,7 +3682,13 @@ async function publishManualPost(isStory) {
     showToast('Görseller hazırlanıyor...');
 
     let body;
-    if (isStory) {
+    if (_uploadedImageBase64) {
+      if (isStory) {
+        body = { imageBase64: _uploadedImageBase64, caption: '', isStory: true };
+      } else {
+        body = { imageBase64: _uploadedImageBase64, caption: fullCaption };
+      }
+    } else if (isStory) {
       // Hikaye: tüm slaytları ayrı ayrı story olarak yayınla
       const total = _mpSlides.length;
       for (let i = 0; i < total; i++) {
@@ -3730,6 +3851,64 @@ async function saveIgConfig() {
     showToast('Bağlantı ayarları Supabase veritabanına güvenle kaydedildi! ✓');
   } catch(e) {
     showToast('Ayarlar kaydedilemedi: ' + e.message, false);
+  }
+}
+
+async function loadAiConfig() {
+  try {
+    const { data } = await db.from('platform_settings').select('value').eq('key', 'ai_settings').maybeSingle();
+    if (data && data.value) {
+      document.getElementById('cfgGroqApiKey').value = data.value.groq_api_key || '';
+      document.getElementById('cfgGeminiApiKey').value = data.value.gemini_api_key || '';
+    }
+  } catch(e) {
+    console.error('Load AI config error:', e);
+  }
+}
+
+async function saveAiConfig() {
+  const groqKey = document.getElementById('cfgGroqApiKey').value.trim();
+  const geminiKey = document.getElementById('cfgGeminiApiKey').value.trim();
+
+  const payload = { groq_api_key: groqKey, gemini_api_key: geminiKey };
+
+  try {
+    const { error } = await db.from('platform_settings').upsert({ key: 'ai_settings', value: payload });
+    if(error) throw error;
+    showToast('Yapay zeka bağlantı ayarları kaydedildi! ✓');
+  } catch(e) {
+    showToast('Ayarlar kaydedilemedi: ' + e.message, false);
+  }
+}
+
+async function refreshPublicIgFeed() {
+  const statusEl = document.getElementById('igFeedRefreshStatus');
+  const { data: creds } = await db.from('platform_settings').select('value').eq('key', 'instagram_credentials').maybeSingle();
+  const token = creds?.value?.instagram_access_token;
+  const accountId = creds?.value?.instagram_account_id;
+  if (!token || !accountId) {
+    if (statusEl) statusEl.textContent = '❌ Önce token ve hesap ID kaydedin.';
+    return;
+  }
+  if (statusEl) statusEl.textContent = '⏳ Gönderiler çekiliyor...';
+  try {
+    const url = `https://graph.instagram.com/v20.0/${accountId}/media?fields=id,media_type,media_url,thumbnail_url,permalink,caption,timestamp&limit=6&access_token=${token}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+    const posts = (json.data || []).map(p => ({
+      id: p.id,
+      type: p.media_type,
+      image: p.media_type === 'VIDEO' ? p.thumbnail_url : p.media_url,
+      url: p.permalink,
+      caption: (p.caption || '').slice(0, 120),
+      ts: p.timestamp
+    }));
+    await db.from('platform_settings').upsert({ key: 'ig_public_feed', value: { posts, updated: new Date().toISOString() } }, { onConflict: 'key' });
+    if (statusEl) statusEl.textContent = `✅ ${posts.length} gönderi kaydedildi — ${new Date().toLocaleTimeString('tr-TR')}`;
+    showToast('Ana sayfa Instagram beslemesi güncellendi ✓');
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '❌ Hata: ' + e.message;
   }
 }
 
