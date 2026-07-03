@@ -302,7 +302,7 @@ export async function doLogin() {
 
 export async function finishLogin(rows) {
   showLoading(false);
-  const coachId = rows.role === 'coach' ? rows.id : (rows.role === 'student' || rows.role === 'parent') ? rows.coach_id : null;
+  const coachId = (rows.role === 'coach' || rows.role === 'developer') ? rows.id : (rows.role === 'student' || rows.role === 'parent') ? rows.coach_id : null;
   
   session.role = rows.role;
   session.studentId = rows.role === 'student' ? rows.id : null;
@@ -341,7 +341,7 @@ export async function finishLogin(rows) {
     window.setupShell();
     
     document.getElementById('aiChatBubble').style.display = 'flex';
-    if (session.role === 'coach' && (!S.workspace || !S.workspace.onboarding_done)) {
+    if ((session.role === 'coach' || session.role === 'developer') && (!S.workspace || !S.workspace.onboarding_done)) {
       window.switchTab('home');
       window.showOnboarding();
       return;
