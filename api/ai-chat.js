@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════
-// BUTIK AKADEMI — AI KOÇ ASİSTANI (Vercel Serverless Function)
+// ROSTRUM AKADEMI — AI KOÇ ASİSTANI (Vercel Serverless Function)
 // Endpoint: /api/ai-chat
-// Gemini API proxy — API key sunucu tarafında güvenli kalır
+// Groq API proxy (llama-3.3-70b) — hızlı ve ücretsiz
 // ═══════════════════════════════════════════════════════════
 
 export default async function handler(req, res) {
@@ -19,63 +19,47 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Mesaj listesi boş olamaz.' });
     }
 
-    const GEMINI_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_KEY) {
-      return res.status(500).json({ error: 'Gemini API anahtarı yapılandırılmamış.' });
+    const GROQ_KEY = process.env.GROQ_API_KEY;
+    if (!GROQ_KEY) {
+      return res.status(500).json({ error: 'AI API anahtarı yapılandırılmamış.' });
     }
 
     // ── Sistem Promptu ──────────────────────────────────────
     const systemPrompt = buildSystemPrompt(context, userRole);
 
-    // ── Gemini API İsteği ───────────────────────────────────
-    const geminiMessages = [
-      { role: 'user', parts: [{ text: systemPrompt }] },
-      { role: 'model', parts: [{ text: 'Anladım! Rostrum Akademi AI Koç Asistanı olarak hazırım. Size nasıl yardımcı olabilirim?' }] },
-    ];
-
-    // Geçmiş mesajları ekle
+    // ── Groq API İsteği (OpenAI uyumlu) ─────────────────────
+    const groqMessages = [{ role: 'system', content: systemPrompt }];
     for (const msg of messages) {
-      geminiMessages.push({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }]
-      });
+      groqMessages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content });
     }
 
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: geminiMessages,
-          generationConfig: {
-            temperature: 0.7,
-            topP: 0.9,
-            topK: 40,
-            maxOutputTokens: 2048,
-          },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          ]
-        })
-      }
-    );
+    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: groqMessages,
+        temperature: 0.7,
+        max_tokens: 2048,
+        response_format: { type: 'json_object' },
+      })
+    });
 
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error('Gemini API error:', errorText);
-      return res.status(502).json({ error: 'Yapay zeka servisi şu anda yanıt veremiyor. Lütfen tekrar deneyin.' });
+    if (!groqResponse.ok) {
+      const errorText = await groqResponse.text();
+      console.error('Groq API error:', errorText);
+      return res.status(502).json({ error: 'Yapay zeka servisi şu anda yanıt veremiyor.' });
     }
 
-    const geminiData = await geminiResponse.json();
-    const reply = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || 'Üzgünüm, bir yanıt üretemedi.';
+    const groqData = await groqResponse.json();
+    const reply = groqData?.choices?.[0]?.message?.content || 'Üzgünüm, bir yanıt üretemedi.';
 
     return res.status(200).json({
       reply,
-      model: 'gemini-1.5-flash',
+      model: 'llama-3.3-70b-versatile',
       timestamp: new Date().toISOString()
     });
 
