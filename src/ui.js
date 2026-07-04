@@ -155,12 +155,6 @@ const stuTabs=[
   {id:'sprofil',lbl:'👤',name:'Profilim'},
 ];
 const devTabs=[
-  {id:'dev-dashboard',lbl:'📊',name:'Dashboard'},
-  {id:'dev-users',lbl:'👥',name:'Kullanıcılar'},
-  {id:'dev-matches',lbl:'🤝',name:'Eşleşmeler'},
-  {id:'dev-resources',lbl:'📚',name:'Kaynaklar'},
-  {id:'dev-finance',lbl:'💰',name:'Finans'},
-  {id:'dev-announce',lbl:'📣',name:'Duyurular'},
   {id:'dev-tickets',lbl:'🎫',name:'Destek'},
 ];
 const parentTabs=[
