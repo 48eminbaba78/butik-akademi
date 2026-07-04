@@ -55,7 +55,7 @@ window.addEventListener('hashchange', () => {
       tab = { 
         coach: 'home', 
         student: 'portal', 
-        developer: 'dev-dashboard', 
+        developer: 'home', 
         parent: 'parent-home' 
       }[window.session.role] || 'portal';
       window.location.hash = tab;

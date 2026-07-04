@@ -8210,7 +8210,7 @@ window.addEventListener('hashchange', () => {
   const isLoggedIn = document.getElementById('appShell').classList.contains('visible');
   if (isLoggedIn && tab !== currentTab) {
     if (!tab) {
-      tab = {coach:'home', student:'portal', developer:'dev-dashboard', parent:'parent-home'}[session.role] || 'portal';
+      tab = {coach:'home', student:'portal', developer:'home', parent:'parent-home'}[session.role] || 'portal';
       window.location.hash = tab;
       return;
     }

@@ -345,10 +345,11 @@ export async function finishLogin(rows) {
       return;
     }
     const hashTab = window.location.hash.substring(1);
-    const defaultTab = { coach: 'home', student: 'portal', developer: 'dev-dashboard', parent: 'parent-home' }[session.role] || 'portal';
+    const defaultTab = { coach: 'home', student: 'portal', developer: 'home', parent: 'parent-home' }[session.role] || 'portal';
     const firstTab = (hashTab && document.getElementById('view-' + hashTab)) ? hashTab : defaultTab;
     setTimeout(() => window.switchTab(firstTab), 50);
   } catch (e) {
+    showLoading(false);
     console.error('[doLogin] HATA:', e);
     loginErr('Hata: ' + e.message);
     document.getElementById('loginScreen').style.display = 'flex';
