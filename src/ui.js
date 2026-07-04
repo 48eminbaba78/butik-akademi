@@ -4338,7 +4338,7 @@ async function renderDevTickets() {
   if (!el) return;
 
   const { data, error } = await db.from('tickets')
-    .select('*,users(full_name,role)')
+    .select('*,users!tickets_user_id_fkey(full_name,role)')
     .order('updated_at', { ascending: false });
 
   _devTicketsList = data || [];
@@ -4426,7 +4426,7 @@ async function pollActiveDevChat() {
   if (!area) return;
 
   const { data: ticket, error } = await db.from('tickets')
-    .select('*,users(full_name,role)')
+    .select('*,users!tickets_user_id_fkey(full_name,role)')
     .eq('id', _selectedDevTicketId)
     .single();
 
@@ -4702,7 +4702,7 @@ async function refreshSupportMessages() {
     _chatState = 'emin';
     
     const statusLabelEl = document.getElementById('supportStatusLabel');
-    if (statusLabelEl) statusLabelEl.textContent = '● Emin Ceylan (Kurucu)';
+    if (statusLabelEl) statusLabelEl.textContent = '● Kurucu / Destek Ekibi';
 
     let parsedMessages = [];
     try {
