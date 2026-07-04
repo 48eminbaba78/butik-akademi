@@ -25,6 +25,59 @@ function formatMinToHours(mins) {
 }
 window.formatMinToHours = formatMinToHours;
 
+function customConfirm(message) {
+  return new Promise((resolve) => {
+    let modal = document.getElementById('customConfirmModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'customConfirmModal';
+      modal.className = 'modal-bg';
+      modal.style.zIndex = '999999';
+      modal.innerHTML = `
+        <div class="modal" style="max-width:360px;text-align:center;padding:24px 20px;border-radius:16px;background:var(--surface);border:1px solid var(--border)">
+          <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+          <div id="confirmMessage" style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:20px;line-height:1.5"></div>
+          <div style="display:flex;gap:10px;justify-content:center">
+            <button class="btn btn-ghost" id="confirmCancelBtn" style="flex:1;justify-content:center;padding:10px;border-radius:10px">İptal</button>
+            <button class="btn btn-accent" id="confirmOkBtn" style="flex:1;justify-content:center;padding:10px;border-radius:10px;background:#ef4444;border-color:#ef4444;color:#fff">Tamam</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.addEventListener('click', e => {
+        if (e.target === modal) {
+          modal.classList.remove('open');
+          resolve(false);
+        }
+      });
+    }
+
+    modal.querySelector('#confirmMessage').textContent = message;
+
+    const okBtn = modal.querySelector('#confirmOkBtn');
+    const cancelBtn = modal.querySelector('#confirmCancelBtn');
+
+    const newOkBtn = okBtn.cloneNode(true);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+    modal.classList.add('open');
+    newOkBtn.focus();
+
+    newOkBtn.onclick = () => {
+      modal.classList.remove('open');
+      resolve(true);
+    };
+
+    newCancelBtn.onclick = () => {
+      modal.classList.remove('open');
+      resolve(false);
+    };
+  });
+}
+window.customConfirm = customConfirm;
+
 
 // ═══════════════════════════════════════════════
 // SHELL
@@ -988,7 +1041,7 @@ async function saveStudentBook() {
 }
 
 async function deleteStudentBook(stuId, id) {
-  if (!confirm('Bu kaynağı silmek istiyor musunuz?')) return;
+  if (!await customConfirm('Bu kaynağı silmek istiyor musunuz?')) return;
   const { error } = await db.from('student_books').delete().eq('id', id);
   if (error) return showToast('Hata: ' + error.message);
   _sbBooks[stuId] = (_sbBooks[stuId] || []).filter(b => b.id !== id);
@@ -1250,7 +1303,7 @@ function toggleAllDays(){
 }
 async function confirmClearDays(){
   if(!_clearDaysSel.length)return showToast('Önce gün seçin');
-  if(!confirm(`${_clearDaysSel.length} günün görevleri silinsin mi?`))return;
+  if(!await customConfirm(`${_clearDaysSel.length} günün görevleri silinsin mi?`))return;
   for(const ds of _clearDaysSel){
     await db.from('tasks').delete().eq('student_id',S.activeStuId).eq('date',ds);
     delete S.tasks[`${S.activeStuId}_${ds}`];
@@ -2264,7 +2317,7 @@ function openAgendaApptModal(id, prefillDate){
 }
 
 async function deleteAgendaAppt(id){
-  if(!confirm('Randevu silinsin mi?')) return;
+  if(!await customConfirm('Randevu silinsin mi?')) return;
   await db.from('appointments').delete().eq('id',id);
   S.appointments = S.appointments.filter(a=>a.id!==id);
   renderAgenda();
@@ -2427,7 +2480,7 @@ function copyInvite(username, pass, url){
   });
 }
 async function deleteStu(id){
-  if(!confirm('Bu öğrenciyi silmek istediğinizden emin misiniz?'))return;
+  if(!await customConfirm('Bu öğrenciyi silmek istediğinizden emin misiniz?'))return;
   const {error}=await db.from('users').delete().eq('id',id);
   if(error)return showToast('Hata: '+error.message);
   S.students=S.students.filter(s=>s.id!==id);
@@ -2543,7 +2596,7 @@ async function saveAppt(){
   cm('apptModal');
   if(currentTab === 'todolist') renderAgenda(); else if(document.getElementById('view-appointments')?.classList.contains('active')) renderAppointments();
 }
-async function deleteAppt(id){if(!confirm('Sil?'))return;await db.from('appointments').delete().eq('id',id);S.appointments=S.appointments.filter(a=>a.id!==id);renderAppointments();showToast('Silindi');}
+async function deleteAppt(id){if(!await customConfirm('Bu randevuyu silmek istediğinizden emin misiniz?'))return;await db.from('appointments').delete().eq('id',id);S.appointments=S.appointments.filter(a=>a.id!==id);renderAppointments();showToast('Silindi');}
 
 // ═══════════════════════════════════════════════
 // YKS PUAN HESAP YARDIMCILARI (2024 formülü)
@@ -2831,7 +2884,7 @@ async function saveComment(){
   if(e)e.coachComment=comment;
   cm('commentModal');renderExams();showToast('Yorum kaydedildi ✓');
 }
-async function deleteExam(id){if(!confirm('Sil?'))return;await db.from('exams').delete().eq('id',id);S.exams=S.exams.filter(e=>e.id!==id);renderExams();showToast('Silindi');}
+async function deleteExam(id){if(!await customConfirm('Bu denemeyi silmek istediğinizden emin misiniz?'))return;await db.from('exams').delete().eq('id',id);S.exams=S.exams.filter(e=>e.id!==id);renderExams();showToast('Silindi');}
 
 // ═══════════════════════════════════════════════
 // MESSAGES
@@ -3719,7 +3772,7 @@ async function openDevUserModal(id) {
 }
 
 async function devDeleteUser(id) {
-  if(!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) return;
+  if(!await customConfirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) return;
   await db.from('users').delete().eq('id',id);
   showToast('Kullanıcı silindi');
   renderDevUsers();
@@ -4015,7 +4068,7 @@ async function saveResource() {
 }
 
 async function devDeleteResource(id) {
-  if(!confirm('Sil?')) return;
+  if(!await customConfirm('Bu kaynağı silmek istediğinizden emin misiniz?')) return;
   await db.from('resources').delete().eq('id',id);
   showToast('Silindi'); renderDevResources();
 }
@@ -4214,7 +4267,7 @@ async function toggleAnnounce(id, active) {
 }
 
 async function devDeleteAnnounce(id) {
-  if(!confirm('Sil?')) return;
+  if(!await customConfirm('Bu duyuruyu silmek istediğinizden emin misiniz?')) return;
   await db.from('announcements').delete().eq('id',id);
   showToast('Silindi'); renderDevAnnounce();
 }
@@ -4272,7 +4325,7 @@ function openTicketReply(id) {
 }
 
 async function devDeleteTicket(id) {
-  if(!confirm('Sil?')) return;
+  if(!await customConfirm('Bu talebi silmek istediğinizden emin misiniz?')) return;
   await db.from('tickets').delete().eq('id',id);
   showToast('Silindi'); renderDevTickets();
 }
@@ -6973,7 +7026,7 @@ async function saveResourceCoach() {
 }
 
 async function deleteResourceCoach(id) {
-  if(!confirm('Bu kaynağı silmek istediğinizden emin misiniz?')) return;
+  if(!await customConfirm('Bu kaynağı silmek istediğinizden emin misiniz?')) return;
   showLoading(true);
   await db.from('resources').delete().eq('id', id);
   showLoading(false);
@@ -7797,7 +7850,7 @@ async function saveCoachNote(idx) {
 }
 
 async function deleteCoachNote(idx) {
-  if (!confirm('Bu notu silmek istiyor musun?')) return;
+  if (!await customConfirm('Bu notu silmek istiyor musun?')) return;
   _coachNotesCache.splice(idx, 1);
   await _saveCoachNotesToDB();
   _renderNoteCards();
