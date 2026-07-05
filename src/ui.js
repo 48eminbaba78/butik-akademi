@@ -5762,13 +5762,7 @@ async function advanceOnboarding(step, skip) {
     }
   }
 
-  const nextStep = step + 1;
-  if(nextStep >= onboardingSteps.length) {
-    // Tamamlanma adımına git (isCompletion: son adım)
-    renderOnboardingStep(nextStep - 1, modal);
-    return;
-  }
-  // Son adımda (isCompletion) "Panele Git" tıklanınca kapat
+  // Completion adımındaysa ("Panele Git") → onayla ve kapat
   if(onboardingSteps[step]?.isCompletion) {
     await db.from('workspaces').upsert({coach_id:session.coachId, brand_name:S.workspace?.brand_name||'Akademi', brand_color:S.workspace?.brand_color||'#f0a500', onboarding_done:true}, {onConflict:'coach_id'});
     if(S.workspace) S.workspace.onboarding_done = true;
@@ -5777,6 +5771,9 @@ async function advanceOnboarding(step, skip) {
     showToast('🎉 Hoş geldiniz! Platformunuz hazır.');
     return;
   }
+
+  const nextStep = step + 1;
+  // Sonraki adım completion adımıysa direkt oraya git
   renderOnboardingStep(nextStep, modal);
 }
 
