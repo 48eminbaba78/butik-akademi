@@ -2946,10 +2946,57 @@ function showInviteInfo(name, username, pass){
       <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="copyInvite('${esc(username)}','${esc(pass)}','${loginUrl}')">📋 Kopyala</button>
       <a href="https://wa.me/?text=${whatsappText}" target="_blank" class="btn btn-accent" style="flex:1;justify-content:center;text-decoration:none">💬 WhatsApp ile Gönder</a>
     </div>
-    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="cm('inviteModal');renderStudentsSearch()">Tamam</button>
+
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:12px">
+      <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:8px">📧 E-posta ile gönder (opsiyonel)</div>
+      <div style="display:flex;gap:8px">
+        <input type="email" id="inviteEmailInput" placeholder="veli@ornek.com" style="flex:1;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
+        <button onclick="sendInviteEmail()" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Gönder</button>
+      </div>
+      <div id="inviteEmailMsg" style="display:none;font-size:12px;margin-top:6px;padding:6px 10px;border-radius:6px"></div>
+    </div>
+
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:12px" onclick="cm('inviteModal');renderStudentsSearch()">Kapat</button>
   </div>`;
+  window._pendingInvite = { name, username, pass, loginUrl };
   om('inviteModal');
 }
+
+async function sendInviteEmail() {
+  const email = document.getElementById('inviteEmailInput')?.value.trim();
+  const msgEl = document.getElementById('inviteEmailMsg');
+  if (!email || !email.includes('@')) {
+    if (msgEl) { msgEl.style.display = 'block'; msgEl.style.background = 'var(--red-dim)'; msgEl.style.color = 'var(--red)'; msgEl.textContent = 'Geçerli bir e-posta girin.'; }
+    return;
+  }
+  if (!window._pendingInvite) return;
+  const { name, username, pass, loginUrl } = window._pendingInvite;
+  if (msgEl) { msgEl.style.display = 'block'; msgEl.style.background = 'var(--surface2)'; msgEl.style.color = 'var(--text-mid)'; msgEl.textContent = 'Gönderiliyor...'; }
+  try {
+    const resp = await fetch('/api/mailer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'student_welcome',
+        to: email,
+        student_name: name,
+        username,
+        password: pass,
+        login_url: loginUrl,
+        coach_name: S.workspace?.brand_name || ''
+      })
+    });
+    const d = await resp.json();
+    if (resp.ok) {
+      if (msgEl) { msgEl.style.background = 'var(--green-dim)'; msgEl.style.color = 'var(--green)'; msgEl.textContent = '✓ Mail gönderildi!'; }
+    } else {
+      throw new Error(d.error || 'Sunucu hatası');
+    }
+  } catch (e) {
+    if (msgEl) { msgEl.style.background = 'var(--red-dim)'; msgEl.style.color = 'var(--red)'; msgEl.textContent = '✗ ' + e.message; }
+  }
+}
+window.sendInviteEmail = sendInviteEmail;
 
 function copyInvite(username, pass, url){
   const text = `Giriş adresi: ${url}\nKullanıcı adı: ${username}\nŞifre: ${pass}`;
@@ -5493,10 +5540,40 @@ async function sendSupportMessage() {
     if (typing) typing.style.display = 'flex';
 
     try {
-      const reply = await callGeminiFallback(text, {}, session.role || 'coach');
+      const apiUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? '/api/ai-chat'
+        : '/api/ai-chat';
+      
+      const formattedHistory = _supportMessagesList.slice(-10).map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text
+      }));
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          messages: formattedHistory,
+          context: {},
+          userRole: 'parent' // Arayüzde müşteri temsilcisi gibi yanıt vermesi için parent/vasi rolüyle benzer sistem promptu
+        })
+      });
+
+      let reply = '';
+      if (response.ok) {
+        const data = await response.json();
+        reply = data.reply;
+      } else {
+        reply = await callGeminiFallback(text, {}, session.role || 'coach');
+      }
       _supportMessagesList.push({ sender: 'ai', text: reply, time: new Date().toISOString() });
     } catch(e) {
-      _supportMessagesList.push({ sender: 'ai', text: 'Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra deneyin.', time: new Date().toISOString() });
+      try {
+        const reply = await callGeminiFallback(text, {}, session.role || 'coach');
+        _supportMessagesList.push({ sender: 'ai', text: reply, time: new Date().toISOString() });
+      } catch (e2) {
+        _supportMessagesList.push({ sender: 'ai', text: 'Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin veya doğrudan destek ekibimize mesaj gönderin.', time: new Date().toISOString() });
+      }
     } finally {
       if (typing) typing.style.display = 'none';
       renderSupportMessagesList(_supportMessagesList);
@@ -5567,7 +5644,8 @@ const _devSaveStudent = saveStudent;
 })();
 
 // ═══════════════════════════════════════════════
-// ONBOARDING SİHİRBAZI
+// ═══════════════════════════════════════════════
+// İLK GÜN KARŞILAMA SİHİRBAZI (WELCOME TOUR)
 // ═══════════════════════════════════════════════
 function showOnboarding() {
   let modal = document.getElementById('onboardingModal');
@@ -5582,63 +5660,45 @@ function showOnboarding() {
 
 const onboardingSteps = [
   {
-    icon: '🎉',
-    title: 'Rostrum Akademi\'ye Hoş Geldiniz!',
-    body: 'Koçluk platformunuzu birkaç adımda kuruyoruz. Sadece 3 dakika.',
-    fields: [],
-    nextLabel: 'Başlayalım →'
+    icon: '👋',
+    title: 'Rostrum Akademi\'ye Hoş Geldiniz! 🎓',
+    body: `Sizinle birlikte büyümek ve platformumuzu geliştirmek bizim en büyük tutkumuz.<br><br>
+           <b>Önemli Not:</b> Rostrum Akademi, siz koçlarımızın değerli geri bildirimleriyle sürekli gelişen canlı bir sistemdir. Her türlü görüş, eleştiri ve özellik talebinizi bizimle paylaşmaktan lütfen çekinmeyin. Birlikte en verimli eğitim ortamını inşa edeceğiz!`,
+    nextLabel: 'Özellikleri İncele →'
   },
   {
-    icon: '🏷️',
-    title: 'Markanızı Tanıyalım',
-    body: 'Öğrencileriniz uygulamaya girdiğinde ne görsün?',
-    fields: [
-      { id:'ob_brand', label:'Akademi / Koçluk Adı', placeholder:'Örn: Ayşe Koçluk, EminHoca Akademi', type:'text' },
-      { id:'ob_color', label:'Marka Rengi', type:'color', value:'#f0a500' },
-    ],
+    icon: '⚡',
+    title: 'Işık Hızında SPA Performansı 🚀',
+    body: `Rostrum Akademi, modern Tek Sayfa Uygulaması (SPA) mimarisiyle sıfır gecikme ile ışık hızında çalışır.<br><br>
+           Tüm paneller, filtreler ve öğrenci profilleri arasında geçiş yaparken sayfa yenilenmesini beklemez, zaman kaybetmeden işlerinizi yönetirsiniz.`,
     nextLabel: 'Devam →'
   },
   {
-    icon: '👤',
-    title: 'Koç Profiliniz',
-    body: 'Öğrenci eşleştirme ve profil sayfanız için birkaç bilgi.',
-    fields: [
-      { id:'ob_phone', label:'Telefon Numarası (isteğe bağlı)', placeholder:'05XX XXX XX XX', type:'tel' },
-      { id:'ob_examtypes', label:'Uzmanlık Alanlarınız', type:'examtypes' },
-      { id:'ob_studentcount', label:'Kaç öğrenciyle çalışıyorsunuz?', type:'studentcount' },
-    ],
-    nextLabel: 'Devam →',
-    skipLabel: 'Şimdilik Geç'
+    icon: '📅',
+    title: 'Haftalık Program & D1Y1B Takibi 📋',
+    body: `Öğrencilerinizin haftalık ders programlarını hazırlayabilir, günlük ders ve soru hedefleri atayabilirsiniz.<br><br>
+           Öğrencileriniz günlük ödevlerini tamamlayıp Doğru, Yanlış, Boş (D1Y1B) net girişlerini yaptıkça, tüm ilerlemeyi anlık olarak takip edebilirsiniz.`,
+    nextLabel: 'Devam →'
   },
   {
-    icon: '🔐',
-    title: 'Şifrenizi Belirleyin',
-    body: 'Güvenli bir giriş şifresi oluşturun.',
-    fields: [
-      { id:'ob_pass1', label:'Yeni Şifre', placeholder:'En az 8 karakter', type:'password' },
-      { id:'ob_pass2', label:'Şifre Tekrar', placeholder:'Aynı şifreyi girin', type:'password' },
-    ],
-    nextLabel: 'Devam →',
-    skipLabel: 'Şimdilik Geç'
+    icon: '📊',
+    title: 'Gelişmiş Denemeler & Grafik Analizi 📈',
+    body: `TYT, AYT, LGS, KPSS ve ALES deneme sınavı sonuçlarını detaylıca kaydedin.<br><br>
+           Zengin interaktif grafiklerle net gelişimini izleyin, ders ve konu bazlı boş/yanlış analizleriyle öğrencinin eksiklerini anında tespit edin.`,
+    nextLabel: 'Devam →'
   },
   {
-    icon: '👨‍🎓',
-    title: 'İlk Öğrencinizi Ekleyin',
-    body: 'Şimdi ya da sonra ekleyebilirsiniz.',
-    fields: [
-      { id:'ob_stuname', label:'Öğrenci Adı Soyadı', placeholder:'Muzaffer Sabri Koçar', type:'text' },
-      { id:'ob_stuuser', label:'Kullanıcı Adı', placeholder:'muzaffer', type:'text' },
-      { id:'ob_stupass', label:'Öğrenci Şifresi', placeholder:'ogrenci123', type:'text' },
-    ],
-    nextLabel: 'Devam →',
-    skipLabel: 'Şimdilik Geç'
+    icon: '🤖',
+    title: 'Yapay Zeka Destekli Asistan ve Copilot 🧠',
+    body: `Öğrencilerinizin 7/24 akademik sorularını sokratik yöntemle çözen **AI Ders Asistanı**, veliler için **AI Veli Asistanı** ve sizin için öğrenci analizleri hazırlayan **AI Copilot** her an hizmetinizde!`,
+    nextLabel: 'Devam →'
   },
   {
-    icon: '✅',
-    title: 'Platformunuz Hazır!',
-    body: 'Kurulum tamamlandı. İşte başlayabileceğiniz 3 temel özellik:',
-    fields: [],
-    nextLabel: 'Panele Git →',
+    icon: '🗓️',
+    title: 'FullCalendar Ajanda & Tek Tıkla Ders 🕒',
+    body: `Yeni FullCalendar entegrasyonu sayesinde koçluk seanslarınızı ve toplantılarınızı takvim üzerinde sürükle-bırak kolaylığıyla planlayın.<br><br>
+           Ders saati yaklaştığında sistemdeki "Derse Katıl" butonuyla Zoom/Meet derslerini tek tıkla başlatın.`,
+    nextLabel: 'Hadi Başlayalım! 🚀',
     isCompletion: true
   }
 ];
@@ -5651,145 +5711,43 @@ function renderOnboardingStep(step, modal) {
   const total = onboardingSteps.length;
   const dots = Array.from({length:total},(_,i)=>`<div style="width:${i===step?24:8}px;height:8px;border-radius:99px;background:${i===step?'var(--accent)':'var(--border2)'};transition:width .3s"></div>`).join('');
 
-  function renderField(f) {
-    if (f.type === 'color') {
-      return `<div class="field"><label>${f.label}</label>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">${['#f0a500','#e8622a','#4da6ff','#3ecf8e','#c084fc','#f472b6','#0f172a'].map(c=>`<div onclick="document.getElementById('${f.id}').value='${c}';this.parentElement.querySelectorAll('div').forEach(x=>x.style.outline='none');this.style.outline='3px solid white'" style="width:32px;height:32px;background:${c};border-radius:8px;cursor:pointer;transition:transform .1s" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''"></div>`).join('')}<input type="hidden" id="${f.id}" value="${f.value||'#f0a500'}"></div>
-      </div>`;
-    }
-    if (f.type === 'examtypes') {
-      const opts = [
-        {val:'YKS', label:'YKS', emoji:'📐'},
-        {val:'LGS', label:'LGS', emoji:'📗'},
-        {val:'KPSS', label:'KPSS', emoji:'🏛️'},
-        {val:'ALES', label:'ALES', emoji:'🎓'},
-      ];
-      return `<div class="field"><label>${f.label}</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap" id="ob_examtypes_wrap">
-          ${opts.map(o=>`<label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:600;transition:all .15s" onclick="this.classList.toggle('ob-exam-sel');this.style.borderColor=this.classList.contains('ob-exam-sel')?'var(--accent)':'';this.style.background=this.classList.contains('ob-exam-sel')?'var(--accent-dim)':''">
-            <input type="checkbox" value="${o.val}" style="display:none"> ${o.emoji} ${o.label}
-          </label>`).join('')}
-        </div>
-        <input type="hidden" id="ob_examtypes">
-      </div>`;
-    }
-    if (f.type === 'studentcount') {
-      return `<div class="field"><label>${f.label}</label>
-        <select id="ob_studentcount" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:12px 14px;font-size:14px;font-family:inherit;color:var(--text);outline:none">
-          <option value="1-5">1–5 öğrenci</option>
-          <option value="6-15">6–15 öğrenci</option>
-          <option value="16-30">16–30 öğrenci</option>
-          <option value="30+">30+ öğrenci</option>
-        </select>
-      </div>`;
-    }
-    return `<div class="field"><label>${f.label}</label>
-      <input type="${f.type||'text'}" id="${f.id}" placeholder="${f.placeholder||''}" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:12px 14px;font-size:14px;font-family:inherit;color:var(--text);outline:none;box-sizing:border-box">
-    </div>`;
-  }
-
-  const completionCards = s.isCompletion ? `
-    <div style="display:grid;gap:10px;margin-bottom:24px">
-      ${[
-        {icon:'📅', title:'Haftalık Program', desc:'Öğrencilerinize görevler ve soru hedefleri atayın'},
-        {icon:'📊', title:'Deneme Takibi', desc:'TYT/AYT sonuçlarını girin, net gelişimini izleyin'},
-        {icon:'💬', title:'Mesajlaşma', desc:'Öğrenci ve velilerle anlık iletişim kurun'},
-      ].map(c=>`<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;background:var(--surface2);border:1px solid var(--border)">
-        <div style="font-size:28px;flex-shrink:0">${c.icon}</div>
-        <div><div style="font-weight:700;font-size:13px">${c.title}</div><div style="font-size:12px;color:var(--text-dim);margin-top:2px">${c.desc}</div></div>
-      </div>`).join('')}
-    </div>` : '';
-
-  modal.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border2);border-radius:24px;width:100%;max-width:480px;padding:40px;animation:fadeUp .3s ease;max-height:90vh;overflow-y:auto">
+  modal.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border2);border-radius:24px;width:100%;max-width:480px;padding:40px;animation:fadeUp .3s ease;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)">
     <div style="text-align:center;margin-bottom:28px">
       <div style="font-size:52px;margin-bottom:12px">${s.icon}</div>
-      <h2 style="font-family:'Inter',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px">${s.title}</h2>
+      <h3 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--text);margin-bottom:12px;line-height:1.3">${s.title}</h3>
       <p style="font-size:14px;color:var(--text-mid);line-height:1.6">${s.body}</p>
     </div>
-    ${completionCards}
-    ${s.fields.map(renderField).join('')}
-    <div style="display:flex;gap:10px;margin-top:24px">
-      ${step>0&&!s.isCompletion?`<button onclick="renderOnboardingStep(${step-1},document.getElementById('onboardingModal'))" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);border-radius:10px;padding:12px 20px;font-family:inherit;font-weight:700;cursor:pointer">← Geri</button>`:''}
-      ${s.skipLabel?`<button onclick="advanceOnboarding(${step},true)" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:10px;padding:12px 20px;font-family:inherit;font-weight:600;cursor:pointer">${s.skipLabel}</button>`:''}
-      <button onclick="advanceOnboarding(${step},false)" style="flex:1;background:var(--accent);color:#0f0e0c;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer">${s.nextLabel}</button>
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:28px">
+      <button class="btn btn-accent" style="width:100%;padding:14px;font-weight:700" onclick="advanceOnboarding(${step},false)">${s.nextLabel}</button>
+      <div style="display:flex;gap:6px;justify-content:center;margin-top:20px">${dots}</div>
     </div>
-    <div style="display:flex;gap:6px;justify-content:center;margin-top:20px">${dots}</div>
   </div>`;
 }
 
 async function advanceOnboarding(step, skip) {
   const modal = document.getElementById('onboardingModal');
-  if(!skip) {
-    // Adım 1: Marka adı ve rengi kaydet
-    if(step===1) {
-      const brand = document.getElementById('ob_brand')?.value?.trim();
-      const color = document.getElementById('ob_color')?.value || '#f0a500';
-      if(!brand) { showToast('Akademi adı zorunlu!'); return; }
-      await db.from('workspaces').upsert({coach_id:session.coachId, brand_name:brand, brand_color:color}, {onConflict:'coach_id'});
-      S.workspace = {...(S.workspace||{}), coach_id:session.coachId, brand_name:brand, brand_color:color};
-      const _logoEl = document.querySelector('.sb-logo-text');
-      if(_logoEl) _logoEl.textContent = brand;
-    }
-    // Adım 2: Koç profili - telefon, sınav türleri, öğrenci sayısı
-    if(step===2) {
-      const phone = document.getElementById('ob_phone')?.value?.trim();
-      const selectedExamLabels = [...document.querySelectorAll('#ob_examtypes_wrap .ob-exam-sel input')].map(i=>i.value);
-      const examTypes = selectedExamLabels.length > 0 ? selectedExamLabels.join(',') : 'YKS';
-      const studentCount = document.getElementById('ob_studentcount')?.value || '1-5';
-      const wsPayload = { coach_id:session.coachId, brand_name:S.workspace?.brand_name||'Akademi', brand_color:S.workspace?.brand_color||'#f0a500', exam_types:examTypes, student_count_range:studentCount };
-      if(phone) wsPayload.phone = phone;
-      await db.from('workspaces').upsert(wsPayload, {onConflict:'coach_id'});
-      S.workspace = {...(S.workspace||{}), ...wsPayload};
-    }
-    // Adım 3: Şifre güncelle (hem auth hem users tablosunu güncelle)
-    if(step===3) {
-      const p1 = document.getElementById('ob_pass1')?.value;
-      const p2 = document.getElementById('ob_pass2')?.value;
-      if(p1) {
-        if(p1.length < 8) { showToast('En az 8 karakter!'); return; }
-        if(p1 !== p2) { showToast('Şifreler uyuşmuyor!'); return; }
-        const { error: authErr } = await db.auth.updateUser({ password: p1 });
-        if(authErr) { showToast('Şifre güncellenemedi: ' + authErr.message); return; }
-        const hash = await sha256(p1);
-        await db.from('users').update({password_hash:hash}).eq('id',session.coachId);
-      }
-    }
-    // Adım 4: İlk öğrenci ekle
-    if(step===4) {
-      const name = document.getElementById('ob_stuname')?.value?.trim();
-      const uname = document.getElementById('ob_stuuser')?.value?.trim() || name?.split(' ')[0]?.toLowerCase();
-      const _obPassRaw = document.getElementById('ob_stupass')?.value || 'ogrenci123';
-      const pass = await sha256(_obPassRaw);
-      if(name) {
-        const email = uname + '@rostrumakademi.com';
-        const { data: { session: authSess } } = await db.auth.getSession();
-        const resp = await fetch('/api/create-student', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authSess?.access_token||''}` },
-          body: JSON.stringify({ email, password: _obPassRaw, full_name: name, username: uname, color: '#4da6ff', target: '', progress: 0, week_start: 0, coach_id: session.coachId, exam_profile: 'YKS' })
-        });
-        const result = await resp.json();
-        if(resp.ok && result.userId) {
-          S.students.push({id:result.userId, name, target:'', color:'#4da6ff', progress:0, pass, weekStart:0, username:uname, coachId:session.coachId});
-        } else {
-          showToast('Öğrenci eklenemedi: ' + (result.error||'Bilinmeyen hata'));
-        }
-      }
-    }
-  }
+  if (!modal) return;
 
-  // Completion adımındaysa ("Panele Git") → onayla ve kapat
+  // Completion adımındaysa ("Hadi Başlayalım!") → onayla ve kapat
   if(onboardingSteps[step]?.isCompletion) {
-    await db.from('workspaces').upsert({coach_id:session.coachId, brand_name:S.workspace?.brand_name||'Akademi', brand_color:S.workspace?.brand_color||'#f0a500', onboarding_done:true}, {onConflict:'coach_id'});
-    if(S.workspace) S.workspace.onboarding_done = true;
-    modal.remove();
-    switchTab('home');
-    showToast('🎉 Hoş geldiniz! Platformunuz hazır.');
+    showLoading(true);
+    try {
+      const { error } = await db.from('workspaces').update({ onboarding_done: true }).eq('coach_id', session.coachId);
+      if (error) throw error;
+      if (S.workspace) S.workspace.onboarding_done = true;
+      modal.remove();
+      switchTab('home');
+      showToast('🎉 Hoş geldiniz! Platformunuz hazır.');
+    } catch(e) {
+      showToast('Hata: ' + e.message);
+    } finally {
+      showLoading(false);
+    }
     return;
   }
 
   const nextStep = step + 1;
-  // Sonraki adım completion adımıysa direkt oraya git
   renderOnboardingStep(nextStep, modal);
 }
 
@@ -8990,8 +8948,8 @@ async function renderCoachApplications() {
       </div>
       ${a.status==='pending'?`
       <div style="display:flex;gap:8px">
-        <button onclick="updateApplication('${a.id}','accepted')" style="flex:1;padding:9px;background:rgba(62,207,142,.12);color:#3ecf8e;border:1px solid rgba(62,207,142,.25);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✓ Kabul Et</button>
-        <button onclick="updateApplication('${a.id}','rejected')" style="flex:1;padding:9px;background:rgba(255,92,122,.08);color:#ff5c7a;border:1px solid rgba(255,92,122,.2);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✗ Reddet</button>
+        <button onclick="updateApplication('${a.id}','accepted','${esc(a.email||'')}','${esc(a.student_name||'')}')" style="flex:1;padding:9px;background:rgba(62,207,142,.12);color:#3ecf8e;border:1px solid rgba(62,207,142,.25);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✓ Kabul Et</button>
+        <button onclick="updateApplication('${a.id}','rejected','${esc(a.email||'')}','${esc(a.student_name||'')}')" style="flex:1;padding:9px;background:rgba(255,92,122,.08);color:#ff5c7a;border:1px solid rgba(255,92,122,.2);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✗ Reddet</button>
       </div>`:''}
     </div>`).join('');
 
@@ -9010,10 +8968,23 @@ async function renderCoachApplications() {
   }
 }
 
-async function updateApplication(appId, status) {
+async function updateApplication(appId, status, applicantEmail, applicantName) {
   const { error } = await db.from('match_requests').update({ status }).eq('id', appId);
   if (error) return showToast('Hata: ' + error.message);
   showToast(status === 'accepted' ? '✓ Başvuru kabul edildi' : 'Başvuru reddedildi');
+  if (applicantEmail) {
+    fetch('/api/mailer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'application_update',
+        to: applicantEmail,
+        student_name: applicantName || '',
+        status,
+        coach_name: S.workspace?.brand_name || 'Koçunuz'
+      })
+    }).catch(e => console.warn('[updateApplication] mail error:', e.message));
+  }
   renderCoachApplications();
 }
 

@@ -129,6 +129,10 @@ export async function simOAuthLogin(type) {
 }
 
 export async function checkOAuthSession() {
+  if (window.location.hash.includes('type=recovery')) {
+    console.log('[Auth] Recovery session active, skipping checkOAuthSession');
+    return;
+  }
   if (_sessionHandled) return;
   _sessionHandled = true;
   let _timeoutId = null;
@@ -227,25 +231,102 @@ export async function completeOnboarding() {
   await finishLogin(newProfile);
 }
 
+let _signUpStep = 0;
+
+export function setRegBrandColor(color, el) {
+  document.getElementById('regBrandColor').value = color;
+  el.parentElement.querySelectorAll('div').forEach(x => x.style.outline = 'none');
+  el.style.outline = '3px solid white';
+}
+
+export function nextRegWizardStep() {
+  const errEl = document.getElementById('regErr0');
+  if (errEl) errEl.style.display = 'none';
+
+  if (_signUpStep === 0) {
+    if (!window._regRole) {
+      if (errEl) {
+        errEl.textContent = 'Lütfen bir hesap türü seçin.';
+        errEl.style.display = 'block';
+      }
+      return;
+    }
+    if (window._regRole === 'student') {
+      _signUpStep = 3; // Skip coach steps
+    } else {
+      _signUpStep = 1;
+    }
+  } else if (_signUpStep === 1) {
+    const brand = document.getElementById('regBrandName').value.trim();
+    if (!brand) {
+      alert('Lütfen akademi / koçluk adını girin.');
+      return;
+    }
+    _signUpStep = 2;
+  } else if (_signUpStep === 2) {
+    _signUpStep = 3;
+  }
+
+  showRegWizardStep(_signUpStep);
+}
+
+export function prevRegWizardStep() {
+  if (_signUpStep === 3) {
+    if (window._regRole === 'student') {
+      _signUpStep = 0;
+    } else {
+      _signUpStep = 2;
+    }
+  } else if (_signUpStep === 2) {
+    _signUpStep = 1;
+  } else if (_signUpStep === 1) {
+    _signUpStep = 0;
+  }
+  showRegWizardStep(_signUpStep);
+}
+
+function showRegWizardStep(step) {
+  document.getElementById('regWizardStep0').style.display = step === 0 ? 'block' : 'none';
+  document.getElementById('regWizardStepCoach1').style.display = step === 1 ? 'block' : 'none';
+  document.getElementById('regWizardStepCoach2').style.display = step === 2 ? 'block' : 'none';
+  document.getElementById('regWizardStepFinal').style.display = step === 3 ? 'block' : 'none';
+}
+
 export async function doRegister() {
   const name = document.getElementById('regName').value.trim();
   const email = document.getElementById('regEmail').value.trim().toLowerCase();
   const pass = document.getElementById('regPass').value;
 
-  if (!name || !email || !pass) return regErr('Tüm alanlar zorunlu');
+  if (!name || !email || !pass) return regErr('Tüm hesap bilgileri zorunludur');
   if (pass.length < 8) return regErr('Şifre en az 8 karakter olmalıdır');
-  if (!window._regRole) return regErr('Hesap türü seçin');
 
   showLoading(true);
   try {
+    let metadata = {
+      full_name: name,
+      role: window._regRole
+    };
+
+    if (window._regRole === 'coach') {
+      const brand = document.getElementById('regBrandName').value.trim();
+      const color = document.getElementById('regBrandColor').value || '#f0a500';
+      const phone = document.getElementById('regPhone').value.trim();
+      const selectedExamLabels = [...document.querySelectorAll('#regExamTypesWrap .ob-exam-sel input')].map(i=>i.value);
+      const examTypes = selectedExamLabels.length > 0 ? selectedExamLabels.join(',') : 'YKS';
+      const studentCount = document.getElementById('regStudentCountRange').value || '1-5';
+
+      metadata.ob_brand = brand;
+      metadata.ob_color = color;
+      metadata.ob_phone = phone;
+      metadata.ob_examtypes = examTypes;
+      metadata.ob_studentcount = studentCount;
+    }
+
     const { data: signUpData, error: signUpErr } = await db.auth.signUp({
       email,
       password: pass,
       options: {
-        data: {
-          full_name: name,
-          role: window._regRole
-        }
+        data: metadata
       }
     });
 
@@ -256,10 +337,17 @@ export async function doRegister() {
       document.getElementById('regName').value = '';
       document.getElementById('regEmail').value = '';
       document.getElementById('regPass').value = '';
+      if (document.getElementById('regBrandName')) document.getElementById('regBrandName').value = '';
+      if (document.getElementById('regPhone')) document.getElementById('regPhone').value = '';
+      
       const succ = document.getElementById('regSuccess');
       succ.textContent = 'Kayıt başarılı! E-posta adresinize bir doğrulama bağlantısı gönderildi. Lütfen doğrulama yaptıktan sonra giriş yapın.';
       succ.style.display = 'block';
       setTimeout(() => (succ.style.display = 'none'), 10000);
+      
+      // Reset step
+      _signUpStep = 0;
+      showRegWizardStep(0);
       setAuthMode('login');
     }
   } catch (e) {
@@ -344,6 +432,37 @@ export async function finishLogin(rows) {
 
   try {
     await loadAllData();
+
+    // Otomatik Workspace oluşturma (Kayıt sırasındaki metadatadan)
+    if (session.role === 'coach' || session.role === 'developer') {
+      if (!S.workspace) {
+        console.log('[Auth] Workspace not found, auto-creating from signup metadata...');
+        const { data: { user } } = await db.auth.getUser();
+        if (user) {
+          const brand_name = user.user_metadata?.ob_brand || 'Akademi';
+          const brand_color = user.user_metadata?.ob_color || '#f0a500';
+          const phone = user.user_metadata?.ob_phone || null;
+          const exam_types = user.user_metadata?.ob_examtypes || 'YKS';
+          const student_count_range = user.user_metadata?.ob_studentcount || '1-5';
+
+          const wsPayload = {
+            coach_id: rows.id,
+            brand_name,
+            brand_color,
+            phone,
+            exam_types,
+            student_count_range,
+            onboarding_done: false
+          };
+          const { data: newWs, error: createWsErr } = await db.from('workspaces').upsert(wsPayload, { onConflict: 'coach_id' }).select().maybeSingle();
+          if (createWsErr) {
+            console.error('[finishLogin] Create workspace error:', createWsErr);
+          } else if (newWs) {
+            S.workspace = newWs;
+          }
+        }
+      }
+    }
     if (session.role === 'student') {
       S.activeStuId = rows.id;
       session.studentId = rows.id;
@@ -425,8 +544,13 @@ export async function sendResetEmail() {
   if (!email) return;
   const msgEl = document.getElementById('forgotMsg');
   try {
-    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/app.html' });
-    if (error) throw error;
+    const resp = await fetch('/api/mailer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'password_reset', email })
+    });
+    const d = await resp.json();
+    if (!resp.ok) throw new Error(d.error || 'Sunucu hatası');
     msgEl.style.display = 'block';
     msgEl.style.background = 'var(--green-dim)';
     msgEl.style.color = 'var(--green)';
@@ -491,10 +615,15 @@ window.doLogout = doLogout;
 window.showForgotPassword = showForgotPassword;
 window.sendResetEmail = sendResetEmail;
 window.updateUserPassword = updateUserPassword;
+window.nextRegWizardStep = nextRegWizardStep;
+window.prevRegWizardStep = prevRegWizardStep;
+window.setRegBrandColor = setRegBrandColor;
 
 db.auth.onAuthStateChange(async (event, sessionData) => {
-  // PASSWORD_RECOVERY: Şifre sıfırlama linki tıklandığında tetiklenir
-  if (event === 'PASSWORD_RECOVERY') {
+  const isRecovery = event === 'PASSWORD_RECOVERY' || window.location.hash.includes('type=recovery');
+  if (isRecovery) {
+    console.log('[Auth] Password recovery flow active, showing resetPasswordModal');
+    showLoading(false);
     window.om('resetPasswordModal');
     return;
   }
