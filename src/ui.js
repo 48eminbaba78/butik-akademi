@@ -4432,10 +4432,24 @@ async function openDevUserModal(id) {
 }
 
 async function devDeleteUser(id, name) {
-  if(!await customConfirm(`"${name}" kullanıcısını silmek istediğinizden emin misiniz?`)) return;
-  await db.from('users').delete().eq('id',id);
-  showToast(`${name} silindi`);
-  renderDevUsers();
+  if (!await customConfirm(`"${name}" kullanıcısını kalıcı olarak silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`)) return;
+  showLoading(true);
+  try {
+    const { data: { session: s } } = await db.auth.getSession();
+    const resp = await fetch('/api/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s?.access_token || ''}` },
+      body: JSON.stringify({ targetUserId: id })
+    });
+    const d = await resp.json();
+    if (!resp.ok) throw new Error(d.error || 'Sunucu hatası');
+    showToast(`🗑 ${name} silindi`);
+    renderDevUsers();
+  } catch (e) {
+    showToast('Hata: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
 }
 
 function openPlanModal(userId, userName, currentPlan, trialEndsAt) {
