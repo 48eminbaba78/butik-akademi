@@ -27,3 +27,5 @@ scratch/
 __*.js
 __*.cjs
 _*.mjs
+
+.vercel
