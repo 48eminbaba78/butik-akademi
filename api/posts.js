@@ -2,6 +2,7 @@ import { sb, isAuthed } from '../lib/core.js';
 import { applyCors } from '../lib/cors.js';
 
 export default async function handler(req, res) {
+  console.log('ENV KEYS:', Object.keys(process.env).filter(k => k.includes('SUPABASE') || k.includes('API') || k.includes('PASSWORD') || k.includes('PUBLISH')));
   if (applyCors(req, res)) return;
   if (req.method === 'POST' && req.body && req.body.action === 'login') {
     var pw = (process.env.PANEL_PASSWORD || '').trim();
