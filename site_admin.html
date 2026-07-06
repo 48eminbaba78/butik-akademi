@@ -4539,10 +4539,11 @@ function renderRotationList(){
 
 async function rspFetch(path, opts={}){
   const c = rspCfg();
-  if(!c.url || !c.key) throw new Error('Önce API adresi ve panel şifresini kaydedin');
+  if(!c.key) throw new Error('Önce panel şifresini kaydedin');
+  const url = (c.url || window.location.origin).replace(/\/+$/,'');
   let r;
   try{
-    r = await fetch(c.url+path, {
+    r = await fetch(url+path, {
       ...opts,
       headers: {'content-type':'application/json','x-panel-key':c.key,...(opts.headers||{})}
     });

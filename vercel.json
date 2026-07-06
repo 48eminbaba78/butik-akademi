@@ -1,6 +1,10 @@
 {
   "outputDirectory": "dist",
   "buildCommand": "npm run build",
+  "crons": [
+    { "path": "/api/generate", "schedule": "0 15 * * *" },
+    { "path": "/api/publish", "schedule": "30 16 * * *" }
+  ],
   "functions": {
     "api/*.js": { "maxDuration": 60 }
   },
