@@ -1007,8 +1007,8 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
         <!-- 5. STORY OTOMASYON TABI (Rostrum Story Panel entegrasyonu) -->
         <div id="ig-story-section" style="display:none;padding:20px 24px;overflow-y:auto;flex:1;background:var(--bg)">
 
-          <!-- Bağlantı ayarları -->
-          <div class="card" style="margin-bottom:16px;padding:16px 18px">
+          <!-- Bağlantı -->
+          <div class="card" style="margin-bottom:14px;padding:14px 18px">
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
               <div style="flex:2;min-width:240px">
                 <label style="display:block;font-size:10px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Story Panel API Adresi</label>
@@ -1024,21 +1024,68 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
           </div>
 
           <div id="rspCorsHint" class="banner warn" style="display:none">
-            Bağlantı kurulamadı. Story Panel farklı bir alan adında çalışıyorsa API'ye CORS izni eklenmeli — <b>story-panel-cors</b> klasöründeki güncellenmiş api dosyalarını panel projesine kopyalayıp yeniden deploy edin.
+            Bağlantı kurulamadı. Adres yanlış olabilir ya da API'de CORS izni eksik — <b>story-panel-update</b> paketindeki dosyaları panel projesine kopyalayıp yeniden deploy edin.
           </div>
 
-          <!-- Araç çubuğu -->
+          <!-- Otomasyon akışı -->
+          <div class="banner info" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+            <span><b>1.</b> Üret — her gün 18:00'de otomatik (ya da elle)</span>
+            <span style="color:var(--dim)">→</span>
+            <span><b>2.</b> Onayla — onaysız taslak asla yayınlanmaz</span>
+            <span style="color:var(--dim)">→</span>
+            <span><b>3.</b> Otomatik yayın — 19:30'da onaylılar Instagram'a gider</span>
+          </div>
+
+          <!-- Sekmeler -->
           <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-            <button class="btn btn-acc" id="rspGenBtn" onclick="rspGenerate()">Yarının Story'sini Üret</button>
-            <input type="date" id="rspGenDate" class="inp" style="padding:7px 10px">
-            <button class="btn btn-ghost" onclick="rspGenerate(true)">Bu Tarih İçin Üret (üzerine yaz)</button>
+            <button class="btn btn-acc" id="igTab-queue" onclick="switchStudioTab('queue',this)">Kuyruk &amp; Onay <span id="rspQueueCount" style="opacity:.75"></span></button>
+            <button class="btn btn-ghost" id="igTab-create" onclick="switchStudioTab('create',this)">İçerik Oluştur</button>
+            <button class="btn btn-ghost" id="igTab-archive" onclick="switchStudioTab('archive',this)">Arşiv</button>
             <button class="btn btn-ghost" style="margin-left:auto" onclick="loadStoryPanel()">Yenile</button>
-          </div>
-          <div style="font-size:11px;color:var(--dim);margin-bottom:16px;line-height:1.6">
-            Otomasyon akışı: her gün 18:00 TR'de yarının story'si üretilir → burada onaylarsınız → panel cron'u 19:30 TR'de onaylıları Instagram'a yayınlar. Onaylanmayan taslak yayınlanmaz.
+            <button class="btn btn-green" onclick="rspPublishNow()" title="Yayın saati gelmiş onaylı story'leri hemen Instagram'a gönderir">Yayın Kuyruğunu Şimdi Çalıştır</button>
           </div>
 
-          <div id="rspList" class="rsp-grid"><div class="loading" style="grid-column:1/-1">Bağlantı ayarlarını girin ve kaydedin</div></div>
+          <!-- SEKME: İÇERİK OLUŞTUR -->
+          <div id="ig-tab-create" style="display:none">
+            <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px;align-items:start">
+              <div class="card">
+                <div style="font-size:13px;font-weight:700;margin-bottom:14px">Yeni Story Üret</div>
+                <div class="field-row">
+                  <div class="field"><label>Yayın Tarihi</label><input type="date" id="rspGenDate" onchange="updateThemeHint()"></div>
+                  <div class="field"><label>Günün İçerik Sütunu</label>
+                    <div id="rspThemeHint" style="background:var(--s2);border:1.5px solid var(--bd);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--acc);font-weight:600">—</div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Kendi Fikrin (isteğe bağlı)</label>
+                  <textarea id="rspIdea" style="min-height:90px" placeholder="Boş bırakırsan AI günün temasına göre üretir. Fikir yazarsan story o fikir üzerine kurulur.&#10;Örn: 'Deneme analizinde öğrencilerin en çok atladığı 3 nokta'"></textarea>
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid);margin-bottom:14px;cursor:pointer">
+                  <input type="checkbox" id="rspForce" style="accent-color:var(--acc);width:15px;height:15px"> Bu tarihte içerik varsa üzerine yaz
+                </label>
+                <button class="btn btn-acc" id="rspGenBtn" style="width:100%;justify-content:center;padding:12px" onclick="rspGenerate()">Story Üret (~20 sn)</button>
+              </div>
+              <div class="card" style="border-color:rgba(192,132,252,.25)">
+                <div style="font-size:11px;font-weight:700;color:var(--acc2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Haftalık Tema Rotasyonu</div>
+                <div id="rspRotationList" style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--mid)"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEKME: KUYRUK & ONAY -->
+          <div id="ig-tab-queue">
+            <div id="rspQueueList" class="rsp-grid"><div class="loading" style="grid-column:1/-1">Bağlantı ayarlarını girin ve kaydedin</div></div>
+          </div>
+
+          <!-- SEKME: ARŞİV -->
+          <div id="ig-tab-archive" style="display:none">
+            <div style="display:flex;gap:8px;margin-bottom:14px">
+              <button class="btn btn-acc btn-sm" id="rspArcF-all" onclick="setArchiveFilter('all',this)">Tümü</button>
+              <button class="btn btn-ghost btn-sm" id="rspArcF-published" onclick="setArchiveFilter('published',this)">Yayınlananlar</button>
+              <button class="btn btn-ghost btn-sm" id="rspArcF-rejected" onclick="setArchiveFilter('rejected',this)">Reddedilenler</button>
+            </div>
+            <div id="rspArchiveList" class="rsp-grid"><div class="loading" style="grid-column:1/-1">—</div></div>
+          </div>
         </div>
 
       </div>
@@ -4406,8 +4453,19 @@ async function deletePayment(id){
 // STORY PANEL ENTEGRASYONU (rostrum-story-panel API)
 // ══════════════════════════════════════════════
 let _rspPosts = [];
-const RSP_ST = {draft:['Taslak','st-pending'],approved:['Onaylı','st-approved'],published:['Yayınlandı','st-published'],rejected:['Reddedildi','st-draft'],error:['Hata','st-error']};
-const RSP_TH = {satis:'Satış',egitim:'Eğitim',reklam:'Spotlight',kurucu:'Kurucu',trend:'Trend',etkilesim:'Etkileşim',davet:'Davet'};
+let _studioTab = 'queue';
+let _archiveFilter = 'all';
+const RSP_ST = {draft:['Onay Bekliyor','st-pending'],approved:['Onaylı · Yayın Sırasında','st-approved'],published:['Yayınlandı','st-published'],rejected:['Reddedildi','st-draft'],error:['Hata','st-error']};
+const RSP_THEMES = {
+  1:{key:'satis',name:'Ürün Özellik / Satış',hour:'19:00'},
+  2:{key:'egitim',name:'Eğitim İpucu (YKS/Koçluk)',hour:'18:00'},
+  3:{key:'reklam',name:'Özellik Spotlight',hour:'19:00'},
+  4:{key:'kurucu',name:'Kurucu Hikayesi / Şeffaflık',hour:'19:00'},
+  5:{key:'trend',name:'Sektör & Trend',hour:'18:00'},
+  6:{key:'etkilesim',name:'Etkileşim: Anket / Soru',hour:'17:00'},
+  0:{key:'davet',name:'Erken Erişim Daveti',hour:'19:00'}
+};
+const RSP_TH = Object.fromEntries(Object.values(RSP_THEMES).map(t=>[t.key,t.name]));
 
 function rspCfg(){
   return {
@@ -4420,7 +4478,10 @@ function initStoryPanelTab(){
   const c = rspCfg();
   document.getElementById('rspUrl').value = c.url;
   document.getElementById('rspKey').value = c.key;
-  document.getElementById('rspGenDate').value = new Date(Date.now()+86400000).toISOString().split('T')[0];
+  const gd = document.getElementById('rspGenDate');
+  if(!gd.value) gd.value = new Date(Date.now()+86400000).toISOString().split('T')[0];
+  updateThemeHint();
+  renderRotationList();
   if(c.url && c.key) loadStoryPanel();
 }
 
@@ -4429,6 +4490,51 @@ function saveRspConfig(){
   localStorage.setItem('rsp_key', document.getElementById('rspKey').value.trim());
   showToast('Story Panel bağlantısı kaydedildi');
   loadStoryPanel();
+}
+
+function switchStudioTab(tab, el){
+  _studioTab = tab;
+  ['queue','create','archive'].forEach(t=>{
+    const b=document.getElementById('igTab-'+t);
+    b.classList.toggle('btn-acc', t===tab);
+    b.classList.toggle('btn-ghost', t!==tab);
+    document.getElementById('ig-tab-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+}
+
+function setArchiveFilter(f, el){
+  _archiveFilter = f;
+  document.querySelectorAll('[id^="rspArcF-"]').forEach(b=>{b.classList.remove('btn-acc');b.classList.add('btn-ghost');});
+  el.classList.remove('btn-ghost'); el.classList.add('btn-acc');
+  renderStoryPanel();
+}
+
+function themeForDate(dateStr){
+  const day = new Date(dateStr+'T12:00:00Z').getUTCDay();
+  return RSP_THEMES[day];
+}
+
+function updateThemeHint(){
+  const d = document.getElementById('rspGenDate').value;
+  const el = document.getElementById('rspThemeHint');
+  if(!d){ el.textContent='—'; return; }
+  const t = themeForDate(d);
+  el.textContent = t.name + ' · ' + t.hour;
+  renderRotationList();
+}
+
+function renderRotationList(){
+  const el = document.getElementById('rspRotationList');
+  if(!el) return;
+  const days = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+  const sel = document.getElementById('rspGenDate').value;
+  const selDay = sel ? new Date(sel+'T12:00:00Z').getUTCDay() : -1;
+  el.innerHTML = [1,2,3,4,5,6,0].map(i=>{
+    const t = RSP_THEMES[i];
+    const on = i===selDay;
+    return `<div style="display:flex;justify-content:space-between;gap:10px;${on?'color:var(--acc);font-weight:700':''}">
+      <span>${days[i]}</span><span style="text-align:right">${t.name} · ${t.hour}</span></div>`;
+  }).join('');
 }
 
 async function rspFetch(path, opts={}){
@@ -4452,7 +4558,6 @@ async function rspFetch(path, opts={}){
 
 async function loadStoryPanel(){
   const st = document.getElementById('rspStatus');
-  const list = document.getElementById('rspList');
   st.textContent = 'Yükleniyor…';
   try{
     const d = await rspFetch('/api/posts');
@@ -4461,49 +4566,64 @@ async function loadStoryPanel(){
     renderStoryPanel();
   }catch(e){
     st.innerHTML = '<span style="color:var(--red)">● '+esc(e.message)+'</span>';
-    list.innerHTML = '<div class="loading" style="grid-column:1/-1">'+esc(e.message)+'</div>';
+    document.getElementById('rspQueueList').innerHTML = '<div class="loading" style="grid-column:1/-1">'+esc(e.message)+'</div>';
   }
 }
 
-function renderStoryPanel(){
-  const list = document.getElementById('rspList');
-  if(!_rspPosts.length){
-    list.innerHTML = '<div class="loading" style="grid-column:1/-1">Henüz üretilmiş story yok — "Yarının Story\'sini Üret" ile başlayın</div>';
-    return;
-  }
-  list.innerHTML = _rspPosts.map(p=>{
-    const [stLbl, stCls] = RSP_ST[p.status]||[p.status,'st-draft'];
-    const theme = RSP_TH[p.theme]||p.theme||'—';
-    const dt = new Date(p.post_date+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
-    const pub = p.publish_at ? new Date(p.publish_at).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-    const svg = p.svg ? p.svg : '';
-    return `<div class="rsp-card" data-id="${p.id}">
-      <div class="rsp-phone"><div class="rsp-scr">${svg||'<span style="font-size:11px;color:var(--dim);padding:10px;text-align:center">Görsel yok</span>'}</div></div>
-      <div class="rsp-meta">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-weight:700;font-size:13px;color:var(--text)">${dt}</span>
-          <span class="status-badge ${stCls}">${stLbl}</span>
-          <span class="chip-method" style="color:var(--acc2)">${esc(theme)}</span>
-        </div>
-        <div style="font-size:10px;color:var(--dim)">Planlı yayın: ${pub}</div>
-        ${p.error_msg?`<div style="font-size:11px;color:var(--red);background:var(--red-dim);border-radius:8px;padding:6px 10px">${esc(p.error_msg)}</div>`:''}
-        <textarea class="rsp-cap" id="rspCap-${p.id}">${esc(p.caption||'')}</textarea>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto">
-          <button class="btn btn-ghost btn-sm" onclick="rspSave('${p.id}')">Kaydet</button>
-          ${p.status!=='published'?`
-          <button class="btn btn-green btn-sm" onclick="rspAction('${p.id}','approve')">Onayla</button>
-          <button class="btn btn-danger btn-sm" onclick="rspAction('${p.id}','reject')">Reddet</button>
-          <button class="btn btn-ghost btn-sm" onclick="rspRegen('${p.post_date}')">Yeniden Üret</button>`:''}
-        </div>
+function rspCard(p, isArchive){
+  const [stLbl, stCls] = RSP_ST[p.status]||[p.status,'st-draft'];
+  const theme = RSP_TH[p.theme]||p.theme||'—';
+  const dt = new Date(p.post_date+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
+  const pub = p.publish_at ? new Date(p.publish_at).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+  const svg = p.svg || '';
+  const actions = isArchive
+    ? (p.status==='rejected'
+        ? `<button class="btn btn-ghost btn-sm" onclick="rspRestore('${p.id}')">Kuyruğa Geri Al</button>
+           <button class="btn btn-ghost btn-sm" onclick="rspRegen('${p.post_date}')">Yeniden Üret</button>`
+        : `<button class="btn btn-ghost btn-sm" onclick="rspRegen('${p.post_date}')">Bu Temayla Yeni Üret</button>`)
+    : `<button class="btn btn-ghost btn-sm" onclick="rspSave('${p.id}')">Kaydet</button>
+       <button class="btn btn-green btn-sm" onclick="rspAction('${p.id}','approve')">Onayla</button>
+       <button class="btn btn-danger btn-sm" onclick="rspAction('${p.id}','reject')">Arşive Kaldır</button>
+       <button class="btn btn-ghost btn-sm" onclick="rspRegen('${p.post_date}')">Yeniden Üret</button>`;
+  return `<div class="rsp-card">
+    <div class="rsp-phone"><div class="rsp-scr">${svg||'<span style="font-size:11px;color:var(--dim);padding:10px;text-align:center">Görsel yok</span>'}</div></div>
+    <div class="rsp-meta">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-weight:700;font-size:13px;color:var(--text)">${dt}</span>
+        <span class="status-badge ${stCls}">${stLbl}</span>
+        <span class="chip-method" style="color:var(--acc2)">${esc(theme)}</span>
       </div>
-    </div>`;
-  }).join('');
+      <div style="font-size:10px;color:var(--dim)">${p.status==='published'?'Yayınlandı':'Planlı yayın'}: ${pub}</div>
+      ${p.error_msg?`<div style="font-size:11px;color:var(--red);background:var(--red-dim);border-radius:8px;padding:6px 10px">${esc(p.error_msg)}</div>`:''}
+      ${isArchive
+        ? `<div style="font-size:11.5px;color:var(--mid);line-height:1.5;max-height:80px;overflow:auto;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;white-space:pre-wrap">${esc(p.caption||'—')}</div>`
+        : `<textarea class="rsp-cap" id="rspCap-${p.id}">${esc(p.caption||'')}</textarea>`}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto">${actions}</div>
+    </div>
+  </div>`;
+}
+
+function renderStoryPanel(){
+  const queue = _rspPosts.filter(p=>['draft','approved','error'].includes(p.status));
+  let archive = _rspPosts.filter(p=>['published','rejected'].includes(p.status));
+  if(_archiveFilter!=='all') archive = archive.filter(p=>p.status===_archiveFilter);
+
+  const pending = queue.filter(p=>p.status==='draft').length;
+  document.getElementById('rspQueueCount').textContent = pending ? '· '+pending : '';
+
+  document.getElementById('rspQueueList').innerHTML = queue.length
+    ? queue.map(p=>rspCard(p,false)).join('')
+    : '<div class="loading" style="grid-column:1/-1">Kuyruk boş — "İçerik Oluştur" sekmesinden yeni story üretin</div>';
+
+  document.getElementById('rspArchiveList').innerHTML = archive.length
+    ? archive.map(p=>rspCard(p,true)).join('')
+    : '<div class="loading" style="grid-column:1/-1">Arşivde içerik yok</div>';
 }
 
 async function rspAction(id, action){
   try{
     await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action,id})});
-    showToast(action==='approve'?'Story onaylandı — planlı saatte yayınlanacak':'Story reddedildi');
+    showToast(action==='approve'?'Onaylandı — planlı saatte otomatik yayınlanacak':'Arşive kaldırıldı');
     loadStoryPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
 }
@@ -4512,33 +4632,59 @@ async function rspSave(id){
   const caption = document.getElementById('rspCap-'+id).value;
   try{
     await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action:'save',id,caption})});
-    showToast('Caption kaydedildi (durum taslağa döndü, tekrar onaylayın)');
+    showToast('Kaydedildi — tekrar onaylamayı unutmayın');
     loadStoryPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
 }
 
-async function rspGenerate(forDate){
-  const btn = document.getElementById('rspGenBtn');
-  btn.disabled = true; btn.textContent = 'Üretiliyor… (~20 sn)';
+async function rspRestore(id){
+  const p = _rspPosts.find(x=>x.id===id);
   try{
-    let q = '';
-    if(forDate){
-      const d = document.getElementById('rspGenDate').value;
-      if(!d){ throw new Error('Tarih seçin'); }
-      q = '?date='+d+'&force=1';
-    }
-    const d = await rspFetch('/api/generate'+q);
-    if(d.skipped) showToast(d.reason||'Bu tarih için zaten post var',false);
-    else showToast('Story üretildi — onayınızı bekliyor');
+    await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action:'save',id,caption:p?.caption||''})});
+    showToast('Kuyruğa geri alındı (taslak)');
     loadStoryPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
-  finally{ btn.disabled=false; btn.textContent='Yarının Story\'sini Üret'; }
+}
+
+async function rspGenerate(){
+  const btn = document.getElementById('rspGenBtn');
+  const d = document.getElementById('rspGenDate').value;
+  const idea = document.getElementById('rspIdea').value.trim();
+  const force = document.getElementById('rspForce').checked;
+  if(!d){ showToast('Yayın tarihi seçin',false); return; }
+  btn.disabled = true; btn.textContent = 'Üretiliyor… (~20 sn)';
+  try{
+    let q = '?date='+d + (force?'&force=1':'') + (idea?'&idea='+encodeURIComponent(idea):'');
+    const r = await rspFetch('/api/generate'+q);
+    if(r.skipped){ showToast(r.reason||'Bu tarihte içerik zaten var — üzerine yazmak için kutucuğu işaretleyin',false); }
+    else{
+      showToast('Story üretildi — Kuyruk & Onay sekmesinde sizi bekliyor');
+      document.getElementById('rspIdea').value='';
+      switchStudioTab('queue');
+    }
+    loadStoryPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+  finally{ btn.disabled=false; btn.textContent='Story Üret (~20 sn)'; }
 }
 
 async function rspRegen(dateStr){
-  if(!confirm(dateStr+' tarihli story yeniden üretilsin mi? Mevcut içeriğin üzerine yazılır.'))return;
+  if(!confirm(dateStr+' tarihi için yeniden üretilsin mi? Mevcut içeriğin üzerine yazılır.'))return;
   document.getElementById('rspGenDate').value = dateStr;
-  rspGenerate(true);
+  document.getElementById('rspForce').checked = true;
+  switchStudioTab('create');
+  updateThemeHint();
+  rspGenerate();
+}
+
+async function rspPublishNow(){
+  if(!confirm('Yayın saati gelmiş onaylı story\'ler hemen Instagram\'a gönderilsin mi?'))return;
+  try{
+    const r = await rspFetch('/api/publish');
+    const res = r.results||[];
+    if(res.length && res[0].disabled){ showToast(res[0].note,false); }
+    else showToast(r.processed ? r.processed+' içerik işlendi' : 'Yayın saati gelmiş onaylı içerik yok');
+    loadStoryPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
 }
 
 function showToast(msg,ok=true){
