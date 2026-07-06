@@ -9,6 +9,21 @@ ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS clicked_at timestamptz;
 COMMENT ON COLUMN public.leads.email_clicked IS 'Aday e-postadaki linke tıkladı mı';
 COMMENT ON COLUMN public.leads.clicked_at IS 'Adayın e-postadaki linke ilk tıklama zamanı';
 
+-- ── 2. PAYMENTS TABLOSUNUN YENİ ARAYÜZE UYUMLU KOLONLARINI EKLE ──
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS coach_id uuid REFERENCES public.users(id) ON DELETE SET NULL;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS coach_name text;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS period_months integer DEFAULT 1;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS period_start date;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS period_end date;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS receipt_note text;
+
+COMMENT ON COLUMN public.payments.coach_id IS 'Ödemeyi yapan koçun IDsi';
+COMMENT ON COLUMN public.payments.coach_name IS 'Ödemeyi yapan koçun adı';
+COMMENT ON COLUMN public.payments.period_months IS 'Satın alınan lisans süresi (ay)';
+COMMENT ON COLUMN public.payments.period_start IS 'Lisans başlangıç tarihi';
+COMMENT ON COLUMN public.payments.period_end IS 'Lisans bitiş tarihi';
+COMMENT ON COLUMN public.payments.receipt_note IS 'Dekont no veya ödeme açıklaması';
+
 -- ── 2. RLS GÜVENLİK POLİTİKALARINI TEMİZLE VE YAPILANDIR ──
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leads FORCE ROW LEVEL SECURITY;
