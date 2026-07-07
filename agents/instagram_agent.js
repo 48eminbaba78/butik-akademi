@@ -332,14 +332,22 @@ async function uploadImageToStorage(svgContent) {
   const regularFontPath = path.resolve(process.cwd(), 'fonts/Roboto-Regular.ttf');
   const boldFontPath = path.resolve(process.cwd(), 'fonts/Roboto-Bold.ttf');
 
-  const resvg = new Resvg(svgContent, {
+  console.log('[Resvg] Regular font path:', regularFontPath, 'Exists:', fs.existsSync(regularFontPath));
+  console.log('[Resvg] Bold font path:', boldFontPath, 'Exists:', fs.existsSync(boldFontPath));
+
+  // Force all font-family declarations in the SVG to use Roboto
+  const cleanedSvg = svgContent
+    .replace(/font-family="[^"]*"/g, 'font-family="Roboto, sans-serif"')
+    .replace(/font-family='[^']*'/g, "font-family='Roboto, sans-serif'");
+
+  const resvg = new Resvg(cleanedSvg, {
     fitTo: {
       mode: 'width',
       value: 1080
     },
     font: {
       loadSystemFonts: false,
-      fontFiles: [regularFontPath, boldFontPath],
+      fontFiles: fs.existsSync(regularFontPath) ? [regularFontPath, boldFontPath] : [],
       defaultFontFamily: 'Roboto',
     }
   });
