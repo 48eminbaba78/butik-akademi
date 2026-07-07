@@ -4577,13 +4577,28 @@ function rspCard(p, isArchive){
   const dt = new Date(p.post_date+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
   const pub = p.publish_at ? new Date(p.publish_at).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
   const svg = p.svg || '';
+
+  let timeInfo = '';
+  const opt = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
+  if (p.status === 'published' && p.updated_at) {
+    timeInfo = `Yayınlandı: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
+  } else if (p.status === 'approved' && p.updated_at) {
+    timeInfo = `Onaylandı: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
+  } else if (p.status === 'rejected' && p.updated_at) {
+    timeInfo = `Reddedildi: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
+  } else if (p.status === 'error' && p.updated_at) {
+    timeInfo = `Hata: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
+  } else if (p.created_at) {
+    timeInfo = `Oluşturuldu: ${new Date(p.created_at).toLocaleString('tr-TR', opt)}`;
+  }
+
   const actions = isArchive
     ? (p.status==='rejected'
         ? `<button class="btn btn-ghost btn-sm" onclick="rspRestore('${p.id}')">Kuyruğa Geri Al</button>
            <button class="btn btn-ghost btn-sm" onclick="rspRegen('${p.post_date}')">Yeniden Üret</button>`
         : `<button class="btn btn-ghost btn-sm" onclick="rspRegen('${p.post_date}')">Bu Temayla Yeni Üret</button>`)
     : `<button class="btn btn-ghost btn-sm" onclick="rspSave('${p.id}')">Kaydet</button>
-       <button class="btn btn-green btn-sm" onclick="rspAction('${p.id}','approve')">Onayla</button>
+       ${p.status === 'approved' ? `<button class="btn btn-green btn-sm" onclick="rspPublishSingle('${p.id}')">🚀 Hemen Paylaş</button>` : `<button class="btn btn-green btn-sm" onclick="rspAction('${p.id}','approve')">Onayla</button>`}
        <button class="btn btn-danger btn-sm" onclick="rspAction('${p.id}','reject')">Arşive Kaldır</button>
        <button class="btn btn-ghost btn-sm" onclick="rspRegen('${p.post_date}')">Yeniden Üret</button>`;
   return `<div class="rsp-card">
@@ -4594,8 +4609,11 @@ function rspCard(p, isArchive){
         <span class="status-badge ${stCls}">${stLbl}</span>
         <span class="chip-method" style="color:var(--acc2)">${esc(theme)}</span>
       </div>
-      <div style="font-size:10px;color:var(--dim)">${p.status==='published'?'Yayınlandı':'Planlı yayın'}: ${pub}</div>
-      ${p.error_msg?`<div style="font-size:11px;color:var(--red);background:var(--red-dim);border-radius:8px;padding:6px 10px">${esc(p.error_msg)}</div>`:''}
+      <div style="font-size:10px;color:var(--dim);display:flex;flex-direction:column;gap:2px;margin-top:2px">
+        <div>Planlı yayın: ${pub}</div>
+        ${timeInfo ? `<div style="color:rgba(230,237,243,0.35);font-size:9.5px">${timeInfo}</div>` : ''}
+      </div>
+      ${p.error_msg?`<div style="font-size:11px;color:var(--red);background:var(--red-dim);border-radius:8px;padding:6px 10px;max-height:60px;overflow:auto">${esc(p.error_msg)}</div>`:''}
       ${isArchive
         ? `<div style="font-size:11.5px;color:var(--mid);line-height:1.5;max-height:80px;overflow:auto;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;white-space:pre-wrap">${esc(p.caption||'—')}</div>`
         : `<textarea class="rsp-cap" id="rspCap-${p.id}">${esc(p.caption||'')}</textarea>`}
@@ -4684,6 +4702,23 @@ async function rspPublishNow(){
     const res = r.results||[];
     if(res.length && res[0].disabled){ showToast(res[0].note,false); }
     else showToast(r.processed ? r.processed+' içerik işlendi' : 'Yayın saati gelmiş onaylı içerik yok');
+    loadStoryPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+async function rspPublishSingle(id){
+  if(!confirm('Bu story hemen Instagram\'a gönderilsin mi?'))return;
+  try{
+    const r = await rspFetch('/api/publish?id=' + id);
+    const res = r.results||[];
+    if(res.length && res[0].disabled){ showToast(res[0].note,false); }
+    else if(res.length && res[0].ok){
+      showToast('Story Instagram\'da başarıyla paylaşıldı! ✓');
+    }else if(res.length && res[0].error){
+      showToast('Hata: ' + res[0].error, false);
+    }else{
+      showToast('İçerik paylaşılamadı.', false);
+    }
     loadStoryPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
 }
