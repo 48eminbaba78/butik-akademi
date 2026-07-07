@@ -329,10 +329,18 @@ async function getInstagramCredentials() {
 async function uploadImageToStorage(svgContent) {
   // Render SVG to PNG
   console.log('[Render] SVG şablonu yüksek çözünürlüklü PNG görseline dönüştürülüyor...');
+  const regularFontPath = path.resolve(process.cwd(), 'fonts/Roboto-Regular.ttf');
+  const boldFontPath = path.resolve(process.cwd(), 'fonts/Roboto-Bold.ttf');
+
   const resvg = new Resvg(svgContent, {
     fitTo: {
       mode: 'width',
       value: 1080
+    },
+    font: {
+      loadSystemFonts: false,
+      fontFiles: [regularFontPath, boldFontPath],
+      defaultFontFamily: 'Roboto',
     }
   });
   const pngData = resvg.render();
