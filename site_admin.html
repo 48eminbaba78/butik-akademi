@@ -5270,7 +5270,7 @@ async function generateReelsCaption(btn) {
   btn.disabled = true;
   btn.textContent = '...';
   try {
-    const resp = await fetch('/api/generate-caption', {
+    const resp = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'reels_caption' }),
