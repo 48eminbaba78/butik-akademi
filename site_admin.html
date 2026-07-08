@@ -209,6 +209,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015);}
   .stats-grid{grid-template-columns:1fr 1fr;}
   .content-grid{grid-template-columns:1fr;}
   .content{padding:18px 14px 60px;}
+  #hambBtn{display:inline-flex!important;align-items:center;justify-content:center;}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;}
@@ -1297,6 +1298,7 @@ async function syncAll(){await init();showToast('Yenilendi ✓');}
 
 // ── NAVIGATION ────────────────────────────────
 function switchView(id,el){
+  document.getElementById('sidebar')?.classList.remove('open');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('view-'+id)?.classList.add('active');
@@ -2811,88 +2813,224 @@ function getThemeInfo(cat) {
 }
 
 function renderReelsPreview(p) {
-  // Önizleme — Reels veya Carousel olmasına göre göster
-  const previewContainer = document.getElementById('igPanelPreviewContainer');
   const d = p.preview_data || {};
-  
-  if (p.content_type === 'reels' || p.theme_category === 'reels') {
-    previewContainer.innerHTML = renderReelsPreview(p);
-    const nav = document.getElementById('slide-btn-container');
-    if (nav) nav.style.setProperty('display', 'none', 'important');
-    const stVal = document.getElementById('igStorySlideText');
-    if (stVal) stVal.parentNode.style.display = 'none';
+  const hook = d.reels_hook || 'YKS Koçluğunda 1 Numara Olmak';
+  const music = d.reels_music || 'Upbeat, modern synth';
+  const scenes = d.reels_scenes || [];
+  let scenesHtml = '';
+  if (scenes.length > 0) {
+    scenesHtml = scenes.map((s, idx) => `
+      <div style="margin-bottom:8px;font-size:11px;line-height:1.4">
+        <span style="color:#F4A261;font-weight:bold">🎬 Sahne ${idx+1}:</span>
+        <div style="color:rgba(230,237,243,0.5);margin:2px 0 2px 8px;font-style:italic">Görsel: ${s.visual || ''}</div>
+        <div style="color:#e6edf3;margin-left:8px;font-weight:500">Söz: "${s.text || ''}"</div>
+      </div>
+    `).join('');
   } else {
-    const nav = document.getElementById('slide-btn-container');
-    if (nav) nav.style.setProperty('display', 'flex', 'important');
-    const stVal = document.getElementById('igStorySlideText');
-    if (stVal) stVal.parentNode.style.display = 'block';
-    
-    const rawSlides = Array.isArray(p.story_slides) ? p.story_slides : [];
-    let carouselSlides = parseCarouselSlides(rawSlides);
+    scenesHtml = `<div style="color:rgba(230,237,243,0.3);font-size:11px;font-style:italic">Reels senaryo akışı belirtilmemiş.</div>`;
+  }
   
-    if (carouselSlides.length === 0) {
-      const hook = d.quote || p.caption?.split('\n')[0]?.substring(0, 80) || 'YKS koçluğunda yeni bir dönem';
-      const pts = (d.points || []).map(pt => [pt.title || String(pt), pt.desc || '']);
-      carouselSlides = [
-        { type: 'hook', headline: hook },
-        { type: 'content', headline: d.title || 'Neden Önemli?', points: pts.slice(0, 3) },
-        { type: 'content', headline: d.subtitle || 'Çözüm', points: pts.slice(3, 5) },
-        { type: 'insight', quote: d.quote || hook },
-        { type: 'cta', cta_text: 'Erken erişim açık — Yeniden Üret ile özelleştir' }
-      ];
+  return `
+    <div style="width:100%;height:100%;padding:14px;box-sizing:border-box;background:#0d1117;display:flex;flex-direction:column;gap:12px;overflow-y:auto;text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:6px">
+        <span style="font-size:11px;font-weight:700;color:#F4A261">🎥 REELS SENARYOSU</span>
+        <span style="font-size:10px;background:rgba(244,162,97,0.15);color:#F4A261;padding:2px 6px;border-radius:4px;font-weight:bold">VİDEO</span>
+      </div>
+      
+      <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px">
+        <div style="font-size:10px;color:rgba(230,237,243,0.4);margin-bottom:2px">🎬 KANCA (Ekran Yazısı)</div>
+        <div style="font-size:13px;font-weight:bold;color:#fff;line-height:1.3">"${hook}"</div>
+      </div>
+      
+      <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px">
+        <div style="font-size:10px;color:rgba(230,237,243,0.4);margin-bottom:2px">🎵 ÖNERİLEN SES / MÜZİK</div>
+        <div style="font-size:11px;color:#60b4ff;font-weight:bold">${music}</div>
+      </div>
+      
+      <div style="flex:1">
+        <div style="font-size:10px;color:rgba(230,237,243,0.4);margin-bottom:6px">📝 SENARYO AKIŞI</div>
+        ${scenesHtml}
+      </div>
+    </div>
+  `;
+}
+
+function igTypeLabel(type) {
+  if (type === 'countdown') return '⏳ YKS Sayaç';
+  if (type === 'tactic') return '💡 Ders Taktiği';
+  if (type === 'comparison') return '⚖️ Karşılaştırma';
+  if (type === 'seasonal') return '☀️ Mevsimsel';
+  if (type === 'reels') return '🎥 Reels Senaryosu';
+  if (type === 'carousel') return '🎠 Carousel Post';
+  return type || '—';
+}
+
+function switchIgPanelTab(tab) {
+  _activeIgPanelTab = tab;
+  ['posts','rules','config','manual','story'].forEach(t => {
+    const btn = document.getElementById('tab-ig-' + t);
+    if (!btn) return;
+    if (t === tab) {
+      btn.style.color = t === 'manual' ? '#F4A261' : '#e6edf3';
+      btn.style.borderBottomColor = '#F4A261';
+      btn.style.fontWeight = '700';
+    } else {
+      btn.style.color = t === 'manual' ? 'rgba(244,162,97,0.4)' : 'rgba(230,237,243,0.4)';
+      btn.style.borderBottomColor = 'transparent';
+      btn.style.fontWeight = t === 'manual' ? '600' : '500';
     }
-  
-    const svgStr = getCarouselSlideSvg(carouselSlides[0], 0, carouselSlides.length);
-    previewContainer.innerHTML = `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}" style="width:100%;height:100%;object-fit:cover"/>`;
-    document.getElementById('igStorySlideText').value = rawSlides[0]?.text || rawSlides[0] || '';
-    selectStorySlide(0);
+  });
+  document.getElementById('ig-posts-section').style.display = tab === 'posts' ? 'flex' : 'none';
+  document.getElementById('ig-rules-section').style.display = tab === 'rules' ? 'block' : 'none';
+  document.getElementById('ig-config-section').style.display = tab === 'config' ? 'block' : 'none';
+  document.getElementById('ig-manual-section').style.display = tab === 'manual' ? 'flex' : 'none';
+  document.getElementById('ig-story-section').style.display = tab === 'story' ? 'block' : 'none';
+  if (tab === 'story') initStoryPanelTab();
+  if (tab === 'rules') loadAndRenderIgRules();
+  if (tab === 'config') { loadIgConfig(); loadAiConfig(); }
+  if (tab === 'manual') initManualPostTab();
+}
+
+async function loadAndRenderInstagramPanel() {
+  try {
+    const { data: mem } = await db.from('content_memory').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
+    _igMemory = mem || { current_week: 1, yks_days_remaining: 360, monthly_social_proof_count: 0, last_published_type: null, last_published_theme: null };
+  } catch(e) {
+    const { data: settData } = await db.from('platform_settings').select('value').eq('key', 'instagram_drafts').maybeSingle();
+    _igPosts = settData?.value || DEFAULT_IG_DRAFTS;
+    _igMemory = { current_week: 1, yks_days_remaining: 360, monthly_social_proof_count: 0 };
+    renderIgTopbar();
+    renderIgThemeBanner();
+    renderIgPosts();
+    switchIgPanelTab(_activeIgPanelTab);
+    return;
   }
 
-  // İçerik belleği
-  document.getElementById('igMemLastType').textContent = igTypeLabel(_igMemory?.last_published_type) || '—';
-  const isRepeat = _igMemory?.last_published_theme && _igMemory.last_published_theme === p.theme_category;
-  const riskEl = document.getElementById('igMemRepeatRisk');
-  riskEl.textContent = isRepeat ? 'Var ⚠' : 'Yok';
-  riskEl.style.color = isRepeat ? '#F4A261' : '#3dba8f';
-  const sc = _igMemory?.monthly_social_proof_count ?? 0;
-  const scEl = document.getElementById('igMemSocialCount');
-  scEl.textContent = sc + ' / 1';
-  scEl.style.color = sc > 1 ? '#e05a5a' : '#e6edf3';
-
-  // Butonlar — approved ise yayınla aktif
-  const isApproved = p.status === 'approved' || p.status === 'published';
-  document.getElementById('btnIgRegen').disabled = false;
-  document.getElementById('btnIgApprove').disabled = p.status === 'published';
-  enablePublishBtns(isApproved);
-  if (p.status === 'published') {
-    document.getElementById('btnIgApprove').textContent = '✓ Yayınlandı';
-    document.getElementById('btnIgApprove').style.color = '#3dba8f';
-  } else {
-    document.getElementById('btnIgApprove').textContent = '✓ Onayla';
+  try {
+    const { data: posts, error } = await db.from('instagram_posts').select('*').in('status', ['draft','pending','approved']).order('created_at', { ascending: true });
+    if (error) throw error;
+    if (posts && posts.length > 0) {
+      _igPosts = posts;
+    } else {
+      const { data: settData } = await db.from('platform_settings').select('value').eq('key', 'instagram_drafts').maybeSingle();
+      _igPosts = (settData?.value || DEFAULT_IG_DRAFTS).map(d => ({
+        id: d.id, content_type: d.type, theme_category: 'pain_point',
+        caption: d.caption, hashtags: '', story_slides: (d.story_slides || []).map((t,i)=>({slide:i+1,text:t})),
+        status: d.status || 'draft', week_number: 1,
+        preview_data: { type: d.type, days_left: d.days_left, quote: d.quote, author: d.author, title: d.title, subtitle: d.subtitle, points: d.points }
+      }));
+    }
+  } catch(e) {
+    document.getElementById('igErrorBanner').style.display = 'block';
+    const { data: settData } = await db.from('platform_settings').select('value').eq('key', 'instagram_drafts').maybeSingle();
+    _igPosts = (settData?.value || DEFAULT_IG_DRAFTS).map(d => ({
+      id: d.id, content_type: d.type, theme_category: 'pain_point',
+      caption: d.caption, hashtags: '', story_slides: [],
+      status: d.status || 'draft', week_number: 1,
+      preview_data: { type: d.type, days_left: d.days_left, quote: d.quote, author: d.author, title: d.title, subtitle: d.subtitle, points: d.points }
+    }));
   }
+
+  renderIgTopbar();
+  renderIgThemeBanner();
+  renderIgPosts();
+  renderMonthSummary();
+  switchIgPanelTab(_activeIgPanelTab);
+  if (_igPosts.length > 0) selectIgPost(_igPosts[0].id);
+}
+
+function renderIgTopbar() {
+  const days = _igMemory?.yks_days_remaining ?? '—';
+  const el = document.getElementById('igTopbarCountdown');
+  if (el) el.textContent = days;
+}
+
+function renderIgThemeBanner() {
+  const week = _igMemory?.current_week ?? 1;
+  const cur = IG_WEEK_THEMES[week] || IG_WEEK_THEMES[1];
+  const nxt = IG_WEEK_THEMES[(week % 4) + 1];
+  const curEl = document.getElementById('igCurrentWeekNum');
+  if (curEl) curEl.textContent = week;
+  const curThemeEl = document.getElementById('igCurrentThemeName');
+  if (curThemeEl) curThemeEl.textContent = cur.name;
+  const nxtThemeEl = document.getElementById('igNextThemeName');
+  if (nxtThemeEl) nxtThemeEl.textContent = nxt.name;
+
+  const pills = document.getElementById('igWeekPills');
+  if (pills) {
+    pills.innerHTML = [1,2,3,4].map(w => {
+      const t = IG_WEEK_THEMES[w];
+      const isCur = w === week, isPast = w < week;
+      return `<div style="flex:1;text-align:center;padding:5px 4px;border-radius:6px;font-size:10px;font-weight:600;
+        ${isCur ? `background:rgba(244,162,97,0.15);border:0.5px solid rgba(244,162,97,0.4);color:#F4A261;` :
+          isPast ? `background:none;border:0.5px solid rgba(255,255,255,0.06);color:rgba(230,237,243,0.2);text-decoration:line-through;` :
+                   `background:none;border:0.5px solid rgba(255,255,255,0.1);color:rgba(230,237,243,0.35);`}">
+        H${w} · ${t.name.split(' ')[0]}
+      </div>`;
+    }).join('');
+  }
+}
+
+function renderIgPosts() {
+  const tbody = document.getElementById('igPostsTable');
+  if (!tbody) return;
+  if (!_igPosts || _igPosts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:48px;color:rgba(230,237,243,0.25);font-size:13px">Henüz taslak yok — yeni içerik ekle</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _igPosts.map(p => {
+    const theme = getThemeInfo(p.theme_category);
+    const isSelected = _selectedIgPostId === p.id;
+    const statusDot = p.status === 'published' ? '#3dba8f' : p.status === 'approved' ? '#3dba8f' : p.status === 'pending' ? '#F4A261' : 'rgba(230,237,243,0.25)';
+    const statusTxt = p.status === 'published' ? 'Yayınlandı' : p.status === 'approved' ? 'Onaylandı' : 'Bekliyor';
+    const schedTime = p.scheduled_at ? new Date(p.scheduled_at).toLocaleDateString('tr-TR', {day:'numeric',month:'short'}) : '—';
+    return `<tr onclick="selectIgPost('${p.id}')" style="cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,0.04);${isSelected ? 'background:rgba(244,162,97,0.06);' : ''}transition:background .15s">
+      <td style="padding:11px 16px;font-size:12px;color:#e6edf3;font-weight:500">${igTypeLabel(p.content_type)}</td>
+      <td style="padding:11px 16px"><span style="display:inline-block;padding:2px 8px;background:${theme.color}18;border:0.5px solid ${theme.color}40;border-radius:4px;font-size:10px;font-weight:600;color:${theme.color}">${theme.name}</span></td>
+      <td style="padding:11px 16px;font-size:11px;color:rgba(230,237,243,0.4)">${schedTime}</td>
+      <td style="padding:11px 16px"><span style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(230,237,243,0.55)"><span style="width:6px;height:6px;border-radius:50%;background:${statusDot};flex-shrink:0"></span>${statusTxt}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMonthSummary() {
+  const insight = _igPosts.filter(p => p.theme_category === 'insight' || p.theme_category === 'feature').length;
+  const social = _igMemory?.monthly_social_proof_count ?? 0;
+  const total = _igPosts.length;
+  const insEl = document.getElementById('igSummaryInsight');
+  if (insEl) insEl.textContent = insight;
+  const socialEl = document.getElementById('igSummarySocial');
+  if (socialEl) {
+    socialEl.textContent = social + ' / 1';
+    socialEl.style.color = social > 1 ? '#e05a5a' : '#e6edf3';
+  }
+  const totEl = document.getElementById('igSummaryTotal');
+  if (totEl) totEl.textContent = total;
 }
 
 function enablePublishBtns(enable) {
   const postBtn = document.getElementById('btnPanelApproveIg');
   const storyBtn = document.getElementById('btnPanelStoryIg');
-  if (enable) {
-    postBtn.disabled = false;
-    postBtn.style.color = '#3dba8f';
-    postBtn.style.borderColor = 'rgba(61,186,143,0.4)';
-    postBtn.style.cursor = 'pointer';
-    storyBtn.disabled = false;
-    storyBtn.style.color = '#9b95e0';
-    storyBtn.style.borderColor = 'rgba(155,149,224,0.4)';
-    storyBtn.style.cursor = 'pointer';
-  } else {
-    postBtn.disabled = true;
-    postBtn.style.color = 'rgba(61,186,143,0.3)';
-    postBtn.style.borderColor = 'rgba(61,186,143,0.12)';
-    postBtn.style.cursor = 'not-allowed';
-    storyBtn.disabled = true;
-    storyBtn.style.color = 'rgba(155,149,224,0.3)';
-    storyBtn.style.borderColor = 'rgba(155,149,224,0.12)';
-    storyBtn.style.cursor = 'not-allowed';
+  if (postBtn && storyBtn) {
+    if (enable) {
+      postBtn.disabled = false;
+      postBtn.style.color = '#3dba8f';
+      postBtn.style.borderColor = 'rgba(61,186,143,0.4)';
+      postBtn.style.cursor = 'pointer';
+      storyBtn.disabled = false;
+      storyBtn.style.color = '#9b95e0';
+      storyBtn.style.borderColor = 'rgba(155,149,224,0.4)';
+      storyBtn.style.cursor = 'pointer';
+    } else {
+      postBtn.disabled = true;
+      postBtn.style.color = 'rgba(61,186,143,0.3)';
+      postBtn.style.borderColor = 'rgba(61,186,143,0.12)';
+      postBtn.style.cursor = 'not-allowed';
+      storyBtn.disabled = true;
+      storyBtn.style.color = 'rgba(155,149,224,0.3)';
+      storyBtn.style.borderColor = 'rgba(155,149,224,0.12)';
+      storyBtn.style.cursor = 'not-allowed';
+    }
   }
 }
 
@@ -2901,9 +3039,9 @@ function selectStorySlide(n) {
   const p = _igPosts.find(x => x.id === _selectedIgPostId);
   const rawSlides = Array.isArray(p?.story_slides) ? p.story_slides : [];
   const text = rawSlides[n]?.text || rawSlides[n] || '';
-  document.getElementById('igStorySlideText').value = text;
+  const textarea = document.getElementById('igStorySlideText');
+  if (textarea) textarea.value = text;
 
-  // Carousel preview güncelle
   let carouselSlides = parseCarouselSlides(rawSlides);
   if (carouselSlides.length === 0 && _selectedIgPostId) {
     const pp = _igPosts.find(x => x.id === _selectedIgPostId);
@@ -2921,8 +3059,10 @@ function selectStorySlide(n) {
   if (carouselSlides.length > 0) {
     const idx = Math.min(n, carouselSlides.length - 1);
     const svgStr = getCarouselSlideSvg(carouselSlides[idx], idx, carouselSlides.length);
-    document.getElementById('igPanelPreviewContainer').innerHTML =
-      `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}" style="width:100%;height:100%;object-fit:cover"/>`;
+    const container = document.getElementById('igPanelPreviewContainer');
+    if (container) {
+      container.innerHTML = `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}" style="width:100%;height:100%;object-fit:cover"/>`;
+    }
   }
 
   for (let i = 0; i < 5; i++) {
