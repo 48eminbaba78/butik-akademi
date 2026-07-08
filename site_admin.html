@@ -704,7 +704,7 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
             <div style="flex-shrink:0;background:#0D1B2A;border-bottom:0.5px solid rgba(255,255,255,0.07)">
               <div style="padding:5px 12px;display:flex;align-items:center;justify-content:space-between">
                 <span style="font-size:9px;font-weight:700;color:rgba(244,162,97,0.55);letter-spacing:1.2px;text-transform:uppercase">Carousel Önizleme</span>
-                <div style="display:flex;gap:4px">
+                <div id="slide-btn-container" style="display:flex;gap:4px">
                   <button onclick="selectStorySlide(0)" id="slide-btn-0" style="width:22px;height:18px;background:rgba(244,162,97,0.15);border:0.5px solid #F4A261;border-radius:3px;font-size:8px;color:#F4A261;cursor:pointer;font-family:inherit">01</button>
                   <button onclick="selectStorySlide(1)" id="slide-btn-1" style="width:22px;height:18px;background:none;border:0.5px solid rgba(255,255,255,0.1);border-radius:3px;font-size:8px;color:rgba(230,237,243,0.38);cursor:pointer;font-family:inherit">02</button>
                   <button onclick="selectStorySlide(2)" id="slide-btn-2" style="width:22px;height:18px;background:none;border:0.5px solid rgba(255,255,255,0.1);border-radius:3px;font-size:8px;color:rgba(230,237,243,0.38);cursor:pointer;font-family:inherit">03</button>
@@ -845,8 +845,19 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
           <div style="flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:18px;max-width:640px">
 
             <div>
-              <div style="font-size:13px;font-weight:700;color:#e6edf3;margin-bottom:4px">Koç olarak paylaş</div>
-              <div style="font-size:12px;color:rgba(230,237,243,0.4)">Fikrinin içeriğini gir, AI carousel'a dönüştürür, sen yayınla.</div>
+              <div style="font-size:13px;font-weight:700;color:#e6edf3;margin-bottom:4px">İçerik Stüdyosu (AI & Manuel)</div>
+              <div style="font-size:12px;color:rgba(230,237,243,0.4)">Fikrinin içeriğini gir, AI dilediğin formatta (Carousel veya Reels) üretsin!</div>
+            </div>
+
+            <!-- İçerik Formatı -->
+            <div>
+              <div style="font-size:10px;font-weight:700;color:rgba(230,237,243,0.3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">İçerik Formatı</div>
+              <div style="display:flex;gap:8px">
+                <button id="mp-type-carousel" onclick="setManualType('carousel')"
+                  style="flex:1;padding:8px;background:rgba(244,162,97,0.15);border:0.5px solid rgba(244,162,97,0.5);border-radius:7px;font-size:12px;color:#F4A261;font-weight:600;cursor:pointer;font-family:inherit">🎠 Carousel Post</button>
+                <button id="mp-type-reels" onclick="setManualType('reels')"
+                  style="flex:1;padding:8px;background:none;border:0.5px solid rgba(255,255,255,0.1);border-radius:7px;font-size:12px;color:rgba(230,237,243,0.4);cursor:pointer;font-family:inherit">🎥 Reels Senaryosu</button>
+              </div>
             </div>
 
             <!-- Kime konuşuyorsun -->
@@ -925,7 +936,7 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
                   style="width:100%;background:#161b22;border:0.5px solid rgba(255,255,255,0.08);border-radius:7px;padding:10px;font-size:11px;color:#60a0e0;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box"></textarea>
               </div>
 
-              <div>
+              <div id="mp-carousel-fields">
                 <div style="font-size:10px;color:rgba(230,237,243,0.3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Slaytlar (düzenlenebilir)</div>
                 <div style="display:flex;flex-direction:column;gap:8px">
                   <div style="display:flex;gap:8px;align-items:flex-start">
@@ -955,6 +966,28 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
                   </div>
                 </div>
               </div>
+
+              <!-- Reels Senaryosu -->
+              <div id="mp-reels-fields" style="display:none">
+                <div style="font-size:10px;color:rgba(230,237,243,0.3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Reels Akışı (düzenlenebilir)</div>
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div>
+                    <div style="font-size:10px;color:rgba(230,237,243,0.4);margin-bottom:4px">🎬 KANCA (Ekran Yazısı)</div>
+                    <input type="text" id="mpReelsHook" oninput="updateManualPreview()" onchange="updateManualPreview()"
+                      style="width:100%;background:#161b22;border:0.5px solid rgba(255,255,255,0.08);border-radius:7px;padding:8px;font-size:11px;color:#e6edf3;font-family:inherit;outline:none;box-sizing:border-box" placeholder="Max 12 kelime">
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:rgba(230,237,243,0.4);margin-bottom:4px">🎵 ÖNERİLEN MÜZİK / SES</div>
+                    <input type="text" id="mpReelsMusic" oninput="updateManualPreview()" onchange="updateManualPreview()"
+                      style="width:100%;background:#161b22;border:0.5px solid rgba(255,255,255,0.08);border-radius:7px;padding:8px;font-size:11px;color:#e6edf3;font-family:inherit;outline:none;box-sizing:border-box" placeholder="Müzik tarzı veya parça">
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:rgba(230,237,243,0.4);margin-bottom:4px">📝 SAHNE AKIŞI (SENARYO)</div>
+                    <textarea id="mpReelsScenes" rows="6" oninput="updateManualPreview()" onchange="updateManualPreview()"
+                      style="width:100%;background:#161b22;border:0.5px solid rgba(255,255,255,0.08);border-radius:7px;padding:8px;font-size:11px;color:#e6edf3;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box" placeholder="Sahne 1:\nGörsel: [görsel açıklama]\nSöz: [konuşma]"></textarea>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -972,7 +1005,7 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
             </div>
 
             <!-- Slayt nav -->
-            <div style="display:flex;gap:5px">
+            <div id="mp-carousel-nav" style="display:flex;gap:5px">
               <button onclick="selectMpSlide(0)" id="mp-slide-btn-0"
                 style="flex:1;padding:5px 3px;background:rgba(244,162,97,0.12);border:0.5px solid #F4A261;border-radius:5px;font-size:9px;color:#F4A261;cursor:pointer;font-family:inherit;text-align:center;line-height:1.5">01<br>Kanca</button>
               <button onclick="selectMpSlide(1)" id="mp-slide-btn-1"
@@ -990,6 +1023,10 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
 
             <!-- Yayınla -->
             <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
+              <button id="mpSaveDraftBtn" onclick="saveManualPostAsDraft()" disabled
+                style="width:100%;padding:12px;background:rgba(96,180,255,0.08);border:0.5px solid rgba(96,180,255,0.2);border-radius:8px;font-size:13px;font-weight:700;color:rgba(96,180,255,0.35);cursor:not-allowed;font-family:inherit">
+                💾 Taslak Olarak Kaydet
+              </button>
               <button id="mpPublishPost" onclick="publishManualPost(false)" disabled
                 style="width:100%;padding:13px;background:rgba(61,186,143,0.08);border:0.5px solid rgba(61,186,143,0.2);border-radius:8px;font-size:13px;font-weight:700;color:rgba(61,186,143,0.35);cursor:not-allowed;font-family:inherit">
                 🚀 Carousel Yayınla
@@ -2773,193 +2810,43 @@ function getThemeInfo(cat) {
   return Object.values(IG_WEEK_THEMES).find(t => t.cat === cat) || { name: cat, color: '#e6edf3' };
 }
 
-function igTypeLabel(type) {
-  if (type === 'countdown') return '⏳ YKS Sayaç';
-  if (type === 'tactic') return '💡 Ders Taktiği';
-  if (type === 'comparison') return '⚖️ Karşılaştırma';
-  if (type === 'seasonal') return '☀️ Mevsimsel';
-  return type || '—';
-}
-
-function switchIgPanelTab(tab) {
-  _activeIgPanelTab = tab;
-  ['posts','rules','config','manual','story'].forEach(t => {
-    const btn = document.getElementById('tab-ig-' + t);
-    if (!btn) return;
-    if (t === tab) {
-      btn.style.color = t === 'manual' ? '#F4A261' : '#e6edf3';
-      btn.style.borderBottomColor = '#F4A261';
-      btn.style.fontWeight = '700';
-    } else {
-      btn.style.color = t === 'manual' ? 'rgba(244,162,97,0.4)' : 'rgba(230,237,243,0.4)';
-      btn.style.borderBottomColor = 'transparent';
-      btn.style.fontWeight = t === 'manual' ? '600' : '500';
-    }
-  });
-  document.getElementById('ig-posts-section').style.display = tab === 'posts' ? 'flex' : 'none';
-  document.getElementById('ig-rules-section').style.display = tab === 'rules' ? 'block' : 'none';
-  document.getElementById('ig-config-section').style.display = tab === 'config' ? 'block' : 'none';
-  document.getElementById('ig-manual-section').style.display = tab === 'manual' ? 'flex' : 'none';
-  document.getElementById('ig-story-section').style.display = tab === 'story' ? 'block' : 'none';
-  if (tab === 'story') initStoryPanelTab();
-  if (tab === 'rules') loadAndRenderIgRules();
-  if (tab === 'config') { loadIgConfig(); loadAiConfig(); }
-  if (tab === 'manual') initManualPostTab();
-}
-
-async function loadAndRenderInstagramPanel() {
-  try {
-    // content_memory'den hafta ve YKS sayacı
-    const { data: mem } = await db.from('content_memory').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
-    _igMemory = mem || { current_week: 1, yks_days_remaining: 360, monthly_social_proof_count: 0, last_published_type: null, last_published_theme: null };
-  } catch(e) {
-    // Tablo yoksa platform_settings'den fallback
-    const { data: settData } = await db.from('platform_settings').select('value').eq('key', 'instagram_drafts').maybeSingle();
-    _igPosts = settData?.value || DEFAULT_IG_DRAFTS;
-    _igMemory = { current_week: 1, yks_days_remaining: 360, monthly_social_proof_count: 0 };
-    renderIgTopbar();
-    renderIgThemeBanner();
-    renderIgPosts();
-    switchIgPanelTab(_activeIgPanelTab);
-    return;
-  }
-
-  try {
-    const { data: posts, error } = await db.from('instagram_posts').select('*').in('status', ['draft','pending','approved']).order('created_at', { ascending: true });
-    if (error) throw error;
-    if (posts && posts.length > 0) {
-      _igPosts = posts;
-    } else {
-      // Yeni tabloda veri yoksa platform_settings fallback
-      const { data: settData } = await db.from('platform_settings').select('value').eq('key', 'instagram_drafts').maybeSingle();
-      _igPosts = (settData?.value || DEFAULT_IG_DRAFTS).map(d => ({
-        id: d.id, content_type: d.type, theme_category: 'pain_point',
-        caption: d.caption, hashtags: '', story_slides: (d.story_slides || []).map((t,i)=>({slide:i+1,text:t})),
-        status: d.status || 'draft', week_number: 1,
-        preview_data: { type: d.type, days_left: d.days_left, quote: d.quote, author: d.author, title: d.title, subtitle: d.subtitle, points: d.points }
-      }));
-    }
-  } catch(e) {
-    document.getElementById('igErrorBanner').style.display = 'block';
-    const { data: settData } = await db.from('platform_settings').select('value').eq('key', 'instagram_drafts').maybeSingle();
-    _igPosts = (settData?.value || DEFAULT_IG_DRAFTS).map(d => ({
-      id: d.id, content_type: d.type, theme_category: 'pain_point',
-      caption: d.caption, hashtags: '', story_slides: [],
-      status: d.status || 'draft', week_number: 1,
-      preview_data: { type: d.type, days_left: d.days_left, quote: d.quote, author: d.author, title: d.title, subtitle: d.subtitle, points: d.points }
-    }));
-  }
-
-  renderIgTopbar();
-  renderIgThemeBanner();
-  renderIgPosts();
-  renderMonthSummary();
-  switchIgPanelTab(_activeIgPanelTab);
-  if (_igPosts.length > 0) selectIgPost(_igPosts[0].id);
-}
-
-function renderIgTopbar() {
-  const days = _igMemory?.yks_days_remaining ?? '—';
-  document.getElementById('igTopbarCountdown').textContent = days;
-}
-
-function renderIgThemeBanner() {
-  const week = _igMemory?.current_week ?? 1;
-  const cur = IG_WEEK_THEMES[week] || IG_WEEK_THEMES[1];
-  const nxt = IG_WEEK_THEMES[(week % 4) + 1];
-  document.getElementById('igCurrentWeekNum').textContent = week;
-  document.getElementById('igCurrentThemeName').textContent = cur.name;
-  document.getElementById('igNextThemeName').textContent = nxt.name;
-
-  const pills = document.getElementById('igWeekPills');
-  pills.innerHTML = [1,2,3,4].map(w => {
-    const t = IG_WEEK_THEMES[w];
-    const isCur = w === week, isPast = w < week;
-    return `<div style="flex:1;text-align:center;padding:5px 4px;border-radius:6px;font-size:10px;font-weight:600;
-      ${isCur ? `background:rgba(244,162,97,0.15);border:0.5px solid rgba(244,162,97,0.4);color:#F4A261;` :
-        isPast ? `background:none;border:0.5px solid rgba(255,255,255,0.06);color:rgba(230,237,243,0.2);text-decoration:line-through;` :
-                 `background:none;border:0.5px solid rgba(255,255,255,0.1);color:rgba(230,237,243,0.35);`}">
-      H${w} · ${t.name.split(' ')[0]}
-    </div>`;
-  }).join('');
-}
-
-function renderIgPosts() {
-  const tbody = document.getElementById('igPostsTable');
-  if (!_igPosts || _igPosts.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:48px;color:rgba(230,237,243,0.25);font-size:13px">Henüz taslak yok — yeni içerik ekle</td></tr>';
-    return;
-  }
-  tbody.innerHTML = _igPosts.map(p => {
-    const theme = getThemeInfo(p.theme_category);
-    const isSelected = _selectedIgPostId === p.id;
-    const statusDot = p.status === 'published' ? '#3dba8f' : p.status === 'approved' ? '#3dba8f' : p.status === 'pending' ? '#F4A261' : 'rgba(230,237,243,0.25)';
-    const statusTxt = p.status === 'published' ? 'Yayınlandı' : p.status === 'approved' ? 'Onaylandı' : 'Bekliyor';
-    const schedTime = p.scheduled_at ? new Date(p.scheduled_at).toLocaleDateString('tr-TR', {day:'numeric',month:'short'}) : '—';
-    return `<tr onclick="selectIgPost('${p.id}')" style="cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,0.04);${isSelected ? 'background:rgba(244,162,97,0.06);' : ''}transition:background .15s">
-      <td style="padding:11px 16px;font-size:12px;color:#e6edf3;font-weight:500">${igTypeLabel(p.content_type)}</td>
-      <td style="padding:11px 16px"><span style="display:inline-block;padding:2px 8px;background:${theme.color}18;border:0.5px solid ${theme.color}40;border-radius:4px;font-size:10px;font-weight:600;color:${theme.color}">${theme.name}</span></td>
-      <td style="padding:11px 16px;font-size:11px;color:rgba(230,237,243,0.4)">${schedTime}</td>
-      <td style="padding:11px 16px"><span style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(230,237,243,0.55)"><span style="width:6px;height:6px;border-radius:50%;background:${statusDot};flex-shrink:0"></span>${statusTxt}</span></td>
-    </tr>`;
-  }).join('');
-}
-
-function renderMonthSummary() {
-  const insight = _igPosts.filter(p => p.theme_category === 'insight' || p.theme_category === 'feature').length;
-  const social = _igMemory?.monthly_social_proof_count ?? 0;
-  const total = _igPosts.length;
-  document.getElementById('igSummaryInsight').textContent = insight;
-  const socialEl = document.getElementById('igSummarySocial');
-  socialEl.textContent = social + ' / 1';
-  socialEl.style.color = social > 1 ? '#e05a5a' : '#e6edf3';
-  document.getElementById('igSummaryTotal').textContent = total;
-}
-
-function selectIgPost(id) {
-  _selectedIgPostId = id;
-  _igApproved = false;
-  _selectedStorySlide = 0;
-  renderIgPosts();
-
-  const p = _igPosts.find(x => x.id === id);
-  if (!p) return;
-
-  // Önizleme — her zaman yeni carousel tasarımıyla göster
-  const d = p.preview_data || {};
-  const rawSlides = Array.isArray(p.story_slides) ? p.story_slides : [];
-  let carouselSlides = parseCarouselSlides(rawSlides);
-
-  // story_slides yoksa preview_data'dan anlık carousel üret
-  if (carouselSlides.length === 0) {
-    const hook = d.quote || p.caption?.split('\n')[0]?.substring(0, 80) || 'YKS koçluğunda yeni bir dönem';
-    const pts = (d.points || []).map(pt => [pt.title || String(pt), pt.desc || '']);
-    carouselSlides = [
-      { type: 'hook', headline: hook },
-      { type: 'content', headline: d.title || 'Neden Önemli?', points: pts.slice(0, 3) },
-      { type: 'content', headline: d.subtitle || 'Çözüm', points: pts.slice(3, 5) },
-      { type: 'insight', quote: d.quote || hook },
-      { type: 'cta', cta_text: 'Erken erişim açık — Yeniden Üret ile özelleştir' }
-    ];
-  }
-
+function renderReelsPreview(p) {
+  // Önizleme — Reels veya Carousel olmasına göre göster
   const previewContainer = document.getElementById('igPanelPreviewContainer');
-  const svgStr = getCarouselSlideSvg(carouselSlides[0], 0, carouselSlides.length);
-  previewContainer.innerHTML = `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}" style="width:100%;height:100%;object-fit:cover"/>`;
-
-  // Caption + hashtag
-  const fullCaption = p.caption || '';
-  const hashtagMatch = fullCaption.match(/(#\S+(\s+#\S+)*)\s*$/);
-  if (hashtagMatch) {
-    document.getElementById('igPanelCaptionPreview').value = fullCaption.replace(hashtagMatch[0], '').trim();
-    document.getElementById('igHashtagDisplay').textContent = hashtagMatch[0].trim();
+  const d = p.preview_data || {};
+  
+  if (p.content_type === 'reels' || p.theme_category === 'reels') {
+    previewContainer.innerHTML = renderReelsPreview(p);
+    const nav = document.getElementById('slide-btn-container');
+    if (nav) nav.style.setProperty('display', 'none', 'important');
+    const stVal = document.getElementById('igStorySlideText');
+    if (stVal) stVal.parentNode.style.display = 'none';
   } else {
-    document.getElementById('igPanelCaptionPreview').value = fullCaption;
-    document.getElementById('igHashtagDisplay').textContent = p.hashtags || '—';
+    const nav = document.getElementById('slide-btn-container');
+    if (nav) nav.style.setProperty('display', 'flex', 'important');
+    const stVal = document.getElementById('igStorySlideText');
+    if (stVal) stVal.parentNode.style.display = 'block';
+    
+    const rawSlides = Array.isArray(p.story_slides) ? p.story_slides : [];
+    let carouselSlides = parseCarouselSlides(rawSlides);
+  
+    if (carouselSlides.length === 0) {
+      const hook = d.quote || p.caption?.split('\n')[0]?.substring(0, 80) || 'YKS koçluğunda yeni bir dönem';
+      const pts = (d.points || []).map(pt => [pt.title || String(pt), pt.desc || '']);
+      carouselSlides = [
+        { type: 'hook', headline: hook },
+        { type: 'content', headline: d.title || 'Neden Önemli?', points: pts.slice(0, 3) },
+        { type: 'content', headline: d.subtitle || 'Çözüm', points: pts.slice(3, 5) },
+        { type: 'insight', quote: d.quote || hook },
+        { type: 'cta', cta_text: 'Erken erişim açık — Yeniden Üret ile özelleştir' }
+      ];
+    }
+  
+    const svgStr = getCarouselSlideSvg(carouselSlides[0], 0, carouselSlides.length);
+    previewContainer.innerHTML = `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}" style="width:100%;height:100%;object-fit:cover"/>`;
+    document.getElementById('igStorySlideText').value = rawSlides[0]?.text || rawSlides[0] || '';
+    selectStorySlide(0);
   }
-
-  document.getElementById('igStorySlideText').value = rawSlides[0]?.text || rawSlides[0] || '';
-  selectStorySlide(0);
 
   // İçerik belleği
   document.getElementById('igMemLastType').textContent = igTypeLabel(_igMemory?.last_published_type) || '—';
@@ -3402,6 +3289,50 @@ let _mpTone = 'empati';
 let _mpCurrentSlide = 0;
 let _mpSlides = [];
 let _mpGenerated = false;
+let _mpType = 'carousel';
+
+function setManualType(t) {
+  _mpType = t;
+  const btnC = document.getElementById('mp-type-carousel');
+  const btnR = document.getElementById('mp-type-reels');
+  
+  if (t === 'carousel') {
+    btnC.style.background = 'rgba(244,162,97,0.15)';
+    btnC.style.borderColor = 'rgba(244,162,97,0.5)';
+    btnC.style.color = '#F4A261';
+    btnC.style.fontWeight = '600';
+    btnR.style.background = 'none';
+    btnR.style.borderColor = 'rgba(255,255,255,0.1)';
+    btnR.style.color = 'rgba(230,237,243,0.4)';
+    btnR.style.fontWeight = 'normal';
+    
+    document.getElementById('mp-carousel-fields').style.display = 'block';
+    document.getElementById('mp-reels-fields').style.display = 'none';
+    document.getElementById('mp-carousel-nav').style.display = 'flex';
+    document.getElementById('mpGenerateBtn').textContent = 'AI ile Carousel Oluştur →';
+    
+    document.getElementById('mpPublishPost').style.display = 'block';
+    document.getElementById('mpPublishStory').style.display = 'block';
+  } else {
+    btnR.style.background = 'rgba(244,162,97,0.15)';
+    btnR.style.borderColor = 'rgba(244,162,97,0.5)';
+    btnR.style.color = '#F4A261';
+    btnR.style.fontWeight = '600';
+    btnC.style.background = 'none';
+    btnC.style.borderColor = 'rgba(255,255,255,0.1)';
+    btnC.style.color = 'rgba(230,237,243,0.4)';
+    btnC.style.fontWeight = 'normal';
+    
+    document.getElementById('mp-carousel-fields').style.display = 'none';
+    document.getElementById('mp-reels-fields').style.display = 'block';
+    document.getElementById('mp-carousel-nav').style.display = 'none';
+    document.getElementById('mpGenerateBtn').textContent = 'AI ile Reels Senaryosu Oluştur →';
+    
+    document.getElementById('mpPublishPost').style.display = 'none';
+    document.getElementById('mpPublishStory').style.display = 'none';
+  }
+  updateManualPreview();
+}
 
 let _uploadedImageBase64 = null;
 
@@ -3594,9 +3525,88 @@ function parseManualSlides() {
   });
 }
 
+function renderReelsPreview(p) {
+  const d = p.preview_data || {};
+  const hook = d.reels_hook || 'YKS Koçluğunda 1 Numara Olmak';
+  const music = d.reels_music || 'Upbeat, modern synth';
+  const scenes = d.reels_scenes || [];
+  let scenesHtml = '';
+  if (scenes.length > 0) {
+    scenesHtml = scenes.map((s, idx) => `
+      <div style="margin-bottom:8px;font-size:11px;line-height:1.4">
+        <span style="color:#F4A261;font-weight:bold">🎬 Sahne ${idx+1}:</span>
+        <div style="color:rgba(230,237,243,0.5);margin:2px 0 2px 8px;font-style:italic">Görsel: ${s.visual || ''}</div>
+        <div style="color:#e6edf3;margin-left:8px;font-weight:500">Söz: "${s.text || ''}"</div>
+      </div>
+    `).join('');
+  } else {
+    scenesHtml = `<div style="color:rgba(230,237,243,0.3);font-size:11px;font-style:italic">Reels senaryo akışı belirtilmemiş.</div>`;
+  }
+  
+  return `
+    <div style="width:100%;height:100%;padding:14px;box-sizing:border-box;background:#0d1117;display:flex;flex-direction:column;gap:12px;overflow-y:auto;text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:6px">
+        <span style="font-size:11px;font-weight:700;color:#F4A261">🎥 REELS SENARYOSU</span>
+        <span style="font-size:10px;background:rgba(244,162,97,0.15);color:#F4A261;padding:2px 6px;border-radius:4px;font-weight:bold">VİDEO</span>
+      </div>
+      
+      <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px">
+        <div style="font-size:10px;color:rgba(230,237,243,0.4);margin-bottom:2px">🎬 KANCA (Ekran Yazısı)</div>
+        <div style="font-size:13px;font-weight:bold;color:#fff;line-height:1.3">"${hook}"</div>
+      </div>
+      
+      <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px">
+        <div style="font-size:10px;color:rgba(230,237,243,0.4);margin-bottom:2px">🎵 ÖNERİLEN SES / MÜZİK</div>
+        <div style="font-size:11px;color:#60b4ff;font-weight:bold">${music}</div>
+      </div>
+      
+      <div style="flex:1">
+        <div style="font-size:10px;color:rgba(230,237,243,0.4);margin-bottom:6px">📝 SENARYO AKIŞI</div>
+        ${scenesHtml}
+      </div>
+    </div>
+  `;
+}
+
+function parseReelsScenesFromTextarea() {
+  const raw = (document.getElementById('mpReelsScenes')?.value || '').trim();
+  const parts = raw.split(/Sahne\s*\d+\s*:/gi).map(x => x.trim()).filter(Boolean);
+  return parts.map((p, idx) => {
+    const visualMatch = p.match(/Görsel\s*:\s*(.*)/i);
+    const textMatch = p.match(/Söz\s*:\s*(.*)/i);
+    return {
+      visual: visualMatch ? visualMatch[1].trim() : p.split('\n')[0] || `Sahne ${idx+1} görselliği`,
+      text: textMatch ? textMatch[1].trim() : p.split('\n')[1] || p
+    };
+  });
+}
+
+function renderReelsManualPreview() {
+  const container = document.getElementById('mpPreviewContainer');
+  if (!container) return;
+  
+  const hook = (document.getElementById('mpReelsHook')?.value || '').trim() || 'YKS Koçluğunda 1 Numara Olmak';
+  const music = (document.getElementById('mpReelsMusic')?.value || '').trim() || 'Önerilen müzik belirtilmemiş';
+  const scenes = parseReelsScenesFromTextarea();
+  
+  const p = {
+    preview_data: {
+      reels_hook: hook,
+      reels_music: music,
+      reels_scenes: scenes
+    }
+  };
+  
+  container.innerHTML = renderReelsPreview(p);
+}
+
 function updateManualPreview() {
-  parseManualSlides();
-  renderMpSlide(_mpCurrentSlide);
+  if (_mpType === 'reels') {
+    renderReelsManualPreview();
+  } else {
+    parseManualSlides();
+    renderMpSlide(_mpCurrentSlide);
+  }
 }
 
 function renderMpSlide(n) {
@@ -3637,29 +3647,52 @@ function selectMpSlide(n) {
 function enableMpPublish(yes) {
   const post = document.getElementById('mpPublishPost');
   const story = document.getElementById('mpPublishStory');
-  if (!post || !story) return;
+  const draft = document.getElementById('mpSaveDraftBtn');
+  
   if (yes) {
-    post.disabled = false;
-    post.style.background = 'rgba(61,186,143,0.15)';
-    post.style.borderColor = 'rgba(61,186,143,0.4)';
-    post.style.color = '#3dba8f';
-    post.style.cursor = 'pointer';
-    story.disabled = false;
-    story.style.background = 'rgba(155,149,224,0.1)';
-    story.style.borderColor = 'rgba(155,149,224,0.3)';
-    story.style.color = '#9b95e0';
-    story.style.cursor = 'pointer';
+    if (draft) {
+      draft.disabled = false;
+      draft.style.background = 'rgba(96,180,255,0.12)';
+      draft.style.borderColor = 'rgba(96,180,255,0.4)';
+      draft.style.color = '#60b4ff';
+      draft.style.cursor = 'pointer';
+    }
+    if (post) {
+      post.disabled = false;
+      post.style.background = 'rgba(61,186,143,0.15)';
+      post.style.borderColor = 'rgba(61,186,143,0.4)';
+      post.style.color = '#3dba8f';
+      post.style.cursor = 'pointer';
+    }
+    if (story) {
+      story.disabled = false;
+      story.style.background = 'rgba(155,149,224,0.1)';
+      story.style.borderColor = 'rgba(155,149,224,0.3)';
+      story.style.color = '#9b95e0';
+      story.style.cursor = 'pointer';
+    }
   } else {
-    post.disabled = true;
-    post.style.background = 'rgba(61,186,143,0.08)';
-    post.style.borderColor = 'rgba(61,186,143,0.2)';
-    post.style.color = 'rgba(61,186,143,0.35)';
-    post.style.cursor = 'not-allowed';
-    story.disabled = true;
-    story.style.background = 'rgba(155,149,224,0.06)';
-    story.style.borderColor = 'rgba(155,149,224,0.15)';
-    story.style.color = 'rgba(155,149,224,0.35)';
-    story.style.cursor = 'not-allowed';
+    if (draft) {
+      draft.disabled = true;
+      draft.style.background = 'rgba(96,180,255,0.06)';
+      draft.style.borderColor = 'rgba(96,180,255,0.15)';
+      draft.style.color = 'rgba(96,180,255,0.35)';
+      draft.style.cursor = 'not-allowed';
+    }
+    if (post) {
+      post.disabled = true;
+      post.style.background = 'rgba(61,186,143,0.08)';
+      post.style.borderColor = 'rgba(61,186,143,0.2)';
+      post.style.color = 'rgba(61,186,143,0.35)';
+      post.style.cursor = 'not-allowed';
+    }
+    if (story) {
+      story.disabled = true;
+      story.style.background = 'rgba(155,149,224,0.06)';
+      story.style.borderColor = 'rgba(155,149,224,0.15)';
+      story.style.color = 'rgba(155,149,224,0.35)';
+      story.style.cursor = 'not-allowed';
+    }
   }
 }
 
@@ -3679,7 +3712,49 @@ async function generateManualPost() {
     _mpTone === 'taktik' ? 'Taktik — somut, aksiyon alınabilir, numaralı adımlar veya liste' :
     'YKS Zekası — veri, istatistik veya beklenmedik bir gerçekle başla';
 
-  const prompt = `Sen Rostrum Akademi'nin kıdemli Instagram içerik uzmanısın. Koçun verdiği fikri 5 slaytlık carousel'a çevireceksin.
+  let prompt = '';
+  if (_mpType === 'reels') {
+    prompt = `Sen Rostrum Akademi'nin kıdemli Instagram içerik uzmanısın. Koçun verdiği fikri etkileyici ve yüksek etkileşimli bir REELS videosu senaryosuna dönüştüreceksin.
+
+━━━ ROSTRUM AKADEMİ KİMDİR ━━━
+Türkiye'deki bağımsız YKS koçlarına özel dijital yönetim platformu. Koçlar genellikle 5-30 öğrenciyle çalışır; öğrenci takibi, veli raporlama, ders programı, deneme analizi gibi işleri WhatsApp, Excel ve kâğıtta yönetir. Rostrum Akademi bu kaosu tek bir panelde toplar.
+
+TEMEL ÖZELLİKLER:
+- Öğrenci paneli: net takibi, konu bazlı performans, TYT/AYT ayrı grafik
+- Haftalık program oluşturucu: sürükle-bırak, otomatik hatırlatma
+- Veli raporu: tek tıkla PDF veya mesaj
+- Deneme analizi: net, sıra, bölüm bazlı karşılaştırma
+
+HEDEF KİTLE: ${personaLabel}.
+İÇERİK TONU: ${toneLabel}.
+
+SLAYT YAPISI (REELS İÇİN):
+- reels_hook: Ekrana yazılacak kanca metni (max 10 kelime). Çok iddialı ve merak uyandırıcı olmalı.
+- reels_music: Reels için önerilen ses/müzik tarzı açıklaması (örn: 'Hızlı tempo, synthwave, merak uyandırıcı tınılar').
+- reels_scenes: Video akışının sahneleri (3 veya 4 sahne). Her sahne için bir görsel betimleme (visual) ve koçun söyleyeceği/ekrana gelecek metin (text) bulunmalıdır.
+- caption: Paylaşılacak post açıklaması (3-5 paragraf, samimi, merak uyandırıcı).
+- hashtags: 6-9 adet hashtag.
+
+ZORUNLU STANDARTLAR:
+✓ Somut veriler ve YKS koçluk pratikleri içersin.
+✓ "Daha çok çalış" gibi klişe genel tavsiyeler verme, spesifik taktik ver.
+
+KOÇUN FİKRİ: "${idea}"
+
+JSON formatında döndür (sadece ham JSON):
+{
+  "reels_hook": "kanca metni (max 10 kelime)",
+  "reels_music": "müzik/ses tarzı",
+  "reels_scenes": [
+    { "visual": "sahne 1 görsel betimlemesi", "text": "sahne 1 konuşma metni veya ekrandaki söz" },
+    { "visual": "...", "text": "..." },
+    { "visual": "...", "text": "..." }
+  ],
+  "caption": "reels açıklaması",
+  "hashtags": "#ykskoçu #yks2027 #reels ... (6-9 hashtag)"
+}`;
+  } else {
+    prompt = `Sen Rostrum Akademi'nin kıdemli Instagram içerik uzmanısın. Koçun verdiği fikri 5 slaytlık carousel'a çevireceksin.
 
 ━━━ ROSTRUM AKADEMİ KİMDİR ━━━
 Türkiye'deki bağımsız YKS koçlarına özel dijital yönetim platformu. Koçlar genellikle 5-30 öğrenciyle çalışır; öğrenci takibi, veli raporlama, ders programı, deneme analizi gibi işleri WhatsApp, Excel ve kâğıtta yönetir. Rostrum Akademi bu kaosu tek bir panelde toplar.
@@ -3921,30 +3996,41 @@ Sadece ham JSON döndür.`;
 
     // Textareaları doldur
     const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
-    setVal('mpSlide0', p.hook || '');
-    const fmtSlide = (s) => {
-      if (!s) return '';
-      let txt = s.headline || '';
-      if (s.points && s.points.length) {
-        txt += '\n' + s.points.map(pt => `• ${pt.title || pt}${pt.desc ? ': ' + pt.desc : ''}`).join('\n');
+    if (_mpType === 'reels') {
+      setVal('mpReelsHook', p.reels_hook || '');
+      setVal('mpReelsMusic', p.reels_music || '');
+      const scenesText = (p.reels_scenes || []).map((s, idx) => `Sahne ${idx+1}:\nGörsel: ${s.visual || ''}\nSöz: ${s.text || ''}`).join('\n\n');
+      setVal('mpReelsScenes', scenesText);
+      setVal('mpCaptionEdit', p.caption || '');
+      setVal('mpHashtagEdit', p.hashtags || '');
+      if (document.getElementById('mpDesignNote')) {
+        document.getElementById('mpDesignNote').style.display = 'none';
       }
-      return txt;
-    };
-    setVal('mpSlide1', fmtSlide(p.slide2));
-    setVal('mpSlide2', fmtSlide(p.slide3));
-    setVal('mpSlide3', p.insight || '');
-    setVal('mpSlide4', p.cta || '');
-    setVal('mpCaptionEdit', p.caption || '');
-    setVal('mpHashtagEdit', p.hashtags || '');
+    } else {
+      setVal('mpSlide0', p.hook || '');
+      const fmtSlide = (s) => {
+        if (!s) return '';
+        let txt = s.headline || '';
+        if (s.points && s.points.length) {
+          txt += '\n' + s.points.map(pt => `• ${pt.title || pt}${pt.desc ? ': ' + pt.desc : ''}`).join('\n');
+        }
+        return txt;
+      };
+      setVal('mpSlide1', fmtSlide(p.slide2));
+      setVal('mpSlide2', fmtSlide(p.slide3));
+      setVal('mpSlide3', p.insight || '');
+      setVal('mpSlide4', p.cta || '');
+      setVal('mpCaptionEdit', p.caption || '');
+      setVal('mpHashtagEdit', p.hashtags || '');
 
-    if (p.design_note || p.tasarim_notu) {
-      const dn = document.getElementById('mpDesignNote');
-      if (dn) { dn.textContent = p.design_note || p.tasarim_notu; dn.style.display = 'block'; }
+      if (p.design_note || p.tasarim_notu) {
+        const dn = document.getElementById('mpDesignNote');
+        if (dn) { dn.textContent = p.design_note || p.tasarim_notu; dn.style.display = 'block'; }
+      }
     }
 
-    // Slaytları parse et ve preview'u güncelle
-    parseManualSlides();
-    renderMpSlide(0);
+    // Önizlemeyi güncelle
+    updateManualPreview();
 
     // Üretilen section'ı göster
     const genSec = document.getElementById('mpGeneratedSection');
@@ -3952,7 +4038,7 @@ Sadece ham JSON döndür.`;
 
     _mpGenerated = true;
     enableMpPublish(true);
-    showToast('✨ Carousel içeriği oluşturuldu ✓');
+    showToast(_mpType === 'reels' ? '✨ Reels senaryosu oluşturuldu ✓' : '✨ Carousel içeriği oluşturuldu ✓');
 
   } catch (e) {
     console.warn('Manuel post AI hatası:', e.message);
@@ -4009,8 +4095,73 @@ Sadece ham JSON döndür.`;
     showToast('✨ İçerik oluşturuldu (çevrimdışı) ✓');
   }
 
-  btn.textContent = 'AI ile Carousel Oluştur →';
+  btn.textContent = _mpType === 'reels' ? 'AI ile Reels Senaryosu Oluştur →' : 'AI ile Carousel Oluştur →';
   btn.disabled = false;
+}
+
+async function saveManualPostAsDraft() {
+  const btn = document.getElementById('mpSaveDraftBtn');
+  if (!btn || btn.disabled) return;
+  
+  btn.disabled = true;
+  btn.textContent = 'Kaydediliyor…';
+  
+  const caption = (document.getElementById('mpCaptionEdit')?.value || '').trim();
+  const hashtags = (document.getElementById('mpHashtagEdit')?.value || '').trim();
+  const fullCaption = hashtags ? caption + '\n\n' + hashtags : caption;
+  
+  let patch = {
+    content_type: _mpType, // 'carousel' or 'reels'
+    theme_category: 'pain_point', // default
+    caption: fullCaption,
+    hashtags: hashtags,
+    status: 'draft',
+    week_number: _igMemory?.current_week || 1,
+    created_at: new Date().toISOString()
+  };
+  
+  if (_mpType === 'reels') {
+    const hook = (document.getElementById('mpReelsHook')?.value || '').trim();
+    const music = (document.getElementById('mpReelsMusic')?.value || '').trim();
+    const scenes = parseReelsScenesFromTextarea();
+    patch.preview_data = {
+      type: 'reels',
+      reels_hook: hook,
+      reels_music: music,
+      reels_scenes: scenes
+    };
+    patch.story_slides = [];
+  } else {
+    // carousel
+    const slides = [0,1,2,3,4].map(i => (document.getElementById('mpSlide' + i)?.value || '').trim()).filter(Boolean);
+    patch.story_slides = slides.map((t, idx) => ({ slide: idx + 1, text: t }));
+    const title = slides[1]?.split('\n')[0] || slides[0] || 'Carousel Başlığı';
+    const points = _mpSlides.flatMap(s => (s.points || []).map(p => ({ title: p[0], desc: p[1] })));
+    patch.preview_data = {
+      type: 'carousel',
+      quote: slides[0] || '',
+      title: title,
+      points: points.slice(0, 5)
+    };
+  }
+  
+  try {
+    const { data, error } = await db.from('instagram_posts').insert([patch]).select();
+    if (error) throw error;
+    showToast('Taslak başarıyla kaydedildi! "Gönderi Taslakları" sekmesinde görebilirsiniz. ✓');
+    
+    // Refresh the posts list
+    loadAndRenderInstagramPanel();
+    
+    // Switch to Posts tab
+    switchIgPanelTab('posts');
+  } catch (e) {
+    console.error('Taslak kaydetme hatası:', e);
+    showToast('Hata: ' + (e.message || e), false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Taslak Olarak Kaydet';
+  }
 }
 
 async function publishManualPost(isStory) {
@@ -4596,7 +4747,9 @@ function rspCard(p, isArchive){
     ? (p.status==='rejected'
         ? `<button class="btn btn-ghost btn-sm" onclick="rspRestore('${p.id}')">Kuyruğa Geri Al</button>
            <button class="btn btn-ghost btn-sm" onclick="rspRegen('${p.post_date}')">Yeniden Üret</button>`
-        : `<button class="btn btn-ghost btn-sm" onclick="rspRegen('${p.post_date}')">Bu Temayla Yeni Üret</button>`)
+        : `<button class="btn btn-green btn-sm" onclick="rspPublishSingle('${p.id}')">🚀 Tekrar Paylaş</button>
+           <button class="btn btn-ghost btn-sm" onclick="rspRestore('${p.id}')">Kuyruğa Geri Al</button>
+           <button class="btn btn-ghost btn-sm" onclick="rspRegen('${p.post_date}')">Bu Temayla Yeni Üret</button>`)
     : `<button class="btn btn-ghost btn-sm" onclick="rspSave('${p.id}')">Kaydet</button>
        ${p.status === 'approved' ? `<button class="btn btn-green btn-sm" onclick="rspPublishSingle('${p.id}')">🚀 Hemen Paylaş</button>` : `<button class="btn btn-green btn-sm" onclick="rspAction('${p.id}','approve')">Onayla</button>`}
        <button class="btn btn-danger btn-sm" onclick="rspAction('${p.id}','reject')">Arşive Kaldır</button>
