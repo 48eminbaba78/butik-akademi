@@ -3972,11 +3972,13 @@ function _fbStudentHtml(t) {
       <div>
         <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⏱ Süre</div>
         <div style="display:flex;gap:5px;align-items:center">
-          <input id="fbHour" type="number" min="0" max="12" placeholder="0" value="${th}"
-            style="width:48px;padding:8px 4px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;text-align:center">
+          <input id="fbHour" type="number" min="0" max="23" placeholder="0" value="${th}"
+            style="width:44px;padding:8px 4px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;text-align:center"
+            oninput="if(this.value>23)this.value=23">
           <span style="font-size:11px;color:var(--text-dim)">sa</span>
           <input id="fbMin" type="number" min="0" max="59" placeholder="0" value="${tm}"
-            style="width:48px;padding:8px 4px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;text-align:center">
+            style="width:44px;padding:8px 4px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;text-align:center"
+            oninput="if(this.value>59)this.value=59">
           <span style="font-size:11px;color:var(--text-dim)">dk</span>
         </div>
       </div>
@@ -4037,11 +4039,24 @@ function _fbCoachHtml(t) {
 }
 
 // ── GÖREV DETAY MODALI ──────────────────────────
-function openTaskDetail(ds, idx, role){
+async function openTaskDetail(ds, idx, role){
   const stuId = session.role==='student' ? session.studentId : S.activeStuId;
   const key = `${stuId}_${ds}`;
   const t = S.tasks[key]?.[idx];
   if(!t) return;
+
+  // Koç görüntüsünde öğrencinin en güncel verisini çek
+  if (role === 'coach' && t._id) {
+    const { data: fresh } = await db.from('tasks')
+      .select('done, student_note, student_result, student_feedback')
+      .eq('id', t._id).single();
+    if (fresh) {
+      t.done             = fresh.done;
+      t.student_note     = fresh.student_note     || '';
+      t.student_result   = fresh.student_result   || null;
+      t.student_feedback = fresh.student_feedback || null;
+    }
+  }
 
   let modal = document.getElementById('taskDetailModal');
   if(!modal){
