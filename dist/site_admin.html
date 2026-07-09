@@ -203,17 +203,48 @@ tbody tr:hover td{background:rgba(255,255,255,.015);}
   .rsp-phone{margin:0 auto;}
 }
 @media(max-width:768px){
-  .sidebar{transform:translateX(-100%);transition:transform .25s;}
-  .sidebar.open{transform:none;}
+  /* Sidebar */
+  .sidebar{transform:translateX(-100%);transition:transform .25s;z-index:200;}
+  .sidebar.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.6);}
   .main{margin-left:0;}
+  /* Overlay — sidebar açıkken arka planı kapatır */
+  #sidebarOverlay{display:block;}
+  .sidebar.open ~ #sidebarOverlay,
+  .sidebar.open + * #sidebarOverlay{display:block;}
+
+  /* İçerik */
   .stats-grid{grid-template-columns:1fr 1fr;}
   .content-grid{grid-template-columns:1fr;}
-  .content{padding:18px 14px 60px;}
+  .content{padding:14px 12px 60px;}
   #hambBtn{display:inline-flex!important;align-items:center;justify-content:center;}
+  .topbar-title{font-size:13px;}
+  .page-h{font-size:17px;}
+
+  /* Instagram panel — sekmeler yatay kayar */
+  #view-instagram > div:nth-child(2){overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  #view-instagram > div:nth-child(2) button{white-space:nowrap;flex-shrink:0;}
+
+  /* Tablo satırları yatay kaydırılabilir */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .table-wrap table{min-width:560px;}
+
+  /* Kart padding küçült */
+  .card{padding:14px;}
+
+  /* Modal — ekranın altından */
+  .modal-bg{align-items:flex-end;padding:0;}
+  .modal-box{border-radius:20px 20px 0 0;max-width:100%;width:100%;padding:22px 18px calc(22px + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto;}
+}
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr;}
+  .content{padding:12px 10px 60px;}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;}
 }
+
+/* Sidebar overlay */
+#sidebarOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199;backdrop-filter:blur(2px);}
 
 </style>
 </head>
@@ -234,6 +265,9 @@ tbody tr:hover td{background:rgba(255,255,255,.015);}
 
 <!-- APP -->
 <div id="appShell">
+  <!-- MOBİL SIDEBAR OVERLAY -->
+  <div id="sidebarOverlay" onclick="document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').style.display='none'"></div>
+
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sb-top">
@@ -270,7 +304,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015);}
   <div class="main">
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="tb-btn" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none" id="hambBtn">☰</button>
+        <button class="tb-btn" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').style.display=document.getElementById('sidebar').classList.contains('open')?'block':'none'" style="display:none" id="hambBtn">☰</button>
         <span class="topbar-title" id="topbarTitle">Dashboard</span>
       </div>
       <div class="topbar-right">
@@ -1370,6 +1404,7 @@ async function syncAll(){await init();showToast('Yenilendi ✓');}
 // ── NAVIGATION ────────────────────────────────
 function switchView(id,el){
   document.getElementById('sidebar')?.classList.remove('open');
+  const ov = document.getElementById('sidebarOverlay'); if(ov) ov.style.display='none';
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('view-'+id)?.classList.add('active');
@@ -3598,6 +3633,7 @@ function setManualType(t) {
   _mpType = t;
   const btnC = document.getElementById('mp-type-carousel');
   const btnR = document.getElementById('mp-type-reels');
+  const imgBtn = document.getElementById('mpGenerateFromImageBtn');
   
   if (t === 'carousel') {
     btnC.style.background = 'rgba(244,162,97,0.15)';
@@ -3613,6 +3649,7 @@ function setManualType(t) {
     document.getElementById('mp-reels-fields').style.display = 'none';
     document.getElementById('mp-carousel-nav').style.display = 'flex';
     document.getElementById('mpGenerateBtn').textContent = 'AI ile Carousel Oluştur →';
+    if (imgBtn) imgBtn.textContent = '🤖 Görseli Yapay Zeka ile Analiz Et & Carousel Üret →';
     
     document.getElementById('mpPublishPost').style.display = 'block';
     document.getElementById('mpPublishStory').style.display = 'block';
@@ -3630,6 +3667,7 @@ function setManualType(t) {
     document.getElementById('mp-reels-fields').style.display = 'block';
     document.getElementById('mp-carousel-nav').style.display = 'none';
     document.getElementById('mpGenerateBtn').textContent = 'AI ile Reels Senaryosu Oluştur →';
+    if (imgBtn) imgBtn.textContent = '🤖 Görseli Yapay Zeka ile Analiz Et & Reels Senaryosu Üret →';
     
     document.getElementById('mpPublishPost').style.display = 'none';
     document.getElementById('mpPublishStory').style.display = 'none';
@@ -3704,11 +3742,48 @@ async function generateCaptionFromImage() {
 
     // 2. Call Gemini Vision model directly
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-    const prompt = `Görseldeki eğitim/öğretim içeriğini analiz et. Rostrum Akademi markasının YKS eğitim koçluğu hesabı için bu görselin altına gelecek ilgi çekici, bilgilendirici ve profesyonel bir Instagram post açıklaması (caption) ve en az 6 adet ilgili hashtag üret. Çıktı olarak sadece şu JSON formatını döndür, markdown içermesin:
+    
+    let prompt = '';
+    if (_mpType === 'reels') {
+      prompt = `Görseldeki eğitim/öğretim platformu ekran görüntüsünü/içeriğini analiz et. Rostrum Akademi markasının YKS eğitim koçluğu Instagram hesabı için bu görselden yararlanarak, platformun özelliklerini veya sunduğu faydalı ipuçlarını öne çıkaran, NÖROPAZARLAMA İLKELERİNE (korku tetikleyicisi/kayıp korkusu, dopamin/ödüllendirme döngüsü, kontrol hissi, merak uyandırıcı soru/kanca, net ve somut fayda) uygun, yüksek etkileşimli bir Reels videosu senaryosu üret.
+Çıktı olarak sadece şu JSON formatını döndür, markdown içermesin:
 {
-  "caption": "açıklama metni",
+  "reels_hook": "kanca metni (ekrana yazılacak, max 10 kelime, merak uyandırıcı/kayıp korkusu tetikleyen)",
+  "reels_music": "önerilen ses/müzik tarzı (örn: Hızlı tempo, merak uyandırıcı synthwave)",
+  "reels_scenes": [
+    { "visual": "sahne 1 görsel betimlemesi (nöropazarlama odaklı görsel tetikleyici detayları)", "text": "sahne 1 konuşma metni veya ekrandaki söz" },
+    { "visual": "...", "text": "..." },
+    { "visual": "...", "text": "..." }
+  ],
+  "caption": "Reels post açıklaması (3-5 paragraf, samimi, merak uyandırıcı, doğrudan faydaya odaklanan)",
   "hashtags": "#hashtag1 #hashtag2 ..."
 }`;
+    } else {
+      prompt = `Görseldeki platform ekran görüntüsünü/içeriğini analiz et. Rostrum Akademi markasının YKS eğitim koçluğu Instagram hesabı için bu görseli açıklayan, platform özelliklerini ve sunduğu faydaları öne çıkaran 5 slaytlık bir Carousel post içeriği üret.
+Çıktı olarak sadece şu JSON formatını döndür, markdown içermesin:
+{
+  "hook": "slayt 1 metni (kanca metni, tek cümle, max 12 kelime)",
+  "slide2": {
+    "headline": "slayt 2 başlığı (max 8 kelime)",
+    "points": [
+      {"title": "Madde 1 başlığı", "desc": "kısa açıklama"},
+      {"title": "Madde 2", "desc": "..."},
+      {"title": "Madde 3", "desc": "..."}
+    ]
+  },
+  "slide3": {
+    "headline": "slayt 3 başlığı",
+    "points": [
+      {"title": "...", "desc": "..."},
+      {"title": "...", "desc": "..."}
+    ]
+  },
+  "insight": "slayt 4 içgörüsü (tek cümle, alıntı formatında, max 15 kelime)",
+  "cta": "slayt 5 CTA metni (max 10 kelime)",
+  "caption": "Post açıklaması (3-5 paragraf, samimi ve fayda odaklı)",
+  "hashtags": "#hashtag1 #hashtag2 ..."
+}`;
+    }
 
     const resp = await fetch(url, {
       method: 'POST',
@@ -3743,19 +3818,56 @@ async function generateCaptionFromImage() {
     // Parse json
     const jsonMatch = textReply.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('JSON bulunamadı');
-    const p = JSON.parse(jsonMatch[0]);
+    
+    let p;
+    try {
+      p = JSON.parse(jsonMatch[0]);
+    } catch(parseErr) {
+      // Bozuk JSON'u onar
+      const fixed = jsonMatch[0]
+        .replace(/[“”]/g, '\\"')
+        .replace(/[‘’]/g, "'");
+      p = JSON.parse(fixed);
+    }
 
-    // Fill form
-    const captionEl = document.getElementById('mpCaptionEdit');
-    const hashtagsEl = document.getElementById('mpHashtagEdit');
-    if (captionEl) captionEl.value = p.caption || '';
-    if (hashtagsEl) hashtagsEl.value = p.hashtags || '';
+    // Fill form fields
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    if (_mpType === 'reels') {
+      setVal('mpReelsHook', p.reels_hook || '');
+      setVal('mpReelsMusic', p.reels_music || '');
+      const scenesText = (p.reels_scenes || []).map((s, idx) => `Sahne ${idx+1}:\nGörsel: ${s.visual || ''}\nSöz: ${s.text || ''}`).join('\n\n');
+      setVal('mpReelsScenes', scenesText);
+      setVal('mpCaptionEdit', p.caption || '');
+      setVal('mpHashtagEdit', p.hashtags || '');
+      if (document.getElementById('mpDesignNote')) {
+        document.getElementById('mpDesignNote').style.display = 'none';
+      }
+    } else {
+      setVal('mpSlide0', p.hook || '');
+      const fmtSlide = (s) => {
+        if (!s) return '';
+        let txt = s.headline || '';
+        if (s.points && s.points.length) {
+          txt += '\n' + s.points.map(pt => `• ${pt.title || pt}${pt.desc ? ': ' + pt.desc : ''}`).join('\n');
+        }
+        return txt;
+      };
+      setVal('mpSlide1', fmtSlide(p.slide2));
+      setVal('mpSlide2', fmtSlide(p.slide3));
+      setVal('mpSlide3', p.insight || '');
+      setVal('mpSlide4', p.cta || '');
+      setVal('mpCaptionEdit', p.caption || '');
+      setVal('mpHashtagEdit', p.hashtags || '');
+    }
 
     // Show generated section
     document.getElementById('mpGeneratedSection').style.display = 'flex';
-    showToast('✨ Açıklama ve hashtag\'ler üretildi! ✓');
+    _mpGenerated = true;
+    enableMpPublish(true);
+    updateManualPreview();
+    showToast('✨ Görsel başarıyla analiz edildi ve içerik üretildi! ✓');
   } catch (e) {
-    console.error('Image caption generation error:', e);
+    console.error('Image content generation error:', e);
     showToast('Hata: ' + e.message, false);
   } finally {
     btn.textContent = origText;

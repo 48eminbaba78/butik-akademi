@@ -1139,3 +1139,87 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 .kh-input::-webkit-outer-spin-button,
 .kh-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .kh-input[type=number] { -moz-appearance: textfield; }
+
+/* ══════════════════════════════════════════════════
+   KAPSAMLI MOBİL DÜZELTMELER
+   ══════════════════════════════════════════════════ */
+
+/* Haftalık program — yatay kaydırma */
+.week-grid { -webkit-overflow-scrolling: touch; }
+
+/* Alan satırları — mobilde alt alta */
+@media(max-width:600px) {
+  .field-row  { grid-template-columns: 1fr; }
+  .field-row3 { grid-template-columns: 1fr; }
+}
+
+/* Modal — mobilde ekranın altından yükselen sayfa */
+@media(max-width:640px) {
+  .modal-bg { align-items: flex-end; padding: 0; }
+  .modal {
+    border-radius: 22px 22px 0 0;
+    max-width: 100%;
+    width: 100%;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    max-height: 90vh;
+  }
+  .modal-lg { max-width: 100%; }
+
+  /* İçerik alanları */
+  .view { padding: 12px 14px; }
+  #view-home { padding: 12px 14px; }
+
+  /* Topnav: kullanıcı adı metni gizle, butonları küçült */
+  .sb-pname, .sb-prole { display: none; }
+  .sb-pinfo { display: none; }
+  .topnav { padding: 0 12px; gap: 8px; }
+
+  /* Mesajlaşma — liste önce, sohbet açıldığında tam ekran */
+  .msg-layout {
+    grid-template-columns: 1fr;
+    height: calc(100vh - 170px);
+  }
+  .msg-sidebar { max-height: 280px; overflow-y: auto; border-right: none; border-bottom: 1px solid var(--border); }
+
+  /* Portal hero — yatay ikonla metin */
+  .portal-hero { gap: 12px; }
+  .portal-avatar { width: 44px; height: 44px; font-size: 18px; }
+
+  /* Öğrenci kartı aksiyon butonları — alt alta */
+  .prog-actions { flex-wrap: wrap; gap: 4px; }
+  .prog-actions .btn { font-size: 11px; padding: 5px 10px; }
+
+  /* Haftalık program navigasyon butonları sarmalasın */
+  .week-nav { flex-wrap: wrap; gap: 8px; }
+  .week-nav > div:last-child { width: 100%; }
+
+  /* AI chat — tam ekran açılsın */
+  #aiChatPanel {
+    bottom: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    height: calc(100vh - 56px) !important;
+    border-radius: 0 !important;
+    max-height: none !important;
+  }
+  #aiChatBubble { bottom: 76px !important; right: 14px !important; }
+
+  /* Deneme sonuç tabloları — yatay kaydırma */
+  .exam-table-wrap, .net-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Takvim / randevu ekranı */
+  .appts-layout { grid-template-columns: 1fr !important; }
+
+  /* Mnav btn daha geniş dokunma alanı */
+  .mnav-btn { padding: 6px 8px; min-width: 48px; }
+}
+
+/* Orta boyutlu tablet (768px) */
+@media(max-width:768px) {
+  .home-stats { grid-template-columns: 1fr 1fr; }
+  .coach-todo-strip { grid-template-columns: 1fr 1fr; }
+}
+
+/* Geniş içerik tabloları için scroll container */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll table { min-width: 480px; }
