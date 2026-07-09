@@ -3903,6 +3903,137 @@ async function stuToggleTask2(ds,idx){
 }
 function chWeekS(d){S.weekOffset+=d;saveUI();renderSPortal();}
 
+// ── GÖREV GERİ BİLDİRİM YARDIMCI FONKSİYONLARI ──────────────────
+let _feedbackDraft = {};
+
+function _fbChip(field, val, el) {
+  _feedbackDraft[field] = isNaN(val) ? val : Number(val);
+  el.parentElement.querySelectorAll('[data-fb-val]').forEach(b => {
+    const on = b.dataset.fbVal == val;
+    b.style.background  = on ? b.dataset.fbBg    : 'var(--surface2)';
+    b.style.borderColor = on ? b.dataset.fbColor  : 'var(--border)';
+    b.style.color       = on ? b.dataset.fbColor  : 'var(--text-mid)';
+    b.style.fontWeight  = on ? '700' : '600';
+  });
+  if (field === 'status') {
+    const s = document.getElementById('fbBlockerSection');
+    if (s) s.style.display = val === 'completed' ? 'none' : 'block';
+  }
+}
+
+function _fbStar(n) {
+  _feedbackDraft.focus = n;
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('fbStar' + i);
+    if (el) { el.textContent = i <= n ? '★' : '☆'; el.style.color = i <= n ? '#f0a500' : 'var(--text-dim)'; }
+  }
+}
+
+function _fbStudentHtml(t) {
+  const fb  = t.student_feedback || {};
+  const st  = fb.status || (t.done ? 'completed' : '');
+  const th  = fb.time_spent != null ? Math.floor(fb.time_spent / 60) : '';
+  const tm  = fb.time_spent != null ? fb.time_spent % 60 : '';
+  const fc  = fb.focus      || 0;
+  const df  = fb.difficulty || 0;
+  const bl  = fb.blocker    || '';
+  _feedbackDraft = { status: st || null, focus: fc, difficulty: df, blocker: bl };
+
+  const STATUS = [
+    { v:'completed', l:'✓ Tamamladım', c:'#3ecf8e', bg:'rgba(62,207,142,.12)' },
+    { v:'partial',   l:'~ Kısmen',     c:'#f0a500', bg:'rgba(240,165,0,.12)'  },
+    { v:'failed',    l:'✕ Yapamadım',  c:'#ef4444', bg:'rgba(239,68,68,.12)'  },
+  ];
+  const DIFF = [
+    { v:1, l:'Çok Kolay', c:'#3ecf8e', bg:'rgba(62,207,142,.1)'  },
+    { v:2, l:'Kolay',     c:'#86efac', bg:'rgba(134,239,172,.1)' },
+    { v:3, l:'Orta',      c:'#f0a500', bg:'rgba(240,165,0,.1)'   },
+    { v:4, l:'Zor',       c:'#fb923c', bg:'rgba(251,146,60,.1)'  },
+    { v:5, l:'Çok Zor',   c:'#ef4444', bg:'rgba(239,68,68,.1)'   },
+  ];
+  const BLOCK = [
+    { v:'time',  l:'Zamanım yetmedi'          },
+    { v:'topic', l:'Konuyu anlamadım'          },
+    { v:'hard',  l:'Kaynak çok zordu'          },
+    { v:'moti',  l:'İstek/motivasyonum yoktu'  },
+  ];
+
+  return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:14px 16px;margin-bottom:14px">
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tamamlanma Durumu</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        ${STATUS.map(s=>`<button onclick="_fbChip('status','${s.v}',this)" data-fb-val="${s.v}" data-fb-color="${s.c}" data-fb-bg="${s.bg}"
+          style="padding:9px 4px;border-radius:9px;border:1.5px solid ${st===s.v?s.c:'var(--border)'};background:${st===s.v?s.bg:'var(--surface2)'};color:${st===s.v?s.c:'var(--text-mid)'};font-size:12px;font-weight:${st===s.v?'700':'600'};cursor:pointer;transition:all .15s">${esc(s.l)}</button>`).join('')}
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⏱ Süre</div>
+        <div style="display:flex;gap:5px;align-items:center">
+          <input id="fbHour" type="number" min="0" max="12" placeholder="0" value="${th}"
+            style="width:48px;padding:8px 4px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;text-align:center">
+          <span style="font-size:11px;color:var(--text-dim)">sa</span>
+          <input id="fbMin" type="number" min="0" max="59" placeholder="0" value="${tm}"
+            style="width:48px;padding:8px 4px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;text-align:center">
+          <span style="font-size:11px;color:var(--text-dim)">dk</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🎯 Odaklanma</div>
+        <div style="display:flex;gap:2px;padding-top:2px">
+          ${[1,2,3,4,5].map(i=>`<span id="fbStar${i}" onclick="_fbStar(${i})" style="font-size:24px;cursor:pointer;color:${i<=fc?'#f0a500':'var(--text-dim)'};transition:color .1s">${i<=fc?'★':'☆'}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📊 Zorluk</div>
+      <div style="display:flex;gap:4px">
+        ${DIFF.map(d=>`<button onclick="_fbChip('difficulty',${d.v},this)" data-fb-val="${d.v}" data-fb-color="${d.c}" data-fb-bg="${d.bg}"
+          style="flex:1;padding:7px 3px;border-radius:8px;border:1.5px solid ${df===d.v?d.c:'var(--border)'};background:${df===d.v?d.bg:'var(--surface2)'};color:${df===d.v?d.c:'var(--text-mid)'};font-size:10px;font-weight:${df===d.v?'700':'600'};cursor:pointer;transition:all .15s;text-align:center">${esc(d.l)}</button>`).join('')}
+      </div>
+    </div>
+
+    <div id="fbBlockerSection" style="display:${st && st!=='completed'?'block':'none'}">
+      <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Neden Yapamadın?</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${BLOCK.map(b=>`<button onclick="_fbChip('blocker','${b.v}',this)" data-fb-val="${b.v}" data-fb-color="#fb923c" data-fb-bg="rgba(251,146,60,.1)"
+          style="padding:6px 11px;border-radius:8px;border:1.5px solid ${bl===b.v?'#fb923c':'var(--border)'};background:${bl===b.v?'rgba(251,146,60,.1)':'var(--surface2)'};color:${bl===b.v?'#fb923c':'var(--text-mid)'};font-size:11px;font-weight:${bl===b.v?'700':'600'};cursor:pointer;transition:all .15s">${esc(b.l)}</button>`).join('')}
+      </div>
+    </div>
+
+  </div>`;
+}
+
+function _fbCoachHtml(t) {
+  const fb = t.student_feedback;
+  if (!fb || !fb.status) return '';
+  const SI = {
+    completed: { l:'Tamamlandı',       c:'#3ecf8e', bg:'rgba(62,207,142,.1)' },
+    partial:   { l:'Kısmen Tamamlandı', c:'#f0a500', bg:'rgba(240,165,0,.1)' },
+    failed:    { l:'Yapamadı',          c:'#ef4444', bg:'rgba(239,68,68,.1)' },
+  };
+  const DL = {1:'Çok Kolay',2:'Kolay',3:'Orta',4:'Zor',5:'Çok Zor'};
+  const BL = {time:'Zamanı yetmedi',topic:'Konuyu anlayamadı',hard:'Kaynak çok zordu',moti:'Motivasyon yok'};
+  const si = SI[fb.status] || SI.completed;
+  const t_s = fb.time_spent;
+  const timeStr = t_s>0 ? (Math.floor(t_s/60)>0?Math.floor(t_s/60)+'sa ':'') + (t_s%60>0?t_s%60+'dk':'') : null;
+  const stars  = fb.focus ? '★'.repeat(fb.focus)+'☆'.repeat(5-fb.focus) : null;
+
+  return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:14px 16px;margin-bottom:14px">
+    <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">💬 Öğrenci Geri Bildirimi</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${fb.blocker?'8px':'0'}">
+      <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:${si.bg};color:${si.c};border:1px solid ${si.c}33">${si.l}</span>
+      ${timeStr?`<span style="padding:4px 12px;border-radius:20px;font-size:12px;background:var(--surface);border:1px solid var(--border);color:var(--text-mid)">⏱ ${timeStr}</span>`:''}
+      ${stars?`<span style="padding:4px 12px;border-radius:20px;font-size:12px;background:var(--surface);border:1px solid var(--border);color:#f0a500">${stars}</span>`:''}
+      ${fb.difficulty?`<span style="padding:4px 12px;border-radius:20px;font-size:12px;background:var(--surface);border:1px solid var(--border);color:var(--text-mid)">${DL[fb.difficulty]||''}</span>`:''}
+    </div>
+    ${fb.blocker?`<div style="font-size:12px;color:var(--text-mid)">Neden: <b style="color:#fb923c">${BL[fb.blocker]||fb.blocker}</b></div>`:''}
+  </div>`;
+}
+
 // ── GÖREV DETAY MODALI ──────────────────────────
 function openTaskDetail(ds, idx, role){
   const stuId = session.role==='student' ? session.studentId : S.activeStuId;
@@ -3963,11 +4094,13 @@ function openTaskDetail(ds, idx, role){
       <div style="font-size:12px;color:var(--text-dim);margin-top:4px">${new Date(ds+'T12:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</div>
     </div>
 
-    <!-- Tamamlandı toggle -->
-    <div id="tdDoneBox" style="background:var(--surface2);border:1.5px solid ${t.done?'var(--green)':'var(--border)'};border-radius:11px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;cursor:${role==='coach'?'default':'pointer'};transition:all .2s" ${role==='coach'?'':`onclick="toggleTaskDetail('${ds}',${idx},'${role}')"`}>
-      <div style="font-size:13px;font-weight:700;color:${t.done?'var(--green)':'var(--text)'}">${t.done?'✓ Tamamlandı':'Tamamlandı mı?'}</div>
-      <div style="width:22px;height:22px;border-radius:6px;border:2px solid ${t.done?'var(--green)':'var(--border)'};background:${t.done?'var(--green)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .2s">${t.done?'✓':''}</div>
+    <!-- Geri bildirim: öğrenci=form, koç=özet+durum -->
+    ${role==='student' ? _fbStudentHtml(t) : `
+    <div style="background:var(--surface2);border:1.5px solid ${t.done?'var(--green)':'var(--border)'};border-radius:11px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="width:20px;height:20px;border-radius:5px;background:${t.done?'var(--green)':'transparent'};border:2px solid ${t.done?'var(--green)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">${t.done?'✓':''}</div>
+      <div style="font-size:13px;font-weight:700;color:${t.done?'var(--green)':'var(--text-dim)'}">${t.done?'Tamamlandı':'Henüz tamamlanmadı'}</div>
     </div>
+    ${_fbCoachHtml(t)}`}
 
     <!-- Test/Video listesi -->
     ${itemsHtml}
@@ -4013,8 +4146,8 @@ function openTaskDetail(ds, idx, role){
 
     <!-- Not -->
     <div class="field">
-      <label>Notum</label>
-      <textarea id="tdNote" placeholder="Zorlandığım konular, dikkatimi çeken şeyler..." style="min-height:72px" ${role==='coach'?'disabled':''}>${t.student_note||''}</textarea>
+      <label>${role==='student'?'Koçuma Not':'Öğrenci Notu'}</label>
+      <textarea id="tdNote" placeholder="${role==='student'?'Koçuna iletmek istediğin bir şey var mı? (Örn: 5. soruyu anlamadım, bu konudan daha fazla soru çözmem lazım...)':'—'}" style="min-height:60px" ${role==='coach'?'disabled':''}>${t.student_note||''}</textarea>
     </div>
 
     <div style="display:flex; gap:10px; margin-top:12px">
@@ -4093,6 +4226,26 @@ async function saveTaskDetail(ds, idx, role){
   const note = document.getElementById('tdNote')?.value.trim() || '';
 
   const updatePayload = { student_note: note };
+
+  // Geri bildirim alanlarını kaydet
+  const fbH = parseInt(document.getElementById('fbHour')?.value) || 0;
+  const fbM = parseInt(document.getElementById('fbMin')?.value)  || 0;
+  const fbTime = fbH * 60 + fbM;
+  const fb = {
+    status:     _feedbackDraft.status     || null,
+    time_spent: fbTime > 0 ? fbTime : (t.student_feedback?.time_spent || null),
+    focus:      _feedbackDraft.focus      || null,
+    difficulty: _feedbackDraft.difficulty || null,
+    blocker:    _feedbackDraft.blocker    || null,
+  };
+  if (fb.status || fb.focus || fb.difficulty || fbTime > 0) {
+    updatePayload.student_feedback = fb;
+    t.student_feedback = fb;
+    if (fb.status) {
+      updatePayload.done = fb.status !== 'failed';
+      t.done = updatePayload.done;
+    }
+  }
 
   const dogEl = document.getElementById('tdDogru');
   const yanEl = document.getElementById('tdYanlis');

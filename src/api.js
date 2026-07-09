@@ -159,7 +159,8 @@ async function _fetchAll() {
       note:          t.note,
       done:          t.done,
       student_note:  t.student_note || '',
-      student_result:t.student_result || null,
+      student_result:   t.student_result   || null,
+      student_feedback: t.student_feedback || null,
       task_items:    t.task_items,
       start_time:    t.start_time
     });
