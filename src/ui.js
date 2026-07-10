@@ -7969,10 +7969,27 @@ async function sendAIMessage(){
     const context = buildAIContext();
     const userRole = session.role || 'student';
 
-    // Fotoğraf varsa Groq desteklemiyor — direkt Gemini multimodal
+    // Fotoğraf varsa Groq desteklemiyor — server-side Gemini vision endpoint'i kullan
     if (pendingImg) {
-      const fallbackReply = await callGeminiFallback(text, context, userRole, pendingImg);
-      addAIMessage('assistant', fallbackReply);
+      const visRes = await fetch('/api/ai-vision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: pendingImg.base64,
+          mimeType: pendingImg.mimeType,
+          text: text || 'Bu soruyu çöz.',
+          context,
+          userRole
+        })
+      });
+      if (visRes.ok) {
+        const visData = await visRes.json();
+        addAIMessage('assistant', visData.reply || 'Yanıt alınamadı.');
+      } else {
+        // Server key yoksa client-side Gemini fallback
+        const fallbackReply = await callGeminiFallback(text, context, userRole, pendingImg);
+        addAIMessage('assistant', fallbackReply);
+      }
     } else {
       const apiUrl = '/api/ai-chat';
       const response = await fetch(apiUrl, {
