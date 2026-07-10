@@ -11,7 +11,7 @@ const SB_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const FROM = `Rostrum Akademi <${process.env.SENDER_EMAIL || 'onboarding@resend.dev'}>`;
 const SITE_URL = process.env.SITE_URL || 'https://www.rostrumakademi.com';
-const GCAL_REDIRECT = `${SITE_URL}/app.html`;
+const GCAL_REDIRECT = 'https://www.rostrumakademi.com/app.html';
 const G_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const G_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
@@ -253,8 +253,9 @@ export default async function handler(req, res) {
       });
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok || !tokenData.refresh_token) {
-        console.error('[gcal oauth]', tokenData);
-        return res.status(400).json({ error: tokenData.error_description || 'Google token alınamadı' });
+        console.error('[gcal oauth]', JSON.stringify(tokenData));
+        const msg = tokenData.error_description || tokenData.error || `HTTP ${tokenRes.status}`;
+        return res.status(400).json({ error: msg, detail: tokenData });
       }
 
       const { error: updateErr } = await admin
