@@ -7968,28 +7968,30 @@ async function sendAIMessage(){
   try {
     const context = buildAIContext();
     const userRole = session.role || 'student';
-    
-    // API çağrısı
-    const apiUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? '/api/ai-chat'  // Vercel dev
-      : '/api/ai-chat'; // Production
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        messages: aiChatHistory.slice(-10), // Son 10 mesaj
-        context,
-        userRole
-      })
-    });
-    
-    if(!response.ok) {
+
+    // Fotoğraf varsa Groq desteklemiyor — direkt Gemini multimodal
+    if (pendingImg) {
       const fallbackReply = await callGeminiFallback(text, context, userRole, pendingImg);
       addAIMessage('assistant', fallbackReply);
     } else {
-      const data = await response.json();
-      addAIMessage('assistant', data.reply || 'Yanıt alınamadı.');
+      const apiUrl = '/api/ai-chat';
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          messages: aiChatHistory.slice(-10),
+          context,
+          userRole
+        })
+      });
+
+      if(!response.ok) {
+        const fallbackReply = await callGeminiFallback(text, context, userRole, null);
+        addAIMessage('assistant', fallbackReply);
+      } else {
+        const data = await response.json();
+        addAIMessage('assistant', data.reply || 'Yanıt alınamadı.');
+      }
     }
   } catch(e) {
     console.error('AI error:', e);
