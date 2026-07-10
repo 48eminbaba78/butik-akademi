@@ -491,7 +491,7 @@ export async function finishLogin(rows) {
 
     // Google Calendar OAuth callback — detect ?code=...&state=google_calendar after consent redirect
     const _urlParams = new URLSearchParams(window.location.search);
-    if (_urlParams.get('state') === 'google_calendar' && _urlParams.get('code') && session.role === 'coach') {
+    if (_urlParams.get('state') === 'google_calendar' && _urlParams.get('code') && (session.role === 'coach' || session.role === 'developer')) {
       const _gcalCode = _urlParams.get('code');
       window.history.replaceState({}, '', window.location.pathname + window.location.hash);
       document.getElementById('aiChatBubble').style.display = 'flex';

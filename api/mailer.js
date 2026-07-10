@@ -238,7 +238,7 @@ export default async function handler(req, res) {
       const { data: { user }, error: authErr } = await admin.auth.getUser(token);
       if (authErr || !user) return res.status(401).json({ error: 'Yetkisiz' });
       const { data: caller } = await admin.from('users').select('role').eq('id', user.id).single();
-      if (!caller || caller.role !== 'coach') return res.status(403).json({ error: 'Sadece koçlar Google Takvim bağlayabilir' });
+      if (!caller || !['coach', 'developer'].includes(caller.role)) return res.status(403).json({ error: 'Sadece koçlar Google Takvim bağlayabilir' });
 
       const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -275,7 +275,7 @@ export default async function handler(req, res) {
       const { data: { user }, error: authErr } = await admin.auth.getUser(token);
       if (authErr || !user) return res.status(401).json({ error: 'Yetkisiz' });
       const { data: caller } = await admin.from('users').select('role').eq('id', user.id).single();
-      if (!caller || caller.role !== 'coach') return res.status(403).json({ error: 'Sadece koçlar kullanabilir' });
+      if (!caller || !['coach', 'developer'].includes(caller.role)) return res.status(403).json({ error: 'Sadece koçlar kullanabilir' });
 
       const { data: workspace } = await admin.from('workspaces').select('google_refresh_token').eq('coach_id', user.id).single();
       if (!workspace?.google_refresh_token) return res.status(400).json({ error: 'Google Takvim bağlı değil' });
