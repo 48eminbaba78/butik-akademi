@@ -330,8 +330,9 @@ function switchTab(tab, updateHash = true){
 
   const bubble = document.getElementById('aiChatBubble');
   if (bubble) {
-    if (tab === 'dev-tickets' || tab.startsWith('dev-')) {
+    if (tab === 'dev-tickets' || tab.startsWith('dev-') || tab === 'messages' || tab === 'smessages') {
       bubble.style.display = 'none';
+      document.getElementById('aiChatPanel')?.classList.remove('open');
     } else if (session.role === 'student' || session.role === 'coach' || session.role === 'parent') {
       bubble.style.display = 'flex';
     }
