@@ -657,3 +657,27 @@ if (document.readyState === 'loading') {
 } else {
   setupLoginMirroring();
 }
+
+// ── Kayit.html'den gelen yeni koçları otomatik giriş yaptır ──
+if (new URLSearchParams(window.location.search).get('new_coach') === '1') {
+  const _autoEmail = sessionStorage.getItem('ra_new_coach_email');
+  const _autoPass  = sessionStorage.getItem('ra_new_coach_pass');
+  if (_autoEmail && _autoPass) {
+    sessionStorage.removeItem('ra_new_coach_email');
+    sessionStorage.removeItem('ra_new_coach_pass');
+    const _autoLoginFn = () => {
+      const emailEl = document.getElementById('loginEmail');
+      const passEl  = document.getElementById('loginPass');
+      if (emailEl && passEl) {
+        emailEl.value = _autoEmail;
+        passEl.value  = _autoPass;
+        setTimeout(() => window.doLogin && window.doLogin(), 400);
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', _autoLoginFn);
+    } else {
+      _autoLoginFn();
+    }
+  }
+}

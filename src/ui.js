@@ -98,6 +98,9 @@ async function checkCoachSubscription() {
       const now = new Date();
       if (now > trialEnds) {
         showTrialExpiredScreen();
+      } else {
+        const daysLeft = Math.ceil((trialEnds - now) / (1000 * 60 * 60 * 24));
+        if (daysLeft <= 7) showTrialCountdownBanner(daysLeft);
       }
     }
   } else if ((session.role === 'student' || session.role === 'parent') && session.coachId) {
@@ -153,9 +156,24 @@ function showTrialExpiredScreen() {
     modal.classList.add('open');
   }
 }
+
+function showTrialCountdownBanner(daysLeft) {
+  if (document.getElementById('trialCountdownBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'trialCountdownBanner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:8000;background:#f59e0b;color:#111;padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px;font-weight:600;';
+  banner.innerHTML = `<span>⏰ Ücretsiz denemenizin <strong>${daysLeft} günü</strong> kaldı — öğrenci verileriniz korunuyor.</span>
+    <button onclick="openSupportChatDirect()" style="background:rgba(0,0,0,.15);border:none;padding:4px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:#111;white-space:nowrap">Devam Et →</button>
+    <button onclick="document.getElementById('trialCountdownBanner').remove()" style="background:none;border:none;cursor:pointer;color:rgba(0,0,0,.4);font-size:18px;padding:0 4px;line-height:1">×</button>`;
+  document.body.prepend(banner);
+  const shell = document.getElementById('appShell');
+  if (shell) shell.style.marginTop = banner.offsetHeight + 'px';
+}
+
 window.openSupportChatDirect = openSupportChat;
 window.checkCoachSubscription = checkCoachSubscription;
 window.showTrialExpiredScreen = showTrialExpiredScreen;
+window.showTrialCountdownBanner = showTrialCountdownBanner;
 
 
 // ═══════════════════════════════════════════════
@@ -6210,111 +6228,111 @@ const _devSaveStudent = saveStudent;
 })();
 
 // ═══════════════════════════════════════════════
+// KARŞILAMA & AKTİF GÖREV LİSTESİ (ONBOARDING)
 // ═══════════════════════════════════════════════
-// İLK GÜN KARŞILAMA SİHİRBAZI (WELCOME TOUR)
-// ═══════════════════════════════════════════════
+
+// Görev tamamlama durumunu localStorage'dan oku/yaz
+function _obKey(task) { return `ra_ob_${session.coachId}_${task}`; }
+function _obDone(task) { return localStorage.getItem(_obKey(task)) === '1'; }
+function _obMarkDone(task) {
+  localStorage.setItem(_obKey(task), '1');
+  _obRefreshWidget();
+  // Tüm görevler tamam mı?
+  const tasks = ['student','program','report'];
+  if (tasks.every(t => _obDone(t))) _obComplete();
+}
+async function _obComplete() {
+  const widget = document.getElementById('obWidget');
+  if (widget) {
+    widget.innerHTML = `<div style="padding:20px;text-align:center">
+      <div style="font-size:36px;margin-bottom:8px">🎉</div>
+      <div style="font-weight:800;color:var(--text);margin-bottom:4px">Harika iş!</div>
+      <div style="font-size:12px;color:var(--text-mid)">İlk adımları tamamladınız.</div>
+    </div>`;
+    setTimeout(() => widget.remove(), 3000);
+  }
+  await db.from('workspaces').update({ onboarding_done: true }).eq('coach_id', session.coachId);
+  if (S.workspace) S.workspace.onboarding_done = true;
+}
+
+function _obRefreshWidget() {
+  const widget = document.getElementById('obWidget');
+  if (!widget) return;
+  const tasks = [
+    { id: 'student', icon: '👤', label: 'İlk öğrencinizi ekleyin', action: `window.openStudentModal?.()`, btnLabel: 'Ekle →' },
+    { id: 'program', icon: '📅', label: 'Haftalık program oluşturun', action: `switchTab('program')`, btnLabel: 'Git →' },
+    { id: 'report',  icon: '📄', label: 'İlk raporunuzu gönderin',   action: `switchTab('program')`, btnLabel: 'Git →' },
+  ];
+  const doneCount = tasks.filter(t => _obDone(t.id)).length;
+  const pct = Math.round(((doneCount + 1) / (tasks.length + 1)) * 100);
+
+  widget.querySelector('.ob-body').innerHTML = tasks.map(t => {
+    const done = _obDone(t.id);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="width:22px;height:22px;border-radius:50%;border:2px solid ${done?'var(--green)':'var(--border2)'};background:${done?'var(--green)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        ${done?`<svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4L4 7L9 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`:''}
+      </div>
+      <div style="flex:1;font-size:12px;color:${done?'var(--text-dim)':'var(--text)'};${done?'text-decoration:line-through':''}">
+        <span style="margin-right:5px">${t.icon}</span>${t.label}
+      </div>
+      ${!done?`<button onclick="${t.action};window._obMarkDone?.('${t.id}')" style="font-size:11px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;white-space:nowrap;padding:0">${t.btnLabel}</button>`:''}
+    </div>`;
+  }).join('');
+  widget.querySelector('.ob-progress-bar-inner').style.width = pct + '%';
+  widget.querySelector('.ob-progress-text').textContent = `${doneCount + 1}/${tasks.length + 1} tamamlandı`;
+}
+
+function showOnboardingWidget() {
+  if (document.getElementById('obWidget')) return;
+  const bc = S.workspace?.brand_color || 'var(--accent)';
+  const widget = document.createElement('div');
+  widget.id = 'obWidget';
+  widget.style.cssText = 'position:fixed;bottom:90px;right:20px;width:290px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;box-shadow:var(--shadow-lg);z-index:4000;overflow:hidden';
+  widget.innerHTML = `
+    <div style="background:${bc};padding:12px 14px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#fff">Başlangıç Görevleri</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:1px" class="ob-progress-text">1/4 tamamlandı</div>
+      </div>
+      <button onclick="document.getElementById('obWidget').remove()" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer;padding:0;line-height:1">×</button>
+    </div>
+    <div style="height:3px;background:rgba(255,255,255,.2)"><div class="ob-progress-bar-inner" style="height:100%;background:#fff;transition:width .4s;width:25%"></div></div>
+    <div style="padding:4px 14px 14px" class="ob-body"></div>`;
+  document.body.appendChild(widget);
+  _obRefreshWidget();
+}
+window._obMarkDone = _obMarkDone;
+
 function showOnboarding() {
+  const name = session.dbUser?.full_name?.split(' ')[0] || 'Koç';
+  const bc = S.workspace?.brand_color || 'var(--accent)';
   let modal = document.getElementById('onboardingModal');
-  if(!modal) {
+  if (!modal) {
     modal = document.createElement('div');
     modal.id = 'onboardingModal';
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
     document.body.appendChild(modal);
   }
-  renderOnboardingStep(0, modal);
-}
-
-const onboardingSteps = [
-  {
-    icon: '👋',
-    title: 'Rostrum Akademi\'ye Hoş Geldiniz! 🎓',
-    body: `Sizinle birlikte büyümek ve platformumuzu geliştirmek bizim en büyük tutkumuz.<br><br>
-           <b>Önemli Not:</b> Rostrum Akademi, siz koçlarımızın değerli geri bildirimleriyle sürekli gelişen canlı bir sistemdir. Her türlü görüş, eleştiri ve özellik talebinizi bizimle paylaşmaktan lütfen çekinmeyin. Birlikte en verimli eğitim ortamını inşa edeceğiz!`,
-    nextLabel: 'Özellikleri İncele →'
-  },
-  {
-    icon: '⚡',
-    title: 'Işık Hızında SPA Performansı 🚀',
-    body: `Rostrum Akademi, modern Tek Sayfa Uygulaması (SPA) mimarisiyle sıfır gecikme ile ışık hızında çalışır.<br><br>
-           Tüm paneller, filtreler ve öğrenci profilleri arasında geçiş yaparken sayfa yenilenmesini beklemez, zaman kaybetmeden işlerinizi yönetirsiniz.`,
-    nextLabel: 'Devam →'
-  },
-  {
-    icon: '📅',
-    title: 'Haftalık Program & D1Y1B Takibi 📋',
-    body: `Öğrencilerinizin haftalık ders programlarını hazırlayabilir, günlük ders ve soru hedefleri atayabilirsiniz.<br><br>
-           Öğrencileriniz günlük ödevlerini tamamlayıp Doğru, Yanlış, Boş (D1Y1B) net girişlerini yaptıkça, tüm ilerlemeyi anlık olarak takip edebilirsiniz.`,
-    nextLabel: 'Devam →'
-  },
-  {
-    icon: '📊',
-    title: 'Gelişmiş Denemeler & Grafik Analizi 📈',
-    body: `TYT, AYT, LGS, KPSS ve ALES deneme sınavı sonuçlarını detaylıca kaydedin.<br><br>
-           Zengin interaktif grafiklerle net gelişimini izleyin, ders ve konu bazlı boş/yanlış analizleriyle öğrencinin eksiklerini anında tespit edin.`,
-    nextLabel: 'Devam →'
-  },
-  {
-    icon: '🤖',
-    title: 'Yapay Zeka Destekli Asistan ve Copilot 🧠',
-    body: `Öğrencilerinizin 7/24 akademik sorularını sokratik yöntemle çözen **AI Ders Asistanı**, veliler için **AI Veli Asistanı** ve sizin için öğrenci analizleri hazırlayan **AI Copilot** her an hizmetinizde!`,
-    nextLabel: 'Devam →'
-  },
-  {
-    icon: '🗓️',
-    title: 'FullCalendar Ajanda & Tek Tıkla Ders 🕒',
-    body: `Yeni FullCalendar entegrasyonu sayesinde koçluk seanslarınızı ve toplantılarınızı takvim üzerinde sürükle-bırak kolaylığıyla planlayın.<br><br>
-           Ders saati yaklaştığında sistemdeki "Derse Katıl" butonuyla Zoom/Meet derslerini tek tıkla başlatın.`,
-    nextLabel: 'Hadi Başlayalım! 🚀',
-    isCompletion: true
-  }
-];
-
-let _obStep = 0;
-
-function renderOnboardingStep(step, modal) {
-  _obStep = step;
-  const s = onboardingSteps[step];
-  const total = onboardingSteps.length;
-  const dots = Array.from({length:total},(_,i)=>`<div style="width:${i===step?24:8}px;height:8px;border-radius:99px;background:${i===step?'var(--accent)':'var(--border2)'};transition:width .3s"></div>`).join('');
-
-  modal.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border2);border-radius:24px;width:100%;max-width:480px;padding:40px;animation:fadeUp .3s ease;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)">
-    <div style="text-align:center;margin-bottom:28px">
-      <div style="font-size:52px;margin-bottom:12px">${s.icon}</div>
-      <h3 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--text);margin-bottom:12px;line-height:1.3">${s.title}</h3>
-      <p style="font-size:14px;color:var(--text-mid);line-height:1.6">${s.body}</p>
+  modal.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border2);border-radius:24px;width:100%;max-width:460px;padding:36px 32px;animation:fadeUp .3s ease;box-shadow:var(--shadow-lg);text-align:center">
+    <div style="font-size:48px;margin-bottom:14px">🎓</div>
+    <h3 style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px;line-height:1.2">Hoş geldiniz, ${esc(name)}!</h3>
+    <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:24px">
+      <strong style="color:${bc}">14 günlük ücretsiz denemeniz</strong> başladı.<br>
+      İlk öğrencinize rapor gönderdiğinizde platformun farkını göreceksiniz.
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;text-align:left">
+      ${[['📅','Haftalık Program','Görev ata, ilerlemeyi izle'],['📊','D/Y/B Takibi','Net analizi anlık gör'],['🤖','AI Asistan','Öğrenci 7/24 destek alır'],['📄','PDF Rapor','Marka renginle profesyonel']].map(([ic,tl,sb])=>`
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px">
+          <div style="font-size:18px;margin-bottom:4px">${ic}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text)">${tl}</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:2px">${sb}</div>
+        </div>`).join('')}
     </div>
-
-    <div style="display:flex;flex-direction:column;gap:12px;margin-top:28px">
-      <button class="btn btn-accent" style="width:100%;padding:14px;font-weight:700" onclick="advanceOnboarding(${step},false)">${s.nextLabel}</button>
-      <div style="display:flex;gap:6px;justify-content:center;margin-top:20px">${dots}</div>
-    </div>
+    <button class="btn btn-accent" style="width:100%;padding:14px;font-size:15px;font-weight:800" onclick="document.getElementById('onboardingModal').remove();showOnboardingWidget()">
+      Hadi Başlayalım! →
+    </button>
+    <div style="font-size:11px;color:var(--text-dim);margin-top:12px">Kredi kartı gerekmez · 14 gün sonra uzatabilirsiniz</div>
   </div>`;
-}
-
-async function advanceOnboarding(step, skip) {
-  const modal = document.getElementById('onboardingModal');
-  if (!modal) return;
-
-  // Completion adımındaysa ("Hadi Başlayalım!") → onayla ve kapat
-  if(onboardingSteps[step]?.isCompletion) {
-    showLoading(true);
-    try {
-      const { error } = await db.from('workspaces').update({ onboarding_done: true }).eq('coach_id', session.coachId);
-      if (error) throw error;
-      if (S.workspace) S.workspace.onboarding_done = true;
-      modal.remove();
-      switchTab('home');
-      showToast('🎉 Hoş geldiniz! Platformunuz hazır.');
-    } catch(e) {
-      showToast('Hata: ' + e.message);
-    } finally {
-      showLoading(false);
-    }
-    return;
-  }
-
-  const nextStep = step + 1;
-  renderOnboardingStep(nextStep, modal);
 }
 
 // ═══════════════════════════════════════════════
@@ -9993,8 +10011,7 @@ window.showTrialExpiredScreen = showTrialExpiredScreen;
 window.loadAnnouncements = loadAnnouncements;
 window.saveStudentDev = saveStudentDev;
 window.showOnboarding = showOnboarding;
-window.renderOnboardingStep = renderOnboardingStep;
-window.advanceOnboarding = advanceOnboarding;
+window.showOnboardingWidget = showOnboardingWidget;
 window.renderSProfil = renderSProfil;
 window.saveStudentProfile = saveStudentProfile;
 window.changePassword = changePassword;

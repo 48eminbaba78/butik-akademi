@@ -10,7 +10,62 @@ export default async function handler(req, res) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // Caller doğrulama
+  // ── PUBLIC: Koç kayıt (type === 'coach', kimlik doğrulama gerekmez) ──
+  if (req.body.type === 'coach') {
+    const { full_name, email, password } = req.body;
+    if (!full_name || !email || !password) {
+      return res.status(400).json({ error: 'Ad, e-posta ve şifre zorunludur.' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Şifre en az 8 karakter olmalıdır.' });
+    }
+
+    // Auth kullanıcısı oluştur
+    const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name, role: 'coach' }
+    });
+    if (createErr) {
+      const msg = createErr.message.includes('already') ? 'Bu e-posta adresiyle zaten bir hesap var.' : createErr.message;
+      return res.status(400).json({ error: msg });
+    }
+
+    const userId = newUser.user.id;
+    const passHash = crypto.createHash('sha256').update(password).digest('hex');
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+    // users tablosuna yaz
+    const { error: profileErr } = await supabaseAdmin.from('users').upsert({
+      id: userId,
+      full_name,
+      username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, ''),
+      password_hash: passHash,
+      role: 'coach',
+      email,
+      plan: 'trial',
+      trial_ends_at: trialEndsAt,
+      color: '#E8613A',
+      progress: 0
+    });
+    if (profileErr) {
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      return res.status(400).json({ error: profileErr.message });
+    }
+
+    // workspace oluştur
+    await supabaseAdmin.from('workspaces').upsert({
+      coach_id: userId,
+      brand_name: full_name.split(' ')[0] + ' Akademi',
+      brand_color: '#E8613A',
+      onboarding_done: false
+    });
+
+    return res.status(200).json({ userId, trialEndsAt });
+  }
+
+  // ── AUTHENTICATED: Öğrenci oluşturma ──
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Token gerekli' });
 
