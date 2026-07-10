@@ -6676,18 +6676,27 @@ async function renderSProfil() {
   // Yaklaşan randevular
   const myAppts=S.appointments.filter(a=>a.studentId===stu.id&&a.date>=todayStr()).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
 
+  // Hedef banner için renk
+  const hasTarget = target_university || target_department;
+  const motivation = profile?.motivation || '';
+
+  // Chart verisi
+  const chartData = myExams.slice(-7);
+  const chartMax = Math.max(...chartData.map(e=>{const f=EXAM_DEFS[e.type]||[];return f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);}), 1);
+
   el.innerHTML=`
     <!-- HERO -->
-    <div class="portal-hero" style="margin-bottom:16px">
-      <div class="portal-avatar" style="background:${stu.color};width:72px;height:72px;border-radius:18px;font-size:28px">${stu.name[0]}</div>
-      <div class="portal-info" style="flex:1">
-        <h1>${esc(stu.name)}</h1>
-        <p>${esc(stu.target)}</p>
+    <div style="background:linear-gradient(135deg,${stu.color}22 0%,${stu.color}08 100%);border:1px solid ${stu.color}33;border-radius:16px;padding:20px 24px;margin-bottom:14px;display:flex;align-items:center;gap:18px">
+      <div style="width:64px;height:64px;border-radius:16px;background:${stu.color};display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;flex-shrink:0">${stu.name[0]}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:20px;font-weight:800;color:var(--text)">${esc(stu.name)}</div>
+        <div style="font-size:13px;color:var(--text-mid);margin-top:2px">${esc(stu.target)}${grade ? ' · ' + esc(grade) : ''}${school ? ' · ' + esc(school) : ''}</div>
+        ${hasTarget ? `<div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:${stu.color};color:#fff;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700">🎯 ${[target_university,target_department].filter(Boolean).join(' · ')}</div>` : ''}
       </div>
     </div>
 
     <!-- STAT CARDS -->
-    <div class="stats-row" style="margin-bottom:16px">
+    <div class="stats-row" style="margin-bottom:14px">
       <div class="stat-card">
         <div class="stat-label">Genel İlerleme</div>
         <div class="stat-val" style="color:${stu.color}">%${stu.progress}</div>
@@ -6710,64 +6719,125 @@ async function renderSProfil() {
       </div>
     </div>
 
-    ${trendHtml}
-    ${dersOrtHtml}
+    ${chartData.length > 0 ? `
+    <!-- NET GELİŞİM GRAFİĞİ -->
+    <div class="card cp" style="margin-bottom:14px">
+      <div class="portal-sec-title" style="margin-bottom:16px">📈 Net Gelişim Grafiği</div>
+      <div style="position:relative;height:160px;display:flex;align-items:flex-end;gap:6px;padding-bottom:28px">
+        <!-- yatay kılavuz çizgiler -->
+        ${[0.25,0.5,0.75,1].map(r=>`
+          <div style="position:absolute;left:0;right:0;bottom:${28+Math.round(r*132)}px;border-top:1px dashed var(--border);display:flex;align-items:center">
+            <span style="position:absolute;right:0;font-size:9px;color:var(--text-dim);background:var(--surface);padding:0 2px;line-height:1">${Math.round(chartMax*r)}</span>
+          </div>`).join('')}
+        ${chartData.map((e,i)=>{
+          const f=EXAM_DEFS[e.type]||[];
+          const total=f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);
+          const h=Math.max(Math.round((total/chartMax)*132),4);
+          const prev=chartData[i-1];
+          const prevT=prev?(EXAM_DEFS[prev.type]||[]).reduce((s,fn)=>s+Number(prev.nets?.[fn]||0),0):total;
+          const up=total>prevT, down=total<prevT;
+          const barColor=up?'var(--green)':down?'var(--red)':stu.color;
+          const label=esc(e.name.replace(/deneme|tyt|ayt/gi,'').trim()).slice(0,10)||'#'+(i+1);
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;position:relative">
+            <div style="font-size:10px;font-weight:800;color:var(--text-mid);margin-bottom:3px">${total.toFixed(0)}</div>
+            <div style="width:100%;background:${barColor};border-radius:5px 5px 0 0;height:${h}px;min-height:4px;transition:height .4s"></div>
+            <div style="position:absolute;bottom:-22px;width:100%;text-align:center;font-size:9px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+
+    ${myExams.length > 0 ? `
+    <!-- DERS BAZINDA PERFORMANS -->
+    <div class="card cp" style="margin-bottom:14px">
+      <div class="portal-sec-title" style="margin-bottom:14px">📊 Ders Bazında Performans <span style="font-size:11px;font-weight:400;color:var(--text-dim)">${lastExam?.type||''}</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${(()=>{
+          const fields=EXAM_DEFS[lastExam.type]||[];
+          const allSame=myExams.filter(e=>e.type===lastExam.type);
+          const maxNet=Math.max(...fields.map(f=>Math.max(...allSame.map(e=>Number(e.nets?.[f]||0)))),1);
+          return fields.map(f=>{
+            const last=Number(lastExam.nets?.[f]||0);
+            const vals=allSame.map(e=>Number(e.nets?.[f]||0));
+            const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
+            const pct=Math.round((last/maxNet)*100);
+            const col=last>=avg*1.1?'var(--green)':last<avg*0.9?'var(--red)':stu.color;
+            return `<div style="display:flex;align-items:center;gap:10px">
+              <div style="width:90px;font-size:11px;font-weight:700;color:var(--text-mid);flex-shrink:0;text-transform:uppercase">${f}</div>
+              <div style="flex:1;height:8px;background:var(--surface2);border-radius:99px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${col};border-radius:99px;transition:width .5s"></div>
+              </div>
+              <div style="width:36px;text-align:right;font-size:13px;font-weight:800;color:${col};flex-shrink:0">${last.toFixed(1)}</div>
+              <div style="width:28px;font-size:10px;color:var(--text-dim);flex-shrink:0">ort: ${avg.toFixed(1)}</div>
+            </div>`;
+          }).join('');
+        })()}
+      </div>
+    </div>` : ''}
 
     <!-- YAKLAŞAN RANDEVULAR -->
-    <div class="card cp" style="margin-bottom:16px">
-      <div class="portal-sec-title">📅 Yaklaşan Randevularım</div>
-      ${myAppts.length?myAppts.map(a=>`
-        <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${stu.color};border-radius:9px;padding:12px;margin-top:8px">
-          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:3px">${new Date(a.date+'T12:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</div>
-          <div style="font-family:'Inter',sans-serif;font-size:17px;font-weight:700">${a.time} <span style="font-size:13px;color:var(--text-mid)">· ${a.duration} dk</span></div>
-          <div style="font-size:12px;color:var(--text-mid);margin-top:2px">${esc(a.type)}</div>
-        </div>`).join('')
-      :'<div style="font-size:13px;color:var(--text-dim);margin-top:8px">Yaklaşan randevu yok</div>'}
+    ${myAppts.length ? `
+    <div class="card cp" style="margin-bottom:14px">
+      <div class="portal-sec-title" style="margin-bottom:10px">📅 Yaklaşan Randevularım</div>
+      ${myAppts.map(a=>`
+        <div style="display:flex;align-items:center;gap:12px;background:var(--surface2);border-left:3px solid ${stu.color};border-radius:9px;padding:12px;margin-bottom:6px">
+          <div style="text-align:center;flex-shrink:0">
+            <div style="font-size:18px;font-weight:800;color:var(--text)">${new Date(a.date+'T12:00').getDate()}</div>
+            <div style="font-size:9px;font-weight:700;color:var(--text-dim);text-transform:uppercase">${new Date(a.date+'T12:00').toLocaleDateString('tr-TR',{month:'short'})}</div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">${esc(a.type)}</div>
+            <div style="font-size:11px;color:var(--text-mid);margin-top:2px">${a.time} · ${a.duration} dk</div>
+          </div>
+          ${a.meet_link?`<a href="${esc(a.meet_link)}" target="_blank" style="font-size:11px;background:var(--blue-dim);color:var(--blue);padding:4px 10px;border-radius:8px;text-decoration:none;font-weight:700">Katıl</a>`:''}
+        </div>`).join('')}
+    </div>` : ''}
+
+    <!-- PROFİL BİLGİLERİM (görüntüleme modu) -->
+    <div class="card cp" style="margin-bottom:14px" id="spViewCard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="portal-sec-title" style="margin:0">📝 Profil Bilgilerim</div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('spViewCard').style.display='none';document.getElementById('spEditCard').style.display='block'">Düzenle</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${[
+          ['Okul', school],['Sınıf', grade],
+          ['Hedef Üniversite', target_university],['Hedef Bölüm', target_department],
+          ['Zorlandığım Dersler', struggling_subjects],['Günlük Kapasite', daily_capacity ? daily_capacity+' saat' : '']
+        ].map(([lbl,val])=>`
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">${lbl}</div>
+            <div style="font-size:13px;color:${val?'var(--text)':'var(--text-dim)'};font-weight:${val?'500':'400'}">${val||'—'}</div>
+          </div>`).join('')}
+      </div>
+      ${bio?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px;color:var(--text-mid);line-height:1.6">${esc(bio)}</div>`:''}
     </div>
 
-    <!-- DETAYLI PROFIL BILGILERI -->
-    <div class="card cp" style="margin-bottom:16px">
-      <div class="portal-sec-title">📝 Detaylı Profil Bilgilerim</div>
-      
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; margin-bottom:12px;">
-        <div>
-          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Okul</label>
-          <input type="text" id="spSchool" value="${esc(school)}" placeholder="Okulunuz" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none;">
-        </div>
-        <div>
-          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Sınıf / Seviye</label>
-          <input type="text" id="spGrade" value="${esc(grade)}" placeholder="Örn: 12. Sınıf, Mezun" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none;">
-        </div>
+    <!-- PROFİL DÜZENLEME FORMU (gizli) -->
+    <div class="card cp" style="margin-bottom:14px;display:none" id="spEditCard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="portal-sec-title" style="margin:0">📝 Profil Düzenle</div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('spEditCard').style.display='none';document.getElementById('spViewCard').style.display='block'">İptal</button>
       </div>
-
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-        <div>
-          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Hedef Üniversite</label>
-          <input type="text" id="spTargetUni" value="${esc(target_university)}" placeholder="Örn: Boğaziçi Üniversitesi" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none;">
-        </div>
-        <div>
-          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Hedef Bölüm</label>
-          <input type="text" id="spTargetDept" value="${esc(target_department)}" placeholder="Örn: Bilgisayar Mühendisliği" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none;">
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        ${[
+          ['spSchool','Okul','text',school,'Okulunuz'],
+          ['spGrade','Sınıf / Seviye','text',grade,'12. Sınıf, Mezun'],
+          ['spTargetUni','Hedef Üniversite','text',target_university,'Boğaziçi Üniversitesi'],
+          ['spTargetDept','Hedef Bölüm','text',target_department,'Bilgisayar Mühendisliği'],
+          ['spStruggling','Zorlandığım Dersler','text',struggling_subjects,'Fizik, Geometri'],
+          ['spCapacity','Günlük Kapasite (Saat)','number',daily_capacity,'6'],
+        ].map(([id,lbl,type,val,ph])=>`
+          <div>
+            <label style="display:block;font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:4px">${lbl}</label>
+            <input type="${type}" id="${id}" value="${esc(String(val))}" placeholder="${ph}" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;color:var(--text);outline:none;box-sizing:border-box">
+          </div>`).join('')}
       </div>
-
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-        <div>
-          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Zorlandığım Dersler</label>
-          <input type="text" id="spStruggling" value="${esc(struggling_subjects)}" placeholder="Örn: Fizik, Geometri" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none;">
-        </div>
-        <div>
-          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Günlük Çalışma Kapasitesi (Saat)</label>
-          <input type="number" id="spCapacity" value="${esc(daily_capacity)}" placeholder="Örn: 6" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none;">
-        </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:4px">Biyografi</label>
+        <textarea id="spBio" style="width:100%;min-height:72px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;color:var(--text);outline:none;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(bio)}</textarea>
       </div>
-
-      <div style="margin-bottom:12px;">
-        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Biyografi / Kendinden Bahset</label>
-        <textarea id="spBio" style="width:100%; min-height:80px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none; resize:vertical;">${esc(bio)}</textarea>
-      </div>
-
-      <button class="btn btn-accent" style="width:100%; padding:10px;" onclick="saveStudentProfile()">Profil Bilgilerini Güncelle ✓</button>
+      <button class="btn btn-accent" style="width:100%;padding:10px" onclick="saveStudentProfile()">Kaydet ✓</button>
     </div>
 
     <!-- ŞİFRE DEĞİŞTİR -->
