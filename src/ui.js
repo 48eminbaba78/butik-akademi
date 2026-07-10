@@ -174,6 +174,7 @@ const stuTabs=[
   {id:'sportal',lbl:'📋',name:'Programım'},
   {id:'sexams',lbl:'📊',name:'Denemeler'},
   {id:'smessages',lbl:'💬',name:'Koçuma Yaz'},
+  {id:'suyelik',lbl:'💳',name:'Üyeliğim'},
   {id:'sprofil',lbl:'👤',name:'Profilim'},
 ];
 const devTabs=[
@@ -301,7 +302,7 @@ function switchTab(tab, updateHash = true){
     'coach-applications':renderCoachApplications,
     'coach-notes':renderCoachNotes,
     todolist:renderTodoList, portal:renderPortal, sportal:renderSPortal,
-    sexams:renderSExams, smessages:renderSMessages, sprofil:renderSProfil,
+    sexams:renderSExams, smessages:renderSMessages, suyelik:renderSUyelik, sprofil:renderSProfil,
     profile:renderProfile, settings:renderSettings,
     'student-detail': () => { if(S.activeStuId) openStudentDetail(S.activeStuId); else switchTab('students'); },
     program: () => { if(S.activeStuId) openStudentProgram(S.activeStuId); else switchTab('students'); },
@@ -1548,6 +1549,40 @@ function renderSettings(){
         </div>
       </div>
 
+      ${(session.role === 'coach' || session.role === 'developer') ? (() => {
+        const u = session.dbUser;
+        const plan = u?.plan || 'trial';
+        const planLabel = plan === 'trial' ? 'Deneme Dönemi' : plan === 'pro' ? 'Pro Üyelik' : plan === 'premium' ? 'Premium Üyelik' : plan.charAt(0).toUpperCase() + plan.slice(1);
+        const planColor = plan === 'trial' ? '#f0a500' : '#3ecf8e';
+        let membershipEnd = null;
+        if (u?.trial_ends_at) membershipEnd = new Date(u.trial_ends_at);
+        else if (u?.created_at) membershipEnd = new Date(new Date(u.created_at).getTime() + 14 * 24 * 60 * 60 * 1000);
+        const now = new Date();
+        const daysLeft = membershipEnd ? Math.max(0, Math.ceil((membershipEnd - now) / (1000 * 60 * 60 * 24))) : null;
+        const fmtDate = d => d ? d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+        const statusColor = daysLeft === null ? '#888' : daysLeft > 7 ? '#3ecf8e' : daysLeft > 3 ? '#f0a500' : '#ef4444';
+        const stuCount = S.students?.length || 0;
+        return `
+      <div class="settings-block" style="margin-top:20px">
+        <div class="settings-block-title">Üyelik</div>
+        <div class="setting-item">
+          <div><div class="setting-item-lbl">Plan</div><div class="setting-item-sub" style="color:${planColor};font-weight:600">${planLabel}</div></div>
+        </div>
+        <div class="setting-item">
+          <div><div class="setting-item-lbl">Bitiş Tarihi</div><div class="setting-item-sub">${fmtDate(membershipEnd)}</div></div>
+          ${daysLeft !== null ? `<span style="background:${statusColor}22;color:${statusColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">${daysLeft} gün</span>` : ''}
+        </div>
+        <div class="setting-item">
+          <div><div class="setting-item-lbl">Aktif Öğrenci</div><div class="setting-item-sub">${stuCount} öğrenci</div></div>
+        </div>
+        <div class="setting-item" style="flex-direction:column;align-items:flex-start;gap:8px">
+          <div class="setting-item-lbl">Plan Yükseltme / Yenileme</div>
+          <div style="font-size:11px;color:var(--text-dim);line-height:1.5">Üyelik yenileme veya plan değişikliği için destek ekibiyle iletişime geçin.</div>
+          <a href="mailto:destek@rostrumakademi.com" style="font-size:12px;color:var(--accent);text-decoration:none;font-weight:600">destek@rostrumakademi.com →</a>
+        </div>
+      </div>`;
+      })() : ''}
+
       <div class="settings-block" style="margin-top:20px">
         <div class="settings-block-title">Hesap</div>
         <div class="setting-item">
@@ -1755,11 +1790,13 @@ function toggleAllDays(){
 async function confirmClearDays(){
   if(!_clearDaysSel.length)return showToast('Önce gün seçin');
   if(!await customConfirm(`${_clearDaysSel.length} günün görevleri silinsin mi?`))return;
+  showLoading(true, 'Siliniyor...');
   for(const ds of _clearDaysSel){
     await db.from('tasks').delete().eq('student_id',S.activeStuId).eq('date',ds);
     delete S.tasks[`${S.activeStuId}_${ds}`];
   }
-  saveUI();cm('clearWeekModal');renderProgram();showToast(`${_clearDaysSel.length} gün temizlendi`);
+  showLoading(false);
+  saveUI();cm('clearWeekModal');renderProgram();showToast(`${_clearDaysSel.length} gün temizlendi ✓`);
 }
 
 // ── KONU LİSTESİ ────────────────────────────────
@@ -3660,39 +3697,113 @@ async function selectThread(stuId){
   initRealtime();
 }
 
-function renderThreadHTML(stuId,role){
-  const stu=S.students.find(s=>s.id===stuId);
-  const thread=S.messages[stuId]||[];
-  const bubbles=thread.map(m=>{
-    const isOut=(role==='coach'&&m.from==='coach')||(role==='student'&&m.from==='student');
-    return `<div class="msg-bubble ${isOut?'out':'in'}">${esc(m.text)}<div class="msg-bubble-time">${m.time}</div></div>`;
+// pending image for message
+let _msgPendingImg = null; // { file, previewUrl }
+
+function renderThreadHTML(stuId, role){
+  const stu = S.students.find(s=>s.id===stuId);
+  const thread = S.messages[stuId] || [];
+  const color = stu?.color || '#E8613A';
+
+  const rows = thread.map(m => {
+    const isOut = (role==='coach'&&m.from==='coach')||(role==='student'&&m.from==='student');
+    const imgHtml = m.image_url
+      ? `<img src="${esc(m.image_url)}" onclick="window.open('${esc(m.image_url)}','_blank')" />`
+      : '';
+    const textHtml = m.text ? esc(m.text) : '';
+    const content = imgHtml + (imgHtml && textHtml ? `<div style="margin-top:5px">${textHtml}</div>` : textHtml);
+    if (isOut) {
+      return `<div class="msg-row out">
+        <div class="msg-bubble out">${content}<div class="msg-bubble-time">${m.time}</div></div>
+      </div>`;
+    } else {
+      return `<div class="msg-row in">
+        <div class="msg-avatar-sm" style="background:${color}">${stu?.name[0]||'?'}</div>
+        <div class="msg-bubble in">${content}<div class="msg-bubble-time">${m.time}</div></div>
+      </div>`;
+    }
   }).join('');
+
   return `<div class="msg-main-hd">
-    <div style="width:30px;height:30px;border-radius:8px;background:${stu?.color||'#555'};color:#0f0e0c;font-family:'Inter',sans-serif;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${stu?.name[0]||'?'}</div>
-    <div class="msg-main-hd-name">${esc(stu?.name||'')}</div>
+    <div class="msg-main-hd-avatar" style="background:${color}">${stu?.name[0]||'?'}</div>
+    <div>
+      <div class="msg-main-hd-name">${esc(stu?.name||'')}</div>
+      <div class="msg-main-hd-status">● Çevrimiçi</div>
+    </div>
   </div>
-  <div class="msg-body" id="msgBody">${bubbles||'<div class="empty"><p>Henüz mesaj yok</p></div>'}</div>
+  <div class="msg-body" id="msgBody">${rows||'<div class="empty" style="margin-top:40px;text-align:center;color:var(--text-dim)">👋 Henüz mesaj yok</div>'}</div>
+  <div id="msgImgPreview" style="display:none" class="msg-img-preview">
+    <img id="msgImgThumb" src="" /><span id="msgImgName"></span>
+    <span class="msg-img-remove" onclick="window._cancelMsgImg()">✕</span>
+  </div>
   <div class="msg-input-area">
-    <textarea class="msg-input" id="msgInput" placeholder="Mesaj yaz..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${stuId}','${role}');}"></textarea>
-    <button class="btn btn-accent" onclick="sendMsg('${stuId}','${role}')">Gönder</button>
+    <label class="msg-attach-btn" title="Fotoğraf gönder">
+      📎<input type="file" accept="image/*,application/pdf" style="display:none" onchange="window._pickMsgImg(this,'${stuId}','${role}')">
+    </label>
+    <textarea class="msg-input" id="msgInput" placeholder="Mesaj yaz..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${stuId}','${role}');}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px'"></textarea>
+    <button class="msg-send-btn" onclick="sendMsg('${stuId}','${role}')">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+    </button>
   </div>`;
 }
 
-async function sendMsg(stuId,role){
-  const inp=document.getElementById('msgInput');
-  const text=inp.value.trim();
-  if(!text)return;
-  // coach_id: koç ise kendi id'si, öğrenci ise kendi coach_id'si
+window._pickMsgImg = function(inp, stuId, role) {
+  const file = inp.files[0]; if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('Dosya max 5 MB olabilir'); inp.value=''; return; }
+  _msgPendingImg = { file };
+  const preview = document.getElementById('msgImgPreview');
+  const thumb = document.getElementById('msgImgThumb');
+  const name = document.getElementById('msgImgName');
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => { thumb.src = e.target.result; thumb.style.display='block'; };
+    reader.readAsDataURL(file);
+  } else { thumb.style.display='none'; }
+  name.textContent = file.name;
+  preview.style.display = 'flex';
+  inp.value = '';
+};
+window._cancelMsgImg = function() {
+  _msgPendingImg = null;
+  document.getElementById('msgImgPreview').style.display = 'none';
+};
+
+async function sendMsg(stuId, role){
+  const inp = document.getElementById('msgInput');
+  const text = inp.value.trim();
+  if (!text && !_msgPendingImg) return;
+
   const coachId = session.coachId || S.students.find(s=>s.id===stuId)?.coachId || S.students.find(s=>s.id===session.studentId)?.coachId;
-  const {data,error}=await db.from('messages').insert({
-    student_id:stuId, coach_id:coachId, from_role:role, text, read:false
+
+  let image_url = null;
+  if (_msgPendingImg) {
+    const file = _msgPendingImg.file;
+    const ext = file.name.split('.').pop();
+    const path = `${stuId}/${Date.now()}.${ext}`;
+    const { error: upErr } = await db.storage.from('chat_images').upload(path, file, { upsert: true });
+    if (upErr) { showToast('Görsel yüklenemedi: ' + upErr.message); return; }
+    const { data: urlData } = db.storage.from('chat_images').getPublicUrl(path);
+    image_url = urlData.publicUrl;
+    _msgPendingImg = null;
+    document.getElementById('msgImgPreview').style.display = 'none';
+  }
+
+  const { data, error } = await db.from('messages').insert({
+    student_id: stuId, coach_id: coachId, from_role: role,
+    text: text || null, image_url, read: false
   }).select().single();
-  if(error){ console.error('sendMsg error:',error); showToast('Hata: '+error.message); return; }
-  if(!S.messages[stuId])S.messages[stuId]=[];
-  S.messages[stuId].push({_id:data.id,from:role,text,time:new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}),read:false});
-  inp.value='';
-  if(currentTab==='messages'){document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'coach');scrollMsgs();}
-  if(currentTab==='smessages'){document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'student');scrollMsgs();}
+  if (error) { showToast('Hata: ' + error.message); return; }
+
+  if (!S.messages[stuId]) S.messages[stuId] = [];
+  S.messages[stuId].push({
+    _id: data.id, from: role, text: text || '', image_url,
+    time: new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}), read: false
+  });
+  inp.value = ''; inp.style.height = 'auto';
+  if (currentTab==='messages')   { document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'coach');   scrollMsgs(); }
+  if (currentTab==='smessages')  { document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'student'); scrollMsgs(); }
 }
 function scrollMsgs(){setTimeout(()=>{const b=document.getElementById('msgBody');if(b)b.scrollTop=b.scrollHeight;},60);}
 
@@ -4026,14 +4137,30 @@ function _fbCoachHtml(t) {
   const timeStr = t_s > 0 ? (Math.floor(t_s/60)>0?Math.floor(t_s/60)+'sa ':'') + (t_s%60>0?t_s%60+'dk':'') : null;
   const stars   = fb.focus ? '★'.repeat(fb.focus)+'☆'.repeat(5-fb.focus) : null;
 
+  const DIFF_C = {1:'#3ecf8e',2:'#86efac',3:'#f0a500',4:'#fb923c',5:'#ef4444'};
+  const dc = fb.difficulty ? DIFF_C[fb.difficulty] : 'var(--text-mid)';
+
   return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:12px 16px;margin-bottom:14px">
-    <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">💬 Geri Bildirim</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${fb.blocker?'8px':'0'}">
+    <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">💬 Geri Bildirim</div>
+
+    <!-- Satır 1: durum + süre -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
       ${si?`<span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:${si.bg};color:${si.c};border:1px solid ${si.c}33">${si.l}</span>`:''}
       ${timeStr?`<span style="padding:4px 12px;border-radius:20px;font-size:12px;background:var(--surface);border:1px solid var(--border);color:var(--text-mid)">⏱ ${timeStr}</span>`:''}
-      ${stars?`<span style="padding:4px 12px;border-radius:20px;font-size:12px;background:var(--surface);border:1px solid var(--border);color:#f0a500">${stars}</span>`:''}
-      ${fb.difficulty?`<span style="padding:4px 12px;border-radius:20px;font-size:12px;background:var(--surface);border:1px solid var(--border);color:var(--text-mid)">${DL[fb.difficulty]||''}</span>`:''}
     </div>
+
+    <!-- Satır 2: odaklanma + zorluk -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:${fb.blocker?'10px':'0'}">
+      ${stars?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 10px">
+        <div style="font-size:9px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">🎯 Odaklanma</div>
+        <div style="font-size:16px;color:#f0a500;letter-spacing:1px">${stars}</div>
+      </div>`:''}
+      ${fb.difficulty?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 10px">
+        <div style="font-size:9px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">📊 Zorluk</div>
+        <div style="font-size:13px;font-weight:700;color:${dc}">${DL[fb.difficulty]||''}</div>
+      </div>`:''}
+    </div>
+
     ${fb.blocker?`<div style="font-size:12px;color:var(--text-mid)">Neden: <b style="color:#fb923c">${BL[fb.blocker]||fb.blocker}</b></div>`:''}
   </div>`;
 }
@@ -4047,9 +4174,7 @@ async function openTaskDetail(ds, idx, role){
 
   // Koç görüntüsünde öğrencinin en güncel verisini çek
   if (role === 'coach' && t._id) {
-    const { data: fresh } = await db.from('tasks')
-      .select('done, student_note, student_result, student_feedback')
-      .eq('id', t._id).single();
+    const { data: fresh } = await db.from('tasks').select('*').eq('id', t._id).single();
     if (fresh) {
       t.done             = fresh.done;
       t.student_note     = fresh.student_note     || '';
@@ -4281,7 +4406,9 @@ async function saveTaskDetail(ds, idx, role){
     }
   }
 
-  await db.from('tasks').update(updatePayload).eq('id', t._id);
+  if (!t._id) { showToast('Hata: görev ID bulunamadı'); return; }
+  const { error: saveErr } = await db.from('tasks').update(updatePayload).eq('id', t._id);
+  if (saveErr) { showToast('Kaydetme hatası: ' + saveErr.message); console.error('saveTaskDetail error', saveErr, updatePayload); return; }
   t.student_note = note;
   cm('taskDetailModal');
   showToast('Kaydedildi ✓');
@@ -4639,7 +4766,7 @@ function initRealtime() {
       // tekrar ekleme önlemi
       if(S.messages[stuId].find(x=>x._id===m.id)) return;
       S.messages[stuId].push({
-        _id: m.id, from: m.from_role, text: m.text, read: m.read,
+        _id: m.id, from: m.from_role, text: m.text||'', image_url: m.image_url||null, read: m.read,
         time: new Date(m.created_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})
       });
       if(currentTab==='messages' && S.msgThread===stuId) {
@@ -6433,6 +6560,123 @@ async function changePassword() {
 }
 
 // ═══════════════════════════════════════════════
+// ÜYELİK EKRANI (Öğrenci)
+// ═══════════════════════════════════════════════
+async function renderSUyelik() {
+  const el = document.getElementById('view-suyelik');
+  if (!el) return;
+
+  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:200px"><div style="width:32px;height:32px;border:3px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite"></div></div>`;
+
+  const stu = S.students.find(s => s.id === session.studentId);
+  const dbUser = session.dbUser;
+
+  // Fetch coach info
+  let coachUser = null;
+  if (session.coachId) {
+    const { data } = await db.from('users').select('full_name,plan,trial_ends_at,created_at,email').eq('id', session.coachId).maybeSingle();
+    coachUser = data;
+  }
+
+  const enrollDate = dbUser?.created_at ? new Date(dbUser.created_at) : null;
+  const now = new Date();
+
+  const plan = coachUser?.plan || 'trial';
+  const planLabel = plan === 'trial' ? 'Deneme Dönemi' : plan === 'pro' ? 'Pro Üyelik' : plan === 'premium' ? 'Premium Üyelik' : plan.charAt(0).toUpperCase() + plan.slice(1);
+  const planColor = plan === 'trial' ? '#f0a500' : plan === 'pro' ? '#3ecf8e' : plan === 'premium' ? '#8b5cf6' : '#3ecf8e';
+  const planBg = plan === 'trial' ? '#fff8e6' : plan === 'pro' ? '#e6faf3' : plan === 'premium' ? '#f3e8ff' : '#e6faf3';
+  const planBgDark = plan === 'trial' ? '#2a2010' : plan === 'pro' ? '#0d2a1e' : plan === 'premium' ? '#1e0d2a' : '#0d2a1e';
+
+  let membershipEnd = null;
+  if (coachUser?.trial_ends_at) {
+    membershipEnd = new Date(coachUser.trial_ends_at);
+  } else if (coachUser?.created_at) {
+    membershipEnd = new Date(new Date(coachUser.created_at).getTime() + 14 * 24 * 60 * 60 * 1000);
+  }
+
+  const daysLeft = membershipEnd ? Math.max(0, Math.ceil((membershipEnd - now) / (1000 * 60 * 60 * 24))) : null;
+  const daysUsed = enrollDate ? Math.floor((now - enrollDate) / (1000 * 60 * 60 * 24)) : null;
+
+  const fmtDate = d => d ? d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+
+  const statusColor = daysLeft === null ? '#888' : daysLeft > 7 ? '#3ecf8e' : daysLeft > 3 ? '#f0a500' : '#ef4444';
+  const statusIcon = daysLeft === null ? '❓' : daysLeft > 7 ? '✅' : daysLeft > 3 ? '⚠️' : '🔴';
+  const statusText = daysLeft === null ? 'Durum bilinmiyor' : daysLeft > 7 ? 'Aktif' : daysLeft > 3 ? 'Yakında Sona Eriyor' : daysLeft === 0 ? 'Bugün Sona Eriyor' : 'Kritik — ' + daysLeft + ' gün';
+
+  el.innerHTML = `
+    <div style="max-width:480px;margin:0 auto;padding:16px">
+
+      <!-- Üyelik Durumu Kartı -->
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:120px;height:120px;background:${planColor};opacity:.06;border-radius:50%;transform:translate(30%,-30%)"></div>
+        <div style="display:flex;align-items:flex-start;gap:16px">
+          <div style="width:52px;height:52px;border-radius:14px;background:${planBg};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">💳</div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Üyelik Planı</div>
+            <div style="font-size:20px;font-weight:700;color:var(--text)">${planLabel}</div>
+            <div style="display:inline-flex;align-items:center;gap:5px;background:${planBg};color:${planColor};font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin-top:6px">
+              <span>${statusIcon}</span><span>${statusText}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detay Bilgiler -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px">
+        ${[
+          { icon: '🎓', label: 'Koçum', value: coachUser?.full_name || '—' },
+          { icon: '📅', label: 'Kayıt Tarihi', value: fmtDate(enrollDate) },
+          { icon: '⏳', label: 'Kullanım Süresi', value: daysUsed !== null ? daysUsed + ' gün' : '—' },
+          { icon: '📆', label: 'Üyelik Sona Erme', value: fmtDate(membershipEnd) },
+          { icon: '⌛', label: 'Kalan Süre', value: daysLeft !== null ? `<span style="color:${statusColor};font-weight:700">${daysLeft} gün</span>` : '—' },
+        ].map(({ icon, label, value }, i, arr) => `
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;${i < arr.length - 1 ? 'border-bottom:1px solid var(--border)' : ''}">
+            <span style="font-size:18px;width:24px;text-align:center">${icon}</span>
+            <div style="flex:1">
+              <div style="font-size:11px;color:var(--text-dim)">${label}</div>
+              <div style="font-size:14px;font-weight:600;color:var(--text);margin-top:1px">${value}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Günlük Sayaç -->
+      ${daysLeft !== null ? `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;font-weight:600">Üyelik Süresi</div>
+        ${(() => {
+          const total = membershipEnd && enrollDate ? Math.max(1, Math.ceil((membershipEnd - enrollDate) / (1000 * 60 * 60 * 24))) : 14;
+          const used = Math.min(total, total - daysLeft);
+          const pct = Math.min(100, Math.round((used / total) * 100));
+          const barColor = daysLeft > 7 ? '#3ecf8e' : daysLeft > 3 ? '#f0a500' : '#ef4444';
+          return `
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:6px">
+              <span>${used} gün kullanıldı</span>
+              <span>${daysLeft} gün kaldı</span>
+            </div>
+            <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${barColor};border-radius:6px;transition:width .5s ease"></div>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);text-align:center;margin-top:6px">%${pct} tamamlandı</div>
+          `;
+        })()}
+      </div>
+      ` : ''}
+
+      <!-- İletişim / Yardım -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:12px">Üyelik Talebi & İletişim</div>
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:14px">
+          Üyelik yenileme, plan değişikliği veya destek için koçunuzla iletişime geçin.
+        </div>
+        <button onclick="switchTab('smessages')" style="width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span>💬</span><span>Koçuma Mesaj Gönder</span>
+        </button>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════
 // KOÇ VE GELİŞTİRİCİ PROFİL / EŞLEŞME EK PARÇALARI
 // ═══════════════════════════════════════════════
 async function renderCoachProfile() {
@@ -7670,14 +7914,51 @@ function addAIMessage(role, content){
   msgs.scrollTop = msgs.scrollHeight;
 }
 
+let _aiPendingImg = null; // { base64, mimeType, name }
+
+window._pickAiImg = function(inp) {
+  const file = inp.files[0]; if (!file) return;
+  if (file.size > 8 * 1024 * 1024) { showToast('Dosya max 8 MB olabilir'); inp.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result.split(',')[1];
+    _aiPendingImg = { base64, mimeType: file.type, name: file.name };
+    const prev = document.getElementById('aiImgPreview');
+    const thumb = document.getElementById('aiImgThumb');
+    const name = document.getElementById('aiImgName');
+    thumb.src = e.target.result; thumb.style.display = 'block';
+    name.textContent = file.name;
+    prev.style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+  inp.value = '';
+};
+window._cancelAiImg = function() {
+  _aiPendingImg = null;
+  const prev = document.getElementById('aiImgPreview');
+  if (prev) prev.style.display = 'none';
+};
+
 async function sendAIMessage(){
   if(aiIsTyping) return;
   const input = document.getElementById('aiInput');
   const text = input.value.trim();
-  if(!text) return;
-  
+  const pendingImg = _aiPendingImg;
+  if(!text && !pendingImg) return;
+
   input.value = '';
-  addAIMessage('user', text);
+  if (pendingImg) {
+    window._cancelAiImg();
+    const msgs = document.getElementById('aiMessages');
+    const welcome = msgs.querySelector('.ai-welcome'); if(welcome) welcome.remove();
+    const div = document.createElement('div');
+    div.className = 'ai-msg user';
+    div.innerHTML = `<img src="data:${pendingImg.mimeType};base64,${pendingImg.base64}" style="max-width:180px;max-height:180px;border-radius:10px;display:block" />${text ? `<div style="margin-top:6px">${esc(text)}</div>` : ''}<div class="ai-msg-time">${new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</div>`;
+    msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
+    aiChatHistory.push({role:'user', content: text || 'Fotoğraftaki soruyu çöz.', image: pendingImg});
+  } else {
+    addAIMessage('user', text);
+  }
   
   // Typing indicator
   aiIsTyping = true;
@@ -7704,8 +7985,7 @@ async function sendAIMessage(){
     });
     
     if(!response.ok) {
-      // Fallback: API yoksa direkt Gemini çağır (geliştirme modu)
-      const fallbackReply = await callGeminiFallback(text, context, userRole);
+      const fallbackReply = await callGeminiFallback(text, context, userRole, pendingImg);
       addAIMessage('assistant', fallbackReply);
     } else {
       const data = await response.json();
@@ -7713,10 +7993,9 @@ async function sendAIMessage(){
     }
   } catch(e) {
     console.error('AI error:', e);
-    // Fallback dene
     try {
       const ctx = buildAIContext();
-      const fallbackReply = await callGeminiFallback(text, ctx, session.role||'student');
+      const fallbackReply = await callGeminiFallback(text, ctx, session.role||'student', pendingImg);
       addAIMessage('assistant', fallbackReply);
     } catch(e2) {
       const hasLocalKey = localStorage.getItem('gemini_api_key');
@@ -7756,7 +8035,7 @@ async function autoDetectModel(key) {
 }
 
 // Fallback: Doğrudan Gemini API (geliştirme modu için)
-async function callGeminiFallback(userText, context, userRole) {
+async function callGeminiFallback(userText, context, userRole, pendingImg) {
   let localKey = localStorage.getItem('gemini_api_key');
   if (!localKey) {
     try {
@@ -7799,35 +8078,69 @@ Rostrum Akademi İşleyişi, Üyelik ve Fiyatlandırma Bilgileri:
    - Koç Pro Paketi (Pro): Aylık 599 TL
    - Kurumsal Paket (Enterprise): Aylık 1499 TL`;
   
+  // Kullanıcı & üyelik bilgisi
+  const dbUser = session.dbUser;
+  if (dbUser) {
+    const plan = dbUser.plan || 'trial';
+    const planLabel = {trial:'Deneme',starter:'Başlangıç',pro:'Pro',enterprise:'Kurumsal'}[plan] || plan;
+    if (plan === 'trial') {
+      const trialEnd = dbUser.trial_ends_at
+        ? new Date(dbUser.trial_ends_at)
+        : new Date(new Date(dbUser.created_at).getTime() + 14*24*60*60*1000);
+      const daysLeft = Math.max(0, Math.ceil((trialEnd - Date.now()) / 86400000));
+      systemPrompt += `\nKULLANICI BİLGİSİ: Ad=${dbUser.full_name||dbUser.username}, Plan=${planLabel}, Deneme süresi kalan=${daysLeft} gün (bitiş: ${trialEnd.toLocaleDateString('tr-TR')}).`;
+    } else {
+      systemPrompt += `\nKULLANICI BİLGİSİ: Ad=${dbUser.full_name||dbUser.username}, Plan=${planLabel} (aktif üye).`;
+    }
+  }
+
+  const hasImage = !!pendingImg;
+
   if(userRole === 'parent') {
     systemPrompt += '\nVELİ MODU: Veliye saygılı ve güven verici konuş. Çocuğun durumunu yapıcı aktar.';
   } else if(userRole === 'student') {
-    systemPrompt += `\nÖĞRENCİ MODU (YAPAY ZEKA DERS ASİSTANI):
-1. Kendini her zaman net bir şekilde bir Yapay Zeka Ders Asistanı (makine) olarak tanıt. Asla insanmış gibi davranma. "Ben senin koçunum", "Ben senin rehberinim" deme.
-2. Kesinlikle duygusal veya motivasyonel koçluk yapma. Öğrencilere "Seni anlıyorum", "Seninle gurur duyuyorum" gibi duygusal/samimi ifadeler kullanma. Öğrenci motivasyon veya program önerisi isterse, bunu yapamayacağını belirt ve: "Ben sadece akademik konularda yardımcı olabilecek mekanik bir yapay zekayım. Bu konuyu kendi koçunla görüşmelisin." diyerek koçuna yönlendir.
-3. Sokratik Yöntemi Kullan: Öğrenci bir soruyu çözemediğini söylediğinde veya yardım istediğinde doğrudan cevabı veya tüm adımları hemen yazma! Adım adım ilerle, ipucu ver, öğrenciye açıklayıcı sorular sorarak onun doğru cevabı bulmasını sağla.
-4. Sadece mekanik destek ver: Soru çözümü, konu anlatımı, özet çıkarma ve mini testler yap. Ders programı oluşturmayı kesinlikle reddet ve koçuna yönlendir.`;
+    if (hasImage) {
+      systemPrompt += `\nÖĞRENCİ MODU — SORU ÇÖZÜMÜ:
+Öğrenci sana bir soru fotoğrafı gönderdi. Şu anda o sorunun ait olduğu dersin uzman öğretmenisin.
+Kurallar:
+1. Soruyu dikkatlice incele, konusunu belirle ve kısaca belirt (örn: "Bu soru trigonometri konusundan").
+2. Çözümü adım adım, net ve öğretici bir dille yaz. Her adımı numaralandır.
+3. Formül veya kural kullandıysan neden kullandığını açıkla.
+4. Varsa alternatif çözüm yolunu da kısaca belirt.
+5. Sonunda öğrenciye bu konuyu pekiştirmek için 1 kısa öneri ekle.`;
+    } else {
+      systemPrompt += `\nÖĞRENCİ MODU (YAPAY ZEKA DERS ASİSTANI):
+1. Kendini net bir Yapay Zeka Ders Asistanı olarak tanıt; insan gibi davranma.
+2. Duygusal/motivasyonel koçluk yapma; bu talepleri koça yönlendir.
+3. Sokratik yöntem kullan: doğrudan cevap yerine ipucu ver, sorular sor.
+4. Sadece soru çözümü, konu anlatımı, özet, mini test yap. Program önerisini reddet.`;
+    }
   } else if(userRole === 'coach') {
     systemPrompt += `\nKOÇ MODU (YAPAY ZEKA COPILOT):
-Karşındaki kişi bir Eğitim Koçudur. Ona profesyonel bir meslektaş gibi hitap et (Hocam, Meslektaşım vb.). Seçili olan öğrenci hakkında veri odaklı analizler, tavsiyeler ve pedagojik öneriler sun.`;
+Karşındaki kişi bir Eğitim Koçudur. Ona profesyonel bir meslektaş gibi hitap et. Veri odaklı analizler, pedagojik öneriler sun.`;
   }
-  
+
   if(userRole === 'coach' && context.studentName) {
-    systemPrompt += `\nŞu anda seçili olan ve üzerinde çalışılan öğrenci: ${context.studentName}`;
+    systemPrompt += `\nŞu anda seçili öğrenci: ${context.studentName}`;
   } else if(context.studentName) {
     systemPrompt += `\nÖğrenci: ${context.studentName}`;
   }
   if(context.recentExams) systemPrompt += `\nSon denemeler: ${JSON.stringify(context.recentExams)}`;
   if(context.taskCompletionRate!==undefined) systemPrompt += `\nGörev tamamlama: %${context.taskCompletionRate}`;
   if(context.target) systemPrompt += `\nHedef: ${context.target}`;
-  
+
+  // Build Gemini messages with optional image
+  const historyMsgs = aiChatHistory.slice(-8).map(m => {
+    const parts = [];
+    if (m.image) parts.push({ inlineData: { mimeType: m.image.mimeType, data: m.image.base64 } });
+    parts.push({ text: m.content || (m.image ? 'Soruyu çöz' : '') });
+    return { role: m.role==='user'?'user':'model', parts };
+  });
+
   const messages = [
     {role:'user', parts:[{text: systemPrompt}]},
     {role:'model', parts:[{text:'Anladım! Rostrum Akademi Yapay Zeka Asistanı olarak hazırım.'}]},
-    ...aiChatHistory.slice(-8).map(m=>({
-      role: m.role==='user'?'user':'model',
-      parts:[{text: m.content}]
-    }))
+    ...historyMsgs
   ];
   
   const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_KEY}`, {
