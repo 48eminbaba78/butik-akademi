@@ -192,7 +192,6 @@ const stuTabs=[
   {id:'sportal',lbl:'📋',name:'Programım'},
   {id:'sexams',lbl:'📊',name:'Denemeler'},
   {id:'smessages',lbl:'💬',name:'Koçuma Yaz'},
-  {id:'suyelik',lbl:'💳',name:'Üyeliğim'},
   {id:'sprofil',lbl:'🌟',name:'Yolculuğum'},
 ];
 const devTabs=[
@@ -271,6 +270,10 @@ function setupShell(){
   // Koç Profilim dropdown item — sadece koçlarda göster
   const coachProfileItem = document.getElementById('tnCoachProfileItem');
   if(coachProfileItem) coachProfileItem.style.display = (session.role==='coach' || session.role==='developer') ? 'flex' : 'none';
+
+  // Üyeliğim dropdown item — sadece öğrencilerde göster
+  const uyelikItem = document.getElementById('tnUyelikItem');
+  if(uyelikItem) uyelikItem.style.display = session.role==='student' ? 'flex' : 'none';
 
   initAIChatForRole();
   setTimeout(loadAnnouncements, 600);
