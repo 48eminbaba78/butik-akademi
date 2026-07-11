@@ -3260,7 +3260,13 @@ function openApptModal(id){
   document.getElementById('amMeetLink').value=a?.meet_link||'';
   om('apptModal');
 }
+let _savingAppt = false;
 async function saveAppt(){
+  if(_savingAppt) return;
+  _savingAppt = true;
+  try { await _doSaveAppt(); } finally { _savingAppt = false; }
+}
+async function _doSaveAppt(){
   const stuId=document.getElementById('amStudent').value;
   const date=document.getElementById('amDate').value;
   const time=document.getElementById('amTime').value;
@@ -3287,11 +3293,8 @@ async function saveAppt(){
     showToast('Randevu eklendi ✓');
     if(S.workspace?.google_calendar_connected) {
       const stu=S.students.find(s=>s.id===stuId);
-      gcalSync('create',{date,hour:time,notes:payload.note,student_name:stu?.name}).then(evtId=>{
-        if(evtId){
-          newAppt.google_event_id=evtId;
-          db.from('appointments').update({google_event_id:evtId}).eq('id',data.id).then(()=>{});
-        }
+      gcalSync('create',{appointment_id:data.id,date,hour:time,notes:payload.note,student_name:stu?.name}).then(evtId=>{
+        if(evtId) newAppt.google_event_id=evtId;
       }).catch(()=>{});
     }
   }
