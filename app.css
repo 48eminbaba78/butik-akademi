@@ -382,12 +382,16 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 @media(max-width:1100px){.week-grid{grid-template-columns:repeat(7, minmax(180px, 1fr));}}
 @media(max-width:640px){
   .week-grid{grid-template-columns:repeat(7, minmax(160px, 1fr));}
-  .tbar-nav{display:none;}
+  .tn-nav{display:none;}
+  .tn-divider{display:none;}
   .mobile-nav{display:flex!important;}
   .content{padding-bottom:64px;}
   .view{padding:14px 16px;}
   .home-stats{grid-template-columns:1fr;}
+  .home-stats-v2{grid-template-columns:repeat(2,1fr);}
+  .home-bottom-grid{grid-template-columns:1fr;}
   .action-grid{grid-template-columns:repeat(2,1fr);}
+  .stu-detail-card{flex-wrap:wrap;gap:12px;}
 }
 
 .day-col {
@@ -1253,6 +1257,7 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 /* Orta boyutlu tablet (768px) */
 @media(max-width:768px) {
   .home-stats { grid-template-columns: 1fr 1fr; }
+  .home-stats-v2 { grid-template-columns: repeat(2,1fr); }
   .coach-todo-strip { grid-template-columns: 1fr 1fr; }
 }
 
