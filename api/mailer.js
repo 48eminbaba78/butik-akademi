@@ -330,8 +330,8 @@ export default async function handler(req, res) {
       const crRes = await fetch(baseUrl, { method: 'POST', headers: gcalHeaders, body: JSON.stringify(eventBody) });
       const crData = await crRes.json();
       if (!crRes.ok) return res.status(500).json({ error: crData.error?.message || 'Takvim etkinliği oluşturulamadı' });
-      if (data.appointment_id && crData.id) {
-        await admin.from('appointments').update({ google_event_id: crData.id }).eq('id', data.appointment_id);
+      if (appointment.appointment_id && crData.id) {
+        await admin.from('appointments').update({ google_event_id: crData.id }).eq('id', appointment.appointment_id);
       }
       return res.status(200).json({ success: true, google_event_id: crData.id });
     }
