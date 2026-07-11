@@ -3192,9 +3192,10 @@ function renderAppointments(){
     ? `<div style="display:flex;flex-direction:column;align-items:flex-end">
         <div style="display:flex;gap:6px;align-items:center">
           <span style="font-size:12px;color:var(--green);font-weight:600">✓ Google Takvim</span>
-          <button class="btn btn-ghost btn-sm" id="gcalSyncBtn" onclick="syncFromGoogle()">🔄 Senkronize Et</button>
+          <button class="btn btn-ghost btn-sm" id="gcalSyncBtn" onclick="syncFromGoogle()" title="Google Calendar'dan silme/değişiklik 1-2 dk. sonra yansır. Anlık silmek için Rostrum'dan silin.">🔄 Senkronize Et</button>
         </div>
         ${_gcalSyncLabel()}
+        <div style="font-size:10px;color:var(--text-mid);text-align:right;margin-top:2px">💡 Anlık silmek için Rostrum'dan silin</div>
       </div>`
     : `<button class="btn btn-ghost btn-sm" onclick="connectGoogleCalendar()">🔗 Google Takvim Bağla</button>`;
   el.innerHTML=`

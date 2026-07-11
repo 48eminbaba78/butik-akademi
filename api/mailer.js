@@ -366,7 +366,7 @@ export default async function handler(req, res) {
       const dates = appts.map(a => a.date).sort();
       const timeMin = encodeURIComponent(new Date(dates[0] + 'T00:00:00+03:00').toISOString());
       const timeMax = encodeURIComponent(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString());
-      const listRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&maxResults=2500`, { headers: gcalHeaders });
+      const listRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&showDeleted=true&maxResults=2500`, { headers: gcalHeaders });
       const listData = await listRes.json();
       if (!listRes.ok) return res.status(500).json({ error: listData.error?.message || 'Google Calendar sorgu hatası' });
 
