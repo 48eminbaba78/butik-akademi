@@ -1,0 +1,54 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-apk.yml'
+      - 'twa-manifest.json'
+      - 'public/manifest.json'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+
+      - name: Generate signing keystore
+        run: |
+          keytool -genkey -v \
+            -keystore android.keystore \
+            -alias rostrumakademi \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Rostrum Akademi, OU=IT, O=Rostrum Akademi, L=Istanbul, S=Istanbul, C=TR" \
+            -storepass rostrum2024 \
+            -keypass rostrum2024 \
+            -noprompt
+
+      - name: Build TWA APK
+        run: bubblewrap build
+
+      - name: Find APK files
+        run: find . -name "*.apk" 2>/dev/null | grep -v node_modules || echo "No APK found yet"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rostrum-akademi-apk-${{ github.run_number }}
+          path: '**/*.apk'
+          if-no-files-found: warn

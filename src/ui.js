@@ -183,7 +183,7 @@ window.showTrialCountdownBanner = showTrialCountdownBanner;
 const coachTabs=[
   {id:'home',lbl:'🏠',name:'Ana Sayfa'},
   {id:'students',lbl:'👤',name:'Öğrencilerim'},
-  {id:'todolist',lbl:'📅',name:'Ajanda'},
+  {id:'todolist',lbl:'📅',name:'Takvim'},
   {id:'coach-resources',lbl:'📚',name:'Kaynaklarım'},
   {id:'coach-applications',lbl:'📩',name:'Başvurular'},
 ];
@@ -271,9 +271,10 @@ function setupShell(){
   const coachProfileItem = document.getElementById('tnCoachProfileItem');
   if(coachProfileItem) coachProfileItem.style.display = (session.role==='coach' || session.role==='developer') ? 'flex' : 'none';
 
-  // Üyeliğim dropdown item — sadece öğrencilerde göster
+  // Üyeliğim dropdown item — sadece koçlarda göster
   const uyelikItem = document.getElementById('tnUyelikItem');
-  if(uyelikItem) uyelikItem.style.display = session.role==='student' ? 'flex' : 'none';
+  if(uyelikItem) uyelikItem.style.display = (session.role==='coach'||session.role==='developer') ? 'flex' : 'none';
+  setTimeout(updateMsgBadge, 200);
 
   initAIChatForRole();
   setTimeout(loadAnnouncements, 600);
@@ -493,10 +494,20 @@ function renderHome(){
 
   let anomaliesHTML = '';
   if (anomalies.length === 0) {
-    anomaliesHTML = `
-      <div style="text-align:center;padding:16px;color:var(--text-dim);font-size:13px">
-        ✅ Harika! Şu an için kritik bir performans düşüşü veya uyarı bulunmuyor.
-      </div>`;
+    if (S.students.length === 0) {
+      anomaliesHTML = `
+        <div style="text-align:center;padding:24px 16px">
+          <div style="font-size:36px;margin-bottom:12px">👋</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">İlk öğrencinizi ekleyin</div>
+          <div style="font-size:12px;color:var(--text-mid);margin-bottom:16px;line-height:1.6">Öğrencilerim sekmesinden öğrenci ekleyerek uygulamayı kullanmaya başlayabilirsiniz.</div>
+          <button class="btn btn-accent" onclick="switchTab('students')" style="font-size:13px;padding:9px 20px">Öğrenci Ekle →</button>
+        </div>`;
+    } else {
+      anomaliesHTML = `
+        <div style="text-align:center;padding:16px;color:var(--text-dim);font-size:13px">
+          ✅ Harika! Şu an için kritik bir performans düşüşü veya uyarı bulunmuyor.
+        </div>`;
+    }
   } else {
     const typeStyle = {
       perfect: { badge: '#3ecf8e', badgeBg: 'rgba(62,207,142,.12)', border: 'rgba(62,207,142,.25)' },
@@ -4178,7 +4189,11 @@ function renderSPortal(){
       <div class="day-tasks-list">${taskHtml||'<div class="empty" style="padding:8px 0"><p style="font-size:11px">Görev yok</p></div>'}</div>
     </div>`;
   }
+  const _yksDate = new Date(2026, 5, 14);
+  const _daysToYks = Math.max(0, Math.ceil((_yksDate - new Date()) / (1000*60*60*24)));
+
   el.innerHTML=`
+    ${_daysToYks > 0 ? `<div style="text-align:center;margin-bottom:10px;padding:7px 12px;background:var(--surface2);border-radius:10px;font-size:12px;color:var(--text-mid)">📅 YKS 2026'ya <strong style="color:var(--accent)">${_daysToYks}</strong> gün kaldı</div>` : ''}
     <div class="week-nav" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div style="display:flex;gap:6px;align-items:center">
         <button class="btn btn-ghost btn-sm" onclick="chWeekS(-1)">← Önceki</button>
@@ -4203,6 +4218,32 @@ async function stuToggleTask2(ds,idx){
   const newDone=!t.done;
   await db.from('tasks').update({done:newDone}).eq('id',t._id);
   t.done=newDone; renderSPortal();
+  if (newDone && ds === todayStr()) {
+    const dayTasks = S.tasks[key] || [];
+    if (dayTasks.length > 0 && dayTasks.every(task => task.done)) {
+      showDayCelebration();
+    }
+  }
+}
+
+function showDayCelebration() {
+  if (document.getElementById('_celebOverlay')) return;
+  if (!document.getElementById('_celebStyle')) {
+    const s = document.createElement('style');
+    s.id = '_celebStyle';
+    s.textContent = `@keyframes celebPop{0%{opacity:0;transform:scale(.7) translateY(20px)}60%{opacity:1;transform:scale(1.05) translateY(-4px)}100%{opacity:1;transform:scale(1) translateY(0)}}@keyframes celebFade{0%,70%{opacity:1}100%{opacity:0}}`;
+    document.head.appendChild(s);
+  }
+  const overlay = document.createElement('div');
+  overlay.id = '_celebOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;pointer-events:none';
+  overlay.innerHTML = `<div style="background:var(--surface);border:2px solid var(--green);border-radius:20px;padding:28px 36px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:celebPop .4s ease-out,celebFade 3.5s ease-in-out forwards;pointer-events:auto">
+    <div style="font-size:52px;margin-bottom:8px">🏆</div>
+    <div style="font-size:18px;font-weight:800;color:var(--green);margin-bottom:4px">Günü Tamamladın!</div>
+    <div style="font-size:13px;color:var(--text-mid)">Bugünkü tüm görevleri bitirdin. Harikasın 💪</div>
+  </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 3600);
 }
 function chWeekS(d){S.weekOffset+=d;saveUI();renderSPortal();}
 
@@ -4926,6 +4967,7 @@ async function renderSMessages(){
   const unreadIds=(S.messages[stu.id]||[]).filter(m=>m.from==='coach'&&!m.read&&m._id).map(m=>m._id);
   if(unreadIds.length) await db.from('messages').update({read:true}).in('id',unreadIds);
   (S.messages[stu.id]||[]).forEach(m=>{if(m.from==='coach')m.read=true;});
+  updateMsgBadge();
   const el=document.getElementById('view-smessages');
   el.innerHTML=`<div class="sh" style="margin-bottom:12px"><h2>💬 Koçuma Yaz</h2></div>
     <div class="smsg-wrap">
@@ -4959,6 +5001,7 @@ function initRealtime() {
         _id: m.id, from: m.from_role, text: m.text||'', image_url: m.image_url||null, read: m.read,
         time: new Date(m.created_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})
       });
+      if (session.role==='student' && m.from_role==='coach' && currentTab!=='smessages') updateMsgBadge();
       if(currentTab==='messages' && S.msgThread===stuId) {
         document.getElementById('msgMain').innerHTML = renderThreadHTML(stuId,'coach');
         scrollMsgs();
@@ -6709,6 +6752,20 @@ async function renderSProfil() {
   // Toplam tamamlanan görev (tüm zamanlar)
   let totalDone=0;
   Object.keys(S.tasks).filter(k=>k.startsWith(stu.id+'_')).forEach(k=>{ totalDone+=S.tasks[k].filter(t=>t.done).length; });
+
+  if (myExams.length === 0 && totalDone === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:60px 24px;max-width:360px;margin:0 auto">
+      <div style="font-size:52px;margin-bottom:16px">🌱</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:8px">Yolculuğun Yeni Başlıyor</div>
+      <div style="font-size:14px;color:var(--text-mid);line-height:1.65;margin-bottom:28px">Koçun haftalık programını oluşturdukça görev istatistiklerin, deneme netlerini girdikçe gelişim grafiklerin burada belirmeye başlayacak.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;text-align:left">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;display:flex;align-items:center;gap:12px"><span style="font-size:20px">📋</span><span>Koçunun program oluşturmasını bekle</span></div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;display:flex;align-items:center;gap:12px"><span style="font-size:20px">✅</span><span>Görevleri tamamladıkça istatistiklerin görünecek</span></div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;display:flex;align-items:center;gap:12px"><span style="font-size:20px">📈</span><span>Deneme netlerini girdikçe grafiklerin oluşacak</span></div>
+      </div>
+    </div>`;
+    return;
+  }
 
   // Deneme trendi
   let trendHtml='';
@@ -10275,6 +10332,26 @@ async function _saveCoachNotesToDB() {
 }
 
 // ── AUTO REGISTRATION ON WINDOW FOR INLINE HTML HANDLERS ──
+function updateMsgBadge() {
+  if (session.role !== 'student') return;
+  const unread = (S.messages[session.studentId]||[]).filter(m=>m.from==='coach'&&!m.read).length;
+  ['sbi_smessages','mntab_smessages'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.position = 'relative';
+    const existing = el.querySelector('.msg-nav-badge');
+    if (existing) existing.remove();
+    if (unread > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'msg-nav-badge';
+      badge.style.cssText = 'position:absolute;top:3px;right:3px;background:#ef4444;color:#fff;border-radius:100px;min-width:14px;height:14px;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 3px;pointer-events:none;line-height:1';
+      badge.textContent = unread > 9 ? '9+' : unread;
+      el.appendChild(badge);
+    }
+  });
+}
+window.updateMsgBadge = updateMsgBadge;
+
 window.toggleSidebar = toggleSidebar;
 window.setupShell = setupShell;
 window.switchTab = switchTab;
