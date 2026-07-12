@@ -37,6 +37,8 @@ jobs:
 
       - name: Configure Bubblewrap (skip interactive prompts)
         run: |
+          # bubblewrap validates sdk path by checking for a top-level tools/ or bin/ dir
+          sudo ln -sf "$ANDROID_HOME/cmdline-tools/latest/bin" "$ANDROID_HOME/bin"
           mkdir -p ~/.bubblewrap
           echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$ANDROID_HOME\"}" > ~/.bubblewrap/config.json
           cat ~/.bubblewrap/config.json
