@@ -250,7 +250,7 @@ function setupShell(){
   const stu = session.role==='student' ? S.students.find(s=>s.id===session.studentId) : null;
   const name = dbUser?.full_name || stu?.name || '';
   const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const roleColors = {coach:'#f0a500', student: stu?.color||'#4da6ff', developer:'#c084fc', parent:'#3ecf8e'};
+  const roleColors = {coach:'#E8613A', student: stu?.color||'#4da6ff', developer:'#c084fc', parent:'#3ecf8e'};
   const roleLabels = {coach:'KOÇ', student:'ÖĞRENCİ', developer:'DEV', parent:'VELİ'};
   document.getElementById('sbAv').textContent = initials;
   document.getElementById('sbAv').style.background = roleColors[session.role]||'#888';
@@ -636,7 +636,7 @@ function renderHome(){
             const nowMinutes = nH*60+nM;
             const diffMin = apptMinutes - nowMinutes;
             const isLive = diffMin >= -((a.duration||60)) && diffMin <= 15;
-            const liveBtn = isLive && a.meet_link ? `<a href="${esc(a.meet_link)}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;background:${diffMin<=0?'var(--red)':'var(--accent)'};color:${diffMin<=0?'white':'#0f0e0c'};font-size:11px;font-weight:800;text-decoration:none;animation:${diffMin<=0?'pulse 1.5s infinite':'none'};white-space:nowrap;flex-shrink:0">${diffMin<=0?'🔴 Ders Sürüyor':'🟡 Derse Gir'}</a>` : '';
+            const liveBtn = isLive && a.meet_link ? `<a href="${esc(a.meet_link)}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;background:${diffMin<=0?'var(--red)':'var(--accent)'};color:#fff;font-size:11px;font-weight:800;text-decoration:none;animation:${diffMin<=0?'pulse 1.5s infinite':'none'};white-space:nowrap;flex-shrink:0">${diffMin<=0?'🔴 Ders Sürüyor':'🟡 Derse Gir'}</a>` : '';
             return `<div class="hsc-appt-row ${isPast&&!isLive?'hsc-appt-past':''}">
               <div class="hsc-appt-time">${a.time}</div>
               <div class="hsc-appt-bar" style="background:${stu?.color||'var(--accent)'}"></div>
@@ -1711,7 +1711,7 @@ function renderProgram(){
   el.innerHTML=`
     <button class="back-link" onclick="switchTab('student-detail')">← ${stu?esc(stu.name):'Öğrenci'}</button>
     <div class="card prog-banner">
-      <div class="prog-avatar" style="background:${stu?.color||'#555'};color:#0f0e0c">${stu?stu.name[0]:'?'}</div>
+      <div class="prog-avatar" style="background:${stu?.color||'var(--accent)'};color:#fff">${stu?stu.name[0]:'?'}</div>
       <div class="prog-meta">
         <h2>${stu?esc(stu.name):'Öğrenci Seçin'}</h2>
         <p>${stu?esc(stu.target):'Program görüntülemek için öğrenci seçin'}</p>
@@ -2737,7 +2737,7 @@ function renderAgenda(){
       .fc .fc-button-active {
         background-color: var(--accent) !important;
         border-color: var(--accent) !important;
-        color: #0f0e0c !important;
+        color: #fff !important;
       }
       .fc .fc-list-event:hover td {
         background-color: var(--surface2) !important;
@@ -2996,7 +2996,7 @@ function openStudentModal(id){
   document.getElementById('smYksArea').value=s?.yksArea||'SAY';
   document.getElementById('smProg').value=s?.progress||0;
   document.getElementById('smProgVal').textContent=(s?.progress||0)+'%';
-  document.querySelectorAll('.color-opt').forEach(el=>el.classList.toggle('sel',el.dataset.c===(s?.color||'#f0a500')));
+  document.querySelectorAll('.color-opt').forEach(el=>el.classList.toggle('sel',el.dataset.c===(s?.color||'#e8622a')));
   // Koç modunda role field varsa gizle, save butonu normal çağırsın
   const roleField=document.getElementById('smRoleField');
   if(roleField) roleField.style.display='none';
@@ -3008,7 +3008,7 @@ document.getElementById('smColorPick').addEventListener('click',function(e){cons
 async function saveStudent(){
   const name=document.getElementById('smName').value.trim();
   if(!name)return showToast('İsim girin!');
-  const color=document.querySelector('.color-opt.sel')?.dataset.c||'#f0a500';
+  const color=document.querySelector('.color-opt.sel')?.dataset.c||'#e8622a';
   const id=document.getElementById('smId').value;
   const uname=normalizeUsername(document.getElementById('smUsername').value.trim())||(normalizeUsername(name.split(' ')[0])+Math.floor(Math.random()*100));
   const passRaw=document.getElementById('smPass').value||STU_DEFAULT_PASS;
@@ -3540,7 +3540,7 @@ function _examChartHtml(exams, stu) {
   const latest  = sorted[sorted.length-1];
   const prev    = sorted.length>=2 ? sorted[sorted.length-2] : null;
   const fields  = EXAM_DEFS[latest.type]||[];
-  const accent  = stu?.color||'#f0a500';
+  const accent  = stu?.color||'#e8622a';
 
   const latestTotal = fields.reduce((s,f)=>s+Number(latest.nets?.[f]||0),0);
   const prevTotal   = prev ? fields.reduce((s,f)=>s+Number(prev.nets?.[f]||0),0) : null;
@@ -5029,7 +5029,7 @@ function stopChatPoll(){}
 // ── DASHBOARD ──────────────────────────────────
 async function devResetOnboarding() {
   await db.from('workspaces').upsert(
-    { coach_id: session.coachId, brand_name: S.workspace?.brand_name || 'Akademi', brand_color: S.workspace?.brand_color || '#f0a500', onboarding_done: false },
+    { coach_id: session.coachId, brand_name: S.workspace?.brand_name || 'Akademi', brand_color: S.workspace?.brand_color || '#E8613A', onboarding_done: false },
     { onConflict: 'coach_id' }
   );
   if (S.workspace) S.workspace.onboarding_done = false;
@@ -5176,7 +5176,7 @@ async function openDevUserModal(id) {
   document.getElementById('smWeekStart').value = u?.week_start||0;
   document.getElementById('smProg').value = u?.progress||0;
   document.getElementById('smProgVal').textContent = (u?.progress||0)+'%';
-  document.querySelectorAll('.color-opt').forEach(el=>el.classList.toggle('sel',el.dataset.c===(u?.color||'#f0a500')));
+  document.querySelectorAll('.color-opt').forEach(el=>el.classList.toggle('sel',el.dataset.c===(u?.color||'#e8622a')));
   // add role selector if not present
   let roleField = document.getElementById('smRoleField');
   if(!roleField) {
@@ -7716,7 +7716,7 @@ function buildReportHTML(stuId, preview=false) {
   const {start, end} = getReportDates();
   const coachNote = document.getElementById('rpNote').value.trim();
   const brandName = S.workspace?.brand_name || 'Rostrum Akademi';
-  const brandColor = S.workspace?.brand_color || '#f0a500';
+  const brandColor = S.workspace?.brand_color || '#E8613A';
   const coachName = session.dbUser?.full_name || 'Koç';
 
   // Dönemdeki görevler
@@ -8179,8 +8179,8 @@ function copyToClipboard(text){
 // TEMA SİSTEMİ
 // ═══════════════════════════════════════════════
 const ACCENT_COLORS=[
+  {name:'Terrakota',val:'#e8613a',dim:'rgba(232,97,58,.12)'},
   {name:'Altın',val:'#f0a500',dim:'rgba(240,165,0,.12)'},
-  {name:'Turuncu',val:'#e8622a',dim:'rgba(232,98,42,.12)'},
   {name:'Mavi',val:'#4da6ff',dim:'rgba(77,166,255,.12)'},
   {name:'Yeşil',val:'#3ecf8e',dim:'rgba(62,207,142,.12)'},
   {name:'Mor',val:'#c084fc',dim:'rgba(192,132,252,.12)'},
@@ -8969,7 +8969,7 @@ async function saveStudentDev(){
   const passRaw=document.getElementById('smPass').value;
   const role=document.getElementById('smRole').value;
   const target=document.getElementById('smTarget').value.trim();
-  const color=document.querySelector('.color-opt.sel')?.dataset.c||'#f0a500';
+  const color=document.querySelector('.color-opt.sel')?.dataset.c||'#e8622a';
   const weekStart=Number(document.getElementById('smWeekStart').value);
   const progress=Number(document.getElementById('smProg').value);
 
