@@ -53,7 +53,7 @@ jobs:
             -noprompt
 
       - name: Generate Android project from twa-manifest
-        run: bubblewrap update
+        run: bubblewrap update --skipVersionUpgrade
 
       - name: Build TWA APK
         run: bubblewrap build
