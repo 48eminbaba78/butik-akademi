@@ -93,6 +93,51 @@ nav.scrolled{background:var(--nav-bg);backdrop-filter:blur(24px);border-bottom-c
 .btn-hero-ghost{background:var(--s2);color:var(--text);padding:15px 32px;border-radius:12px;font-weight:600;font-size:16px;text-decoration:none;border:1px solid var(--bd);transition:all .2s;display:inline-flex;align-items:center;gap:8px;}
 .btn-hero-ghost:hover{background:var(--s3);border-color:var(--bd2);transform:translateY(-2px);}
 
+/* Hero proof row */
+.hero-proof{display:flex;align-items:center;gap:12px;margin-top:20px;font-size:13px;color:var(--mid);animation:fadeUp .6s .3s both;flex-wrap:wrap;justify-content:center;}
+.hero-proof strong{color:var(--text);}
+.hp-sep{color:var(--dim);}
+
+/* Hero product shot (CSS mockup) */
+.hero-shot{width:100%;max-width:880px;margin:40px auto 0;background:var(--s1);border:1px solid var(--bd);border-radius:18px;box-shadow:0 24px 80px rgba(28,25,23,.14),0 4px 16px rgba(28,25,23,.06);overflow:hidden;text-align:left;animation:fadeUp .7s .35s both;}
+.hs-bar{display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--s2);border-bottom:1px solid var(--bd);}
+.hs-dot{width:10px;height:10px;border-radius:50%;background:var(--bd2);}
+.hs-url{margin-left:10px;font-size:11px;color:var(--dim);background:var(--s1);border:1px solid var(--bd);border-radius:6px;padding:3px 12px;}
+.hs-body{display:grid;grid-template-columns:1fr 240px;gap:14px;padding:16px;}
+.hs-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
+.hs-stat{background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;}
+.hs-stat-lbl{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:4px;}
+.hs-stat-val{font-size:22px;font-weight:800;letter-spacing:-.5px;}
+.hs-acc{color:var(--acc);}
+.hs-stat-sub{font-size:10.5px;color:var(--mid);margin-top:2px;}
+.hs-green{color:var(--acc3);font-weight:700;}
+.hs-prog{height:4px;background:var(--bd);border-radius:99px;margin-top:8px;overflow:hidden;}
+.hs-prog i{display:block;height:100%;background:var(--acc);border-radius:99px;}
+.hs-week{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+.hs-day{background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:5px;min-height:76px;}
+.hs-day b{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;}
+.hs-today{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);}
+.hs-today b{color:var(--acc);}
+.hs-chip{font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hs-chip.c1{background:rgba(232,97,58,.1);color:var(--acc);}
+.hs-chip.c2{background:rgba(37,99,235,.08);color:#2563EB;}
+.hs-chip.c3{background:rgba(5,150,105,.08);color:#059669;}
+.hs-side{background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:12px;}
+.hs-side-title{font-size:10.5px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.hs-msg{background:var(--s1);border:1px solid var(--bd);border-radius:10px 10px 10px 3px;padding:7px 10px;font-size:11px;color:var(--text);margin-bottom:6px;}
+.hs-msg-me{background:rgba(232,97,58,.09);border-color:rgba(232,97,58,.2);border-radius:10px 10px 3px 10px;}
+.hs-report{display:flex;justify-content:space-between;align-items:center;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;font-size:11px;font-weight:600;}
+.hs-report span{color:var(--acc);font-weight:800;font-size:10px;}
+@media(max-width:768px){
+  .hs-body{grid-template-columns:1fr;}
+  .hs-side{display:none;}
+  .hs-week{grid-template-columns:repeat(3,1fr);}
+  .hs-week .hs-day:nth-child(n+4){display:none;}
+  .hs-stats{grid-template-columns:repeat(3,1fr);gap:6px;}
+  .hs-stat{padding:9px 10px;}
+  .hs-stat-val{font-size:17px;}
+}
+
 .hero-trust{display:flex;align-items:center;justify-content:center;gap:24px;margin-top:20px;flex-wrap:wrap;animation:fadeUp .6s .4s both;}
 .trust-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);}
 .trust-item::before{content:'✓';color:var(--acc3);font-weight:700;}
@@ -732,30 +777,58 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </div>
 
   <h1>
-    <span class="h1-plain">Eğitim Yönetiminde</span>
-    <span class="h1-grad">Dijital Dönüşüm</span>
-    <span class="h1-outline">Bulut Yazılımı</span>
+    <span class="h1-plain">Excel'i ve WhatsApp kaosunu bırak —</span>
+    <span class="h1-grad">koçluğunu tek panelden yönet</span>
   </h1>
 
   <p class="hero-desc">
-    Koçluk işinizi ölçeklendirin. Öğrenciler için AI ders asistanı, koçlar için akıllı planlama ve kurumlar için merkezi CRM paneli. Hepsi tek bir premium platformda.
+    Haftalık program, TYT/AYT deneme takibi, veli raporu ve mesajlaşma tek yerde. Kurulum yok — ilk programını 5 dakikada oluştur.
   </p>
 
   <div class="hero-cta">
     <a href="#register" class="btn-hero-main">
-      7 Gün Ücretsiz Dene
+      Ücretsiz Başla — 7 Gün Dene
       <span>→</span>
     </a>
-    <a href="#features" class="btn-hero-ghost">
-      Özellikleri Gör
-    </a>
-    <a href="app.html?sandbox=true" class="btn-hero-ghost" style="border-color:var(--acc3);color:var(--acc3)">
-      ⚡ Canlı Demo Sandbox
+    <a href="app.html?sandbox=true" class="btn-hero-ghost">
+      ⚡ Önce demoyu incele
     </a>
   </div>
 
-  <div class="demo-badge reveal" style="margin-top:24px;background:rgba(62,207,142,.06);border:1px solid rgba(62,207,142,.15);border-radius:12px;padding:12px 20px;max-width:560px;font-size:12.5px;color:var(--mid);line-height:1.6;margin-left:auto;margin-right:auto">
-    💡 <strong>Anında Test Edin:</strong> Giriş ekranındaki <strong>Google ile Giriş Yap</strong> butonuna tıklayarak demo koç veya öğrenci hesaplarını seçip platformu anında deneyebilirsiniz.
+  <div class="hero-proof">
+    <span class="hp-item">✓ Kart gerekmez</span>
+    <span class="hp-sep">·</span>
+    <span class="hp-item"><strong>180+</strong> koç kullanıyor</span>
+    <span class="hp-sep">·</span>
+    <span class="hp-item">⭐ <strong>4.9/5</strong> memnuniyet</span>
+  </div>
+
+  <!-- ÜRÜN ÖNİZLEME -->
+  <div class="hero-shot reveal">
+    <div class="hs-bar"><span class="hs-dot"></span><span class="hs-dot"></span><span class="hs-dot"></span><span class="hs-url">rostrumakademi.com/app</span></div>
+    <div class="hs-body">
+      <div class="hs-main">
+        <div class="hs-stats">
+          <div class="hs-stat"><div class="hs-stat-lbl">Aktif Öğrenci</div><div class="hs-stat-val">12</div><div class="hs-stat-sub">▲ 2 bu ay</div></div>
+          <div class="hs-stat"><div class="hs-stat-lbl">Haftalık Tamamlama</div><div class="hs-stat-val hs-acc">%87</div><div class="hs-prog"><i style="width:87%"></i></div></div>
+          <div class="hs-stat"><div class="hs-stat-lbl">Deneme Ortalaması</div><div class="hs-stat-val">78.4</div><div class="hs-stat-sub hs-green">▲ +5.2 net</div></div>
+        </div>
+        <div class="hs-week">
+          <div class="hs-day"><b>Pzt</b><span class="hs-chip c1">Matematik</span><span class="hs-chip c2">Paragraf</span></div>
+          <div class="hs-day"><b>Sal</b><span class="hs-chip c3">Fizik</span></div>
+          <div class="hs-day hs-today"><b>Çar</b><span class="hs-chip c1">TYT Deneme</span><span class="hs-chip c2">Analiz</span></div>
+          <div class="hs-day"><b>Per</b><span class="hs-chip c2">Kimya</span></div>
+          <div class="hs-day"><b>Cum</b><span class="hs-chip c3">Biyoloji</span><span class="hs-chip c1">Tekrar</span></div>
+        </div>
+      </div>
+      <div class="hs-side">
+        <div class="hs-side-title">💬 Mesajlar</div>
+        <div class="hs-msg">Hocam denemede 82 net! 🎉</div>
+        <div class="hs-msg hs-msg-me">Harika! Çarşamba analizini yapalım 👏</div>
+        <div class="hs-side-title" style="margin-top:12px">📄 Rapor</div>
+        <div class="hs-report">Ayşe K. — Haftalık Rapor <span>PDF ↓</span></div>
+      </div>
+    </div>
   </div>
 
   <div class="hero-trust">
@@ -824,8 +897,8 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     <div class="ps-desc">Bireysel veya kurumsal koçların verileri ve öğrencileri yetkisiz erişimlere açık kalabilir.</div>
     <div class="ps-sep"></div>
     <div class="ps-badge-sol">✅ Çözüm</div>
-    <div class="ps-title">RLS Tabanlı İzolasyon</div>
-    <div class="ps-desc">Supabase Row-Level Security ile her koç ve öğrencinin çalışma alanı tamamen kendine özel ve şifrelidir.</div>
+    <div class="ps-title">Sana Özel Güvenli Alan</div>
+    <div class="ps-desc">Her koçun çalışma alanı tamamen kendine özel: verilerin şifreli, öğrencilerin yalnızca sana görünür. KVKK uyumlu.</div>
   </div>
 </div>
 
@@ -1249,8 +1322,8 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     <div class="reveal d1">
       
       <div class="form-card" id="regForm">
-        <div class="form-h">Kayıt Başvurusu Yap</div>
-        <div class="form-sub">Eğitim portalınıza hemen adım atın</div>
+        <div class="form-h">Ücretsiz Hesabını Oluştur</div>
+        <div class="form-sub">Başvurun 1 iş günü içinde onaylanır — beklemeden denemek için <a href="app.html?sandbox=true" style="color:var(--acc);font-weight:700">canlı demoya gir →</a></div>
 
         <!-- Kayıt Tipi Seçici -->
         <div style="font-size:10px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Kayıt Tipi</div>
