@@ -9,7 +9,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rostrum Akademi — Zaman Kazandıran Eğitim Yönetim Sistemi</title>
-<meta name="description" content="Türkiye'nin zaman kazandıran eğitim yönetim sistemi. Haftalık program, TYT/AYT deneme takibi, anlık mesajlaşma, PDF raporlar. 180+ koç kullanıyor. 7 gün ücretsiz deneyin.">
+<meta name="description" content="Türkiye'nin zaman kazandıran eğitim yönetim sistemi. Haftalık program, TYT/AYT deneme takibi, anlık mesajlaşma, PDF raporlar. 7 gün ücretsiz deneyin, kart gerekmez.">
 <meta name="keywords" content="koçluk platformu, öğrenci yönetimi, TYT takibi, AYT deneme, haftalık program, YKS koç">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://rostrumakademi.com/">
@@ -20,7 +20,7 @@
 <meta property="og:site_name" content="Rostrum Akademi">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Rostrum Akademi — Zaman Kazandıran Eğitim Yönetim Sistemi">
-<meta name="twitter:description" content="Haftalık program, deneme takibi, PDF raporlar. 180+ koç kullanıyor.">
+<meta name="twitter:description" content="Haftalık program, deneme takibi, PDF raporlar. 7 gün ücretsiz deneyin.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f0a500'/><text y='.9em' font-size='80' x='10'>R</text></svg>">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
@@ -773,7 +773,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 
 
   <div class="hero-eyebrow">
-    Türkiye'nin Zaman Kazandıran Eğitim Yönetim Sistemi
+    YKS Koçları İçin Yeni Nesil Yönetim Paneli
   </div>
 
   <h1>
@@ -798,9 +798,9 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   <div class="hero-proof">
     <span class="hp-item">✓ Kart gerekmez</span>
     <span class="hp-sep">·</span>
-    <span class="hp-item"><strong>180+</strong> koç kullanıyor</span>
+    <span class="hp-item">✓ İlk 7 gün <strong>ücretsiz</strong></span>
     <span class="hp-sep">·</span>
-    <span class="hp-item">⭐ <strong>4.9/5</strong> memnuniyet</span>
+    <span class="hp-item">✓ Kurucu üye fiyatı <strong>ömür boyu sabit</strong></span>
   </div>
 
   <!-- ÜRÜN ÖNİZLEME -->
@@ -905,7 +905,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 <!-- LOGOS -->
 <div style="padding:40px 40px 0;border-top:1px solid var(--bd)">
   <div style="max-width:1100px;margin:0 auto">
-    <div class="reveal" style="text-align:center;font-size:12px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:24px">Butik Akademi ve Bireysel Koçların Tercih Ettiği Modern Altyapı</div>
+    <div class="reveal" style="text-align:center;font-size:12px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:24px">Kimler İçin Tasarlandı</div>
     <div class="reveal" style="display:flex;align-items:center;justify-content:center;gap:40px;flex-wrap:wrap;opacity:.45;filter:grayscale(1)">
       <div style="font-family:'Geist',sans-serif;font-size:14px;font-weight:800;color:var(--text)">BUTİK AKADEMİLER</div>
       <div style="font-family:'Geist',sans-serif;font-size:14px;font-weight:800;color:var(--text)">BİREYSEL REHBERLER</div>
@@ -1263,9 +1263,9 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     </div>
 <!-- Social proof under pricing -->
     <div class="sp-mini reveal">
-      <div class="sp-mini-item">🧑‍🏫 <span class="sp-mini-num">180+</span> koç zaten kullanıyor</div>
-      <div class="sp-mini-item">⭐⭐⭐⭐⭐ <span class="sp-mini-num">4.9/5</span> ortalama puan</div>
-      <div class="sp-mini-item">🔒 Güvenli ödeme · Kolay iptal</div>
+      <div class="sp-mini-item">🚀 Yeni platform — erken katılan, <span class="sp-mini-num">en düşük fiyatı</span> ömür boyu kilitler</div>
+      <div class="sp-mini-item">🎯 <span class="sp-mini-num">7 gün</span> koşulsuz deneme</div>
+      <div class="sp-mini-item">🔒 KVKK uyumlu · Kolay iptal</div>
     </div>
   </div>
 </section>
@@ -1975,7 +1975,7 @@ async function loadSiteContent(){
 
     // Hero badge koç sayısı
     if(_siteContent.coach_count){
-      document.getElementById('heroCount').textContent=_siteContent.coach_count;
+      const _hc=document.getElementById('heroCount'); if(_hc)_hc.textContent=_siteContent.coach_count;
     }
 
     // Hero desc
@@ -2048,13 +2048,6 @@ async function loadIgFeed() {
   }
 }
 
-// HERO COUNTER animate
-(function(){
-  let n=178;
-  setInterval(()=>{
-    if(Math.random()<0.03){n++;document.getElementById('heroCount').textContent=n;}
-  },4000);
-})();
 
 // PARALLAX (subtle)
 let ticking=false;
