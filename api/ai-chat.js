@@ -10,6 +10,93 @@ const SB_URL = process.env.SUPABASE_URL || 'https://imyhenrwmsmyikpollur.supabas
 const SB_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
 const db = createClient(SB_URL, SB_KEY);
 
+// ── Sunucu Taraflı Topraklama (Grounding) ─────────────────
+// Client'ın gönderdiği context'e GÜVENİLMEZ. Çağıranın JWT'siyle (RLS altında)
+// gerçek öğrenci listesi + son denemeler DB'den çekilir; model yalnızca bu
+// doğrulanmış veriye dayanır. Kayıtlı olmayan isim → analiz reddedilir.
+async function buildVerifiedContext(req) {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return { verified: false, block: '' };
+
+  try {
+    // Kullanıcının kendi yetkileriyle (RLS) sorgulayan istemci
+    const userDb = createClient(SB_URL, SB_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+    const { data: { user }, error: uErr } = await userDb.auth.getUser(token);
+    if (uErr || !user) return { verified: false, block: '' };
+
+    const { data: me } = await userDb.from('users')
+      .select('id, full_name, role, coach_id, target')
+      .eq('id', user.id).maybeSingle();
+    if (!me) return { verified: false, block: '' };
+
+    let block = `\n\n════ DOĞRULANMIŞ VERİTABANI KAYITLARI (TEK GERÇEK KAYNAK) ════`;
+
+    if (me.role === 'coach' || me.role === 'developer') {
+      // Koçun GERÇEK öğrenci listesi
+      const { data: students } = await userDb.from('users')
+        .select('id, full_name, target')
+        .eq('coach_id', me.id).eq('role', 'student')
+        .order('full_name').limit(50);
+      const stuList = students || [];
+      block += `\nKOÇ: ${me.full_name}`;
+      block += `\nKAYITLI ÖĞRENCİLER (${stuList.length} kişi): ${stuList.length ? stuList.map(s => s.full_name).join(', ') : 'HİÇ ÖĞRENCİ YOK'}`;
+
+      // Son denemeler (tüm öğrenciler için tek sorgu, öğrenci başına en yeni 3)
+      if (stuList.length) {
+        const ids = stuList.map(s => s.id);
+        const nameById = Object.fromEntries(stuList.map(s => [s.id, s.full_name]));
+        const { data: exams } = await userDb.from('exams')
+          .select('student_id, name, date, exam_type, nets')
+          .in('student_id', ids)
+          .order('date', { ascending: false }).limit(60);
+        const perStu = {};
+        (exams || []).forEach(e => {
+          (perStu[e.student_id] = perStu[e.student_id] || []).length < 3 && perStu[e.student_id].push(e);
+        });
+        const examLines = Object.entries(perStu).map(([sid, list]) =>
+          `- ${nameById[sid]}: ` + list.map(e => `${e.name} (${e.date}) ${JSON.stringify(e.nets)}`).join(' · ')
+        );
+        if (examLines.length) block += `\nSON DENEMELER:\n${examLines.join('\n')}`;
+
+        // Son 7 gün görev tamamlama oranları
+        const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+        const { data: tasks } = await userDb.from('tasks')
+          .select('student_id, done')
+          .in('student_id', ids).gte('date', weekAgo).limit(1000);
+        if (tasks && tasks.length) {
+          const agg = {};
+          tasks.forEach(t => {
+            const a = (agg[t.student_id] = agg[t.student_id] || { d: 0, t: 0 });
+            a.t++; if (t.done) a.d++;
+          });
+          block += `\nSON 7 GÜN GÖREV TAMAMLAMA: ` + Object.entries(agg)
+            .map(([sid, a]) => `${nameById[sid]} %${Math.round(a.d / a.t * 100)} (${a.d}/${a.t})`).join(' · ');
+        }
+      }
+      block += `\n\nKATI KURAL: Yukarıdaki KAYITLI ÖĞRENCİLER listesinde OLMAYAN bir isim hakkında analiz/rapor/veli metni istenirse, KESİNLİKLE üretme. Şöyle yanıtla: "Sistemde bu isimde kayıtlı bir öğrenci bulamadım. Kayıtlı öğrencileriniz: [listeyi say]." Uydurma veri, tahmini net, hayali tamamlama oranı ASLA yazma.`;
+    } else if (me.role === 'student') {
+      block += `\nÖĞRENCİ: ${me.full_name}${me.target ? ` · Hedef: ${me.target}` : ''}`;
+      const { data: exams } = await userDb.from('exams')
+        .select('name, date, exam_type, nets')
+        .eq('student_id', me.id)
+        .order('date', { ascending: false }).limit(5);
+      if (exams && exams.length) {
+        block += `\nSON DENEMELERİN:\n` + exams.map(e => `- ${e.name} (${e.date}) ${JSON.stringify(e.nets)}`).join('\n');
+      }
+      block += `\n\nKATI KURAL: Seviye/kaynak önerirken YALNIZCA yukarıdaki gerçek deneme netlerini kullan. Başka öğrenciler hakkında hiçbir bilgi verme.`;
+    }
+
+    block += `\n═══════════════════════════════════════════════════════════`;
+    return { verified: true, block };
+  } catch (e) {
+    console.error('Grounding error:', e.message);
+    return { verified: false, block: '' };
+  }
+}
+
 export default async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -77,8 +164,11 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'AI API anahtarı yapılandırılmamış.' });
     }
 
+    // ── Sunucu taraflı topraklama: gerçek veriler DB'den ────
+    const grounding = await buildVerifiedContext(req);
+
     // ── Sistem Promptu ──────────────────────────────────────
-    const systemPrompt = buildSystemPrompt(context, userRole);
+    const systemPrompt = buildSystemPrompt(context, userRole, grounding);
 
     // ── Groq API İsteği (OpenAI uyumlu) ─────────────────────
     const groqMessages = [{ role: 'system', content: systemPrompt }];
@@ -186,7 +276,7 @@ Bu bilgi tabanı dışından kanal/kitap UYDURMA. Seviye bilinmiyorsa net sayıs
 ═══════════════════════════════════════════════════════════════════════`;
 
 // ── Sistem Promptu Oluşturucu ─────────────────────────────
-function buildSystemPrompt(context, userRole) {
+function buildSystemPrompt(context, userRole, grounding) {
   let base = `Sen "Rostrum Akademi Yapay Zeka Asistanı"sın. Türkiye'deki eğitim sistemine (YKS, LGS, KPSS, ALES) hakim, rolüne göre öğrencilere, velilere veya koçlara destek veren bir yapay zekasın.
 
 KURALLAR (KESİNLİKLE UYULMASI ZORUNLU):
@@ -226,29 +316,17 @@ Görevin koçlara rasyonel durum analizleri sunmak ve veliye iletilecek çaba od
 6. Kaygılı öğrenci vakası anlatılırsa 5 nörobilişsel tekniği koça uygulama diliyle aktar.`;
   }
 
-  // Context verisi varsa ekle
-  if (context) {
-    if (context.studentName) {
-      base += `\n\nÖĞRENCİ BİLGİSİ: ${context.studentName}`;
-    }
-    if (context.examProfile) {
-      base += `\nSINAV PROFİLİ: ${context.examProfile}`;
-    }
-    if (context.recentExams && context.recentExams.length > 0) {
-      base += `\n\nSON DENEME SONUÇLARI:`;
-      context.recentExams.forEach(exam => {
-        base += `\n- ${exam.name} (${exam.date}): ${JSON.stringify(exam.nets)}`;
-      });
-    }
-    if (context.taskCompletionRate !== undefined) {
-      base += `\nGÖREV TAMAMLAMA ORANI: %${context.taskCompletionRate}`;
-    }
-    if (context.weeklyTaskCount !== undefined) {
-      base += `\nBU HAFTA GÖREV SAYISI: ${context.weeklyTaskCount}`;
-    }
-    if (context.target) {
-      base += `\nHEDEF: ${context.target}`;
-    }
+  // ── Topraklama ──────────────────────────────────────────
+  if (grounding?.verified) {
+    // DB'den doğrulanmış veriler tek gerçek kaynak — client context YOK SAYILIR
+    base += grounding.block;
+    // Client'ın "hangi ekrandayım" tipi zararsız ipuçları (isim/net İÇERMEZ)
+    if (context?.examProfile) base += `\nAKTİF SINAV PROFİLİ: ${context.examProfile}`;
+  } else {
+    // Kimlik doğrulanamadı → kişisel analiz tamamen yasak
+    base += `\n\n════ DOĞRULANMAMIŞ OTURUM ════
+Bu istekte kimlik doğrulaması yok; veritabanı kayıtlarına erişemiyorsun.
+KATI KURAL: Belirli bir öğrenci ismi/verisi hakkında analiz, rapor, veli metni veya kişisel yorum ÜRETME — kullanıcı isim verse bile. "Kişisel analiz için lütfen uygulamaya giriş yapın; şu an yalnızca genel akademik sorularda yardımcı olabilirim" de. Genel konu anlatımı, soru çözümü ve kaynak piramidi önerileri serbesttir.`;
   }
 
   return base;

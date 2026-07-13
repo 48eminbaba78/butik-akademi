@@ -260,7 +260,7 @@ function setupShell(){
   // Workspace logo
   if((session.role==='coach' || session.role==='developer') && S.workspace?.brand_name) {
     const _lt=document.querySelector('.sb-logo-text'); if(_lt) _lt.textContent=S.workspace.brand_name;
-    const tnLogo=document.querySelector('.tn-logo .sb-logo-icon'); if(tnLogo) tnLogo.textContent=S.workspace.brand_name.slice(0,1).toUpperCase();
+    const tnLogo=document.querySelector('.tn-logo .sb-logo-icon'); if(tnLogo && tnLogo.tagName !== 'IMG') tnLogo.textContent=S.workspace.brand_name.slice(0,1).toUpperCase();
   }
 
   // Site Yönetimi — sadece developer
@@ -306,6 +306,10 @@ function switchTab(tab, updateHash = true){
   document.querySelectorAll('.tn-nav-item').forEach(el=>el.classList.remove('active'));
   const activeEl = document.getElementById('sbi_'+tab) || document.getElementById('sb-'+tab);
   if(activeEl) activeEl.classList.add('active');
+  // Mobile nav active state
+  document.querySelectorAll('.mnav-btn').forEach(el=>el.classList.remove('active'));
+  const activeMobEl = document.getElementById('mntab_'+tab);
+  if(activeMobEl) activeMobEl.classList.add('active');
   // View
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const viewEl = document.getElementById('view-'+tab);
@@ -6330,7 +6334,7 @@ async function sendSupportMessage() {
 
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: await aiAuthHeaders(),
         body: JSON.stringify({
           messages: formattedHistory,
           context: {},
@@ -8386,6 +8390,16 @@ function buildAIContext(){
   return ctx;
 }
 
+// AI çağrılarına oturum JWT'sini ekle — sunucu taraflı topraklama (grounding) için
+async function aiAuthHeaders(){
+  const h = {'Content-Type':'application/json'};
+  try{
+    const {data:{session:sbSession}} = await db.auth.getSession();
+    if(sbSession?.access_token) h['Authorization'] = 'Bearer ' + sbSession.access_token;
+  }catch(e){}
+  return h;
+}
+
 function addAIMessage(role, content){
   aiChatHistory.push({role, content});
   const msgs = document.getElementById('aiMessages');
@@ -8460,7 +8474,7 @@ async function sendAIMessage(){
     if (pendingImg) {
       const visRes = await fetch('/api/ai-chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await aiAuthHeaders(),
         body: JSON.stringify({
           imageBase64: pendingImg.base64,
           mimeType: pendingImg.mimeType,
@@ -8481,7 +8495,7 @@ async function sendAIMessage(){
       const apiUrl = '/api/ai-chat';
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: await aiAuthHeaders(),
         body: JSON.stringify({
           messages: aiChatHistory.slice(-10),
           context,
@@ -8735,7 +8749,7 @@ ANALİZ VE TASLAK KURALLARI (TÜRKÇE YAZ):
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: await aiAuthHeaders(),
         body: JSON.stringify({
           messages: [{role: 'user', content: prompt}],
           context,
