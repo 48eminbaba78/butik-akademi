@@ -290,6 +290,59 @@ function showRegWizardStep(step) {
   document.getElementById('regWizardStepCoach1').style.display = step === 1 ? 'block' : 'none';
   document.getElementById('regWizardStepCoach2').style.display = step === 2 ? 'block' : 'none';
   document.getElementById('regWizardStepFinal').style.display = step === 3 ? 'block' : 'none';
+  // Davet kodu alanı yalnızca öğrenci kaydında görünür
+  const invWrap = document.getElementById('regInviteWrap');
+  if (invWrap) invWrap.style.display = (step === 3 && window._regRole === 'student') ? 'block' : 'none';
+}
+
+// ── Davet linki (?davet=KOD) — kayıt ekranını öğrenci moduna hazır açar ──
+export function applyInviteFromUrl(code) {
+  code = (code || '').toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 6);
+  if (code.length !== 6) return;
+  setAuthMode('register');
+  setRegRole('student');
+  _signUpStep = 3;
+  showRegWizardStep(3);
+  const inp = document.getElementById('regInviteCode');
+  if (inp) {
+    inp.value = code;
+    inp.readOnly = true;
+    inp.style.opacity = '.75';
+    onInviteCodeInput();
+    inp.readOnly = true; // onInviteCodeInput input'u normalize eder; readonly'yi koru
+  }
+}
+
+// ── Davet kodu canlı doğrulama ──
+let _inviteCheckTimer = null;
+let _inviteValid = false;
+export function onInviteCodeInput() {
+  const inp = document.getElementById('regInviteCode');
+  const st = document.getElementById('regInviteStatus');
+  const code = (inp.value || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+  inp.value = code;
+  _inviteValid = false;
+  clearTimeout(_inviteCheckTimer);
+  if (code.length < 6) { st.style.display = 'none'; return; }
+  st.style.display = 'block';
+  st.style.background = 'var(--surface2)'; st.style.color = 'var(--text-mid)';
+  st.textContent = 'Kod kontrol ediliyor…';
+  _inviteCheckTimer = setTimeout(async () => {
+    try {
+      const { data, error } = await db.rpc('check_invite_code', { p_code: code });
+      const brand = !error && data && data.length ? data[0].brand_name : null;
+      if (brand) {
+        _inviteValid = true;
+        st.style.background = 'rgba(5,150,105,.1)'; st.style.color = 'var(--green)';
+        st.textContent = '✓ ' + brand + ' akademisine katılacaksın';
+      } else {
+        st.style.background = 'var(--red-dim)'; st.style.color = 'var(--red)';
+        st.textContent = '✗ Kod bulunamadı — koçundan doğru kodu iste';
+      }
+    } catch (e) {
+      st.style.display = 'none';
+    }
+  }, 450);
 }
 
 export async function doRegister() {
@@ -300,12 +353,29 @@ export async function doRegister() {
   if (!name || !email || !pass) return regErr('Tüm hesap bilgileri zorunludur');
   if (pass.length < 8) return regErr('Şifre en az 8 karakter olmalıdır');
 
+  // Öğrenci kaydında geçerli davet kodu zorunlu (koçsuz/yetim hesap oluşmasın)
+  let inviteCode = '';
+  if (window._regRole === 'student') {
+    inviteCode = (document.getElementById('regInviteCode')?.value || '').toUpperCase().trim();
+    if (inviteCode.length !== 6) return regErr('Koç davet kodu gerekli — 6 haneli kodu koçundan iste.');
+    if (!_inviteValid) {
+      // Son bir kez sunucudan doğrula (kullanıcı yapıştırıp direkt submit etmiş olabilir)
+      try {
+        const { data } = await db.rpc('check_invite_code', { p_code: inviteCode });
+        if (!data || !data.length) return regErr('Davet kodu geçersiz — koçundan doğru kodu iste.');
+      } catch (e) {
+        return regErr('Kod doğrulanamadı, tekrar dene.');
+      }
+    }
+  }
+
   showLoading(true);
   try {
     let metadata = {
       full_name: name,
       role: window._regRole
     };
+    if (inviteCode) metadata.invite_code = inviteCode;
 
     if (window._regRole === 'coach') {
       const brand = document.getElementById('regBrandName').value.trim();
@@ -654,6 +724,8 @@ window.updateUserPassword = updateUserPassword;
 window.nextRegWizardStep = nextRegWizardStep;
 window.prevRegWizardStep = prevRegWizardStep;
 window.setRegBrandColor = setRegBrandColor;
+window.onInviteCodeInput = onInviteCodeInput;
+window.applyInviteFromUrl = applyInviteFromUrl;
 
 db.auth.onAuthStateChange(async (event, sessionData) => {
   const isRecovery = event === 'PASSWORD_RECOVERY' || window.location.hash.includes('type=recovery');

@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
 <title>Rostrum Akademi</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/app-COQzYJIX.js"></script>
+  <script type="module" crossorigin src="/assets/app-C6AV9IAM.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/app-BM50_yEI.css">
 </head>
 <body>
@@ -174,7 +174,16 @@
             <div class="lfield"><label>Ad Soyad</label><input type="text" id="regName" placeholder="Adınız Soyadınız" autocomplete="name"></div>
             <div class="lfield"><label>E-posta</label><input type="email" id="regEmail" placeholder="ornek@gmail.com" autocomplete="email"></div>
             <div class="lfield"><label>Şifre</label><input type="password" id="regPass" placeholder="En az 8 karakter" autocomplete="new-password"></div>
-            
+
+            <div class="lfield" id="regInviteWrap" style="display:none">
+              <label>Koç Davet Kodu</label>
+              <input type="text" id="regInviteCode" placeholder="Örn: K7M4XR" maxlength="6" autocomplete="off"
+                style="text-transform:uppercase;letter-spacing:3px;font-weight:700"
+                oninput="onInviteCodeInput()">
+              <div id="regInviteStatus" style="display:none;font-size:12px;margin-top:6px;padding:8px 12px;border-radius:8px"></div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Kodu koçundan iste — hesabın otomatik olarak ona bağlanır.</div>
+            </div>
+
             <div id="regErr" style="display:none;color:var(--red);font-size:13px;margin-top:12px;padding:10px 14px;background:var(--red-dim);border-radius:8px"></div>
             <button class="btn-login" onclick="doRegister()">Kayıt Ol →</button>
             <div id="regSuccess" style="display:none;text-align:center;padding:16px;background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);border-radius:10px;margin-top:8px;font-size:13px;color:#3ecf8e;line-height:1.6"></div>
@@ -284,6 +293,24 @@
     <div class="lfield"><label>Yeni Şifre</label><input type="password" id="newPasswordInput" placeholder="En az 8 karakter"></div>
     <button class="btn-login" onclick="updateUserPassword()">Şifreyi Güncelle →</button>
     <div id="resetPasswordMsg" style="display:none;font-size:12px;margin-top:10px;padding:10px;border-radius:8px"></div>
+  </div>
+</div>
+
+<!-- DAVET KODU MODAL (koç) -->
+<div class="modal-bg" id="inviteCodeModal">
+  <div class="modal" style="max-width:420px;text-align:center">
+    <button class="modal-close" onclick="cm('inviteCodeModal')">×</button>
+    <div style="font-size:34px;margin-bottom:6px">🎟</div>
+    <h2 style="margin-bottom:6px">Öğrenci Davet Kodun</h2>
+    <p style="font-size:13px;color:var(--text-mid);margin-bottom:18px;line-height:1.6">Bu kodu paylaş — öğrencin kendi hesabını açar ve otomatik olarak sana bağlanır.</p>
+    <div id="invCodeBox" onclick="copyInviteCode()" title="Kopyalamak için tıkla"
+      style="font-size:34px;font-weight:800;letter-spacing:8px;padding:18px 10px;background:var(--accent-dim);border:2px dashed var(--accent);border-radius:14px;color:var(--accent);cursor:pointer;margin-bottom:14px;font-variant-numeric:tabular-nums">······</div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-accent btn-sm" onclick="copyInviteCode()">📋 Kodu Kopyala</button>
+      <button class="btn btn-ghost btn-sm" onclick="copyInviteLink()">🔗 Davet Linkini Kopyala</button>
+      <a id="invWaBtn" class="btn btn-green btn-sm" href="#" target="_blank" style="text-decoration:none">💬 WhatsApp</a>
+    </div>
+    <div style="font-size:11px;color:var(--text-dim);margin-top:16px;line-height:1.6">Link: öğrenci tıklayınca kayıt ekranı kodla hazır açılır.<br>Kod kalıcıdır; dilediğin kadar öğrenciyle paylaşabilirsin.</div>
   </div>
 </div>
 
@@ -557,12 +584,9 @@
     </div>
     <div class="field"><label>Not</label><textarea id="amNote" placeholder="Randevu notları..."></textarea></div>
     <div class="field">
-      <label>Toplantı Linki</label>
-      <div style="display:flex;gap:6px">
-        <input id="amMeetLink" placeholder="https://meet.google.com/... veya Zoom linki" style="flex:1">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('amMeetLink').value=generateMeetLink()" title="Google Meet linki oluştur">Meet</button>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('amMeetLink').value=generateZoomLink()" title="Zoom linki oluştur">Zoom</button>
-      </div>
+      <label>Toplantı Linki (opsiyonel)</label>
+      <input id="amMeetLink" placeholder="Google Meet / Zoom linkinizi yapıştırın">
+      <div style="font-size:11px;color:var(--text-dim);margin-top:5px">Meet veya Zoom'da toplantıyı oluşturup linkini buraya yapıştırın — öğrenci tek tıkla katılır.</div>
     </div>
     <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveAppt()">Kaydet</button>
   </div>

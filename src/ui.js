@@ -695,9 +695,12 @@ function renderStudentsSearch(){
         <div style="font-size:22px;font-weight:800;letter-spacing:-.3px">Öğrencilerim</div>
         <div style="font-size:12px;color:var(--text-dim);margin-top:3px">${totalStudents} öğrenci · ${activeThisWeek} bu hafta aktif · ${completedAll} hafta tamamladı</div>
       </div>
-      <button class="btn btn-accent" onclick="openStudentModal()" style="gap:6px;font-size:13px;padding:9px 18px">
-        <span style="font-size:16px;line-height:1">+</span> Yeni Öğrenci
-      </button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="openInviteCodeModal()" style="gap:6px;font-size:13px;padding:9px 16px">🎟 Davet Kodu</button>
+        <button class="btn btn-accent" onclick="openStudentModal()" style="gap:6px;font-size:13px;padding:9px 18px">
+          <span style="font-size:16px;line-height:1">+</span> Yeni Öğrenci
+        </button>
+      </div>
     </div>
 
     <!-- Arama -->
@@ -714,7 +717,8 @@ function renderStudentsSearch(){
         <div style="text-align:center;padding:64px 20px;color:var(--text-dim)">
           <div style="width:56px;height:56px;border-radius:16px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 16px">👤</div>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Henüz öğrenciniz yok</div>
-          <div style="font-size:12px">Yeni öğrenci eklemek için sağ üstteki butonu kullanın.</div>
+          <div style="font-size:12px;margin-bottom:16px">Sağ üstten kendiniz ekleyin ya da davet kodunuzu paylaşın — öğrenci kendi hesabını açsın.</div>
+          <button class="btn btn-accent btn-sm" onclick="openInviteCodeModal()">🎟 Davet Kodunu Paylaş</button>
         </div>
       ` : S.students.map(s=>{
         const w=weekStats[s.id]||{total:0,done:0,totalMin:0,doneMin:0};
@@ -8159,16 +8163,36 @@ function printWeeklyProgramWithNote(stuId, coachNote){
 }
 
 // ═══════════════════════════════════════════════
-// ZOOM / MEET LİNK
+// DAVET KODU (koç → öğrenci self-signup)
 // ═══════════════════════════════════════════════
-function generateMeetLink(){
-  const c='abcdefghijklmnopqrstuvwxyz';
-  const seg=()=>Array.from({length:3},()=>c[Math.floor(Math.random()*c.length)]).join('');
-  return `https://meet.google.com/${seg()}-${seg()}-${seg()}`;
+async function openInviteCodeModal(){
+  om('inviteCodeModal');
+  const box=document.getElementById('invCodeBox');
+  let code=S.workspace?.invite_code;
+  if(!code){
+    box.textContent='……';
+    try{
+      const {data,error}=await db.rpc('ensure_invite_code');
+      if(!error&&data){code=data;if(S.workspace)S.workspace.invite_code=code;}
+    }catch(e){}
+  }
+  if(!code){box.textContent='—';showToast('Kod alınamadı — sayfayı yenileyip tekrar dene');return;}
+  box.textContent=code;
+  const link=`https://rostrumakademi.com/app.html?davet=${code}`;
+  const brand=S.workspace?.brand_name||'koçun';
+  const msg=`Merhaba! ${brand} koçluk platformuna davetlisin. 🎓\n\nKayıt linki: ${link}\n(Davet kodun: ${code})\n\nLinke tıkla, hesabını oluştur — otomatik olarak bana bağlanacaksın.`;
+  const wa=document.getElementById('invWaBtn');
+  if(wa)wa.href='https://wa.me/?text='+encodeURIComponent(msg);
 }
-function generateZoomLink(){
-  return `https://zoom.us/j/${Math.floor(Math.random()*9000000000)+1000000000}`;
+function copyInviteCode(){
+  const code=document.getElementById('invCodeBox')?.textContent?.trim();
+  if(code&&code.length===6)copyToClipboard(code);
 }
+function copyInviteLink(){
+  const code=document.getElementById('invCodeBox')?.textContent?.trim();
+  if(code&&code.length===6)copyToClipboard(`https://rostrumakademi.com/app.html?davet=${code}`);
+}
+
 function copyToClipboard(text){
   navigator.clipboard.writeText(text).then(()=>showToast('Link kopyalandı ✓')).catch(()=>{
     const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');el.remove();showToast('Link kopyalandı ✓');
@@ -10513,8 +10537,9 @@ window.generatePDF = generatePDF;
 window.openWeeklyPDFModal = openWeeklyPDFModal;
 window.generateWeeklyPDF = generateWeeklyPDF;
 window.printWeeklyProgramWithNote = printWeeklyProgramWithNote;
-window.generateMeetLink = generateMeetLink;
-window.generateZoomLink = generateZoomLink;
+window.openInviteCodeModal = openInviteCodeModal;
+window.copyInviteCode = copyInviteCode;
+window.copyInviteLink = copyInviteLink;
 window.copyToClipboard = copyToClipboard;
 window.loadTheme = loadTheme;
 window.applyAccent = applyAccent;

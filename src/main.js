@@ -33,6 +33,12 @@ if (urlParams.get('sandbox') === 'true') {
   }
 }
 
+// Davet linki: app.html?davet=KOD → kayıt ekranı öğrenci moduna kodla hazır açılır
+const _davet = urlParams.get('davet');
+if (_davet && window.applyInviteFromUrl) {
+  setTimeout(() => window.applyInviteFromUrl(_davet), 200);
+}
+
 // Service Worker Kaydı (PWAs & Push Notifications)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
