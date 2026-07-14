@@ -110,6 +110,19 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// TR telefon maskesi: 0 (5XX) XXX XX XX — input'un oninput'unda çağrılır
+export function maskPhoneTR(el) {
+  let d = el.value.replace(/\D/g, '');
+  if (d.startsWith('0')) d = d.slice(1);
+  d = d.slice(0, 10);
+  let out = '';
+  if (d.length > 0) out = '0 (' + d.slice(0, 3);
+  if (d.length >= 3) out += ') ' + d.slice(3, 6);
+  if (d.length >= 6) out += ' ' + d.slice(6, 8);
+  if (d.length >= 8) out += ' ' + d.slice(8, 10);
+  el.value = out;
+}
+
 // YKS geri sayımı — sınav (yaklaşık 14 Haziran) geçince otomatik sonraki yıla döner
 export function getNextYks() {
   const now = new Date();
@@ -199,6 +212,7 @@ window.cm = cm;
 window.showToast = showToast;
 window.getWeekStart = getWeekStart;
 window.getNextYks = getNextYks;
+window.maskPhoneTR = maskPhoneTR;
 window.getStudentWeekStart = getStudentWeekStart;
 window.sha256 = sha256;
 window.normalizeUsername = normalizeUsername;

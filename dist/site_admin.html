@@ -1829,6 +1829,25 @@ async function createCoachAccount(lead){
       status: 'approved'
     }).eq('id', lead.id);
 
+    // Otomatik e-posta gönderimini tetikle
+    try {
+      await fetch('/api/mailer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'coach_welcome',
+          to: lead.email,
+          coach_name: lead.first_name,
+          username: username,
+          password: defaultPass
+        })
+      });
+      showToast('Giriş bilgileri koçun e-posta adresine otomatik gönderildi ✓');
+    } catch (mailErr) {
+      console.error('[Automated Coach Mail Error]', mailErr);
+      showToast('Hesap oluşturuldu fakat e-posta gönderimi başarısız oldu.', false);
+    }
+
     // Admin'e bilgi göster
     showCoachCreatedModal(lead.first_name, username, defaultPass, lead.email);
   }catch(e){
@@ -1864,7 +1883,7 @@ function showCoachCreatedModal(name, username, pass, email){
       </div>
       <div style="font-size:11px;color:var(--dim)">Giriş: ${appUrl}</div>
     </div>
-    <a href="mailto:${esc(email)}?subject=Rostrum Akademi Hesabınız Hazır&body=${mailBody}" class="btn" style="width:100%;justify-content:center;background:var(--acc);color:#07060a;padding:12px;border-radius:11px;text-decoration:none;font-size:14px;font-weight:700">✉️ E-posta Gönder</a>
+    <a href="mailto:${esc(email)}?subject=Rostrum Akademi Hesabınız Hazır&body=${mailBody}" class="btn" style="width:100%;justify-content:center;background:var(--acc);color:#07060a;padding:12px;border-radius:11px;text-decoration:none;font-size:14px;font-weight:700">✉️ E-postayı Tekrar Gönder (Yedek)</a>
   </div>`;
   document.getElementById('coachCreatedModal').classList.add('open');
 }
@@ -2059,9 +2078,6 @@ async function deleteAnnounce(id){
 function renderDashboard(){
   const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
 
-  setEl('st-leads',    _leads.length);
-  setEl('st-pending',  _leads.filter(l=>l.status==='pending').length+' bekliyor');
-  setEl('st-approved', _leads.filter(l=>l.status==='approved').length);
   setEl('st-posts',    _blogs.filter(b=>b.published).length);
   setEl('st-announce', _announces.filter(a=>a.active).length);
 
@@ -2072,16 +2088,30 @@ function renderDashboard(){
   setEl('ds-rejected',  _leads.filter(l=>l.status==='rejected').length);
 
   // Kullanıcı özeti + üst stat kartları (Supabase'den gerçek veri)
-  db.from('users').select('id,role,created_at').then(({data})=>{
+  db.from('users').select('id,role,created_at,full_name,username,email,plan').then(({data})=>{
     const users=data||[];
     const coaches=users.filter(u=>u.role==='coach');
     const students=users.filter(u=>u.role==='student');
     const weekAgo=new Date(Date.now()-7*24*3600*1000).toISOString();
-    setEl('st-coaches',  coaches.length);
-    setEl('st-students', students.length);
+    setEl('st-coaches-total', coaches.length);
+    setEl('st-coaches-new', coaches.filter(u=>u.created_at>weekAgo).length + ' bu hafta');
+    setEl('st-students-total', students.length);
     setEl('ds-coaches',  coaches.length);
     setEl('ds-students', students.length);
     setEl('ds-new-week', users.filter(u=>u.created_at>weekAgo).length);
+
+    // Son 5 katılan koç
+    const recentCoaches = [...coaches].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5);
+    document.getElementById('dashNewCoaches').innerHTML = recentCoaches.length ? recentCoaches.map(c=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(13,148,136,.12);color:#0d9488;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">${(c.full_name||c.username||'?')[0]}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:var(--text)">${esc(c.full_name||c.username||'—')}</div>
+          <div style="font-size:11px;color:var(--dim)">${esc(c.email||'')}</div>
+        </div>
+        <span class="status-badge st-approved" style="font-size:10px">${c.plan==='trial'?'7 Günlük Deneme':'Aktif Abone'}</span>
+      </div>`).join('')+'<div style="padding-top:8px"><button class="btn btn-ghost btn-sm" onclick="switchView(\'users\',document.querySelector(\'[onclick*=users]\'))">Tümü Gör →</button></div>'
+    : '<div style="color:var(--dim);font-size:13px;text-align:center;padding:20px">Henüz kayıtlı koç yok</div>';
   });
 
   // Bu ay tahsilat (payments tablosu varsa)
@@ -2100,18 +2130,6 @@ function renderDashboard(){
     setEl('ds-match-done',    m.filter(x=>x.status==='completed').length);
   });
 
-  // Son 5 başvuru
-  const recent=_leads.slice(0,5);
-  document.getElementById('dashLeads').innerHTML=recent.length?recent.map(l=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)">
-      <div style="width:32px;height:32px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#07060a;flex-shrink:0">${(l.first_name||'?')[0]}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:700">${esc(l.first_name)} ${esc(l.last_name||'')} · ${esc(l.brand_name)}</div>
-        <div style="font-size:11px;color:var(--dim)">${new Date(l.created_at).toLocaleDateString('tr-TR')}</div>
-      </div>
-      <span class="status-badge st-${l.status}" style="font-size:10px">${statusLabel(l.status)}</span>
-    </div>`).join('')+'<div style="padding-top:8px"><button class="btn btn-ghost btn-sm" onclick="switchView(\'leads\',document.querySelector(\'[onclick*=leads]\'))">Tümünü Gör →</button></div>'
-  :'<div style="color:var(--dim);font-size:13px;text-align:center;padding:20px">Henüz başvuru yok</div>';
 }
 
 // ── MATCHES & PROFILES STATE ──────────────────

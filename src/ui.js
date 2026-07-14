@@ -6895,9 +6895,25 @@ window._swSave = async function() {
       daily_capacity: daily_capacity,
       onboarding_done: true
     };
-    await db.from('student_profiles').upsert(payload);
+    let { error } = await db.from('student_profiles').upsert(payload);
+    if (error && /column/i.test(error.message || '')) {
+      // migration_v23 henüz çalıştırılmamış — veri kaybetmeden eski kolonlara yaz
+      ({ error } = await db.from('student_profiles').upsert({
+        id: payload.id,
+        target_university: payload.target_university,
+        target_department: payload.target_department,
+        struggling_subjects: payload.struggling_subjects,
+        daily_capacity: payload.daily_capacity,
+        bio: `Hedef sıralama: ${payload.target_rank} · Veli: ${pmail} / ${pphone}`
+      }));
+    }
+    if (error) {
+      showLoading(false);
+      return _swErr('Kaydedilemedi: ' + error.message);
+    }
   } catch(e) {
-    console.error('Onboarding kaydetme hatası:', e);
+    showLoading(false);
+    return _swErr('Kaydedilemedi: ' + (e.message || e));
   }
   showLoading(false);
 
@@ -7893,6 +7909,7 @@ function openReportModal(stuId) {
           <button class="btn btn-accent" style="flex:1;justify-content:center" onclick="generatePDF()">⬇️ PDF İndir</button>
         </div>
         <button class="btn btn-ghost" style="width:100%;justify-content:center;background:#25d366;color:#fff;border:none;gap:6px" onclick="sendWhatsAppReport()">💬 Veliye WhatsApp Gönder</button>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center;background:#0d9488;color:#fff;border:none;gap:6px" onclick="sendParentEmailReport()">✉️ Veliye E-Posta Gönder</button>
         <button class="btn btn-ghost" style="width:100%;justify-content:center;background:var(--surface3);color:var(--text);border:1px solid var(--border);gap:6px" onclick="archivePerformanceReport()">💾 Raporu Sisteme Kaydet (Arşivle)</button>
       </div>
     </div>`;
@@ -8180,6 +8197,77 @@ async function sendWhatsAppReport() {
   window.open(whatsappUrl, '_blank');
   cm('reportModal');
   showToast('WhatsApp yönlendirmesi açıldı ✓');
+}
+
+async function sendParentEmailReport() {
+  const stuId = document.getElementById('rpStuId').value;
+  const stu = S.students.find(x => x.id === stuId);
+  if (!stu) return;
+
+  const btn = document.querySelector('[onclick="sendParentEmailReport()"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Gönderiliyor...';
+  }
+
+  try {
+    // 1. Veritabanından veli e-postasını çek
+    const { data: prof, error: profErr } = await db
+      .from('student_profiles')
+      .select('parent_email')
+      .eq('id', stuId)
+      .maybeSingle();
+
+    if (profErr || !prof || !prof.parent_email) {
+      showToast('Velinin kayıtlı e-posta adresi bulunamadı. Lütfen öğrenci profilinden veli e-postasını ekleyin.', false);
+      return;
+    }
+
+    // 2. Haftalık başarı oranını hesapla (print fonksiyonuyla aynı mantıkta)
+    const wsOff = stu.weekStart || 0;
+    const wOffset = window.S ? S.weekOffset : 0;
+    const wStart = getWeekStart(wOffset, wsOff);
+    
+    let totalTasks = 0, doneTasks = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(wStart, i);
+      const ds = fmtDate(d);
+      const tasks = S.tasks[`${stuId}_${ds}`] || [];
+      totalTasks += tasks.length;
+      doneTasks += tasks.filter(t => t.done).length;
+    }
+    const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+    const note = document.getElementById('rpNote').value.trim();
+
+    // 3. /api/mailer POST çağrısı
+    const resp = await fetch('/api/mailer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'parent_report',
+        to: prof.parent_email,
+        student_name: stu.full_name || stu.name || 'Öğrencimiz',
+        student_id: stuId,
+        coach_name: S.workspace?.brand_name || 'Rostrum Akademi',
+        completion_percentage: pct,
+        coach_note: note || null
+      })
+    });
+
+    const d = await resp.json();
+    if (!resp.ok) throw new Error(d.error || 'Gönderim başarısız.');
+
+    showToast('Veli performans raporu başarıyla e-posta olarak gönderildi ✓');
+    cm('reportModal');
+  } catch (err) {
+    console.error('[sendParentEmailReport Error]', err);
+    showToast('E-posta gönderilirken hata: ' + err.message, false);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '✉️ Veliye E-Posta Gönder';
+    }
+  }
 }
 
 
@@ -11090,3 +11178,127 @@ window.openPastReports = openPastReports;
 window.viewArchivedReport = viewArchivedReport;
 window.printActiveReport = printActiveReport;
 window.deleteArchivedReport = deleteArchivedReport;
+
+// ── CANLI DEMO (SANDBOX) RESET & FLOATING BANNER ──
+async function resetDemoData(btn) {
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Sıfırlanıyor...';
+  }
+  try {
+    const coachId = window.S?.currentUser?.id;
+    if (!coachId) throw new Error('Oturum bulunamadı.');
+
+    // 1. Koça ait öğrencileri al
+    const { data: students } = await db.from('users').select('id').eq('coach_id', coachId);
+    const studentIds = (students || []).map(s => s.id);
+
+    if (studentIds.length > 0) {
+      // 2. İlişkili tüm verileri temizle
+      await db.from('tasks').delete().in('student_id', studentIds);
+      await db.from('exams').delete().in('student_id', studentIds);
+      await db.from('appointments').delete().in('student_id', studentIds);
+      await db.from('messages').delete().in('student_id', studentIds);
+      await db.from('student_profiles').delete().in('id', studentIds);
+      await db.from('users').delete().in('id', studentIds);
+    }
+
+    // 3. 3 adet yeni öğrenci ekle
+    const mockStudents = [
+      { id: 'demo-stu-1', full_name: 'Ahmet Yılmaz', username: 'ahmetyilmaz', role: 'student', exam_profile: 'YKS', yks_area: 'SAY', coach_id: coachId, email: 'ahmet@demokoc.com', active: true },
+      { id: 'demo-stu-2', full_name: 'Zeynep Kaya', username: 'zeynepkaya', role: 'student', exam_profile: 'YKS', yks_area: 'EA', coach_id: coachId, email: 'zeynep@demokoc.com', active: true },
+      { id: 'demo-stu-3', full_name: 'Elif Demir', username: 'elifdemir', role: 'student', exam_profile: 'YKS', yks_area: 'SÖZ', coach_id: coachId, email: 'elif@demokoc.com', active: true }
+    ];
+
+    for (const stu of mockStudents) {
+      await db.from('users').upsert(stu);
+      await db.from('student_profiles').upsert({ id: stu.id, parent_email: 'veli@demo.com', target: 'Boğaziçi Üniversitesi' });
+    }
+
+    // 4. Haftalık görevleri ekle
+    const today = new Date();
+    const mockTasks = [];
+    const subjects = {
+      'demo-stu-1': ['Matematik', 'Fizik', 'Kimya'],
+      'demo-stu-2': ['Matematik', 'Edebiyat', 'Tarih'],
+      'demo-stu-3': ['Edebiyat', 'Tarih', 'Coğrafya']
+    };
+
+    for (const stu of mockStudents) {
+      const subs = subjects[stu.id];
+      for (let i = -3; i <= 3; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+        
+        mockTasks.push({
+          student_id: stu.id,
+          date: dateStr,
+          subject: subs[0],
+          topic: 'Konu Anlatımı & Tekrar',
+          duration: 120,
+          done: i < 0
+        });
+        mockTasks.push({
+          student_id: stu.id,
+          date: dateStr,
+          subject: subs[1],
+          topic: 'Soru Bankası Çözümü (120 Soru)',
+          duration: 90,
+          done: i <= 0
+        });
+      }
+    }
+    await db.from('tasks').insert(mockTasks);
+
+    // 5. Deneme sınavı sonuçları ekle
+    const mockExams = [];
+    for (const stu of mockStudents) {
+      mockExams.push({
+        student_id: stu.id,
+        date: new Date(today.getTime() - 15 * 24 * 3600 * 1000).toISOString().split('T')[0],
+        type: 'TYT',
+        title: 'Özdebir Türkiye Geneli',
+        net_tr: 32, net_sos: 15, net_mat: 28, net_fen: 12, net_total: 87
+      });
+      mockExams.push({
+        student_id: stu.id,
+        date: new Date(today.getTime() - 5 * 24 * 3600 * 1000).toISOString().split('T')[0],
+        type: 'TYT',
+        title: '3D Simülasyon Denemesi',
+        net_tr: 34, net_sos: 16, net_mat: 31, net_fen: 14, net_total: 95
+      });
+    }
+    await db.from('exams').insert(mockExams);
+
+    showToast('Demo verileri sıfırlandı ve tertemiz mock veri setleri yüklendi ✓');
+    setTimeout(() => location.reload(), 800);
+  } catch(err) {
+    console.error('Demo reset error:', err);
+    showToast('Sıfırlama sırasında hata oluştu: ' + err.message, false);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Verileri Sıfırla ⟳';
+    }
+  }
+}
+window.resetDemoData = resetDemoData;
+
+setTimeout(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const isSandbox = urlParams.get('sandbox') === 'true' || (window.S && window.S.currentUser && window.S.currentUser.username === 'demokoc');
+  if (isSandbox) {
+    let banner = document.getElementById('demoSandboxBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'demoSandboxBanner';
+      banner.style.cssText = 'position:fixed;bottom:20px;right:20px;background:rgba(26,25,22,0.95);color:var(--text);padding:14px 20px;border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,0.6);z-index:99999;font-size:13px;font-weight:700;display:flex;align-items:center;gap:14px;border:1px solid var(--acc);backdrop-filter:blur(10px);';
+      banner.innerHTML = `
+        <span style="display:flex;align-items:center;gap:6px;"><span style="color:var(--acc)">⚡</span> Canlı Demo Modu</span>
+        <button onclick="resetDemoData(this)" style="background:var(--acc);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 10px rgba(255,122,92,0.25);">Verileri Sıfırla ⟳</button>
+      `;
+      document.body.appendChild(banner);
+    }
+  }
+}, 2000);

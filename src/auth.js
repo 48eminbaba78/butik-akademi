@@ -40,8 +40,17 @@ export function setLoginMode(mode) {
 
 export function setRegRole(role) {
   window._regRole = role;
-  document.getElementById('rrbCoach').classList.toggle('sel', role === 'coach');
-  document.getElementById('rrbStudent').classList.toggle('sel', role === 'student');
+  // Görsel vurguyu inline bas — markup'taki inline border/background stillerini
+  // CSS class'ı ezemediği için seçim aksi halde görünmez oluyor
+  [['rrbCoach','coach'],['rrbStudent','student']].forEach(([id, r]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const on = role === r;
+    el.classList.toggle('sel', on);
+    el.style.borderColor = on ? 'var(--accent)' : 'var(--border)';
+    el.style.background = on ? 'var(--accent-dim)' : 'var(--surface2)';
+    el.style.boxShadow = on ? '0 0 0 1px var(--accent)' : 'none';
+  });
 }
 
 export function setOnbRole(role) {
@@ -174,6 +183,12 @@ export async function checkOAuthSession() {
     }
 
     if (profile && !needsOnboarding) {
+      if (profile.active === false) {
+        showLoading(false);
+        db.auth.signOut();
+        alert('Hesabınız askıya alınmıştır. Lütfen yöneticiyle iletişime geçin.');
+        return;
+      }
       await finishLogin(profile);
     } else {
       showLoading(false);
@@ -451,6 +466,11 @@ export async function doLogin() {
       const { data: profile, error: pErr } = await db.from('users').select('*').eq('id', authData.user.id).maybeSingle();
       if (pErr) console.error('Profile fetch error:', pErr);
       if (profile) {
+        if (profile.active === false) {
+          showLoading(false);
+          db.auth.signOut();
+          return loginErr('Hesabınız askıya alınmıştır. Lütfen yöneticiyle iletişime geçin.');
+        }
         clearTimeout(_loginTimeout);
         await finishLogin(profile);
         return;
@@ -469,6 +489,10 @@ export async function doLogin() {
       });
       const rows = Array.isArray(rpcRows) ? rpcRows[0] : rpcRows;
       if (rows) {
+        if (rows.active === false) {
+          showLoading(false);
+          return loginErr('Hesabınız askıya alınmıştır. Lütfen yöneticiyle iletişime geçin.');
+        }
         clearTimeout(_loginTimeout);
         await finishLogin(rows);
         return;
