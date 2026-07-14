@@ -19,9 +19,9 @@ export function saveS() {
   saveUI();
 }
 
-export function showLoading(on) {
+export function showLoading(on, msg) {
   let el = document.getElementById('loadingOverlay');
-  
+
   // Mükerrer tıklamaları önlemek için giriş/aksiyon butonlarını devre dışı bırak
   const actionBtns = document.querySelectorAll('.btn-login, .btn-accent, .btn');
   actionBtns.forEach(btn => {
@@ -39,12 +39,14 @@ export function showLoading(on) {
   if (on && !el) {
     el = document.createElement('div');
     el.id = 'loadingOverlay';
-    el.style.cssText = 'position:fixed;inset:0;background:rgba(15,14,12,.8);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;backdrop-filter:blur(4px)';
-    el.innerHTML = `<div style="width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite"></div><div style="font-size:13px;color:var(--text-mid)">Yükleniyor...</div>`;
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(15,14,12,.82);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;backdrop-filter:blur(6px)';
+    const label = msg || 'Yükleniyor...';
+    const icon  = msg ? `<div style="font-size:36px;animation:overlayPop .3s cubic-bezier(.34,1.56,.64,1) both">🗑️</div>` : `<div style="width:38px;height:38px;border:3px solid rgba(255,255,255,.12);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite"></div>`;
+    el.innerHTML = `${icon}<div style="font-size:14px;font-weight:600;color:#fff;letter-spacing:.2px">${label}</div>`;
     if (!document.getElementById('spinStyle')) {
       const s = document.createElement('style');
       s.id = 'spinStyle';
-      s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+      s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}@keyframes overlayPop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}';
       document.head.appendChild(s);
     }
     document.body.appendChild(el);
@@ -107,6 +109,18 @@ document.addEventListener('keydown', e => {
     });
   }
 });
+
+// YKS geri sayımı — sınav (yaklaşık 14 Haziran) geçince otomatik sonraki yıla döner
+export function getNextYks() {
+  const now = new Date();
+  let year = now.getFullYear();
+  let examDate = new Date(year, 5, 14); // 14 Haziran
+  if (now > examDate) {
+    year += 1;
+    examDate = new Date(year, 5, 14);
+  }
+  return { year, days: Math.max(1, Math.ceil((examDate - now) / 864e5)) };
+}
 
 // Haftalık program başlangıç hesaplama (0=Pazartesi, 6=Pazar)
 export function getWeekStart(offset, stuWeekStart = 0) {
@@ -184,6 +198,7 @@ window.om = om;
 window.cm = cm;
 window.showToast = showToast;
 window.getWeekStart = getWeekStart;
+window.getNextYks = getNextYks;
 window.getStudentWeekStart = getStudentWeekStart;
 window.sha256 = sha256;
 window.normalizeUsername = normalizeUsername;

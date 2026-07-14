@@ -5,10 +5,10 @@
 import { db } from './config.js';
 import { S, session } from './state.js';
 import { loadAllData, dbQ } from './api.js';
-import { 
-  showLoading, sha256, normalizeUsername, showToast, 
-  esc, fmtDate, addDays, todayStr, netColor, typeLabel, 
-  om, cm, getWeekStart, getStudentWeekStart, saveUI, saveS
+import {
+  showLoading, sha256, normalizeUsername, showToast,
+  esc, fmtDate, addDays, todayStr, netColor, typeLabel,
+  om, cm, getWeekStart, getStudentWeekStart, saveUI, saveS, getNextYks
 } from './helpers.js';
 
 function formatMinToHours(mins) {
@@ -521,8 +521,18 @@ function renderHome(){
       exams:   { badge: '#ff5c7a', badgeBg: 'rgba(255,92,122,.08)', border: 'rgba(255,92,122,.2)' },
       speed:   { badge: '#f0a500', badgeBg: 'rgba(240,165,0,.1)',   border: 'rgba(240,165,0,.2)' },
     };
+    // Uyarı tipine göre tek-tık hızlı aksiyon (koç ilgili ekrana ışınlanır)
+    const quickAction = {
+      noplan:   { label: '📅 Program Yap',  fn: 'openStudentProgram' },
+      tasks:    { label: '📋 Programı Aç',  fn: 'openStudentProgram' },
+      inactive: { label: '📋 Programı Aç',  fn: 'openStudentProgram' },
+      exams:    { label: '➕ Deneme Ekle',  fn: 'openStudentExams' },
+      speed:    { label: '⏱ Hızı Düzenle', fn: 'openStudentModal' },
+    };
     anomaliesHTML = anomalies.map(a => {
       const st = typeStyle[a.type] || typeStyle.tasks;
+      const qa = quickAction[a.type];
+      const qaBtn = qa ? `<button onclick="event.stopPropagation();${qa.fn}('${a.studentId}')" style="flex-shrink:0;font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid ${st.border};background:var(--surface);color:${st.badge};cursor:pointer;font-family:inherit;white-space:nowrap;transition:filter .15s" onmouseover="this.style.filter='brightness(.95)'" onmouseout="this.style.filter='none'">${qa.label}</button>` : '';
       return `<div style="cursor:pointer;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:${st.badgeBg};border:1px solid ${st.border};display:flex;align-items:center;gap:10px;transition:opacity .15s" onclick="openStudentDetail('${a.studentId}')" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
         <div style="font-size:18px;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0">${a.icon}</div>
         <div style="flex:1;min-width:0">
@@ -532,6 +542,7 @@ function renderHome(){
           </div>
           <div style="font-size:11px;color:var(--text-mid);line-height:1.4">${a.desc}</div>
         </div>
+        ${qaBtn}
       </div>`;
     }).join('');
   }
@@ -541,9 +552,9 @@ function renderHome(){
   const timeNow = `${String(hr).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const nextAppt = todayAppts.find(a => a.time >= timeNow);
 
-  // YKS 2026 geri sayım
-  const yks2026 = new Date(2026, 5, 14);
-  const daysToYks = Math.max(0, Math.ceil((yks2026 - now) / (1000*60*60*24)));
+  // YKS geri sayım — sınav geçince otomatik sonraki yıla döner
+  const yksInfo = getNextYks();
+  const daysToYks = yksInfo.days;
 
   // Haftanın görev tamamlama özeti
   const ws2 = getWeekStart(0, 0);
@@ -568,7 +579,7 @@ function renderHome(){
       <div class="home-hero-right">
         <div class="home-yks-badge">
           <div class="home-yks-num">${daysToYks}</div>
-          <div class="home-yks-meta">gün kaldı<br><b>YKS 2026</b></div>
+          <div class="home-yks-meta">gün kaldı<br><b>YKS ${yksInfo.year}</b></div>
         </div>
       </div>
     </div>
@@ -869,7 +880,10 @@ function openStudentDetail(stuId){
           <textarea id="aiCopilotTextarea" style="width:100%; min-height:150px; font-family:inherit; font-size:13px; line-height:1.5; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text)" oninput="checkCopilotDraftEdited()"></textarea>
         </div>
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px">
-          <button id="aiCopilotSendBtn" class="btn btn-accent btn-sm" onclick="sendCopilotDraft('${s.id}')" style="background:var(--green); border-color:var(--green); color:white" disabled>✍️ Düzenlemeyi Kaydet ve Öğrenciye Gönder</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <button id="aiCopilotSendBtn" class="btn btn-accent btn-sm" onclick="sendCopilotDraft('${s.id}')" style="background:var(--green); border-color:var(--green); color:white; flex:1; min-width:200px" disabled>✍️ Kaydet ve Öğrenciye Gönder</button>
+            <button class="btn btn-ghost btn-sm" onclick="shareCopilotWhatsApp()" style="flex:1; min-width:200px">💬 WhatsApp ile Veliye Gönder</button>
+          </div>
           <span id="aiCopilotEditWarning" style="color:var(--red); font-size:11px; font-weight:bold">Öğrenciye gönderebilmek için taslak üzerinde en az bir değişiklik yapmalısınız.</span>
         </div>
       </div>
@@ -2341,8 +2355,54 @@ async function saveStudentSpeed(stuId, examType, subject, secsPerQ){
   showToast('Hız kaydedildi ✓');
 }
 
-// Ders değişince kitap listesi sıfırla — BUG FIX
+// ═══════════════════════════════════════════════
+// AKILLI SÜRE ROZETİ — calculate_smart_duration RPC (migration_v22)
+// Soru sayısı + ders girilince öğrencinin GERÇEK hızıyla süre tahmini gösterir
+// ═══════════════════════════════════════════════
+let _smartBadgeTimer=null;
+let _smartBadgeMinutes=null;
+function scheduleSmartBadge(){
+  clearTimeout(_smartBadgeTimer);
+  _smartBadgeTimer=setTimeout(updateSmartBadge,400);
+}
+async function updateSmartBadge(){
+  const badge=document.getElementById('tmSmartBadge');
+  if(!badge) return;
+  const qCount=parseInt(document.getElementById('tmQCount')?.value)||0;
+  const subject=(document.getElementById('tmSubjectSel')?.style.display!=='none'
+    ? document.getElementById('tmSubjectSel')?.value
+    : document.getElementById('tmSubjectFree')?.value)||'';
+  const examType=document.getElementById('tmExam')?.value||'TYT';
+  if(!qCount||!subject||!S.activeStuId){ badge.style.display='none'; _smartBadgeMinutes=null; return; }
+  try{
+    const {data,error}=await db.rpc('calculate_smart_duration',{
+      p_student_id:S.activeStuId, p_exam_type:examType, p_subject:subject,
+      p_question_count:qCount, p_video_minutes:0, p_speed_multiplier:1
+    });
+    if(error||!data){ badge.style.display='none'; return; }
+    _smartBadgeMinutes=data.estimated_minutes;
+    const isReal=data.speed_source==='student';
+    badge.style.display='block';
+    badge.style.background=isReal?'var(--green-dim)':'var(--blue-dim)';
+    badge.style.borderColor=isReal?'rgba(5,150,105,.3)':'rgba(37,99,235,.3)';
+    badge.style.color=isReal?'var(--green)':'var(--blue)';
+    badge.innerHTML=`⚡ Akıllı Süre: <b>${data.estimated_minutes} dk</b> — ${isReal
+      ? `öğrencinin gerçek hızına göre (${data.secs_per_question} sn/soru)`
+      : `sistem varsayılanına göre (${data.secs_per_question} sn/soru)`} · <u>süreye uygula</u>`;
+  }catch(e){ badge.style.display='none'; }
+}
+function applySmartDuration(){
+  if(_smartBadgeMinutes){
+    document.getElementById('tmDuration').value=_smartBadgeMinutes;
+    showToast('⚡ Akıllı süre uygulandı: '+_smartBadgeMinutes+' dk');
+  }
+}
+
+// Ders değişince kitap listesi sıfırla — BUG FIX + akıllı rozet güncelle
 document.getElementById('tmType').addEventListener('change', updateSubjectList);
+document.getElementById('tmExam')?.addEventListener('change', scheduleSmartBadge);
+document.getElementById('tmSubjectSel')?.addEventListener('change', scheduleSmartBadge);
+document.getElementById('tmSubjectFree')?.addEventListener('input', scheduleSmartBadge);
 
 let _savingTask = false;
 async function saveTask(){
@@ -4197,11 +4257,11 @@ function renderSPortal(){
       <div class="day-tasks-list">${taskHtml||'<div class="empty" style="padding:8px 0"><p style="font-size:11px">Görev yok</p></div>'}</div>
     </div>`;
   }
-  const _yksDate = new Date(2026, 5, 14);
-  const _daysToYks = Math.max(0, Math.ceil((_yksDate - new Date()) / (1000*60*60*24)));
+  const _yksInfo = getNextYks();
+  const _daysToYks = _yksInfo.days;
 
   el.innerHTML=`
-    ${_daysToYks > 0 ? `<div style="text-align:center;margin-bottom:10px;padding:7px 12px;background:var(--surface2);border-radius:10px;font-size:12px;color:var(--text-mid)">📅 YKS 2026'ya <strong style="color:var(--accent)">${_daysToYks}</strong> gün kaldı</div>` : ''}
+    ${_daysToYks > 0 ? `<div style="text-align:center;margin-bottom:10px;padding:7px 12px;background:var(--surface2);border-radius:10px;font-size:12px;color:var(--text-mid)">📅 YKS ${_yksInfo.year}'ye <strong style="color:var(--accent)">${_daysToYks}</strong> gün kaldı</div>` : ''}
     <div class="week-nav" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div style="display:flex;gap:6px;align-items:center">
         <button class="btn btn-ghost btn-sm" onclick="chWeekS(-1)">← Önceki</button>
@@ -5119,10 +5179,20 @@ async function renderDevDashboard() {
 }
 
 // ── KULLANICI YÖNETİMİ ─────────────────────────
+let _devUserFilter = 'all';
+function setDevUserFilter(f){ _devUserFilter = f; renderDevUsers(); }
+
 async function renderDevUsers() {
   const el = document.getElementById('view-dev-users');
-  const {data:users} = await db.from('users').select('*').order('created_at');
+  const {data:allUsers} = await db.from('users').select('*').order('created_at');
   const now = new Date();
+  const counts = { all:(allUsers||[]).length, coach:0, student:0, parent:0 };
+  (allUsers||[]).forEach(u=>{ if(counts[u.role]!==undefined) counts[u.role]++; });
+  const users = _devUserFilter==='all' ? allUsers : (allUsers||[]).filter(u=>u.role===_devUserFilter);
+  const filterTabs = [
+    ['all',`Tümü (${counts.all})`],['coach',`Koçlar (${counts.coach})`],
+    ['student',`Öğrenciler (${counts.student})`],['parent',`Veliler (${counts.parent})`]
+  ].map(([k,lbl])=>`<button onclick="setDevUserFilter('${k}')" style="padding:7px 16px;border-radius:99px;border:1.5px solid ${_devUserFilter===k?'var(--accent)':'var(--border)'};background:${_devUserFilter===k?'var(--accent-dim)':'var(--surface)'};color:${_devUserFilter===k?'var(--accent)':'var(--text-mid)'};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">${lbl}</button>`).join('');
 
   function _planBadge(u) {
     if (u.role !== 'coach' && u.role !== 'developer') return '<span style="color:var(--text-dim);font-size:11px">—</span>';
@@ -5141,6 +5211,7 @@ async function renderDevUsers() {
     <div class="sh"><h2>👥 Kullanıcı Yönetimi</h2>
       <button class="btn btn-accent" onclick="openDevUserModal()">+ Kullanıcı Ekle</button>
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${filterTabs}</div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead>
@@ -5621,15 +5692,28 @@ async function renderDevFinance() {
       <div class="card cp">
         <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px">💳 Son Ödemeler</div>
         ${(pays||[]).slice(0,10).map(p=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-            <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="min-width:0">
               <div style="font-size:12px;font-weight:700">${esc(p.users?.full_name||'?')}</div>
               <div style="font-size:11px;color:var(--text-dim)">${p.payment_date} · ${p.method}</div>
             </div>
-            <div style="font-size:13px;font-weight:700;color:var(--green)">${Number(p.amount).toLocaleString('tr-TR')} ₺</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+              <div style="font-size:13px;font-weight:700;color:var(--green)">${Number(p.amount).toLocaleString('tr-TR')} ₺</div>
+              ${p.verified
+                ? '<span style="font-size:10px;font-weight:800;color:var(--green);background:var(--green-dim);border:1px solid rgba(5,150,105,.3);border-radius:99px;padding:3px 9px;white-space:nowrap">✓ Doğrulandı</span>'
+                : `<button class="btn btn-green btn-xs" onclick="verifyPayment('${p.id}')" title="Havaleyi kontrol ettim, ödemeyi onayla">Ödemeyi Onayla</button>`}
+            </div>
           </div>`).join('') || '<div class="empty"><p>Ödeme yok</p></div>'}
       </div>
     </div>`;
+}
+
+// Ödemeyi doğrula (payments.verified — migration_v15)
+async function verifyPayment(payId){
+  const {error} = await db.from('payments').update({verified:true}).eq('id',payId);
+  if(error){ showToast('Onaylanamadı: '+error.message); return; }
+  showToast('✓ Ödeme doğrulandı');
+  renderDevFinance();
 }
 
 function openPaymentModal() {
@@ -8803,6 +8887,13 @@ ANALİZ VE TASLAK KURALLARI (TÜRKÇE YAZ):
   }
 }
 
+// Copilot taslağını WhatsApp ile veliye gönder (kopyalama zahmeti yok)
+function shareCopilotWhatsApp(){
+  const text=(document.getElementById('aiCopilotTextarea')?.value||'').trim();
+  if(!text){ showToast('Önce taslak oluşturun'); return; }
+  window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+}
+
 function checkCopilotDraftEdited() {
   const val = document.getElementById('aiCopilotTextarea').value.trim();
   const sendBtn = document.getElementById('aiCopilotSendBtn');
@@ -9052,6 +9143,66 @@ async function saveStudentDev(){
 let _crAllRes = [];
 let _crFilter = { search: '', exam: '', subject: '' };
 
+// ═══════════════════════════════════════════════
+// KAYNAKTAN ÖDEVLENDİR — kütüphaneden tek tıkla görev
+// ═══════════════════════════════════════════════
+let _assignRes = null;
+function assignResourceAsTask(resId){
+  const r = _crAllRes.find(x => x.id === resId);
+  if(!r) return showToast('Kaynak bulunamadı');
+  if(!S.students.length) return showToast('Önce öğrenci ekleyin');
+  _assignRes = r;
+  // Mini seçici modal (öğrenci + gün)
+  let m = document.getElementById('assignResModal');
+  if(!m){
+    m = document.createElement('div');
+    m.className = 'modal-bg'; m.id = 'assignResModal';
+    document.body.appendChild(m);
+  }
+  const today = new Date();
+  const dayOpts = Array.from({length:7},(_,i)=>{
+    const d = addDays(today,i);
+    const lbl = i===0?'Bugün':i===1?'Yarın':['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'][d.getDay()]+` (${d.getDate()}.${d.getMonth()+1})`;
+    return `<option value="${fmtDate(d)}|${lbl}">${lbl}</option>`;
+  }).join('');
+  m.innerHTML = `<div class="modal" style="max-width:380px">
+    <button class="modal-close" onclick="cm('assignResModal')">×</button>
+    <h2>📤 Ödevlendir</h2>
+    <div style="font-size:13px;font-weight:700;margin-bottom:14px;padding:10px 12px;background:var(--surface2);border-radius:9px;border:1px solid var(--border)">${esc(r.name)}<div style="font-size:11px;color:var(--text-dim);font-weight:600;margin-top:2px">${esc(r.exam_type||'')} · ${esc(r.subject||'')}</div></div>
+    <div class="field"><label>Öğrenci</label>
+      <select id="arStudent">${S.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Gün</label>
+      <select id="arDay">${dayOpts}</select>
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:11px" onclick="confirmAssignResource()">Görevi Hazırla →</button>
+  </div>`;
+  om('assignResModal');
+}
+function confirmAssignResource(){
+  const r = _assignRes; if(!r) return;
+  const stuId = document.getElementById('arStudent').value;
+  const [ds, dayName] = document.getElementById('arDay').value.split('|');
+  cm('assignResModal');
+  S.activeStuId = stuId;
+  openTaskModal(ds, dayName);
+  // Kaynağı görev modalına önden doldur
+  const isPlaylist = (r.resource_type||'book')==='playlist';
+  document.getElementById('tmType').value = isPlaylist ? 'konu' : 'soru';
+  document.getElementById('tmExam').value = r.exam_type || 'TYT';
+  updateSubjectList();
+  const sel = document.getElementById('tmSubjectSel');
+  if(sel && [...sel.options].some(o=>o.value===r.subject)){ sel.value = r.subject; }
+  else { const free=document.getElementById('tmSubjectFree'); if(free) free.value = r.subject||''; }
+  _selectedBook = { name:r.name, yil:r.year, testler:Array.isArray(r.tests)?r.tests:[], publisher:r.publisher, resource_type:r.resource_type||'book' };
+  document.getElementById('tmBookSearch').value = r.name;
+  document.getElementById('tmBookVal').value = r.name;
+  renderTestList();
+  document.getElementById('tmTestWrap').style.display = '';
+  document.getElementById('soruBankasiWrap').style.display = '';
+  showToast('Kaynak hazır — test/video seçip ekleyin');
+}
+
 function applyResFilter(all) {
   const q = _crFilter.search;
   return all.filter(r => {
@@ -9125,10 +9276,11 @@ function buildCRContent(activeTab, res) {
                       <span style="font-size:11px;color:var(--text-dim)">${(r.tests||[]).length} ${type==='book'?'test':'video'}</span>
                     </div>
                   </div>
-                  ${r.coach_id?`<div style="display:flex;gap:4px;flex-shrink:0">
-                    <button class="btn btn-ghost btn-xs" onclick="openResourceModalCoach('${r.id}','${type}')">✏️</button>
-                    <button class="btn btn-danger btn-xs" onclick="deleteResourceCoach('${r.id}')">🗑</button>
-                  </div>`:''}
+                  <div style="display:flex;gap:4px;flex-shrink:0">
+                    <button class="btn btn-green btn-xs" onclick="assignResourceAsTask('${r.id}')" title="Bir öğrencinin programına görev olarak ekle">📤 Ödevlendir</button>
+                    ${r.coach_id?`<button class="btn btn-ghost btn-xs" onclick="openResourceModalCoach('${r.id}','${type}')">✏️</button>
+                    <button class="btn btn-danger btn-xs" onclick="deleteResourceCoach('${r.id}')">🗑</button>`:''}
+                  </div>
                 </div>`).join('')}
             </div>
           </div>`;
@@ -10435,6 +10587,8 @@ window.clearAllTests = clearAllTests;
 window.updateTestSummary = updateTestSummary;
 window.selectModalSpeed = selectModalSpeed;
 window.applyDuration = applyDuration;
+window.scheduleSmartBadge = scheduleSmartBadge;
+window.applySmartDuration = applySmartDuration;
 window.loadStudentSpeeds = loadStudentSpeeds;
 window.saveStudentSpeed = saveStudentSpeed;
 window.saveTask = saveTask;
@@ -10501,6 +10655,8 @@ window.saveResource = saveResource;
 window.devDeleteResource = devDeleteResource;
 window.renderDevFinance = renderDevFinance;
 window.openPaymentModal = openPaymentModal;
+window.verifyPayment = verifyPayment;
+window.setDevUserFilter = setDevUserFilter;
 window.savePayment = savePayment;
 window.openSubModal = openSubModal;
 window.saveSub = saveSub;
@@ -10569,6 +10725,9 @@ window.autoDetectModel = autoDetectModel;
 window.callGeminiFallback = callGeminiFallback;
 window.generateAICopilotDraft = generateAICopilotDraft;
 window.checkCopilotDraftEdited = checkCopilotDraftEdited;
+window.shareCopilotWhatsApp = shareCopilotWhatsApp;
+window.assignResourceAsTask = assignResourceAsTask;
+window.confirmAssignResource = confirmAssignResource;
 window.sendCopilotDraft = sendCopilotDraft;
 window.renderParentHome = renderParentHome;
 window.renderParentProgress = renderParentProgress;

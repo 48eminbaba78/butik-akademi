@@ -21,7 +21,7 @@
   <div class="login-split">
     <!-- Sol: Marka paneli -->
     <div class="login-brand">
-      <div class="lb-logo">ROSTRUM <span>AKADEMİ</span></div>
+      <div class="lb-logo" style="display:flex;align-items:center;gap:10px"><img src="/logo.png" alt="Rostrum Akademi Logo" style="height:36px;width:auto;border-radius:6px">ROSTRUM <span>AKADEMİ</span></div>
       <div class="lb-tagline">Koçluk süreçlerini<br>profesyonelleştirin.</div>
       <div class="lb-features">
         <div class="lb-feat">✓ Haftalık program & görev yönetimi</div>
@@ -34,7 +34,7 @@
     <!-- Sağ: Form paneli -->
     <div class="login-form-panel">
       <div class="login-box">
-        <div class="login-logo">ROSTRUM <span>AKADEMİ</span></div>
+        <div class="login-logo" style="display:flex;align-items:center;gap:10px;justify-content:center"><img src="/logo.png" alt="Rostrum Akademi Logo" style="height:36px;width:auto;border-radius:6px">ROSTRUM <span>AKADEMİ</span></div>
 
         <!-- Mode tabs: Giriş / Kayıt -->
         <div class="login-mode-tabs">
@@ -319,7 +319,7 @@
   <header class="topnav" id="mainSidebar">
     <div class="topnav-left">
       <div class="tn-logo">
-        <div class="sb-logo-icon">R</div>
+        <img src="/logo.png" alt="Logo" class="sb-logo-icon" style="width:28px;height:28px;border-radius:6px;object-fit:cover;background:none">
         <span class="sb-logo-text">Rostrum Akademi</span>
       </div>
       <div class="tn-divider"></div>
@@ -470,21 +470,27 @@
       </div>
     </div>
 
-    <!-- Süre + Saat + Not yan yana -->
-    <div style="display:grid;grid-template-columns:100px 110px 1fr;gap:10px;margin-top:12px">
-      <div class="field">
+    <!-- Soru Sayısı + Süre + Saat + Not -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px">
+      <div class="field" style="width:92px;margin-bottom:0">
+        <label>Soru Sayısı</label>
+        <input type="number" id="tmQCount" placeholder="örn. 50" min="0" oninput="scheduleSmartBadge()">
+      </div>
+      <div class="field" style="width:92px;margin-bottom:0">
         <label>Süre (dk)</label>
         <input type="number" id="tmDuration" value="60" min="5">
       </div>
-      <div class="field">
+      <div class="field" style="width:110px;margin-bottom:0">
         <label>Saat (İsteğe bağlı)</label>
         <input type="time" id="tmStartTime" style="color-scheme:dark">
       </div>
-      <div class="field">
+      <div class="field" style="flex:1;min-width:160px;margin-bottom:0">
         <label>Not</label>
         <textarea id="tmNote" placeholder="Sayfa aralığı, konu notu, özel talimat..." style="min-height:42px;resize:none;line-height:1.4"></textarea>
       </div>
     </div>
+    <!-- Akıllı Süre rozeti (student_speeds RPC) -->
+    <div id="tmSmartBadge" style="display:none;margin-top:8px;padding:8px 12px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent" onclick="applySmartDuration()" title="Süreye uygulamak için tıkla"></div>
     <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveTask()">Programa Ekle</button>
   </div>
 </div>

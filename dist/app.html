@@ -12,8 +12,8 @@
 <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
 <title>Rostrum Akademi</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/app-D8VFdWHv.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/app-BtnrXuyH.css">
+  <script type="module" crossorigin src="/assets/app-vrTF8Vav.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/app-985p5Trw.css">
 </head>
 <body>
 
@@ -471,21 +471,27 @@
       </div>
     </div>
 
-    <!-- Süre + Saat + Not yan yana -->
-    <div style="display:grid;grid-template-columns:100px 110px 1fr;gap:10px;margin-top:12px">
-      <div class="field">
+    <!-- Soru Sayısı + Süre + Saat + Not -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px">
+      <div class="field" style="width:92px;margin-bottom:0">
+        <label>Soru Sayısı</label>
+        <input type="number" id="tmQCount" placeholder="örn. 50" min="0" oninput="scheduleSmartBadge()">
+      </div>
+      <div class="field" style="width:92px;margin-bottom:0">
         <label>Süre (dk)</label>
         <input type="number" id="tmDuration" value="60" min="5">
       </div>
-      <div class="field">
+      <div class="field" style="width:110px;margin-bottom:0">
         <label>Saat (İsteğe bağlı)</label>
         <input type="time" id="tmStartTime" style="color-scheme:dark">
       </div>
-      <div class="field">
+      <div class="field" style="flex:1;min-width:160px;margin-bottom:0">
         <label>Not</label>
         <textarea id="tmNote" placeholder="Sayfa aralığı, konu notu, özel talimat..." style="min-height:42px;resize:none;line-height:1.4"></textarea>
       </div>
     </div>
+    <!-- Akıllı Süre rozeti (student_speeds RPC) -->
+    <div id="tmSmartBadge" style="display:none;margin-top:8px;padding:8px 12px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent" onclick="applySmartDuration()" title="Süreye uygulamak için tıkla"></div>
     <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveTask()">Programa Ekle</button>
   </div>
 </div>
