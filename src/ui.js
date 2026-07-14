@@ -6624,11 +6624,28 @@ function showOnboarding() {
 let _swStep = 0;
 const _swData = {};
 
-function showStudentWelcome() {
+async function showStudentWelcome() {
   const stu = S.students.find(s => s.id === session.studentId);
   if (!stu) return;
   const name = stu.name.split(' ')[0];
   const color = stu.color || 'var(--accent)';
+
+  // Koçun önceden girdiği veriler (yks_area, veli bilgileri) prefill için
+  _swData = {};
+  try {
+    const { data: prof } = await db.from('student_profiles').select('*').eq('id', session.studentId).maybeSingle();
+    if (prof) {
+      _swData.parent_email = prof.parent_email || '';
+      _swData.parent_phone = prof.parent_phone || '';
+      _swData.target_rank = prof.target_rank || '';
+      _swData.target_university = prof.target_university || '';
+      _swData.target_department = prof.target_department || '';
+      _swData.struggling_subjects = prof.struggling_subjects || '';
+      _swData.daily_capacity = prof.daily_capacity || 8;
+    }
+  } catch(e) {}
+  _swData.yks_area = stu.yks_area || 'SAY';
+  if (_swData.daily_capacity === undefined) _swData.daily_capacity = 8;
 
   let modal = document.getElementById('stuWelcomeModal');
   if (!modal) {
@@ -6641,7 +6658,26 @@ function showStudentWelcome() {
   _renderSWStep(modal, name, color, stu);
 }
 
+// Adım içi kırmızı hata kutusu
+function _swErr(msg){
+  const el = document.getElementById('sw_err');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { if(el) el.style.display = 'none'; }, 5000);
+}
+
 function _renderSWStep(modal, name, color, stu) {
+  const inputStyle = `width:100%;padding:12px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;outline:none;font-family:inherit;box-sizing:border-box`;
+  const lblStyle = `font-size:11px;font-weight:700;color:var(--text-mid);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em`;
+  const hintStyle = `font-size:11px;color:var(--text-dim);margin-top:5px;line-height:1.5`;
+  const AREAS = [
+    { v:'SAY', ico:'🔬', name:'Sayısal',      sub:'Mat · Fen' },
+    { v:'EA',  ico:'⚖️', name:'Eşit Ağırlık', sub:'Mat · Edb' },
+    { v:'SOZ', ico:'📖', name:'Sözel',        sub:'Edb · Sosyal' },
+    { v:'DIL', ico:'🌍', name:'Dil',          sub:'Yabancı Dil' },
+  ];
+
   const steps = [
     // Adım 0: Karşılama
     () => `<div style="text-align:center">
@@ -6655,99 +6691,162 @@ function _renderSWStep(modal, name, color, stu) {
       <button onclick="window._swSkip()" style="margin-top:10px;background:none;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;text-decoration:underline">Şimdi değil, sonra doldururum</button>
     </div>`,
 
-    // Adım 1: Hedefler
+    // Adım 1: Sınav Alanı (ZORUNLU — kart radyo)
     () => `<div>
-      <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Adım 1/2 · Hedefiniz</div>
-      <h3 style="font-size:19px;font-weight:800;color:var(--text);margin-bottom:16px">Nereye ulaşmak istiyorsunuz?</h3>
-      <div style="margin-bottom:12px">
-        <label style="font-size:11px;font-weight:700;color:var(--text-mid);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Hedef Üniversite</label>
-        <input id="sw_uni" type="text" value="${esc(stu.target?.split('·')[0]?.trim()||'')}" placeholder="Boğaziçi Üniversitesi"
-          style="width:100%;padding:12px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;outline:none;font-family:inherit;box-sizing:border-box"
-          onfocus="this.style.borderColor='${color}'" onblur="this.style.borderColor='var(--border)'">
+      <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Adım 1/3 · Sınav Alanın</div>
+      <h3 style="font-size:19px;font-weight:800;color:var(--text);margin-bottom:6px">Hangi alandan hazırlanıyorsun?</h3>
+      <p style="${hintStyle};margin-bottom:16px">Koçunun sana doğru dersleri önerebilmesi için sınav alanını seçmelisin.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px" id="sw_area_grid">
+        ${AREAS.map(a=>`
+          <button class="sw-area ${_swData.yks_area===a.v?'sel':''}" data-v="${a.v}"
+            onclick="document.querySelectorAll('.sw-area').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')"
+            style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:16px 8px;border-radius:12px;border:2px solid var(--border);background:var(--surface2);cursor:pointer;font-family:inherit;transition:all .15s">
+            <span style="font-size:22px">${a.ico}</span>
+            <span style="font-size:13px;font-weight:800;color:var(--text)">${a.name}</span>
+            <span style="font-size:10px;color:var(--text-dim)">${a.sub}</span>
+          </button>`).join('')}
       </div>
-      <div style="margin-bottom:12px">
-        <label style="font-size:11px;font-weight:700;color:var(--text-mid);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Hedef Bölüm</label>
-        <input id="sw_dept" type="text" placeholder="Bilgisayar Mühendisliği"
-          style="width:100%;padding:12px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;outline:none;font-family:inherit;box-sizing:border-box"
-          onfocus="this.style.borderColor='${color}'" onblur="this.style.borderColor='var(--border)'">
-      </div>
-      <div style="margin-bottom:20px">
-        <label style="font-size:11px;font-weight:700;color:var(--text-mid);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">En Çok Zorlandığın Ders</label>
-        <div style="display:flex;flex-wrap:wrap;gap:8px">
-          ${['Matematik','Fizik','Kimya','Biyoloji','Türkçe','Tarih','Coğrafya','Felsefe','İngilizce'].map(d=>`
-            <button onclick="this.classList.toggle('sel');document.getElementById('sw_struggle').value=[...(document.getElementById('sw_struggle_btns')?.querySelectorAll('.sel')||[])].map(b=>b.dataset.v).join(', ')" data-v="${d}"
-              style="padding:6px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s"
-              class="sw-chip">${d}</button>`).join('')}
-        </div>
-        <input id="sw_struggle" type="hidden" value="">
-      </div>
+      <div id="sw_err" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px;padding:10px 14px;background:var(--red-dim);border-radius:8px;font-weight:600"></div>
       <button class="btn btn-accent" style="width:100%;padding:13px;font-weight:800" onclick="window._swNext()">Devam Et →</button>
     </div>`,
 
-    // Adım 2: Motivasyon
+    // Adım 2: Hedefler (sıralama ZORUNLU)
     () => `<div>
-      <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Adım 2/2 · Motivasyonunuz</div>
-      <h3 style="font-size:19px;font-weight:800;color:var(--text);margin-bottom:16px">Seni motive eden şey ne?</h3>
+      <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Adım 2/3 · Hedefin</div>
+      <h3 style="font-size:19px;font-weight:800;color:var(--text);margin-bottom:16px">Nereye ulaşmak istiyorsun?</h3>
       <div style="margin-bottom:12px">
-        <label style="font-size:11px;font-weight:700;color:var(--text-mid);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Neden bu üniversiteyi/bölümü istiyorsun?</label>
-        <textarea id="sw_motivation" rows="3" placeholder="Bu bölümü seçmemin nedeni..."
-          style="width:100%;padding:12px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;outline:none;font-family:inherit;resize:vertical;box-sizing:border-box"
-          onfocus="this.style.borderColor='${color}'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        <label style="${lblStyle}">Hedef Sıralama <span style="color:var(--red)">*</span></label>
+        <input id="sw_rank" type="text" inputmode="numeric" value="${esc(String(_swData.target_rank||''))}" placeholder="Örn: 15000"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+          style="${inputStyle}" onfocus="this.style.borderColor='${color}'" onblur="this.style.borderColor='var(--border)'">
       </div>
-      <div style="margin-bottom:20px">
-        <label style="font-size:11px;font-weight:700;color:var(--text-mid);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Günlük Çalışma Hedefim</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${['2 saat','4 saat','6 saat','8 saat','8+ saat'].map(h=>`
-            <button onclick="document.querySelectorAll('.sw-hour').forEach(b=>b.classList.remove('sel'));this.classList.add('sel');document.getElementById('sw_hours').value=this.dataset.v" data-v="${h}"
-              style="padding:6px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-weight:600;cursor:pointer"
-              class="sw-hour">${h}</button>`).join('')}
+      <div style="margin-bottom:12px">
+        <label style="${lblStyle}">Hedef Bölüm ve Üniversite <span style="color:var(--text-dim);text-transform:none;font-weight:600">(isteğe bağlı)</span></label>
+        <input id="sw_uni" type="text" value="${esc([_swData.target_university,_swData.target_department].filter(Boolean).join(' - ') || (stu.target?.split('·')[0]?.trim()||''))}" placeholder="Örn: Hacettepe Üniversitesi - Tıp"
+          style="${inputStyle}" onfocus="this.style.borderColor='${color}'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="${lblStyle.replace('margin-bottom:5px','margin-bottom:8px')}">En Çok Zorlandığın Dersler</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px" id="sw_struggle_btns">
+          ${['Matematik','Fizik','Kimya','Biyoloji','Türkçe','Tarih','Coğrafya','Felsefe','İngilizce'].map(d=>`
+            <button onclick="this.classList.toggle('sel');document.getElementById('sw_struggle').value=[...document.getElementById('sw_struggle_btns').querySelectorAll('.sel')].map(b=>b.dataset.v).join(', ')" data-v="${d}"
+              class="sw-chip ${(_swData.struggling_subjects||'').includes(d)?'sel':''}"
+              style="padding:6px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">${d}</button>`).join('')}
         </div>
-        <input id="sw_hours" type="hidden" value="">
+        <input id="sw_struggle" type="hidden" value="${esc(_swData.struggling_subjects||'')}">
       </div>
+      <div id="sw_err" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px;padding:10px 14px;background:var(--red-dim);border-radius:8px;font-weight:600"></div>
+      <button class="btn btn-accent" style="width:100%;padding:13px;font-weight:800" onclick="window._swNext()">Devam Et →</button>
+    </div>`,
+
+    // Adım 3: Kapasite (slider) + Veli bilgileri (ZORUNLU)
+    () => `<div>
+      <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Adım 3/3 · Kapasite &amp; Veli</div>
+      <h3 style="font-size:19px;font-weight:800;color:var(--text);margin-bottom:16px">Son birkaç bilgi kaldı</h3>
+      <div style="margin-bottom:18px">
+        <label style="${lblStyle}">Günlük Çalışma Kapasiten: <span id="sw_hours_val" style="color:${color};font-size:14px">${_swData.daily_capacity||8} saat</span></label>
+        <input id="sw_hours" type="range" min="1" max="12" step="1" value="${_swData.daily_capacity||8}"
+          oninput="document.getElementById('sw_hours_val').textContent=this.value+' saat'"
+          style="width:100%;accent-color:${color};cursor:pointer;margin-top:6px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim)"><span>1 saat</span><span>12 saat</span></div>
+        <div style="${hintStyle}">Koçunun sana günlük limitini aşmayacak programlar atamasını sağlar.</div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="${lblStyle}">Veli E-Posta Adresi <span style="color:var(--red)">*</span></label>
+        <input id="sw_pmail" type="email" value="${esc(_swData.parent_email||'')}" placeholder="veli@eposta.com"
+          style="${inputStyle}" onfocus="this.style.borderColor='${color}'" onblur="this.style.borderColor='var(--border)'">
+        <div style="${hintStyle}">Haftalık gelişim raporlarının veline gönderilebilmesi için gereklidir.</div>
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="${lblStyle}">Veli Telefon Numarası <span style="color:var(--red)">*</span></label>
+        <input id="sw_pphone" type="tel" value="${esc(_swData.parent_phone||'')}" placeholder="0 (5__) ___ __ __"
+          oninput="maskPhoneTR(this)"
+          style="${inputStyle}" onfocus="this.style.borderColor='${color}'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+      <div id="sw_err" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px;padding:10px 14px;background:var(--red-dim);border-radius:8px;font-weight:600"></div>
       <button class="btn btn-accent" style="width:100%;padding:13px;font-weight:800" onclick="window._swSave()">Tamamla ve Başla →</button>
     </div>`
   ];
 
-  const progress = _swStep > 0 ? `<div style="height:3px;background:var(--border);border-radius:99px;margin-bottom:24px;overflow:hidden"><div style="height:100%;width:${Math.round((_swStep/2)*100)}%;background:${color};transition:width .4s"></div></div>` : '';
+  const progress = _swStep > 0 ? `<div style="height:3px;background:var(--border);border-radius:99px;margin-bottom:24px;overflow:hidden"><div style="height:100%;width:${Math.round((_swStep/3)*100)}%;background:${color};transition:width .4s"></div></div>` : '';
 
   modal.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border2);border-radius:24px;width:100%;max-width:460px;padding:32px;animation:fadeUp .3s ease;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)">
     ${progress}
     ${steps[_swStep]()}
   </div>`;
 
-  // chip selected style
-  modal.querySelectorAll('.sw-chip').forEach(b => {
-    b.addEventListener('click', function() {
-      this.style.background = this.classList.contains('sel') ? color : 'var(--surface2)';
-      this.style.borderColor = this.classList.contains('sel') ? color : 'var(--border)';
-      this.style.color = this.classList.contains('sel') ? '#fff' : 'var(--text)';
-    });
+  // Kart-radyo seçili stili
+  const paintArea = () => modal.querySelectorAll('.sw-area').forEach(b => {
+    const on = b.classList.contains('sel');
+    b.style.borderColor = on ? color : 'var(--border)';
+    b.style.background = on ? `color-mix(in srgb, ${color} 10%, var(--surface2))` : 'var(--surface2)';
   });
+  modal.querySelectorAll('.sw-area').forEach(b => b.addEventListener('click', paintArea));
+  paintArea();
 
-  // hour pill selected style
-  modal.querySelectorAll('.sw-hour').forEach(b => {
-    b.addEventListener('click', function() {
-      modal.querySelectorAll('.sw-hour').forEach(x => {
-        x.style.background = 'var(--surface2)';
-        x.style.borderColor = 'var(--border)';
-        x.style.color = 'var(--text)';
-      });
-      this.style.background = color;
-      this.style.borderColor = color;
-      this.style.color = '#fff';
-    });
+  // Chip seçili stili
+  const paintChip = (el) => {
+    const on = el.classList.contains('sel');
+    el.style.background = on ? color : 'var(--surface2)';
+    el.style.borderColor = on ? color : 'var(--border)';
+    el.style.color = on ? '#fff' : 'var(--text)';
+  };
+  modal.querySelectorAll('.sw-chip').forEach(b => {
+    paintChip(b);
+    b.addEventListener('click', function(){ paintChip(this); });
   });
 }
+
+window.maskPhoneTR = function(el) {
+  let val = el.value.replace(/\D/g, '');
+  if (val.length > 0 && !val.startsWith('0')) {
+    val = '0' + val;
+  }
+  let formatted = '';
+  if (val.length > 0) formatted = '0';
+  if (val.length > 1) formatted += ' (' + val.substring(1, 4);
+  if (val.length >= 4) formatted += ')';
+  if (val.length > 4) formatted += ' ' + val.substring(4, 7);
+  if (val.length > 7) formatted += ' ' + val.substring(7, 9);
+  if (val.length > 9) formatted += ' ' + val.substring(9, 11);
+  el.value = formatted;
+};
 
 window._swNext = function() {
   const modal = document.getElementById('stuWelcomeModal');
   if (!modal) return;
-  // Collect data from current step
+
+  // Adım 1: Sınav Alanı doğrulama
   if (_swStep === 1) {
-    _swData.target_university = document.getElementById('sw_uni')?.value?.trim() || '';
-    _swData.target_department = document.getElementById('sw_dept')?.value?.trim() || '';
+    const selArea = modal.querySelector('.sw-area.sel')?.dataset?.v;
+    if (!selArea) {
+      _swErr('Lütfen hazırlık alanınızı seçin.');
+      return;
+    }
+    _swData.yks_area = selArea;
+  }
+
+  // Adım 2: Hedefler doğrulama
+  if (_swStep === 2) {
+    const rankVal = document.getElementById('sw_rank')?.value?.trim();
+    if (!rankVal) {
+      _swErr('Lütfen hedef sıralamanızı girin.');
+      return;
+    }
+    const rank = parseInt(rankVal);
+    if (isNaN(rank) || rank <= 0 || rank >= 5000000) {
+      _swErr('Lütfen geçerli bir hedef sıralaması girin.');
+      return;
+    }
+    _swData.target_rank = rank;
+
+    const uniRaw = document.getElementById('sw_uni')?.value?.trim() || '';
+    const parts = uniRaw.split('-');
+    _swData.target_university = parts[0]?.trim() || '';
+    _swData.target_department = parts[1]?.trim() || '';
     _swData.struggling_subjects = document.getElementById('sw_struggle')?.value?.trim() || '';
   }
+
   _swStep++;
   const stu = S.students.find(s => s.id === session.studentId);
   _renderSWStep(modal, stu?.name?.split(' ')[0] || '', stu?.color || 'var(--accent)', stu);
@@ -6755,31 +6854,55 @@ window._swNext = function() {
 
 window._swSkip = function() {
   document.getElementById('stuWelcomeModal')?.remove();
-  // Save empty profile so this modal doesn't show again
+  // Geçici olarak kaydet, ama onboarding_done=false kalır (sonra tekrar sorulabilir veya koç doldurur)
   db.from('student_profiles').upsert({ id: session.studentId }).then(() => {});
 };
 
 window._swSave = async function() {
-  const motivation = document.getElementById('sw_motivation')?.value?.trim() || '';
-  const daily_capacity = document.getElementById('sw_hours')?.value?.replace(/\D/g,'') || null;
+  const pmail = document.getElementById('sw_pmail')?.value?.trim() || '';
+  const pphone = document.getElementById('sw_pphone')?.value?.trim() || '';
+  const daily_capacity = parseInt(document.getElementById('sw_hours')?.value) || 8;
 
-  const payload = {
-    id: session.studentId,
-    target_university: _swData.target_university || '',
-    target_department: _swData.target_department || '',
-    struggling_subjects: _swData.struggling_subjects || '',
-    bio: motivation,
-    daily_capacity: daily_capacity ? parseInt(daily_capacity) : null
-  };
+  if (!pmail) {
+    _swErr('Lütfen velinizin e-posta adresini girin.');
+    return;
+  }
+  if (!pmail.includes('@')) {
+    _swErr('Geçerli bir veli e-posta adresi girin.');
+    return;
+  }
+  if (!pphone || pphone.replace(/\D/g,'').length < 10) {
+    _swErr('Lütfen geçerli bir veli telefon numarası girin.');
+    return;
+  }
 
   showLoading(true, 'Kaydediliyor...');
   try {
+    // 1) users tablosunda yks_area güncelle
+    await db.from('users').update({ yks_area: _swData.yks_area }).eq('id', session.studentId);
+    const stu = S.students.find(s => s.id === session.studentId);
+    if (stu) stu.yksArea = _swData.yks_area;
+
+    // 2) student_profiles tablosunu güncelle
+    const payload = {
+      id: session.studentId,
+      target_rank: _swData.target_rank,
+      target_university: _swData.target_university || '',
+      target_department: _swData.target_department || '',
+      struggling_subjects: _swData.struggling_subjects || '',
+      parent_email: pmail,
+      parent_phone: pphone,
+      daily_capacity: daily_capacity,
+      onboarding_done: true
+    };
     await db.from('student_profiles').upsert(payload);
-  } catch(e) { console.error(e); }
+  } catch(e) {
+    console.error('Onboarding kaydetme hatası:', e);
+  }
   showLoading(false);
 
   document.getElementById('stuWelcomeModal')?.remove();
-  showToast('Profilin kaydedildi! 🎉');
+  showToast('Profilin başarıyla kaydedildi! 🎉');
   switchTab('sportal');
 };
 

@@ -593,8 +593,8 @@ export async function finishLogin(rows) {
     }
     // Öğrenci ilk girişte profil formu göster
     if (session.role === 'student') {
-      const { data: existingProfile } = await db.from('student_profiles').select('id').eq('id', session.studentId || rows.id).maybeSingle();
-      if (!existingProfile) {
+      const { data: existingProfile } = await db.from('student_profiles').select('onboarding_done').eq('id', session.studentId || rows.id).maybeSingle();
+      if (!existingProfile || !existingProfile.onboarding_done) {
         const hashTab = window.location.hash.substring(1);
         const firstTab = (hashTab && document.getElementById('view-' + hashTab)) ? hashTab : 'portal';
         setTimeout(() => { window.switchTab(firstTab); window.showStudentWelcome && window.showStudentWelcome(); }, 100);
