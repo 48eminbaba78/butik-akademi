@@ -162,7 +162,8 @@ async function _fetchAll() {
       student_result:   t.student_result   || null,
       student_feedback: t.student_feedback || null,
       task_items:    t.task_items,
-      start_time:    t.start_time
+      start_time:    t.start_time,
+      added_by_student: t.added_by_student || false
     });
   });
 

@@ -78,6 +78,20 @@ function customConfirm(message) {
 }
 window.customConfirm = customConfirm;
 
+// ═══════════════════════════════════════════════
+// PREMIUM DENEYİM — özellik toggle'ları (cihaz bazlı, localStorage)
+// ═══════════════════════════════════════════════
+const FEATURE_KEYS = ['focus', 'celebration', 'sound', 'badges'];
+function isFeatureOn(key) {
+  const v = localStorage.getItem('ra_feat_' + key);
+  return v === null ? true : v === '1';
+}
+function setFeature(key, on) {
+  localStorage.setItem('ra_feat_' + key, on ? '1' : '0');
+}
+window.isFeatureOn = isFeatureOn;
+window.setFeature = setFeature;
+
 async function checkCoachSubscription() {
   const dbUser = session.dbUser;
   if (!dbUser) return;
@@ -1611,7 +1625,28 @@ function renderSettings(){
           </div>
         </div>
       </div>
-      
+
+      ${(session.role === 'student' || session.role === 'parent') ? `
+      <div class="settings-block" style="margin-top:20px">
+        <div class="settings-block-title">✨ Premium Deneyim</div>
+        ${[
+          ['focus', 'Odaklanma Modu', 'Görevlere tam ekran, buzlu cam efektli geri sayım seansıyla odaklan.'],
+          ['celebration', 'Kutlama Efektleri', 'Net sıçraması ve büyük başarılarda konfeti + kutlama kartı göster.'],
+          ['sound', 'Ses Efektleri', 'Odaklanma seansı bitince hafif bir bildirim sesi çal.'],
+          ['badges', 'Easter Egg Rozetleri', 'Sabah erken / gece geç çalışma gibi gizli başarı rozetlerini göster.']
+        ].map(([key, lbl, sub]) => `
+        <div class="setting-item">
+          <div>
+            <div class="setting-item-lbl">${lbl}</div>
+            <div class="setting-item-sub" style="font-size:11px;line-height:1.5;margin-top:2px">${sub}</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" ${isFeatureOn(key) ? 'checked' : ''} onchange="setFeature('${key}', this.checked)">
+            <span class="switch-track"></span>
+          </label>
+        </div>`).join('')}
+      </div>` : ''}
+
       ${session.role === 'developer' ? `
       <div class="settings-block" style="margin-top:20px">
         <div class="settings-block-title">Yapay Zeka (AI) Geliştirici Ayarları</div>
@@ -4368,6 +4403,7 @@ async function stuToggleTask2(ds,idx){
     if (dayTasks.length > 0 && dayTasks.every(task => task.done)) {
       showDayCelebration();
     }
+    checkEasterEgg();
   }
 }
 
@@ -4390,6 +4426,46 @@ function showDayCelebration() {
   document.body.appendChild(overlay);
   setTimeout(() => overlay.remove(), 3600);
 }
+function showNetJumpCelebration(diff, examName, target) {
+  if (!document.getElementById('_celebStyle')) {
+    const s = document.createElement('style');
+    s.id = '_celebStyle';
+    s.textContent = `@keyframes celebPop{0%{opacity:0;transform:scale(.7) translateY(20px)}60%{opacity:1;transform:scale(1.05) translateY(-4px)}100%{opacity:1;transform:scale(1) translateY(0)}}@keyframes celebFade{0%,70%{opacity:1}100%{opacity:0}}`;
+    document.head.appendChild(s);
+  }
+  document.getElementById('_netJumpOverlay')?.remove();
+  document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
+
+  const colors = ['#a855f7','#c084fc','#f0a500','#fbbf24'];
+  for (let i = 0; i < 32; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + 'vw';
+    piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+    piece.style.animationDuration = (2 + Math.random() * 1.4) + 's';
+    piece.style.animationDelay = (Math.random() * 0.5) + 's';
+    piece.style.transform = `rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 4200);
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = '_netJumpOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:999998;display:flex;align-items:center;justify-content:center;pointer-events:none';
+  const msg = target
+    ? `Netini tam <b>+${diff.toFixed(1)}</b> artırarak <b>${esc(target)}</b> yolunda dev bir adım attın!`
+    : `Netini tam <b>+${diff.toFixed(1)}</b> artırdın. Bu tempoyla devam et!`;
+  overlay.innerHTML = `<div style="background:var(--surface);border:2px solid var(--focus-purple);border-radius:20px;padding:30px 38px;text-align:center;max-width:340px;box-shadow:0 20px 60px rgba(168,85,247,.25);animation:celebPop .4s ease-out,celebFade 4.5s ease-in-out forwards;pointer-events:auto">
+    <div style="font-size:52px;margin-bottom:10px">🚀</div>
+    <div style="font-size:18px;font-weight:800;color:var(--focus-purple);margin-bottom:6px">Muazzam Bir Sıçrama!</div>
+    <div style="font-size:13px;color:var(--text-mid);line-height:1.6">${msg}</div>
+    <div style="font-size:11px;color:var(--text-dim);margin-top:8px">${esc(examName)}</div>
+  </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 4600);
+}
+window.showNetJumpCelebration = showNetJumpCelebration;
+
 function chWeekS(d){S.weekOffset+=d;saveUI();renderSPortal();}
 
 // ── GÖREV GERİ BİLDİRİM YARDIMCI FONKSİYONLARI ──────────────────
@@ -4612,6 +4688,7 @@ async function openTaskDetail(ds, idx, role){
       <div style="font-size:10px;font-weight:700;color:${col};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${typeLabels2[t.type]||t.type}${t.exam?' · '+t.exam:''}</div>
       <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;line-height:1.2">${esc(t.subject)}</div>
       <div style="font-size:12px;color:var(--text-dim);margin-top:4px">${new Date(ds+'T12:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</div>
+      ${t.added_by_student ? `<div style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;background:var(--focus-purple-dim);color:var(--focus-purple);padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700">🎓 Öğrenci ekledi</div>` : ''}
     </div>
 
     <!-- Geri bildirim: öğrenci=form, koç=özet+durum -->
@@ -4671,16 +4748,214 @@ async function openTaskDetail(ds, idx, role){
     </div>
 
     <div style="display:flex; gap:10px; margin-top:12px">
-      ${role==='coach' 
+      ${role==='coach'
         ? `<button class="btn btn-ghost" style="flex:1; justify-content:center; padding:12px; font-weight:700;" onclick="cm('taskDetailModal'); openCoachTaskEdit('${ds}',${idx})">⚙ Düzenle</button>
-           <button class="btn btn-accent" style="flex:2; justify-content:center; padding:12px; font-weight:700;" onclick="cm('taskDetailModal')">Kapat</button>` 
+           <button class="btn btn-accent" style="flex:2; justify-content:center; padding:12px; font-weight:700;" onclick="cm('taskDetailModal')">Kapat</button>`
         : `<button class="btn btn-accent" style="flex:1; justify-content:center; padding:12px; font-weight:700;" onclick="saveTaskDetail('${ds}',${idx},'${role}')">Kaydet</button>`
       }
     </div>
+    ${role==='student' && !t.done && isFeatureOn('focus') ? `
+    <button onclick="startFocusMode('${ds}',${idx})" style="width:100%;margin-top:10px;padding:12px;background:var(--focus-purple-dim);border:1.5px solid var(--focus-purple);color:var(--focus-purple);border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">🎯 Odaklanmaya Başla</button>` : ''}
   </div>`;
 
   om('taskDetailModal');
 }
+
+// ═══════════════════════════════════════════════
+// ODAKLANMA MODU (Focus State)
+// ═══════════════════════════════════════════════
+let _focusTimer = null;
+function startFocusMode(ds, idx){
+  const key = `${session.studentId}_${ds}`;
+  const t = S.tasks[key]?.[idx];
+  if(!t) return;
+  cm('taskDetailModal');
+  checkEasterEgg();
+
+  let secondsLeft = Math.max(1, (t.duration||25)) * 60;
+  const overlay = document.createElement('div');
+  overlay.id = 'focusOverlay';
+  overlay.className = 'focus-overlay';
+  const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  overlay.innerHTML = `
+    <div class="focus-title">${esc(t.subject)}</div>
+    <div class="focus-ring"><div class="focus-time" id="focusTimeEl">${fmt(secondsLeft)}</div></div>
+    <button class="focus-cancel" onclick="cancelFocusMode('${ds}',${idx})">Vazgeç</button>`;
+  document.body.appendChild(overlay);
+
+  _focusTimer = setInterval(() => {
+    secondsLeft--;
+    const timeEl = document.getElementById('focusTimeEl');
+    if(timeEl) timeEl.textContent = fmt(Math.max(0,secondsLeft));
+    if(secondsLeft <= 0){
+      clearInterval(_focusTimer); _focusTimer = null;
+      finishFocusMode(ds, idx);
+    }
+  }, 1000);
+}
+
+function cancelFocusMode(ds, idx){
+  if(!confirm('Odaklanma seansını sonlandırmak istediğine emin misin? Görev tamamlanmış sayılmayacak.')) return;
+  if(_focusTimer){ clearInterval(_focusTimer); _focusTimer = null; }
+  document.getElementById('focusOverlay')?.remove();
+}
+
+function playFocusChime(){
+  if(!isFeatureOn('sound')) return;
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.9);
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.4);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 1.5);
+  }catch(e){}
+}
+
+async function finishFocusMode(ds, idx){
+  const key = `${session.studentId}_${ds}`;
+  const t = S.tasks[key]?.[idx];
+  const overlay = document.getElementById('focusOverlay');
+  playFocusChime();
+
+  if(overlay){
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border:2px solid var(--focus-purple);border-radius:20px;padding:32px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);animation:celebPop .4s ease-out">
+        <div style="font-size:52px;margin-bottom:10px">🏆</div>
+        <div style="font-size:18px;font-weight:800;color:var(--focus-purple);margin-bottom:4px">Odaklanma Tamamlandı!</div>
+        <div style="font-size:13px;color:var(--text-mid)">${esc(t?.subject||'')} görevini bitirdin 💪</div>
+      </div>`;
+    setTimeout(() => overlay.remove(), 3200);
+  }
+
+  if(t && !t.done){
+    t.done = true;
+    if(t.task_items && Array.isArray(t.task_items)) t.task_items.forEach(item => { item.done = true; });
+    if(t._id) await db.from('tasks').update({done:true, task_items: t.task_items||null}).eq('id', t._id);
+    renderSPortal();
+
+    // Koça bildirim
+    if(session.coachId){
+      const name = session.dbUser?.full_name || 'Öğrenci';
+      db.from('messages').insert({
+        student_id: session.studentId, coach_id: session.coachId, from_role: 'student',
+        text: `🎯 ${name} "${t.subject}" görevine odaklanarak tamamladı.`, read: false
+      }).then(()=>{});
+    }
+  }
+
+  checkEasterEgg();
+}
+
+// ═══════════════════════════════════════════════
+// EASTER EGG ROZETLERİ
+// ═══════════════════════════════════════════════
+function checkEasterEgg(){
+  if(!isFeatureOn('badges')) return;
+  const now = new Date();
+  const hh = now.getHours(), mm = now.getMinutes();
+  const today = todayStr();
+  const isMorning = hh < 8;
+  const isNight = hh === 23 && mm >= 30;
+  const kind = isMorning ? 'morning' : (isNight ? 'night' : null);
+  if(!kind) return;
+
+  const flagKey = `ra_egg_${today}_${kind}`;
+  if(localStorage.getItem(flagKey)) return;
+  localStorage.setItem(flagKey, '1');
+
+  document.getElementById('spHero')?.classList.add('badge-halo');
+  showToast(kind === 'morning'
+    ? '🌅 Sabah Yıldızı: Bugün güne 1-0 önde başladın!'
+    : '🦉 Gece Kuşu: Geç saatte de olsa bitirdin! Şimdi dinlenme vakti.');
+}
+function hasEarnedBadgeToday(){
+  const today = todayStr();
+  return !!(localStorage.getItem(`ra_egg_${today}_morning`) || localStorage.getItem(`ra_egg_${today}_night`));
+}
+window.startFocusMode = startFocusMode;
+window.cancelFocusMode = cancelFocusMode;
+window.checkEasterEgg = checkEasterEgg;
+
+// ═══════════════════════════════════════════════
+// BOŞLUKTAN EYLEME — konu eksiği kartları
+// ═══════════════════════════════════════════════
+async function sendGapToAI(subject){
+  if(!document.getElementById('aiChatPanel')?.classList.contains('open')) toggleAIChat();
+  let coachName = 'Koçun';
+  if(session.coachId){
+    const { data } = await db.from('users').select('full_name').eq('id', session.coachId).maybeSingle();
+    if(data?.full_name) coachName = data.full_name;
+  }
+  setTimeout(() => {
+    addAIMessage('assistant', `Selam! <b>${esc(subject)}</b> konusundaki boşluğunu fark ettim. ${esc(coachName)}'ın senin için tanımladığı pratik telafi adımlarına başlamaya hazır mısın?`);
+  }, 250);
+}
+window.sendGapToAI = sendGapToAI;
+
+function openGapTaskModal(subject, examType){
+  let modal = document.getElementById('gapTaskModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'gapTaskModal';
+    modal.className = 'modal-bg';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e=>{ if(e.target===modal) modal.classList.remove('open'); });
+  }
+  modal.innerHTML = `<div class="modal" style="max-width:380px">
+    <button class="modal-close" onclick="cm('gapTaskModal')">×</button>
+    <h2>Programa Ekle</h2>
+    <div class="field"><label>Konu</label><input id="gapSubject" value="${esc(subject)}" readonly style="opacity:.75"></div>
+    <div class="field-row">
+      <div class="field"><label>Tarih</label><input type="date" id="gapDate" value="${todayStr()}"></div>
+      <div class="field"><label>Süre (dk)</label><input type="number" id="gapDuration" value="30" min="10" step="5"></div>
+    </div>
+    <input type="hidden" id="gapExamType" value="${esc(examType||'')}">
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px">Bu görev programına eklenecek ve koçuna kendi eklediğin belli olacak şekilde bildirim gidecek.</div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="saveGapTask()">Programa Ekle</button>
+  </div>`;
+  om('gapTaskModal');
+}
+window.openGapTaskModal = openGapTaskModal;
+
+async function saveGapTask(){
+  const subject = document.getElementById('gapSubject').value.trim();
+  const date = document.getElementById('gapDate').value;
+  const duration = +document.getElementById('gapDuration').value || 30;
+  const examType = document.getElementById('gapExamType').value || null;
+  if(!subject || !date) return showToast('Tarih seçin');
+
+  const payload = {
+    student_id: session.studentId,
+    coach_id: session.coachId || null,
+    date, type: 'konu', exam_type: examType, subject, duration,
+    note: null, done: false, added_by_student: true
+  };
+  const { data, error } = await db.from('tasks').insert(payload).select().single();
+  if(error) return showToast('Hata: ' + error.message);
+
+  const key = `${session.studentId}_${date}`;
+  if(!S.tasks[key]) S.tasks[key] = [];
+  S.tasks[key].push({ _id:data.id, type:data.type, exam:data.exam_type, subject:data.subject, duration:data.duration, note:data.note, done:false, student_note:'', added_by_student:true });
+
+  cm('gapTaskModal');
+  showToast('Görev programına eklendi ✓');
+  renderSPortal();
+
+  if(session.coachId){
+    const name = session.dbUser?.full_name || 'Öğrenci';
+    db.from('messages').insert({
+      student_id: session.studentId, coach_id: session.coachId, from_role: 'student',
+      text: `📅 ${name} programına kendi "${subject}" görevini ekledi.`, read: false
+    }).then(()=>{});
+  }
+}
+window.saveGapTask = saveGapTask;
 
 async function toggleTaskDetail(ds, idx, role){
   if(role==='coach') return;
@@ -5037,10 +5312,27 @@ async function saveExam(){
     if(e)Object.assign(e,{name:payload.name,date:payload.date,studentId:stuId,type,nets,examDetails:_examDetails,note:payload.student_note});
     showToast('Güncellendi ✓');
   } else {
+    // Net sıçraması kutlaması için önceki (aynı türden) denemeyi kaydet
+    const prevExam = S.exams
+      .filter(e => e.studentId === stuId && e.type === type && e.date < payload.date)
+      .sort((a,b) => a.date.localeCompare(b.date))
+      .pop();
+
     const {data,error}=await _tryExamSave(payload, false, null);
     if(error)return showToast('Hata: '+error.message);
     S.exams.push({id:data.id,studentId:data.student_id,name:data.name,date:data.date,type:data.exam_type,nets:data.nets||{},examDetails:data.exam_details||{},note:data.student_note,coachComment:''});
     showToast('Deneme eklendi ✓');
+
+    if (session.role === 'student' && isFeatureOn('celebration') && prevExam) {
+      const fields = EXAM_DEFS[type] || [];
+      const newTotal = fields.reduce((s,f) => s + Number(nets[f]||0), 0);
+      const prevTotal = fields.reduce((s,f) => s + Number(prevExam.nets?.[f]||0), 0);
+      const diff = newTotal - prevTotal;
+      if (diff >= 10) {
+        const stu = S.students.find(s => s.id === stuId);
+        showNetJumpCelebration(diff, name, stu?.target || '');
+      }
+    }
   }
   cm('examModal');
   if(session.role==='student')renderSExams();else renderExams();
@@ -6699,7 +6991,7 @@ function showOnboarding() {
 // ÖĞRENCİ İLK GİRİŞ KARŞILAMA FORMU
 // ═══════════════════════════════════════════════
 let _swStep = 0;
-const _swData = {};
+let _swData = {};
 
 async function showStudentWelcome() {
   const stu = S.students.find(s => s.id === session.studentId);
@@ -7108,6 +7400,7 @@ async function renderSProfil() {
 
   // Ders bazında net ortalamaları
   let dersOrtHtml='';
+  let gapCardsHtml='';
   if(myExams.length>0){
     const lastType=lastExam.type;
     const fields=EXAM_DEFS[lastType]||[];
@@ -7129,6 +7422,26 @@ async function renderSProfil() {
             </div>`).join('')}
         </div>
       </div>`;
+
+    const gaps = avgs.filter(a=>a.color==='low');
+    if(gaps.length>0){
+      gapCardsHtml=`
+      <div class="card cp" style="margin-bottom:16px;border-color:var(--focus-purple)">
+        <div class="portal-sec-title">💡 Boşluktan Eyleme</div>
+        <div style="font-size:11px;color:var(--text-dim);margin:2px 0 10px">Netin düşük olan derslerde hemen aksiyon al</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${gaps.map(a=>`
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div style="flex:1;min-width:100px">
+                <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(a.f)}</div>
+                <div style="font-size:11px;color:var(--red)">Son net: ${a.last}</div>
+              </div>
+              <button onclick="sendGapToAI('${esc(a.f).replace(/'/g,"\\'")}')" style="padding:7px 12px;background:var(--focus-purple-dim);border:1px solid var(--focus-purple);color:var(--focus-purple);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">🤖 Yapay Zekaya Gönder</button>
+              <button onclick="openGapTaskModal('${esc(a.f).replace(/'/g,"\\'")}','${lastType}')" style="padding:7px 12px;background:var(--surface3);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">📅 Programa Ekle</button>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }
   }
 
   // Yaklaşan randevular
@@ -7144,7 +7457,7 @@ async function renderSProfil() {
 
   el.innerHTML=`
     <!-- HERO -->
-    <div style="background:linear-gradient(135deg,${stu.color}22 0%,${stu.color}08 100%);border:1px solid ${stu.color}33;border-radius:16px;padding:20px 24px;margin-bottom:14px;display:flex;align-items:center;gap:18px">
+    <div id="spHero" class="${isFeatureOn('badges') && hasEarnedBadgeToday() ? 'badge-halo' : ''}" style="background:linear-gradient(135deg,${stu.color}22 0%,${stu.color}08 100%);border:1px solid ${stu.color}33;border-radius:16px;padding:20px 24px;margin-bottom:14px;display:flex;align-items:center;gap:18px">
       <div style="width:64px;height:64px;border-radius:16px;background:${stu.color};display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;flex-shrink:0">${stu.name[0]}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:20px;font-weight:800;color:var(--text)">${esc(stu.name)}</div>
@@ -7232,6 +7545,8 @@ async function renderSProfil() {
         })()}
       </div>
     </div>` : ''}
+
+    ${gapCardsHtml}
 
     <!-- YAKLAŞAN RANDEVULAR -->
     ${myAppts.length ? `

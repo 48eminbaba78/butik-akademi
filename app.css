@@ -14,6 +14,7 @@
   --shadow:0 1px 2px rgba(28,25,23,.04),0 8px 28px rgba(28,25,23,.06);
   --shadow-md:0 2px 8px rgba(28,25,23,.06),0 1px 3px rgba(28,25,23,.05);
   --shadow-lg:0 12px 48px rgba(28,25,23,.12),0 4px 12px rgba(28,25,23,.06);
+  --focus-purple:#a855f7;--focus-purple-dim:rgba(168,85,247,.10);--focus-gold:#d97706;--focus-gold-dim:rgba(217,119,6,.10);
 }
 [data-theme="dark"] {
   --bg:#0f0e0c;--surface:#1a1916;--surface2:#242220;--surface3:#2e2b28;
@@ -27,6 +28,7 @@
   --red:#ff5c5c;--red-dim:rgba(255,92,92,.12);
   --on-accent:#fff;
   --shadow:0 2px 16px rgba(0,0,0,.35),0 1px 4px rgba(0,0,0,.2);--shadow-md:0 2px 10px rgba(0,0,0,.28);--shadow-lg:0 12px 48px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.3);
+  --focus-purple:#c084fc;--focus-purple-dim:rgba(192,132,252,.16);--focus-gold:#f0a500;--focus-gold-dim:rgba(240,165,0,.14);
 }
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -794,7 +796,7 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 .portal-sec-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
 
 /* MODALS */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(26,23,20,.5);z-index:600;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px);}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(26,23,20,.5);z-index:2000;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px);}
 .modal-bg.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);width:100%;max-width:520px;padding:28px 32px;position:relative;box-shadow:var(--shadow-lg);animation:fadeUp .2s ease;max-height:92vh;overflow-y:auto;}
 .modal-lg{max-width:620px;}
@@ -979,6 +981,31 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
 }
+
+/* ── Premium Deneyim: toggle switch ── */
+.switch{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch-track{position:absolute;cursor:pointer;inset:0;background:var(--surface3);border:1.5px solid var(--border2);border-radius:999px;transition:background .2s,border-color .2s}
+.switch-track::before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:var(--text-dim);border-radius:50%;transition:transform .2s,background .2s}
+.switch input:checked + .switch-track{background:var(--focus-purple-dim);border-color:var(--focus-purple)}
+.switch input:checked + .switch-track::before{transform:translateX(18px);background:var(--focus-purple)}
+
+/* ── Odaklanma Modu: tam ekran overlay ── */
+.focus-overlay{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:22px;background:rgba(10,8,14,.72);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);animation:fadeUp .35s ease}
+.focus-overlay .focus-title{font-size:15px;font-weight:700;color:#f0ece6;opacity:.85;letter-spacing:.02em;text-align:center;padding:0 24px}
+.focus-overlay .focus-ring{width:220px;height:220px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,var(--focus-purple-dim) 0%,transparent 70%);border:2px solid var(--focus-purple);box-shadow:0 0 40px var(--focus-purple-dim),inset 0 0 40px var(--focus-purple-dim);animation:focusPulse 2.4s ease-in-out infinite}
+.focus-overlay .focus-time{font-family:'Syne',sans-serif;font-size:44px;font-weight:800;color:#fff;letter-spacing:-.02em}
+.focus-overlay .focus-cancel{background:none;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.65);padding:9px 20px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer}
+@keyframes focusPulse{0%,100%{box-shadow:0 0 40px var(--focus-purple-dim),inset 0 0 40px var(--focus-purple-dim)}50%{box-shadow:0 0 64px var(--focus-purple-dim),inset 0 0 56px var(--focus-purple-dim)}}
+
+/* ── Net Sıçraması: konfeti ── */
+.confetti-piece{position:fixed;top:-12px;z-index:1000000;width:8px;height:14px;pointer-events:none;animation:confettiFall linear forwards}
+@keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(540deg);opacity:0}}
+
+/* ── Easter Egg rozeti: profil kartı halkası ── */
+.badge-halo{position:relative}
+.badge-halo::before{content:"";position:absolute;inset:-6px;border-radius:22px;border:2px solid var(--focus-gold);box-shadow:0 0 18px var(--focus-gold-dim);animation:haloGlow 2.6s ease-in-out infinite;pointer-events:none}
+@keyframes haloGlow{0%,100%{opacity:.55}50%{opacity:1}}
 
 .preview-card-header {
   display: flex;
