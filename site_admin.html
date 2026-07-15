@@ -1517,13 +1517,13 @@ function renderUserTable(){
   }).join('');
 }
 async function toggleUserActive(id,makeActive){
-  if(!confirm(makeActive?'Kullanıcı aktifleştirilsin mi?':'Kullanıcı pasifleştirilsin mi?'))return;
+  if(!(await customConfirm(makeActive?'Kullanıcı aktifleştirilsin mi?':'Kullanıcı pasifleştirilsin mi?')))return;
   await db.from('users').update({active:makeActive}).eq('id',id);
   showToast(makeActive?'Aktifleştirildi ✓':'Pasifleştirildi');
   loadUsers();
 }
 async function adminDeleteUser(id, name) {
-  if (!confirm(`"${name}" kullanıcısını kalıcı olarak silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`)) return;
+  if (!(await customConfirm(`"${name}" kullanıcısını kalıcı olarak silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`, 'Sil'))) return;
   const { data: { session: s } } = await db.auth.getSession();
   try {
     const resp = await fetch('/api/delete-user', {
@@ -2026,7 +2026,7 @@ async function togglePublish(id,pub){
 }
 
 async function deleteBlog(id){
-  if(!confirm('Yazıyı silmek istediğinizden emin misiniz?'))return;
+  if(!(await customConfirm('Yazıyı silmek istediğinizden emin misiniz?', 'Sil')))return;
   await db.from('blog_posts').delete().eq('id',id);
   _blogs=_blogs.filter(b=>b.id!==id);renderBlogs();showToast('Silindi');
 }
@@ -2085,7 +2085,7 @@ async function toggleAnnounce(id,active){
 }
 
 async function deleteAnnounce(id){
-  if(!confirm('Duyuruyu sil?'))return;
+  if(!(await customConfirm('Duyuruyu sil?', 'Sil')))return;
   await db.from('announcements').delete().eq('id',id);
   _announces=_announces.filter(a=>a.id!==id);renderAnnounces();showToast('Silindi');
 }
@@ -2265,7 +2265,7 @@ async function updateMatchStatus(id, status) {
 }
 
 async function deleteMatchRequest(id) {
-  if (!confirm('Eşleşme başvurusunu silmek istediğinizden emin misiniz?')) return;
+  if (!(await customConfirm('Eşleşme başvurusunu silmek istediğinizden emin misiniz?', 'Sil'))) return;
   const {error} = await db.from('match_requests').delete().eq('id', id);
   if (error) {
     showToast('Silinirken hata oluştu: ' + error.message, false);
@@ -2928,6 +2928,33 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// Native confirm() yerine site temasına uygun onay penceresi
+function customConfirm(message, okLabel){
+  return new Promise(resolve => {
+    let modal = document.getElementById('customConfirmModal');
+    if(!modal){
+      modal = document.createElement('div');
+      modal.id = 'customConfirmModal';
+      modal.className = 'modal-bg';
+      modal.style.zIndex = '999999';
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML = `<div class="modal" style="max-width:380px;text-align:center;padding:30px 26px">
+      <div style="font-size:34px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text);line-height:1.65;margin-bottom:24px;white-space:pre-line">${esc(message)}</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" id="ccCancelBtn" style="flex:1;justify-content:center">Vazgeç</button>
+        <button class="btn btn-danger" id="ccOkBtn" style="flex:1;justify-content:center">${esc(okLabel||'Onayla')}</button>
+      </div>
+    </div>`;
+    modal.classList.add('open');
+    const cleanup = result => { modal.classList.remove('open'); resolve(result); };
+    document.getElementById('ccOkBtn').onclick = () => cleanup(true);
+    document.getElementById('ccCancelBtn').onclick = () => cleanup(false);
+    modal.onclick = e => { if(e.target === modal) cleanup(false); };
+  });
+}
 
 // ── INSTAGRAM PANEL LOGIC ──────────────────────
 let _activeIgPanelTab = 'posts';
@@ -4764,7 +4791,7 @@ async function addIgRule() {
 }
 
 async function deleteIgRule(idx) {
-  if(!confirm('Bu otomasyon kuralını silmek istediğinizden emin misiniz?')) return;
+  if(!(await customConfirm('Bu otomasyon kuralını silmek istediğinizden emin misiniz?', 'Sil'))) return;
   _igRules.splice(idx, 1);
   try {
     const { error } = await db.from('platform_settings').upsert({ key: 'instagram_automation_rules', value: _igRules });
@@ -5056,7 +5083,7 @@ async function approvePendingPayment(id){
   if(!p) return;
   const c = _payCoaches.find(x=>x.id===p.coach_id);
   if(!c){ showToast('Koç bulunamadı',false); return; }
-  if(!confirm(`${c.full_name||c.username||'Koç'} için ${fmtTL(p.amount)} ödeme onaylansın mı? Erişim ${p.period_months||1} ay uzatılacak.`)) return;
+  if(!(await customConfirm(`${c.full_name||c.username||'Koç'} için ${fmtTL(p.amount)} ödeme onaylansın mı? Erişim ${p.period_months||1} ay uzatılacak.`, 'Onayla'))) return;
   try{
     const months = p.period_months||1;
     const base = new Date(Math.max(Date.now(), coachAccessEnd(c).getTime()));
@@ -5094,7 +5121,7 @@ async function approvePendingPayment(id){
 }
 
 async function rejectPendingPayment(id){
-  if(!confirm('Bu ödeme bildirimi reddedilsin mi? Koç tekrar dekont yükleyebilir.')) return;
+  if(!(await customConfirm('Bu ödeme bildirimi reddedilsin mi? Koç tekrar dekont yükleyebilir.', 'Reddet'))) return;
   const {error} = await db.from('payments').update({status:'rejected'}).eq('id',id);
   if(error){ showToast('Reddedilemedi: '+error.message,false); return; }
   showToast('Ödeme bildirimi reddedildi');
@@ -5173,7 +5200,7 @@ async function savePayment(){
 }
 
 async function deletePayment(id){
-  if(!confirm('Bu ödeme kaydı silinsin mi?\n\nNot: Koçun erişim bitiş tarihi otomatik geri alınmaz; gerekiyorsa Abonelikler sayfasından elle düzeltin.'))return;
+  if(!(await customConfirm('Bu ödeme kaydı silinsin mi?\n\nNot: Koçun erişim bitiş tarihi otomatik geri alınmaz; gerekiyorsa Abonelikler sayfasından elle düzeltin.', 'Sil')))return;
   const {error} = await db.from('payments').delete().eq('id',id);
   if(error){ showToast('Silinemedi: '+error.message,false); return; }
   showToast('Ödeme kaydı silindi');
@@ -5420,7 +5447,7 @@ async function rspGenerate(){
 }
 
 async function rspRegen(dateStr){
-  if(!confirm(dateStr+' tarihi için yeniden üretilsin mi? Mevcut içeriğin üzerine yazılır.'))return;
+  if(!(await customConfirm(dateStr+' tarihi için yeniden üretilsin mi? Mevcut içeriğin üzerine yazılır.', 'Üret')))return;
   document.getElementById('rspGenDate').value = dateStr;
   document.getElementById('rspForce').checked = true;
   switchStudioTab('create');
@@ -5429,7 +5456,7 @@ async function rspRegen(dateStr){
 }
 
 async function rspPublishNow(){
-  if(!confirm('Yayın saati gelmiş onaylı story\'ler hemen Instagram\'a gönderilsin mi?'))return;
+  if(!(await customConfirm('Yayın saati gelmiş onaylı story\'ler hemen Instagram\'a gönderilsin mi?', 'Gönder')))return;
   try{
     const r = await rspFetch('/api/publish');
     const res = r.results||[];
@@ -5440,7 +5467,7 @@ async function rspPublishNow(){
 }
 
 async function rspPublishSingle(id){
-  if(!confirm('Bu story hemen Instagram\'a gönderilsin mi?'))return;
+  if(!(await customConfirm('Bu story hemen Instagram\'a gönderilsin mi?', 'Gönder')))return;
   try{
     const r = await rspFetch('/api/publish?id=' + id);
     const res = r.results||[];
@@ -5536,7 +5563,7 @@ async function uploadReelsAssets(files) {
 }
 
 async function deleteReelsAsset(path, name) {
-  if (!confirm(`"${name}" silinsin mi?`)) return;
+  if (!(await customConfirm(`"${name}" silinsin mi?`, 'Sil'))) return;
   await db.storage.from('platform_assets').remove([path]);
   await loadReelsAssets();
 }
