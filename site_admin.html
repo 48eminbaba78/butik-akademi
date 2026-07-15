@@ -5149,6 +5149,7 @@ async function savePayment(){
       period_months: months,
       period_start: dateStr,
       period_end: newEnd.toISOString().split('T')[0],
+      payment_date: dateStr,
       receipt_note: note||null
     });
     if(pErr) throw pErr;

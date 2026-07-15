@@ -132,6 +132,7 @@ export default async function handler(req, res) {
       method: 'havale',
       period_months: periodMonths,
       period_start: new Date().toISOString().split('T')[0],
+      payment_date: new Date().toISOString().split('T')[0],
       receipt_url: receipt_path,
       note: 'Koç tarafından bildirildi',
       verified: false,
