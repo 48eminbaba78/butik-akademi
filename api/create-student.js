@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
     const userId = newUser.user.id;
     const passHash = crypto.createHash('sha256').update(password).digest('hex');
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     // users tablosuna yaz
     const { error: profileErr } = await supabaseAdmin.from('users').upsert({

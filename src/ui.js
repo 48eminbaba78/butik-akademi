@@ -92,17 +92,7 @@ async function checkCoachSubscription() {
   ) return;
 
   if (session.role === 'coach' || session.role === 'developer') {
-    const plan = dbUser.plan || 'trial';
-    if (plan === 'trial') {
-      const trialEnds = dbUser.trial_ends_at ? new Date(dbUser.trial_ends_at) : new Date(new Date(dbUser.created_at).getTime() + 14 * 24 * 60 * 60 * 1000);
-      const now = new Date();
-      if (now > trialEnds) {
-        showTrialExpiredScreen();
-      } else {
-        const daysLeft = Math.ceil((trialEnds - now) / (1000 * 60 * 60 * 24));
-        if (daysLeft <= 7) showTrialCountdownBanner(daysLeft);
-      }
-    }
+    await applySubscriptionState(dbUser.plan || 'trial', dbUser.trial_ends_at, dbUser.created_at, dbUser.id);
   } else if ((session.role === 'student' || session.role === 'parent') && session.coachId) {
     try {
       const { data: coachUser } = await db.from('users').select('plan,trial_ends_at,created_at,email').eq('id', session.coachId).maybeSingle();
@@ -111,14 +101,9 @@ async function checkCoachSubscription() {
           coachUser.email === 'ceylanemin1928@gmail.com' ||
           coachUser.email === 'simkoc1@rostrumakademi.com'
         ) return;
-        const plan = coachUser.plan || 'trial';
-        if (plan === 'trial') {
-          const trialEnds = coachUser.trial_ends_at ? new Date(coachUser.trial_ends_at) : new Date(new Date(coachUser.created_at).getTime() + 14 * 24 * 60 * 60 * 1000);
-          const now = new Date();
-          if (now > trialEnds) {
-            showTrialExpiredScreen();
-          }
-        }
+        // Öğrenci/veli tarafında sadece erişim tamamen kilitlendiğinde (inactive) engelleme gösterilir;
+        // trial/grace sürecinde öğrenci akışı kesintiye uğramaz.
+        if ((coachUser.plan || 'trial') === 'inactive') showTrialExpiredScreen();
       }
     } catch (e) {
       console.error('Error checking coach subscription:', e);
@@ -126,46 +111,98 @@ async function checkCoachSubscription() {
   }
 }
 
+// plan durumuna göre blok ekranı / banner gösterir (trial → grace → inactive → pro)
+async function applySubscriptionState(plan, trialEndsAt, createdAt, coachId) {
+  if (plan === 'inactive') {
+    showTrialExpiredScreen();
+    return;
+  }
+  // Engelleme gerektirmeyen bir duruma geçildiyse açık kalmış blok ekranını kapat
+  document.getElementById('trialExpiredModal')?.classList.remove('open');
+
+  if (plan === 'pro') {
+    document.getElementById('trialCountdownBanner')?.remove();
+    return;
+  }
+
+  const trialEnds = trialEndsAt
+    ? new Date(trialEndsAt)
+    : (createdAt ? new Date(new Date(createdAt).getTime() + 7 * 24 * 60 * 60 * 1000) : null);
+  if (!trialEnds) return;
+  const now = new Date();
+
+  let hasPending = false;
+  if (coachId) {
+    const { data: pending } = await db.from('payments').select('id').eq('coach_id', coachId).eq('status', 'pending').limit(1).maybeSingle();
+    hasPending = !!pending;
+  }
+
+  if (plan === 'grace') {
+    const graceEnd = new Date(trialEnds.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const daysLeft = Math.max(0, Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24)));
+    showSubscriptionBanner('grace', daysLeft, hasPending);
+  } else {
+    // trial
+    const daysLeft = Math.ceil((trialEnds - now) / (1000 * 60 * 60 * 24));
+    if (daysLeft <= 2) showSubscriptionBanner('trial', daysLeft, hasPending);
+    else document.getElementById('trialCountdownBanner')?.remove();
+  }
+}
+
 function showTrialExpiredScreen() {
+  const isCoachView = session.role === 'coach' || session.role === 'developer';
   let modal = document.getElementById('trialExpiredModal');
+  const bodyHtml = `
+    <div style="font-size:54px;margin-bottom:18px">⏳</div>
+    <h2 style="font-size:20px;font-weight:900;margin-bottom:12px;color:var(--accent)">Erişiminiz Askıya Alındı</h2>
+    <p style="font-size:13px;color:var(--text-mid);line-height:1.7;margin-bottom:24px">
+      Rostrum Akademi'nin 7 günlük ücretsiz deneme süresi (+3 günlük müsamaha süresi) sona ermiştir.
+      ${isCoachView ? 'Öğrencilerinizin bilgilerine ve koçluk paneline erişmeye devam etmek için lütfen aboneliğinizi başlatın.' : 'Koçunuzun aboneliği yenilenene kadar erişim kapalıdır.'}
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;align-items:stretch">
+      ${isCoachView ? `
+      <button class="btn btn-accent" onclick="openCoachPaymentModal()" style="justify-content:center;padding:12px;font-size:14px;font-weight:700">
+        💳 Ödeme Bildir
+      </button>` : ''}
+      <button class="btn ${isCoachView ? 'btn-ghost' : 'btn-accent'}" onclick="openSupportChatDirect()" style="justify-content:center;padding:12px;font-size:14px;font-weight:700">
+        💬 Destek ile İletişime Geç
+      </button>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:6px">
+        E-posta: <b>ceylanemin1928@gmail.com</b>
+      </div>
+    </div>`;
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'trialExpiredModal';
     modal.className = 'modal-bg open';
     modal.style.zIndex = '9999999'; // ensure it is on top of everything
-    modal.innerHTML = `
-      <div class="modal" style="max-width:460px;text-align:center;padding:32px 24px;border-radius:18px;background:var(--surface);border:2.5px solid var(--accent);box-shadow:var(--shadow-lg)">
-        <div style="font-size:54px;margin-bottom:18px">⏳</div>
-        <h2 style="font-size:20px;font-weight:900;margin-bottom:12px;color:var(--accent)">Deneme Süreniz Doldu</h2>
-        <p style="font-size:13px;color:var(--text-mid);line-height:1.7;margin-bottom:24px">
-          Rostrum Akademi'nin 14 günlük ücretsiz deneme süresi sona ermiştir. 
-          Çalışmalarınıza devam etmek ve size uygun paketi seçmek için lütfen kurucu/destek ekibimizle iletişime geçin.
-        </p>
-        <div style="display:flex;flex-direction:column;gap:10px;align-items:stretch">
-          <button class="btn btn-accent" onclick="openSupportChatDirect()" style="justify-content:center;padding:12px;font-size:14px;font-weight:700">
-            💬 Kurucuya / Ekibe Yaz (Canlı Destek)
-          </button>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:6px">
-            E-posta: <b>ceylanemin1928@gmail.com</b>
-          </div>
-        </div>
-      </div>
-    `;
+    modal.innerHTML = `<div class="modal" style="max-width:460px;text-align:center;padding:32px 24px;border-radius:18px;background:var(--surface);border:2.5px solid var(--accent);box-shadow:var(--shadow-lg)">${bodyHtml}</div>`;
     document.body.appendChild(modal);
   } else {
+    modal.querySelector('.modal').innerHTML = bodyHtml;
     modal.classList.add('open');
   }
 }
 
-function showTrialCountdownBanner(daysLeft) {
-  if (document.getElementById('trialCountdownBanner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'trialCountdownBanner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:8000;background:#f59e0b;color:#111;padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px;font-weight:600;';
-  banner.innerHTML = `<span>⏰ Ücretsiz denemenizin <strong>${daysLeft} günü</strong> kaldı — öğrenci verileriniz korunuyor.</span>
-    <button onclick="openSupportChatDirect()" style="background:rgba(0,0,0,.15);border:none;padding:4px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:#111;white-space:nowrap">Devam Et →</button>
-    <button onclick="document.getElementById('trialCountdownBanner').remove()" style="background:none;border:none;cursor:pointer;color:rgba(0,0,0,.4);font-size:18px;padding:0 4px;line-height:1">×</button>`;
-  document.body.prepend(banner);
+function showSubscriptionBanner(kind, daysLeft, hasPending) {
+  const isGrace = kind === 'grace';
+  const bg = isGrace ? '#ea580c' : '#f59e0b';
+  const label = hasPending
+    ? '📨 Ödeme bildiriminiz alındı — ekibimiz en kısa sürede onaylayacak.'
+    : (isGrace
+      ? `⏳ Deneme süreniz doldu — öğrencileriniz mağdur olmasın diye erişiminiz <strong>${daysLeft} gün daha</strong> açık tutuluyor.`
+      : `⏰ Ücretsiz denemenizin <strong>${daysLeft} günü</strong> kaldı — öğrenci verileriniz korunuyor.`);
+  const ctaHtml = hasPending ? '' : `<button onclick="openCoachPaymentModal()" style="background:rgba(0,0,0,.15);border:none;padding:4px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:#111;white-space:nowrap">${isGrace ? 'Ödeme Bildir →' : 'Devam Et →'}</button>`;
+  const closeHtml = isGrace ? '' : `<button onclick="document.getElementById('trialCountdownBanner').remove()" style="background:none;border:none;cursor:pointer;color:rgba(0,0,0,.4);font-size:18px;padding:0 4px;line-height:1">×</button>`;
+
+  let banner = document.getElementById('trialCountdownBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'trialCountdownBanner';
+    document.body.prepend(banner);
+  }
+  banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:8000;background:${bg};color:#111;padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px;font-weight:600;`;
+  banner.innerHTML = `<span>${label}</span>${ctaHtml}${closeHtml}`;
   const shell = document.getElementById('appShell');
   if (shell) shell.style.marginTop = banner.offsetHeight + 'px';
 }
@@ -173,7 +210,7 @@ function showTrialCountdownBanner(daysLeft) {
 window.openSupportChatDirect = openSupportChat;
 window.checkCoachSubscription = checkCoachSubscription;
 window.showTrialExpiredScreen = showTrialExpiredScreen;
-window.showTrialCountdownBanner = showTrialCountdownBanner;
+window.showSubscriptionBanner = showSubscriptionBanner;
 
 
 // ═══════════════════════════════════════════════
@@ -1608,7 +1645,7 @@ function renderSettings(){
         const planColor = plan === 'trial' ? '#f0a500' : '#3ecf8e';
         let membershipEnd = null;
         if (u?.trial_ends_at) membershipEnd = new Date(u.trial_ends_at);
-        else if (u?.created_at) membershipEnd = new Date(new Date(u.created_at).getTime() + 14 * 24 * 60 * 60 * 1000);
+        else if (u?.created_at) membershipEnd = new Date(new Date(u.created_at).getTime() + 7 * 24 * 60 * 60 * 1000);
         const now = new Date();
         const daysLeft = membershipEnd ? Math.max(0, Math.ceil((membershipEnd - now) / (1000 * 60 * 60 * 24))) : null;
         const fmtDate = d => d ? d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
@@ -5354,7 +5391,7 @@ function openPlanModal(userId, userName, currentPlan, trialEndsAt) {
       <div class="field" id="trialEndField">
         <label>Deneme Bitiş Tarihi</label>
         <input type="date" id="planTrialEnd" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none;box-sizing:border-box">
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Boş bırakılırsa kayıt tarihinden +14 gün hesaplanır</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Boş bırakılırsa kayıt tarihinden +7 gün hesaplanır</div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button class="btn btn-accent" style="flex:1;justify-content:center;padding:11px" onclick="savePlan()">Kaydet</button>
@@ -6640,7 +6677,7 @@ function showOnboarding() {
     <div style="font-size:48px;margin-bottom:14px">🎓</div>
     <h3 style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px;line-height:1.2">Hoş geldiniz, ${esc(name)}!</h3>
     <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:24px">
-      <strong style="color:${bc}">14 günlük ücretsiz denemeniz</strong> başladı.<br>
+      <strong style="color:${bc}">7 günlük ücretsiz denemeniz</strong> başladı.<br>
       İlk öğrencinize rapor gönderdiğinizde platformun farkını göreceksiniz.
     </p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;text-align:left">
@@ -6654,7 +6691,7 @@ function showOnboarding() {
     <button class="btn btn-accent" style="width:100%;padding:14px;font-size:15px;font-weight:800" onclick="document.getElementById('onboardingModal').remove();showOnboardingWidget()">
       Hadi Başlayalım! →
     </button>
-    <div style="font-size:11px;color:var(--text-dim);margin-top:12px">Kredi kartı gerekmez · 14 gün sonra uzatabilirsiniz</div>
+    <div style="font-size:11px;color:var(--text-dim);margin-top:12px">Kredi kartı gerekmez · 7 gün sonra uzatabilirsiniz</div>
   </div>`;
 }
 
@@ -7321,6 +7358,7 @@ async function changePassword() {
 async function renderSUyelik() {
   const el = document.getElementById('view-suyelik');
   if (!el) return;
+  if (session.role === 'coach' || session.role === 'developer') return renderCoachUyelik();
 
   el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:200px"><div style="width:32px;height:32px;border:3px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite"></div></div>`;
 
@@ -7347,7 +7385,7 @@ async function renderSUyelik() {
   if (coachUser?.trial_ends_at) {
     membershipEnd = new Date(coachUser.trial_ends_at);
   } else if (coachUser?.created_at) {
-    membershipEnd = new Date(new Date(coachUser.created_at).getTime() + 14 * 24 * 60 * 60 * 1000);
+    membershipEnd = new Date(new Date(coachUser.created_at).getTime() + 7 * 24 * 60 * 60 * 1000);
   }
 
   const daysLeft = membershipEnd ? Math.max(0, Math.ceil((membershipEnd - now) / (1000 * 60 * 60 * 24))) : null;
@@ -7401,7 +7439,7 @@ async function renderSUyelik() {
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px">
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;font-weight:600">Üyelik Süresi</div>
         ${(() => {
-          const total = membershipEnd && enrollDate ? Math.max(1, Math.ceil((membershipEnd - enrollDate) / (1000 * 60 * 60 * 24))) : 14;
+          const total = membershipEnd && enrollDate ? Math.max(1, Math.ceil((membershipEnd - enrollDate) / (1000 * 60 * 60 * 24))) : 7;
           const used = Math.min(total, total - daysLeft);
           const pct = Math.min(100, Math.round((used / total) * 100));
           const barColor = daysLeft > 7 ? '#3ecf8e' : daysLeft > 3 ? '#f0a500' : '#ef4444';
@@ -7431,6 +7469,219 @@ async function renderSUyelik() {
       </div>
     </div>`;
 }
+
+// ── KOÇ: KENDİ ABONELİK / ÖDEME SAYFASI ──────────
+async function renderCoachUyelik() {
+  const el = document.getElementById('view-suyelik');
+  if (!el) return;
+  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:200px"><div style="width:32px;height:32px;border:3px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite"></div></div>`;
+
+  const uid = session.dbUser?.id;
+  const [{ data: me }, { data: pays }] = await Promise.all([
+    db.from('users').select('plan,trial_ends_at,created_at,payment_reference_code').eq('id', uid).maybeSingle(),
+    db.from('payments').select('*').eq('coach_id', uid).order('created_at', { ascending: false }).limit(10)
+  ]);
+
+  const plan = me?.plan || 'trial';
+  const now = new Date();
+  const trialEnds = me?.trial_ends_at ? new Date(me.trial_ends_at) : (me?.created_at ? new Date(new Date(me.created_at).getTime() + 7 * 24 * 60 * 60 * 1000) : null);
+  const graceEnds = trialEnds ? new Date(trialEnds.getTime() + 3 * 24 * 60 * 60 * 1000) : null;
+
+  const planMeta = {
+    trial: { label: 'Deneme Dönemi', color: '#f0a500', bg: '#fff8e6' },
+    grace: { label: 'Müsamaha Süresi', color: '#ea580c', bg: '#fff1e6' },
+    inactive: { label: 'Erişim Askıda', color: '#ef4444', bg: '#fee2e2' },
+    pro: { label: 'Aktif Abonelik', color: '#3ecf8e', bg: '#e6faf3' }
+  }[plan] || { label: plan, color: '#3ecf8e', bg: '#e6faf3' };
+
+  const fmtDate2 = d => d ? d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+  const endLabel = plan === 'grace' ? 'Müsamaha Bitişi' : plan === 'trial' ? 'Deneme Bitişi' : 'Erişim Bitişi';
+  const endDate = plan === 'grace' ? graceEnds : plan === 'pro' ? trialEnds : trialEnds;
+  const hasPending = (pays || []).some(p => p.status === 'pending');
+
+  const statusLbl = { pending: ['📨 Onay Bekliyor', '#f0a500'], completed: ['✓ Onaylandı', '#3ecf8e'], rejected: ['✕ Reddedildi', '#ef4444'] };
+
+  el.innerHTML = `
+    <div style="max-width:480px;margin:0 auto;padding:16px">
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:120px;height:120px;background:${planMeta.color};opacity:.06;border-radius:50%;transform:translate(30%,-30%)"></div>
+        <div style="display:flex;align-items:flex-start;gap:16px">
+          <div style="width:52px;height:52px;border-radius:14px;background:${planMeta.bg};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">💳</div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Abonelik Durumu</div>
+            <div style="font-size:20px;font-weight:700;color:var(--text)">${planMeta.label}</div>
+            ${me?.payment_reference_code ? `<div style="font-size:11px;color:var(--text-dim);margin-top:6px">Referans Kodu: <b style="color:var(--text)">${esc(me.payment_reference_code)}</b></div>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px">
+        ${[
+          { icon: '📅', label: 'Kayıt Tarihi', value: fmtDate2(me?.created_at ? new Date(me.created_at) : null) },
+          { icon: '⌛', label: endLabel, value: fmtDate2(endDate) }
+        ].map(({ icon, label, value }, i, arr) => `
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;${i < arr.length - 1 ? 'border-bottom:1px solid var(--border)' : ''}">
+            <span style="font-size:18px;width:24px;text-align:center">${icon}</span>
+            <div style="flex:1">
+              <div style="font-size:11px;color:var(--text-dim)">${label}</div>
+              <div style="font-size:14px;font-weight:600;color:var(--text);margin-top:1px">${value}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px">
+        ${plan === 'pro'
+          ? `<div style="font-size:12px;color:var(--text-dim);line-height:1.6">Aboneliğiniz aktif. Süreniz dolmadan önce yenileme hatırlatması gönderilecek.</div>
+             <button onclick="openCoachPaymentModal()" style="width:100%;margin-top:12px;padding:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">Erken Yenile</button>`
+          : hasPending
+            ? `<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#f0a500">📨 Ödeme bildiriminiz alındı, onay bekleniyor</div>`
+            : `<button onclick="openCoachPaymentModal()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">💳 Ödeme Bildir</button>`}
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+        <div style="font-size:12px;font-weight:700;color:var(--text);padding:14px 18px 8px">Ödeme Geçmişi</div>
+        ${(pays && pays.length) ? pays.map(p => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-top:1px solid var(--border)">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${p.amount ? Number(p.amount).toLocaleString('tr-TR') + ' ₺' : '—'} · ${p.period_months || 1} ay</div>
+              <div style="font-size:11px;color:var(--text-dim)">${new Date(p.created_at).toLocaleDateString('tr-TR')}</div>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:${(statusLbl[p.status] || ['—', 'var(--text-dim)'])[1]}">${(statusLbl[p.status] || [p.status || '—'])[0]}</span>
+          </div>
+        `).join('') : '<div style="padding:16px 18px;font-size:12px;color:var(--text-dim)">Henüz ödeme kaydı yok</div>'}
+      </div>
+    </div>`;
+}
+window.renderCoachUyelik = renderCoachUyelik;
+
+// ── KOÇ: ÖDEME BİLDİRİM MODALI (dinamik banka bilgisi + dekont yükleme) ──
+let _cpmState = { iban: '', refCode: '' };
+function copyCpmValue(key) {
+  const val = key === 'iban' ? _cpmState.iban.replace(/\s+/g, '') : _cpmState.refCode;
+  navigator.clipboard.writeText(val).then(() => showToast((key === 'iban' ? 'IBAN' : 'Referans kodu') + ' kopyalandı ✓'));
+}
+window.copyCpmValue = copyCpmValue;
+
+async function openCoachPaymentModal() {
+  let modal = document.getElementById('coachPaymentModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'coachPaymentModal';
+    modal.className = 'modal-bg';
+    modal.style.zIndex = '9999998';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) cm('coachPaymentModal'); });
+  }
+  modal.innerHTML = `<div class="modal" style="max-width:460px">
+    <button class="modal-close" onclick="cm('coachPaymentModal')">×</button>
+    <div id="cpmBody" style="padding:4px 0;text-align:center"><div style="width:28px;height:28px;margin:24px auto;border:3px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite"></div></div>
+  </div>`;
+  om('coachPaymentModal');
+
+  const uid = session.dbUser?.id;
+  const [{ data: settingsRow }, { data: refCode }] = await Promise.all([
+    db.from('platform_settings').select('value').eq('key', 'payment_settings').maybeSingle(),
+    db.rpc('ensure_payment_ref_code')
+  ]);
+  const settings = settingsRow?.value || {};
+  const priceMonthly = +settings.price_monthly || 0;
+  const hasBankInfo = !!(settings.bank_name && settings.iban);
+  _cpmState = { iban: settings.iban || '', refCode: refCode || '' };
+
+  const body = document.getElementById('cpmBody');
+  if (!body) return;
+
+  if (!hasBankInfo) {
+    body.innerHTML = `
+      <h2>Aboneliği Başlat</h2>
+      <div style="font-size:13px;color:var(--text-mid);line-height:1.7;padding:12px 0">
+        Ödeme bilgileri henüz tanımlanmadı. Lütfen destek ekibimizle iletişime geçin.
+      </div>
+      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="cm('coachPaymentModal');openSupportChatDirect()">💬 Destek ile İletişime Geç</button>`;
+    return;
+  }
+
+  body.innerHTML = `
+    <h2>Rostrum Akademi Aboneliği</h2>
+    <div class="field"><label>Dönem</label>
+      <select id="cpmMonths" onchange="updateCpmPrice(${priceMonthly})">
+        <option value="1">1 Ay</option>
+        <option value="3">3 Ay</option>
+        <option value="6">6 Ay</option>
+        <option value="12">12 Ay</option>
+      </select>
+    </div>
+    <div style="margin:10px 0;padding:10px 14px;border-radius:10px;background:var(--accent-dim);color:var(--accent);font-size:13px;font-weight:700" id="cpmPriceLine">Tutar: ${priceMonthly.toLocaleString('tr-TR')} ₺</div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;font-size:12.5px;line-height:1.9">
+      <div><b>Banka:</b> ${esc(settings.bank_name)}</div>
+      <div style="display:flex;align-items:center;gap:8px"><b>IBAN:</b> <span>${esc(settings.iban)}</span>
+        <button type="button" onclick="copyCpmValue('iban')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px">📋 Kopyala</button></div>
+      ${settings.account_holder ? `<div><b>Alıcı:</b> ${esc(settings.account_holder)}</div>` : ''}
+    </div>
+
+    <div style="background:rgba(240,165,0,.08);border:1.5px dashed var(--accent);border-radius:12px;padding:14px;text-align:center;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px">Açıklamaya SADECE bu kodu yazın</div>
+      <div style="font-size:20px;font-weight:900;letter-spacing:.05em;color:var(--accent)">${esc(refCode || '—')}</div>
+      <button type="button" onclick="copyCpmValue('refCode')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:11px;margin-top:2px">📋 Kopyala</button>
+    </div>
+
+    <div class="field"><label>Dekont (PNG, JPG veya PDF)</label>
+      <input type="file" id="cpmFile" accept=".png,.jpg,.jpeg,.pdf">
+    </div>
+    <div id="cpmErr" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" id="cpmSubmitBtn" onclick="submitCoachPayment(${priceMonthly})">Dekontu Gönder</button>`;
+}
+window.openCoachPaymentModal = openCoachPaymentModal;
+
+function updateCpmPrice(priceMonthly) {
+  const months = +document.getElementById('cpmMonths')?.value || 1;
+  const line = document.getElementById('cpmPriceLine');
+  if (line) line.textContent = `Tutar: ${(priceMonthly * months).toLocaleString('tr-TR')} ₺`;
+}
+window.updateCpmPrice = updateCpmPrice;
+
+async function submitCoachPayment(priceMonthly) {
+  const errEl = document.getElementById('cpmErr');
+  const btn = document.getElementById('cpmSubmitBtn');
+  errEl.style.display = 'none';
+  const file = document.getElementById('cpmFile')?.files?.[0];
+  if (!file) { errEl.textContent = 'Lütfen dekont dosyası seçin.'; errEl.style.display = 'block'; return; }
+  if (file.size > 8 * 1024 * 1024) { errEl.textContent = 'Dosya 8MB\'dan küçük olmalı.'; errEl.style.display = 'block'; return; }
+
+  const months = +document.getElementById('cpmMonths')?.value || 1;
+  const uid = session.dbUser?.id;
+  btn.disabled = true; btn.textContent = 'Yükleniyor...';
+
+  try {
+    const ext = (file.name.split('.').pop() || 'dat').toLowerCase();
+    const path = `${uid}/${Date.now()}.${ext}`;
+    const { error: upErr } = await db.storage.from('receipts').upload(path, file, { contentType: file.type });
+    if (upErr) throw upErr;
+
+    const { data: { session: authSess } } = await db.auth.getSession();
+    const res = await fetch('/api/submit-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authSess?.access_token || ''}` },
+      body: JSON.stringify({ months, receipt_path: path })
+    });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error || 'Ödeme bildirilemedi');
+
+    showToast('Dekontunuz alındı ✓ Onay bekleniyor');
+    cm('coachPaymentModal');
+    document.getElementById('trialCountdownBanner')?.remove();
+    checkCoachSubscription();
+    if (document.getElementById('view-suyelik')?.offsetParent) renderCoachUyelik();
+  } catch (e) {
+    errEl.textContent = 'Hata: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Dekontu Gönder';
+  }
+}
+window.submitCoachPayment = submitCoachPayment;
 
 // ═══════════════════════════════════════════════
 // KOÇ VE GELİŞTİRİCİ PROFİL / EŞLEŞME EK PARÇALARI
@@ -9257,14 +9508,10 @@ async function callGeminiFallback(userText, context, userRole, pendingImg) {
   let systemPrompt = `Sen "Rostrum Akademi Yapay Zeka Asistanı"sın. Türkiye eğitim sistemine (YKS, LGS) hakim, rolüne göre öğrencilere, velilere veya koçlara destek veren bir yapay zekasın.\n\nKESİNLİKLE YALNIZCA TÜRKÇE yanıt ver. İngilizce, Japonca, Çince veya başka hiçbir dil/karakter kullanma.
 
 Rostrum Akademi İşleyişi, Üyelik ve Fiyatlandırma Bilgileri:
-1. Kayıt olan tüm koçlara 14 gün ücretsiz deneme süresi tanımlanır. Bu süre bitiminde panel kilitlenir.
-2. Otomatik ödeme/kredi kartı altyapısı yoktur; paket satın alma, ödeme ve lisans uzatma işlemleri tamamen manuel olarak yürütülür.
-3. Kullanıcılar paket satın almak, deneme sürelerini uzatmak veya üyeliklerini aktif etmek için Kurucu Emin Ceylan (ceylanemin1928@gmail.com) ile iletişime geçmelidir.
-4. Destek panelinde bulunan "Kurucuya / Destek Ekibine Yaz" seçeneği ile doğrudan kurucu ekibe mesaj gönderebilir ve bu ekran üzerinden onunla canlı yazışabilirler.
-5. Güncel Paket Fiyatları:
-   - Başlangıç Paketi (Starter): Aylık 299 TL
-   - Koç Pro Paketi (Pro): Aylık 599 TL
-   - Kurumsal Paket (Enterprise): Aylık 1499 TL`;
+1. Kayıt olan tüm koçlara 7 gün ücretsiz deneme süresi tanımlanır. Bu süre bitiminde 3 günlük müsamaha (grace) süresi başlar; müsamaha da bitince panel kilitlenir.
+2. Otomatik ödeme/kredi kartı altyapısı yoktur; ödeme havale/EFT ile yapılır. Koç, panelindeki "Üyeliğim" sayfasından veya çıkan "Ödeme Bildir" butonundan ödeme modalını açar; orada güncel fiyatı, banka bilgilerini ve kendine özel referans kodunu görür, dekontunu yükler. Onay admin tarafında manuel yapılır.
+3. Fiyat, banka bilgileri gibi detaylar sabit değildir, admin panelinden yönetilir — kesin güncel tutarı söylemek yerine kullanıcıyı "Üyeliğim" sayfasındaki ödeme modalına yönlendir.
+4. Destek panelinde bulunan "Kurucuya / Destek Ekibine Yaz" seçeneği ile doğrudan kurucu ekibe mesaj gönderebilir ve bu ekran üzerinden onunla canlı yazışabilirler. Kurucu: Emin Ceylan (ceylanemin1928@gmail.com).`;
   
   // Kullanıcı & üyelik bilgisi
   const dbUser = session.dbUser;
