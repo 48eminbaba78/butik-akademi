@@ -18,7 +18,10 @@ alter table public.match_requests add column if not exists goal text;
 comment on column public.match_requests.goal is 'Öğrencinin YKS hedefi ve mevcut durumu (serbest metin)';
 
 -- 3) get_coach_by_slug — vitrin için headline + capacity_left döndür (anon)
-create or replace function public.get_coach_by_slug(p_slug text)
+-- Dönüş tipi (sütun seti) değiştiği için önce DROP şart — CREATE OR REPLACE
+-- Postgres'te return table sütunlarını değiştirmeye izin vermiyor (42P13).
+drop function if exists public.get_coach_by_slug(text);
+create function public.get_coach_by_slug(p_slug text)
 returns table (
   id uuid, full_name text, target text, color text,
   bio text, subjects text, education text, experience text,
