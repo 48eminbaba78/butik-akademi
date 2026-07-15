@@ -7529,8 +7529,8 @@ async function renderCoachProfile() {
                   oninput="onCoachSlugInput()"
                   style="flex:1; min-width:130px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:8px 12px; font-size:13.5px; font-weight:700; letter-spacing:.3px; color:var(--text); outline:none; transition: border-color .15s;"
                   onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-                <button class="btn btn-ghost" style="padding: 8px 12px; height: 37px;" onclick="const sl=document.getElementById('cpSlug').value.trim(); const url=sl ? 'https://rostrumakademi.com/koc/'+sl : '${coachBulUrl}'; navigator.clipboard.writeText(url); showToast('Link kopyalandı ✓')">🔗 Kopyala</button>
-                <a href="${slug ? `https://rostrumakademi.com/koc/${slug}` : coachBulUrl}" id="cpSlugBrowseBtn" target="_blank" class="btn btn-accent" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center; height:37px; padding:0 14px; border-radius:9px; font-size:13px; font-weight:700;">👁 Gözat</a>
+                <button class="btn btn-ghost" style="padding: 8px 12px; height: 37px;" onclick="copyCoachLink()">🔗 Kopyala</button>
+                <a href="${coachBulUrl}" id="cpSlugBrowseBtn" target="_blank" class="btn btn-accent" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center; height:37px; padding:0 14px; border-radius:9px; font-size:13px; font-weight:700;" onclick="return browseCoachLink(event)">👁 Gözat</a>
               </div>
               <span id="cpSlugStatus" style="font-size:12px; font-weight:700; display:block; margin-top:4px;"></span>
               <div style="font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.4;">Instagram biyografinize ekleyebileceğiniz akılda kalıcı kısa link. Küçük harf, rakam ve tire (-) kullanabilirsiniz.</div>
@@ -7792,10 +7792,40 @@ function onCoachSlugInput(){
       const { data, error } = await db.rpc('check_coach_slug', { p_slug: v });
       if (error) { st.textContent = ''; _cpSlugOk = true; return; } // RPC yoksa engelleme
       _cpSlugOk = !!data;
-      st.textContent = data ? '✓ müsait' : '✗ alınmış';
+      // Yeni/değişmiş slug kaydedilene kadar link aktif olmaz — bunu net söyle
+      st.textContent = data ? '✓ müsait — linki etkinleştirmek için Kaydet\'e bas' : '✗ bu link alınmış, başka dene';
       st.style.color = data ? 'var(--green)' : 'var(--red)';
     } catch(e) { st.textContent=''; _cpSlugOk = true; }
   }, 450);
+}
+
+// ── Kamu link kopyala/gözat — yalnızca KAYDEDİLMİŞ slug üzerinden çalışır ──
+function _cpSavedLink(){
+  return _cpSavedSlug
+    ? `${window.location.origin}/koc/${_cpSavedSlug}`
+    : `${window.location.origin}/koc_bul.html?coach=${session.dbUser.id}`;
+}
+function _cpTypedDiffers(){
+  const v = (document.getElementById('cpSlug')?.value||'').trim().toLowerCase();
+  return v && v !== (_cpSavedSlug||'');
+}
+function copyCoachLink(){
+  if (_cpTypedDiffers()) return showToast('Yeni linki önce Kaydet\'e basarak etkinleştir');
+  navigator.clipboard.writeText(_cpSavedLink()).then(()=>showToast('Link kopyalandı ✓'))
+    .catch(()=>showToast('Kopyalanamadı'));
+}
+function browseCoachLink(e){
+  if (_cpTypedDiffers()){ if(e)e.preventDefault(); showToast('Yeni linki önce Kaydet\'e basarak etkinleştir'); return false; }
+  const a = document.getElementById('cpSlugBrowseBtn');
+  if (a) a.href = _cpSavedLink();
+  return true;
+}
+// Kayıttan sonra link kontrollerini tazele (yeni slug artık canlı)
+function _cpRefreshLinkUI(){
+  const a = document.getElementById('cpSlugBrowseBtn');
+  if (a) a.href = _cpSavedLink();
+  const st = document.getElementById('cpSlugStatus');
+  if (st && _cpSavedSlug){ st.textContent = '✓ link aktif'; st.style.color = 'var(--green)'; }
 }
 
 // ── AI ile biyografi ────────────────────────────
@@ -7973,12 +8003,8 @@ async function saveCoachProfile() {
     console.warn('Database save failed, profile saved locally in localStorage:', error);
     showToast('Profil yerel tarayıcıya kaydedildi (Veritabanı hatası: ' + error.message + ')', true);
   } else {
-    _cpSavedSlug = slug;
-    // Gözat butonunu yeni slug'la güncelle
-    const browseBtn = document.getElementById('cpSlugBrowseBtn');
-    if (browseBtn) {
-      browseBtn.href = slug ? `https://rostrumakademi.com/koc/${slug}` : `${window.location.origin}/koc_bul.html?coach=${userId}`;
-    }
+    _cpSavedSlug = (slug || '').toLowerCase();
+    _cpRefreshLinkUI(); // Gözat href + "✓ link aktif" durumu
     showToast('Profil başarıyla güncellendi ✓', true);
   }
 }
@@ -11231,6 +11257,8 @@ window.toggleCoachTag = toggleCoachTag;
 window.addCustomCoachTag = addCustomCoachTag;
 window.uploadCoachPhoto = uploadCoachPhoto;
 window.onCoachSlugInput = onCoachSlugInput;
+window.copyCoachLink = copyCoachLink;
+window.browseCoachLink = browseCoachLink;
 window.generateCoachBio = generateCoachBio;
 window.nl2br = nl2br;
 window.saveCoachProfile = saveCoachProfile;
