@@ -376,6 +376,9 @@
   </div>
 </div>
 
+<!-- TEK-KOÇ VİTRİN (slug modu — aydınlık premium) -->
+<div id="showcaseContainer" style="display:none"></div>
+
 <!-- PROFILE MODAL -->
 <div id="profileModal" class="modal-bg" onclick="closeModal(event, 'profileModal')">
   <div class="modal">
@@ -664,10 +667,170 @@
       target = allCoaches.find(c => c.id === coachParam);
     }
     if (target) {
-      viewCoachDetails(target.id);
+      // Slug ile gelen = kamu vitrini (tam ekran). ?coach=uuid eski yol = modal.
+      if (slugParam) renderCoachShowcase(target);
+      else viewCoachDetails(target.id);
     } else if (slugParam) {
       showToast('Bu linkte bir koç profili bulunamadı.');
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // TEK-KOÇ KAMU VİTRİNİ — Instagram bio linki satış hunisi
+  // ─────────────────────────────────────────────────────────────
+  function renderCoachShowcase(c) {
+    // Dizini gizle, sayfayı aydınlık premium'a çevir
+    document.querySelector('.container').style.display = 'none';
+    document.title = `${c.name} — Rostrum Akademi Koçu`;
+    const p = c.profile || {};
+    const initials = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const avatar = p.photo_url
+      ? `<div class="sc-av" style="background-image:url('${esc(p.photo_url)}')"></div>`
+      : `<div class="sc-av sc-av-txt" style="background:${c.color || '#E8613A'}">${esc(initials)}</div>`;
+    const headline = p.headline || (p.subjects ? p.subjects.split(',').slice(0,2).join(' · ') + ' Koçu' : 'YKS Koçu');
+
+    // Stat rozetleri — yalnızca dolu olanlar
+    const stats = [];
+    if (p.experience) stats.push({ ico:'🏅', t: firstLine(p.experience) });
+    if (p.education)  stats.push({ ico:'🎓', t: firstLine(p.education) });
+    if (p.capacity_left != null && p.capacity_left >= 0)
+      stats.push({ ico:'', t:`Son ${p.capacity_left} Öğrenci Kontenjanı`, scarce:true });
+    const statsHtml = stats.length ? `<div class="sc-stats">${stats.map(s=>`
+      <div class="sc-stat${s.scarce?' sc-scarce':''}">${s.scarce?'<span class="sc-dot"></span>':`<span class="sc-stat-ico">${s.ico}</span>`}<span>${esc(s.t)}</span></div>`).join('')}</div>` : '';
+
+    const social = [];
+    if (p.instagram) social.push(`<a href="https://instagram.com/${esc(p.instagram)}" target="_blank" class="sc-social">📸 @${esc(p.instagram)}</a>`);
+    if (p.linkedin)  social.push(`<a href="${esc(p.linkedin)}" target="_blank" class="sc-social">💼 LinkedIn</a>`);
+
+    const sc = document.getElementById('showcaseContainer');
+    sc.style.display = 'block';
+    sc.innerHTML = `
+      <style>
+        body{background:#FBFAF8}
+        #showcaseContainer{--b:#E8613A;--ink:#1A1714;--mid:#6B6560;--dim:#9B958E;--surf:#fff;--surf2:#F6F4F0;--bd:#EAE6DF;
+          max-width:520px;margin:0 auto;padding:20px 16px 120px;color:var(--ink);
+          font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
+        .sc-hero{display:flex;gap:16px;align-items:center;margin-bottom:18px}
+        .sc-av{width:92px;height:92px;border-radius:24px;background-size:cover;background-position:center;flex-shrink:0;box-shadow:0 8px 24px rgba(28,25,23,.12)}
+        .sc-av-txt{display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff}
+        .sc-name{font-size:26px;font-weight:800;letter-spacing:-.6px;line-height:1.1}
+        .sc-headline{font-size:14px;color:var(--mid);font-weight:600;margin-top:4px}
+        .sc-socials{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+        .sc-social{font-size:12px;font-weight:700;color:var(--b);text-decoration:none;background:rgba(232,97,58,.08);padding:4px 10px;border-radius:99px}
+        .sc-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
+        .sc-stat{flex-shrink:0;display:flex;align-items:center;gap:6px;background:var(--surf);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;font-size:12.5px;font-weight:700;box-shadow:0 1px 3px rgba(28,25,23,.04)}
+        .sc-stat-ico{font-size:15px}
+        .sc-scarce{border-color:rgba(220,38,38,.3)}
+        .sc-dot{width:8px;height:8px;border-radius:50%;background:#DC2626;box-shadow:0 0 0 3px rgba(220,38,38,.15)}
+        .sc-tabs{display:flex;gap:4px;background:var(--surf2);border-radius:12px;padding:4px;margin-bottom:14px}
+        .sc-tab{flex:1;padding:9px;border:none;background:none;border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;color:var(--mid);cursor:pointer;transition:.15s}
+        .sc-tab.on{background:var(--surf);color:var(--b);box-shadow:0 1px 4px rgba(28,25,23,.08)}
+        .sc-panel{background:var(--surf);border:1px solid var(--bd);border-radius:16px;padding:18px 20px;font-size:14px;line-height:1.7;color:var(--ink);min-height:90px;box-shadow:0 1px 3px rgba(28,25,23,.04)}
+        .sc-offer{margin-top:18px;background:linear-gradient(180deg,rgba(232,97,58,.06),rgba(232,97,58,.02));border:1px solid rgba(232,97,58,.2);border-radius:18px;padding:20px}
+        .sc-offer h3{font-size:16px;font-weight:800;color:var(--b);margin-bottom:14px}
+        .sc-offer-row{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+        .sc-offer-row:last-child{margin-bottom:0}
+        .sc-offer-ico{font-size:22px;flex-shrink:0;line-height:1.2}
+        .sc-offer-t{font-size:14px;font-weight:700}
+        .sc-offer-d{font-size:12px;color:var(--mid);margin-top:1px;line-height:1.45}
+        .sc-cta-wrap{position:fixed;bottom:0;left:0;right:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(251,250,248,0),rgba(251,250,248,.96) 30%);z-index:50}
+        .sc-cta{display:block;max-width:520px;margin:0 auto;text-align:center;background:var(--b);color:#fff;border:none;border-radius:14px;padding:16px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(232,97,58,.35);text-decoration:none}
+        .sc-brand-foot{text-align:center;font-size:11px;color:var(--dim);margin-top:22px}
+        .sc-brand-foot b{color:var(--b)}
+        /* Aydınlık başvuru sheet */
+        #scApplySheet{position:fixed;inset:0;background:rgba(26,23,20,.5);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-end;justify-content:center}
+        #scApplySheet.on{display:flex}
+        .sc-sheet{background:var(--surf);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:24px 20px calc(24px + env(safe-area-inset-bottom));animation:scUp .3s ease}
+        @keyframes scUp{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+        .sc-sheet h3{font-size:19px;font-weight:800;margin-bottom:4px}
+        .sc-sheet p{font-size:13px;color:var(--mid);margin-bottom:18px}
+        .sc-f{margin-bottom:12px}
+        .sc-f label{display:block;font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+        .sc-f input,.sc-f textarea{width:100%;background:var(--surf2);border:1.5px solid var(--bd);border-radius:10px;padding:12px 14px;font-size:14px;font-family:inherit;color:var(--ink);outline:none;box-sizing:border-box}
+        .sc-f input:focus,.sc-f textarea:focus{border-color:var(--b)}
+        .sc-opt{font-weight:400;text-transform:none;color:var(--dim)}
+      </style>
+
+      <div class="sc-hero">
+        ${avatar}
+        <div style="min-width:0">
+          <div class="sc-name">${esc(c.name)}</div>
+          <div class="sc-headline">${esc(headline)}</div>
+          <div class="sc-socials">${social.join('')}</div>
+        </div>
+      </div>
+
+      ${statsHtml}
+
+      <div class="sc-tabs">
+        <button class="sc-tab on" data-t="bio" onclick="scTab('bio')">Biyografi</button>
+        <button class="sc-tab" data-t="edu" onclick="scTab('edu')">Eğitim</button>
+        <button class="sc-tab" data-t="exp" onclick="scTab('exp')">Deneyim</button>
+      </div>
+      <div class="sc-panel" id="scPanel">${esc(p.bio || 'Biyografi henüz eklenmedi.').replace(/\n/g,'<br>')}</div>
+
+      <div class="sc-offer">
+        <h3>Benimle Çalıştığında Seni Neler Bekliyor?</h3>
+        <div class="sc-offer-row"><span class="sc-offer-ico">📅</span><div><div class="sc-offer-t">Sana Özel Dijital Çalışma Odası</div><div class="sc-offer-d">Günlük hedeflerini işaretlediğin, hızını ölçtüğün kişisel panelin.</div></div></div>
+        <div class="sc-offer-row"><span class="sc-offer-ico">🤖</span><div><div class="sc-offer-t">7/24 Sokratik AI Ders Asistanı</div><div class="sc-offer-d">Takıldığın soruda cevabı söylemeden ipuçlarıyla öğreten yapay zekâ.</div></div></div>
+        <div class="sc-offer-row"><span class="sc-offer-ico">📊</span><div><div class="sc-offer-t">Haftalık Profesyonel Veli Raporu</div><div class="sc-offer-d">Gelişimin ve deneme netlerin veline şık PDF raporlarla sunulur.</div></div></div>
+      </div>
+
+      <div class="sc-brand-foot">🎓 <b>Rostrum Akademi</b> altyapısıyla güçlendirilmiştir</div>
+
+      <div class="sc-cta-wrap"><button class="sc-cta" onclick="openScApply()">Koçluk İçin Ön Başvuru Yap →</button></div>
+
+      <!-- Başvuru sheet -->
+      <div id="scApplySheet" onclick="if(event.target===this)this.classList.remove('on')">
+        <div class="sc-sheet">
+          <h3>Ön Başvuru</h3>
+          <p><b>${esc(c.name)}</b> ile koçluk için bilgilerini bırak — en kısa sürede sana dönecek.</p>
+          <input type="hidden" id="scApplyCoach" value="${esc(c.id)}">
+          <div class="sc-f"><label>Adın Soyadın</label><input type="text" id="scName" placeholder="Ad Soyad"></div>
+          <div class="sc-f"><label>WhatsApp Numaran</label><input type="tel" id="scPhone" placeholder="0 (5__) ___ __ __" oninput="scMaskPhone(this)"></div>
+          <div class="sc-f"><label>E-posta <span class="sc-opt">(opsiyonel)</span></label><input type="email" id="scEmail" placeholder="ornek@gmail.com"></div>
+          <div class="sc-f"><label>YKS Hedefin & Şu Anki Durumun</label><textarea id="scGoal" rows="2" placeholder="Örn: Tıp istiyorum, Sayısal 12. sınıf"></textarea></div>
+          <button class="sc-cta" style="position:static;box-shadow:none;margin-top:4px" onclick="submitScApply()">Başvuruyu Gönder →</button>
+        </div>
+      </div>
+    `;
+    window._scCoach = c;
+  }
+
+  function firstLine(s){ return String(s||'').split('\n')[0].trim().slice(0,42); }
+  function scTab(t){
+    const p = window._scCoach?.profile || {};
+    const map = { bio: p.bio||'Biyografi henüz eklenmedi.', edu: p.education||'Eğitim bilgisi eklenmedi.', exp: p.experience||'Deneyim bilgisi eklenmedi.' };
+    document.querySelectorAll('.sc-tab').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+    document.getElementById('scPanel').innerHTML = esc(map[t]).replace(/\n/g,'<br>');
+  }
+  function openScApply(){ document.getElementById('scApplySheet').classList.add('on'); }
+  function scMaskPhone(el){
+    let d=el.value.replace(/\D/g,''); if(d.startsWith('0'))d=d.slice(1); d=d.slice(0,10);
+    let o=''; if(d.length)o='0 ('+d.slice(0,3); if(d.length>=3)o+=') '+d.slice(3,6); if(d.length>=6)o+=' '+d.slice(6,8); if(d.length>=8)o+=' '+d.slice(8,10);
+    el.value=o;
+  }
+  async function submitScApply(){
+    const coachId=document.getElementById('scApplyCoach').value;
+    const name=document.getElementById('scName').value.trim();
+    const phone=document.getElementById('scPhone').value.trim();
+    const email=document.getElementById('scEmail').value.trim();
+    const goal=document.getElementById('scGoal').value.trim();
+    if(!name || phone.replace(/\D/g,'').length<10) return showToast('Ad ve geçerli WhatsApp numarası gerekli.');
+    try{
+      const { error } = await db.from('match_requests').insert({
+        student_name:name, phone, email:email||null, goal:goal||null,
+        exam_profile:'YKS', status:'pending', matched_coach_id:coachId
+      });
+      if(error) throw error;
+      document.getElementById('scApplySheet').classList.remove('on');
+      document.getElementById('showcaseContainer').innerHTML = `
+        <div style="max-width:460px;margin:60px auto;text-align:center;padding:32px 24px;font-family:-apple-system,sans-serif;color:#1A1714">
+          <div style="font-size:56px;margin-bottom:14px">🎉</div>
+          <div style="font-size:22px;font-weight:800;margin-bottom:8px">Başvurun Alındı!</div>
+          <div style="font-size:14px;color:#6B6560;line-height:1.6">${esc(name)}, <b>${esc(window._scCoach?.name||'Koçun')}</b> başvurunu gördüğünde WhatsApp üzerinden seninle iletişime geçecek. Başarılar! 🚀</div>
+        </div>`;
+    }catch(e){ showToast('Gönderilemedi: '+e.message); }
   }
 
   window.onload = async () => { await loadCoaches(); openDeepLink(); };

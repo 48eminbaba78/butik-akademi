@@ -7478,6 +7478,8 @@ async function renderCoachProfile() {
   const instagram = profile?.instagram || '';
   const linkedin = profile?.linkedin || '';
   const slug = profile?.slug || '';
+  const headline = profile?.headline || '';
+  const capacity_left = (profile?.capacity_left ?? '') === null ? '' : (profile?.capacity_left ?? '');
   _cpSavedSlug = slug;
 
   const coachBulUrl = slug
@@ -7535,6 +7537,21 @@ async function renderCoachProfile() {
               <span id="cpSlugStatus" style="font-size:12px; font-weight:700; display:block; margin-top:4px;"></span>
               <div style="font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.4;">Instagram biyografinize ekleyebileceğiniz akılda kalıcı kısa link. Küçük harf, rakam ve tire (-) kullanabilirsiniz.</div>
             </div>
+
+            <!-- Vitrin alt-başlığı + opsiyonel kontenjan -->
+            <div style="margin-top:18px; display:grid; grid-template-columns:1fr 130px; gap:12px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Vitrin Alt-Başlığı</label>
+                <input type="text" id="cpHeadline" value="${esc(headline)}" placeholder="Örn: YKS Dereceli Sayısal Mentörü & Koçu" maxlength="60"
+                  style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13.5px; color:var(--text); outline:none;">
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;" title="Boş bırakırsanız vitrinde gösterilmez">Boş Kontenjan</label>
+                <input type="number" id="cpCapacity" value="${capacity_left}" placeholder="—" min="0" max="999"
+                  style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13.5px; color:var(--text); outline:none;">
+              </div>
+            </div>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.4;">Alt-başlık isminizin altında görünür. Kontenjan girerseniz vitrinde "● Son X Öğrenci Kontenjanı" rozeti çıkar (boşsa gizli).</div>
           </div>
 
           <!-- BÖLÜM 2: UZMANLIK & EĞİTİM -->
@@ -7969,6 +7986,9 @@ async function saveCoachProfile() {
   const instagram = document.getElementById('cpInstagram').value.trim();
   const linkedin = document.getElementById('cpLinkedin').value.trim();
   const slug = (document.getElementById('cpSlug')?.value || '').trim();
+  const headline = (document.getElementById('cpHeadline')?.value || '').trim();
+  const capRaw = (document.getElementById('cpCapacity')?.value || '').trim();
+  const capacity_left = capRaw === '' ? null : Math.max(0, Math.min(999, parseInt(capRaw) || 0));
 
   // Zorunlu alan doğrulamaları — kamu profili yarım bilgiyle yayınlanmasın
   if (!photo_url) return _cpShowErr('Profil fotoğrafı zorunlu — velilerin en çok baktığı güven sinyali.');
@@ -7984,6 +8004,8 @@ async function saveCoachProfile() {
     bio, subjects, education, experience,
     photo_url, instagram, linkedin,
     slug: slug || null,
+    headline: headline || null,
+    capacity_left,
     updated_at: new Date().toISOString()
   };
 
@@ -7991,11 +8013,11 @@ async function saveCoachProfile() {
   localStorage.setItem(`coach_profile_${userId}`, JSON.stringify(payload));
 
   let { error } = await db.from('coach_profiles').upsert(payload);
-  if (error && /slug/i.test(error.message||'') && /column/i.test(error.message||'')) {
-    // migration_v26 çalıştırılmamış — slug'sız kaydet, kullanıcıyı bilgilendir
-    const { slug: _s, ...legacy } = payload;
+  if (error && /column/i.test(error.message||'')) {
+    // migration_v26/v27 çalıştırılmamış — yeni opsiyonel alanları çıkarıp kaydet
+    const { slug: _s, headline: _h, capacity_left: _c, ...legacy } = payload;
     ({ error } = await db.from('coach_profiles').upsert(legacy));
-    if (!error) showToast('Profil kaydedildi — link için migration_v26 gerekli', true);
+    if (!error) showToast('Profil kaydedildi — link/vitrin alanları için migration_v27 gerekli', true);
   }
   if (error) {
     if (/duplicate|unique/i.test(error.message||''))
@@ -10878,8 +10900,8 @@ async function renderCoachApplications() {
   const el = document.getElementById('view-coach-applications');
   if (!el) return;
   el.innerHTML = `<div style="padding:24px;max-width:800px;margin:0 auto">
-    <div style="font-family:'Inter',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px">Eşleşme Başvuruları</div>
-    <div style="font-size:13px;color:var(--text-mid);margin-bottom:20px">koc-bul sayfasından gelen öğrenci başvuruları</div>
+    <div style="font-family:'Inter',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px">Öğrenci Başvuruları</div>
+    <div style="font-size:13px;color:var(--text-mid);margin-bottom:20px">Kamu profil linkinize (rostrumakademi.com/koc/...) gelen ön başvurular</div>
     <div id="appsList" style="display:flex;flex-direction:column;gap:10px">
       <div style="text-align:center;padding:32px;color:var(--text-dim)">Yükleniyor...</div>
     </div>
@@ -10935,9 +10957,13 @@ async function renderCoachApplications() {
           <div style="font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Sınav Grubu</div>
           <div style="font-size:13px;font-weight:600">${esc(a.exam_profile||'—')}</div>
         </div>
-        ${a.style?`<div style="background:var(--surface2);border-radius:8px;padding:10px 12px">
-          <div style="font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Koçluk Tercihi</div>
-          <div style="font-size:12px;color:var(--text-mid)">${esc(a.style)}</div>
+        ${a.phone?`<div style="background:var(--surface2);border-radius:8px;padding:10px 12px">
+          <div style="font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">WhatsApp</div>
+          <a href="https://wa.me/9${esc((a.phone||'').replace(/\\D/g,''))}" target="_blank" style="font-size:12px;font-weight:700;color:#25D366;text-decoration:none">💬 Mesaj gönder</a>
+        </div>`:''}
+        ${(a.goal||a.style)?`<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;grid-column:1/-1">
+          <div style="font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Hedef &amp; Durum</div>
+          <div style="font-size:12px;color:var(--text-mid)">${esc(a.goal||a.style)}</div>
         </div>`:''}
       </div>
       ${a.status==='pending'?`
@@ -10966,7 +10992,7 @@ async function updateApplication(appId, status, applicantEmail, applicantName) {
   const { error } = await db.from('match_requests').update({ status }).eq('id', appId);
   if (error) return showToast('Hata: ' + error.message);
   showToast(status === 'accepted' ? '✓ Başvuru kabul edildi' : 'Başvuru reddedildi');
-  if (applicantEmail) {
+  if (applicantEmail && applicantEmail.includes('@')) {
     fetch('/api/mailer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
