@@ -2036,8 +2036,21 @@ function openTaskModal(ds, dayName){
   document.getElementById('tmManualTestInput').value='';
   document.getElementById('tmManualTestChips').innerHTML='';
   _manualTests = [];
+  document.getElementById('tmQCount').value='';
+  syncQCountVisibility();
   loadStudentSpeeds();
   om('taskModal');
+}
+
+// Soru Sayısı alanının tip'e göre görünürlüğü (soru/deneme'de görünür)
+function syncQCountVisibility(){
+  const type=document.getElementById('tmType')?.value;
+  const qField=document.getElementById('tmQCountField');
+  const showQ=(type==='soru'||type==='deneme');
+  if(qField) qField.style.display=showQ?'':'none';
+  if(!showQ){
+    const badge=document.getElementById('tmSmartBadge'); if(badge) badge.style.display='none';
+  }
 }
 // ═══════════════════════════════════════════════
 // SORU BANKASI — Supabase'den dinamik
@@ -2104,6 +2117,17 @@ function updateSubjectList(){
   document.getElementById('soruBankasiWrap').style.display=showPanel?'':'none';
   const searchEl=document.getElementById('tmBookSearch');
   if(searchEl) searchEl.placeholder = type==='konu'?'Hoca veya playlist ara...':'Kitap veya yayınevi ara...';
+
+  // Soru Sayısı yalnızca soru/deneme tipinde anlamlı (Akıllı Süre motoru için) —
+  // konu/diğer'de gizle + değeri temizle + rozeti kaldır
+  const qField=document.getElementById('tmQCountField');
+  const showQ = (type==='soru'||type==='deneme');
+  if(qField) qField.style.display = showQ?'':'none';
+  if(!showQ){
+    const qc=document.getElementById('tmQCount'); if(qc) qc.value='';
+    const badge=document.getElementById('tmSmartBadge'); if(badge) badge.style.display='none';
+  }
+
   // reset cache so type change reloads
   _resourcesLoaded=false; _resourcesCache={};
   if(showPanel) renderBookList('');
@@ -3082,7 +3106,24 @@ function openStudentModal(id){
   if (yksRow) yksRow.style.display = isEdit ? 'flex' : 'none';
   if (colorField) colorField.style.display = isEdit ? 'block' : 'none';
   if (progField) progField.style.display = isEdit ? 'block' : 'none';
-  
+
+  // İletişim & seviye bölümü: yalnızca düzenlemede (öğrenci mevcut → student_profiles yazılabilir)
+  const contactSection = document.getElementById('smContactSection');
+  if (contactSection) {
+    contactSection.style.display = isEdit ? 'block' : 'none';
+    // Alanları temizle, sonra mevcut profili yükle
+    ['smLevel','smStudentPhone','smParentEmail','smParentPhone'].forEach(f=>{const el=document.getElementById(f);if(el)el.value='';});
+    if (isEdit) {
+      db.from('student_profiles').select('level, student_phone, parent_email, parent_phone').eq('id', id).maybeSingle()
+        .then(({data})=>{
+          if(!data) return;
+          const set=(f,v)=>{const el=document.getElementById(f);if(el&&v)el.value=v;};
+          set('smLevel', data.level); set('smStudentPhone', data.student_phone);
+          set('smParentEmail', data.parent_email); set('smParentPhone', data.parent_phone);
+        }).catch(()=>{});
+    }
+  }
+
   if (submitBtn) {
     submitBtn.textContent = isEdit ? 'Kaydet' : 'Davet Gönder';
     submitBtn.setAttribute('onclick', 'saveStudent()');
@@ -3122,6 +3163,20 @@ async function saveStudent(){
     if(error)return showToast('Hata: '+error.message);
     const s=S.students.find(x=>x.id===id);
     if(s)Object.assign(s,{name:payload.full_name,target:payload.target,color,progress:payload.progress,pass:payload.password_hash,weekStart:payload.week_start,username:uname,yksArea:payload.yks_area});
+
+    // İletişim & seviye → student_profiles (opsiyonel; boş alan gönderilmez)
+    const _lvl=document.getElementById('smLevel')?.value||'';
+    const _sph=document.getElementById('smStudentPhone')?.value.trim()||'';
+    const _pem=document.getElementById('smParentEmail')?.value.trim()||'';
+    const _pph=document.getElementById('smParentPhone')?.value.trim()||'';
+    if(_lvl||_sph||_pem||_pph){
+      const prof={id};
+      if(_lvl)prof.level=_lvl; if(_sph)prof.student_phone=_sph;
+      if(_pem)prof.parent_email=_pem; if(_pph)prof.parent_phone=_pph;
+      const {error:pErr}=await db.from('student_profiles').upsert(prof);
+      if(pErr && !/column/i.test(pErr.message||'')) console.warn('student_profiles upsert:',pErr.message);
+    }
+
     showToast('Güncellendi ✓');
     saveUI();cm('studentModal');renderStudentsSearch();
   } else {
@@ -7431,126 +7486,158 @@ async function renderCoachProfile() {
   
   el.innerHTML = `
     <div style="max-width:900px;margin:0 auto">
-    <div style="margin-bottom: 20px;">
-      <h2 style="font-family:'Inter',sans-serif; margin-bottom: 6px;">👤 Koç Profilim</h2>
-      <p style="font-size: 13px; color: var(--text-mid); margin-bottom: 15px;">
-        "Koç Bul" sayfasında görünecek bilgilerinizi buradan düzenleyebilirsiniz.
-      </p>
-      
-      <div style="margin-bottom: 16px; background: var(--surface2); border: 1px dashed var(--border); padding: 14px; border-radius: 11px;">
-        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px;">Kamuya Açık Profil Linkiniz</label>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
-          <input type="text" readonly value="${coachBulUrl}" id="coachBulLink" style="flex:1; min-width:220px; background:var(--surface3); border:1px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13px; color:var(--text-mid); outline:none;">
-          <button class="btn btn-ghost" onclick="navigator.clipboard.writeText(document.getElementById('coachBulLink').value); showToast('Link kopyalandı ✓')">🔗 Kopyala</button>
-          <a href="${coachBulUrl}" target="_blank" class="btn btn-accent" style="text-decoration:none; display:inline-flex; align-items:center;">👁 Gözat</a>
-        </div>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <span style="font-size:13px; color:var(--text-dim); white-space:nowrap;">rostrumakademi.com/koc/</span>
-          <input type="text" id="cpSlug" value="${esc(slug)}" placeholder="ad-soyad" maxlength="40" autocomplete="off"
-            oninput="onCoachSlugInput()"
-            style="flex:1; min-width:140px; background:var(--surface); border:1.5px solid var(--border); border-radius:9px; padding:8px 12px; font-size:13px; font-weight:700; letter-spacing:.3px; color:var(--text); outline:none;">
-          <span id="cpSlugStatus" style="font-size:12px; font-weight:700; white-space:nowrap;"></span>
-        </div>
-        <div style="font-size:11px; color:var(--text-dim); margin-top:6px;">Instagram biyografine koyacağın kısa, akılda kalıcı link. Küçük harf, rakam ve tire kullan.</div>
+      <div style="margin-bottom: 24px;">
+        <h2 style="font-family:'Inter',sans-serif; margin-bottom: 6px; font-weight:800; letter-spacing:-.5px;">👤 Koç Profilim</h2>
+        <p style="font-size: 13.5px; color: var(--text-dim);">
+          Kamuya açık "Koç Bul" profilinizi buradan yönetebilir, bilgilerinizi düzenleyebilirsiniz.
+        </p>
       </div>
 
-      <div class="coach-profile-container">
-        <!-- Sol Sütun: Form -->
-        <div class="card coach-profile-form" style="margin:0; padding:20px;">
-          <!-- FOTO: sürükle-bırak / dosya seç → Supabase Storage -->
-          <div style="margin-bottom:14px;">
-            <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Profil Fotoğrafı <span style="color:var(--red)">*</span></label>
-            <input type="hidden" id="cpPhotoUrl" value="${esc(photo_url)}">
-            <input type="file" id="cpPhotoFile" accept="image/*" style="display:none" onchange="uploadCoachPhoto(this.files[0])">
-            <div id="cpPhotoDrop" onclick="document.getElementById('cpPhotoFile').click()"
-              ondragover="event.preventDefault(); this.style.borderColor='var(--accent)'; this.style.background='var(--accent-dim)'"
-              ondragleave="this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'"
-              ondrop="event.preventDefault(); this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'; uploadCoachPhoto(event.dataTransfer.files[0])"
-              style="display:flex; align-items:center; gap:14px; padding:14px 16px; background:var(--surface2); border:2px dashed var(--border); border-radius:12px; cursor:pointer; transition:all .15s;">
-              <div id="cpPhotoThumb" style="width:56px; height:56px; border-radius:50%; flex-shrink:0; background:${photo_url ? `url('${esc(photo_url)}') center/cover` : 'var(--accent-dim)'}; display:flex; align-items:center; justify-content:center; font-size:22px;">${photo_url ? '' : '📷'}</div>
-              <div style="min-width:0;">
-                <div id="cpPhotoDropText" style="font-size:13px; font-weight:700; color:var(--text);">${photo_url ? 'Fotoğraf yüklendi ✓ — değiştirmek için tıkla' : 'Fotoğrafını sürükle ya da tıkla'}</div>
-                <div style="font-size:11px; color:var(--text-dim);">JPG/PNG · en fazla 3 MB · yüklenince önizlemede anında görünür</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- UZMANLIK: etiket seçici (virgül girişi kalktı) -->
-          <div style="margin-bottom:14px;">
-            <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px;">Uzmanlık Alanların <span style="color:var(--red)">*</span> <span style="color:var(--text-dim); font-weight:600; text-transform:none;">— tıklayarak seç</span></label>
-            <input type="hidden" id="cpSubjects" value="${esc(subjects)}">
-            <div id="cpTagWrap" style="display:flex; flex-wrap:wrap; gap:7px;"></div>
-            <div style="display:flex; gap:8px; margin-top:8px;">
-              <input type="text" id="cpTagCustom" placeholder="Başka bir etiket ekle…" maxlength="30"
-                onkeydown="if(event.key==='Enter'){event.preventDefault(); addCustomCoachTag();}"
-                style="flex:1; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:8px 12px; font-size:13px; color:var(--text); outline:none;">
-              <button type="button" class="btn btn-ghost btn-sm" onclick="addCustomCoachTag()">+ Ekle</button>
-            </div>
-          </div>
-
-          <div style="margin-bottom: 12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <label style="font-size:11px; font-weight:700; color:var(--text-mid);">Hakkımda / Biyografi <span style="color:var(--red)">*</span></label>
-              <button type="button" id="cpAiBioBtn" class="btn btn-ghost btn-xs" onclick="generateCoachBio()" style="gap:5px;">🤖 AI ile Oluştur</button>
-            </div>
-            <textarea id="cpBio" oninput="updateProfilePreview()" placeholder="Eğitim felsefen, koçluk yaklaşımın ve kendinden kısaca bahset — ya da bilgilerini doldurup 'AI ile Oluştur'a bas." style="width:100%; min-height:100px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none; resize:vertical;">${esc(bio)}</textarea>
-          </div>
-
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-            <div>
-              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Eğitim Bilgisi</label>
-              <textarea id="cpEducation" oninput="updateProfilePreview()" style="width:100%; min-height:80px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none; resize:vertical;">${esc(education)}</textarea>
-            </div>
-            <div>
-              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Deneyim / Başarılar</label>
-              <textarea id="cpExperience" oninput="updateProfilePreview()" style="width:100%; min-height:80px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none; resize:vertical;">${esc(experience)}</textarea>
-            </div>
-          </div>
-
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
-            <div>
-              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Instagram Kullanıcı Adı (İsteğe bağlı)</label>
-              <div style="display:flex; align-items:center; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:0 13px;">
-                <span style="color:var(--text-dim); margin-right:4px;">@</span>
-                <input type="text" id="cpInstagram" value="${esc(instagram)}" placeholder="kullaniciadi" oninput="updateProfilePreview()" style="flex:1; background:none; border:none; padding:10px 0; font-size:14px; color:var(--text); outline:none;">
-              </div>
-            </div>
-            <div>
-              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">LinkedIn Profil URL (İsteğe bağlı)</label>
-              <input type="text" id="cpLinkedin" value="${esc(linkedin)}" placeholder="https://linkedin.com/in/..." oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none;">
-            </div>
-          </div>
-
-          <div id="cpErr" style="display:none; color:var(--red); font-size:13px; font-weight:600; margin-bottom:10px; padding:10px 14px; background:var(--red-dim); border-radius:9px;"></div>
-          <button class="btn btn-accent" style="width:100%; padding:12px; font-size:14px;" onclick="saveCoachProfile()">Kaydet ✓</button>
-        </div>
-
-        <!-- Sağ Sütun: Canlı Önizleme -->
-        <div class="coach-preview-column">
-          <div style="position: sticky; top: 10px;">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; text-align: center;">CANLI ÖNİZLEME</div>
-            <div class="profile-preview-card">
-              <div class="preview-card-header">
-                <div class="preview-avatar" id="prevAvatar"></div>
-                <div class="preview-header-info">
-                  <div class="preview-name" id="prevName">${esc(session.dbUser?.full_name || 'Koç')}</div>
-                  <div class="preview-role">Mentör & Koç</div>
-                  <div class="preview-socials" id="prevSocials"></div>
+      <div class="coach-profile-container" style="display:grid; grid-template-columns: 1.4fr 1fr; gap:28px; align-items: start;">
+        
+        <!-- Sol Sütun: Form Bölümleri -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          
+          <!-- BÖLÜM 1: KİMLİK & LİNK -->
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; box-shadow:var(--shadow-sm);">
+            <h3 style="font-size:14px; font-weight:800; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; color:var(--text)">1. Kimlik & Profil Linki</h3>
+            
+            <!-- Profil Fotoğrafı -->
+            <div style="margin-bottom:20px;">
+              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Profil Fotoğrafı <span style="color:var(--red)">*</span></label>
+              <input type="hidden" id="cpPhotoUrl" value="${esc(photo_url)}">
+              <input type="file" id="cpPhotoFile" accept="image/*" style="display:none" onchange="uploadCoachPhoto(this.files[0])">
+              <div id="cpPhotoDrop" onclick="document.getElementById('cpPhotoFile').click()"
+                ondragover="event.preventDefault(); this.style.borderColor='var(--accent)'; this.style.background='var(--accent-dim)'"
+                ondragleave="this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'"
+                ondrop="event.preventDefault(); this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'; uploadCoachPhoto(event.dataTransfer.files[0])"
+                style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--surface2); border:2px dashed var(--border); border-radius:12px; cursor:pointer; transition:all .15s;">
+                <div id="cpPhotoThumb" style="width:60px; height:60px; border-radius:50%; flex-shrink:0; background:${photo_url ? `url('${esc(photo_url)}') center/cover` : 'var(--accent-dim)'}; display:flex; align-items:center; justify-content:center; font-size:22px;">${photo_url ? '' : '📷'}</div>
+                <div style="min-width:0;">
+                  <div id="cpPhotoDropText" style="font-size:13px; font-weight:700; color:var(--text);">${photo_url ? 'Fotoğraf yüklendi ✓' : 'Sürükleyin veya Dosya Seçin'}</div>
+                  <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">JPG/PNG · Maks. 3 MB</div>
                 </div>
               </div>
-              
-              <div class="preview-subjects-wrap" id="prevSubjects"></div>
-              
-              <div class="preview-tabs">
-                <button class="prev-tab-btn active" id="btn-prev-bio" onclick="switchPreviewTab('bio')">Biyografi</button>
-                <button class="prev-tab-btn" id="btn-prev-edu" onclick="switchPreviewTab('edu')">Eğitim</button>
-                <button class="prev-tab-btn" id="btn-prev-exp" onclick="switchPreviewTab('exp')">Deneyim</button>
+            </div>
+
+            <!-- Kişisel Link (Slug) -->
+            <div>
+              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Kamuya Açık Profil Linkiniz</label>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <span style="font-size:13px; color:var(--text-dim); font-weight:600;">rostrumakademi.com/koc/</span>
+                <input type="text" id="cpSlug" value="${esc(slug)}" placeholder="ad-soyad" maxlength="40" autocomplete="off"
+                  oninput="onCoachSlugInput()"
+                  style="flex:1; min-width:130px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:8px 12px; font-size:13.5px; font-weight:700; letter-spacing:.3px; color:var(--text); outline:none; transition: border-color .15s;"
+                  onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+                <button class="btn btn-ghost" style="padding: 8px 12px; height: 37px;" onclick="const sl=document.getElementById('cpSlug').value.trim(); const url=sl ? 'https://rostrumakademi.com/koc/'+sl : '${coachBulUrl}'; navigator.clipboard.writeText(url); showToast('Link kopyalandı ✓')">🔗 Kopyala</button>
+                <a href="${slug ? `https://rostrumakademi.com/koc/${slug}` : coachBulUrl}" id="cpSlugBrowseBtn" target="_blank" class="btn btn-accent" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center; height:37px; padding:0 14px; border-radius:9px; font-size:13px; font-weight:700;">👁 Gözat</a>
               </div>
-              
-              <div class="preview-tab-content" id="prevTabContent"></div>
+              <span id="cpSlugStatus" style="font-size:12px; font-weight:700; display:block; margin-top:4px;"></span>
+              <div style="font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.4;">Instagram biyografinize ekleyebileceğiniz akılda kalıcı kısa link. Küçük harf, rakam ve tire (-) kullanabilirsiniz.</div>
             </div>
           </div>
+
+          <!-- BÖLÜM 2: UZMANLIK & EĞİTİM -->
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; box-shadow:var(--shadow-sm);">
+            <h3 style="font-size:14px; font-weight:800; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; color:var(--text)">2. Uzmanlık & Eğitim Bilgileri</h3>
+            
+            <!-- Çoklu Seçim Dropdown Etiket Kutusu -->
+            <div style="position:relative; margin-bottom:16px;">
+              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Uzmanlık Alanlarınız <span style="color:var(--red)">*</span></label>
+              <input type="hidden" id="cpSubjects" value="${esc(subjects)}">
+              
+              <!-- Seçilen Etiketler Box -->
+              <div id="cpTagSelectBox" onclick="toggleTagDropdown(event)"
+                style="display:flex; flex-wrap:wrap; gap:6px; min-height:42px; padding:8px 12px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; cursor:pointer; align-items:center; box-sizing:border-box;">
+                <div id="cpSelectedTags" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;"></div>
+                <span style="font-size:12.5px; color:var(--text-dim); margin-left:auto; pointer-events:none;">🔽 Seçin...</span>
+              </div>
+
+              <!-- Dropdown Menü -->
+              <div id="cpTagDropdownMenu" style="display:none; position:absolute; left:0; right:0; top:100%; margin-top:6px; z-index:1000; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; box-shadow:var(--shadow-lg); max-height:260px; overflow-y:auto; padding:12px; box-sizing:border-box;">
+                <div style="font-size:10px; font-weight:700; color:var(--text-dim); margin-bottom:8px; text-transform:uppercase; letter-spacing:.5px;">Hazır Etiketler</div>
+                <div id="cpDropdownPresets" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
+                
+                <div style="border-top:1px solid var(--border); padding-top:10px; display:flex; gap:6px;">
+                  <input type="text" id="cpTagCustom" placeholder="Özel etiket yazın..." maxlength="25"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault(); addCustomCoachTag();}"
+                    style="flex:1; background:var(--surface); border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12.5px; color:var(--text); outline:none;">
+                  <button type="button" class="btn btn-accent btn-sm" onclick="addCustomCoachTag()">+ Ekle</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Eğitim ve Deneyim -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Eğitim Bilgisi</label>
+                <textarea id="cpEducation" oninput="updateProfilePreview()" placeholder="Örn: Boğaziçi Üniversitesi - Rehberlik ve Psikolojik Danışmanlık" style="width:100%; min-height:90px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(education)}</textarea>
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Deneyim / Başarılar</label>
+                <textarea id="cpExperience" oninput="updateProfilePreview()" placeholder="Örn: 5+ Yıl YKS Koçluk Deneyimi, Derece Öğrencileri" style="width:100%; min-height:90px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(experience)}</textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- BÖLÜM 3: TANITIM & SOSYAL MEDYA -->
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; box-shadow:var(--shadow-sm);">
+            <h3 style="font-size:14px; font-weight:800; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; color:var(--text)">3. Hakkımda & Sosyal Medya</h3>
+            
+            <!-- Biyografi / Hakkımda -->
+            <div style="margin-bottom: 16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label style="font-size:11px; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.5px;">Hakkımda / Biyografi <span style="color:var(--red)">*</span></label>
+                <button type="button" id="cpAiBioBtn" class="btn btn-ghost btn-xs" onclick="generateCoachBio()" style="gap:5px; padding:4px 8px; font-size:11.5px;">🤖 AI ile Biyografi Yaz</button>
+              </div>
+              <textarea id="cpBio" oninput="updateProfilePreview()" placeholder="Eğitim felsefeniz, öğrenciye yaklaşımınız ve kendinizden kısaca bahsedin..." style="width:100%; min-height:110px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(bio)}</textarea>
+            </div>
+
+            <!-- Sosyal Medya Linkleri -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Instagram</label>
+                <div style="display:flex; align-items:center; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:0 12px;">
+                  <span style="color:var(--text-dim); margin-right:4px; font-weight:700;">@</span>
+                  <input type="text" id="cpInstagram" value="${esc(instagram)}" placeholder="kullaniciadi" oninput="updateProfilePreview()" style="flex:1; background:none; border:none; padding:10px 0; font-size:13.5px; color:var(--text); outline:none;">
+                </div>
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">LinkedIn</label>
+                <input type="text" id="cpLinkedin" value="${esc(linkedin)}" placeholder="https://linkedin.com/in/..." oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+              </div>
+            </div>
+          </div>
+
+          <div id="cpErr" style="display:none; color:var(--red); font-size:13px; font-weight:600; padding:10px 14px; background:var(--red-dim); border-radius:9px;"></div>
+          <button class="btn btn-accent" style="width:100%; padding:14px; font-size:14.5px; font-weight:800; justify-content:center; border-radius:10px;" onclick="saveCoachProfile()">Profili Kaydet ✓</button>
         </div>
+        
+        <!-- Sağ Sütun: Ekrana Sabitlenmiş Canlı Önizleme -->
+        <div class="coach-preview-column" style="position: sticky; top: 24px; z-index: 10;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; text-align: center;">CANLI ÖNİZLEME</div>
+          <div class="profile-preview-card" style="box-shadow: 0 10px 30px rgba(0,0,0,0.15); border:1px solid var(--border);">
+            <div class="preview-card-header">
+              <div class="preview-avatar" id="prevAvatar"></div>
+              <div class="preview-header-info">
+                <div class="preview-name" id="prevName">${esc(session.dbUser?.full_name || 'Koç')}</div>
+                <div class="preview-role">Mentör & Koç</div>
+                <div class="preview-socials" id="prevSocials"></div>
+              </div>
+            </div>
+            
+            <div class="preview-subjects-wrap" id="prevSubjects"></div>
+            
+            <div class="preview-tabs">
+              <button class="prev-tab-btn active" id="btn-prev-bio" onclick="switchPreviewTab('bio')">Biyografi</button>
+              <button class="prev-tab-btn" id="btn-prev-edu" onclick="switchPreviewTab('edu')">Eğitim</button>
+              <button class="prev-tab-btn" id="btn-prev-exp" onclick="switchPreviewTab('exp')">Deneyim</button>
+            </div>
+            
+            <div class="preview-tab-content" id="prevTabContent"></div>
+          </div>
+        </div>
+
       </div>
     </div>
   `;
@@ -7558,38 +7645,90 @@ async function renderCoachProfile() {
   // Initialize preview card fields
   renderCoachTags();
   updateProfilePreview();
+  
+  // Set default values for textareas
+  if (document.getElementById('cpEducation')) document.getElementById('cpEducation').value = education;
+  if (document.getElementById('cpExperience')) document.getElementById('cpExperience').value = experience;
 }
 
-// ── Uzmanlık etiketleri ─────────────────────────
+// ── Uzmanlık etiketleri (Multi-select Dropdown) ─────────────────────────
 const COACH_TAG_PRESETS = ['YKS','TYT','AYT','LGS','Sayısal','Eşit Ağırlık','Sözel','Dil',
   'Matematik','Geometri','Fizik','Kimya','Biyoloji','Türkçe','Edebiyat','Tarih','Coğrafya'];
+
 function _cpTags(){
   return (document.getElementById('cpSubjects')?.value || '').split(',').map(s=>s.trim()).filter(Boolean);
 }
+
+function toggleTagDropdown(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('cpTagDropdownMenu');
+  if (!menu) return;
+  const isVisible = menu.style.display === 'block';
+  menu.style.display = isVisible ? 'none' : 'block';
+}
+
+// Global click-away to close tag dropdown
+if (!window._tagDropdownListenerAdded) {
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('cpTagDropdownMenu');
+    const box = document.getElementById('cpTagSelectBox');
+    if (menu && menu.style.display === 'block' && box && !box.contains(e.target) && !menu.contains(e.target)) {
+      menu.style.display = 'none';
+    }
+  });
+  window._tagDropdownListenerAdded = true;
+}
+
 function renderCoachTags(){
-  const wrap = document.getElementById('cpTagWrap');
-  if (!wrap) return;
+  const selectedTagsWrap = document.getElementById('cpSelectedTags');
+  const presetsWrap = document.getElementById('cpDropdownPresets');
+  if (!selectedTagsWrap || !presetsWrap) return;
+  
   const selected = _cpTags();
+  
+  // 1. Seçilenleri Pill olarak kutuya yerleştir
+  if (selected.length === 0) {
+    selectedTagsWrap.innerHTML = `<span style="font-size:13px; color:var(--text-dim);">Etiket seçmek için tıklayın...</span>`;
+  } else {
+    selectedTagsWrap.innerHTML = selected.map(t => {
+      return `
+        <span style="display:inline-flex; align-items:center; gap:5px; background:var(--accent); color:#fff; padding:4px 10px; border-radius:99px; font-size:12px; font-weight:700;">
+          ${esc(t)}
+          <span onclick="event.stopPropagation(); toggleCoachTag('${esc(t).replace(/'/g,"\\'")}')" style="cursor:pointer; font-weight:800; font-size:10px; opacity:0.8; padding:0 2px;">✕</span>
+        </span>
+      `;
+    }).join('');
+  }
+  
+  // 2. Dropdown içindeki hazır etiketleri güncelle
   const extras = selected.filter(t => !COACH_TAG_PRESETS.includes(t));
-  wrap.innerHTML = [...COACH_TAG_PRESETS, ...extras].map(t => {
+  presetsWrap.innerHTML = [...COACH_TAG_PRESETS, ...extras].map(t => {
     const on = selected.includes(t);
-    return `<button type="button" onclick="toggleCoachTag('${esc(t).replace(/'/g,"\\'")}')"
-      style="padding:6px 13px; border-radius:99px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; transition:all .12s;
-      border:1.5px solid ${on?'var(--accent)':'var(--border)'};
-      background:${on?'var(--accent)':'var(--surface2)'};
-      color:${on?'#fff':'var(--text-mid)'};">${on?'✓ ':''}${esc(t)}</button>`;
+    return `
+      <button type="button" onclick="toggleCoachTag('${esc(t).replace(/'/g,"\\'")}')"
+        style="padding:6px 12px; border-radius:99px; font-size:12px; font-weight:700; cursor:pointer; transition:all .12s;
+        border:1.5px solid ${on ? 'var(--accent)' : 'var(--border)'};
+        background:${on ? 'var(--accent)' : 'var(--surface)'};
+        color:${on ? '#fff' : 'var(--text-mid)'};">
+        ${on ? '✓ ' : ''}${esc(t)}
+      </button>
+    `;
   }).join('');
 }
+
 function toggleCoachTag(tag){
   const inp = document.getElementById('cpSubjects');
+  if (!inp) return;
   let tags = _cpTags();
   tags = tags.includes(tag) ? tags.filter(t=>t!==tag) : [...tags, tag];
   inp.value = tags.join(', ');
   renderCoachTags();
   updateProfilePreview();
 }
+
 function addCustomCoachTag(){
   const el = document.getElementById('cpTagCustom');
+  if (!el) return;
   const t = (el.value||'').trim();
   if (!t) return;
   const tags = _cpTags();
@@ -7600,6 +7739,10 @@ function addCustomCoachTag(){
   renderCoachTags();
   updateProfilePreview();
 }
+
+window.toggleTagDropdown = toggleTagDropdown;
+window.toggleCoachTag = toggleCoachTag;
+window.addCustomCoachTag = addCustomCoachTag;
 
 // ── Foto yükleme (coach-photos bucket, migration_v26) ──
 async function uploadCoachPhoto(file){
@@ -7831,9 +7974,11 @@ async function saveCoachProfile() {
     showToast('Profil yerel tarayıcıya kaydedildi (Veritabanı hatası: ' + error.message + ')', true);
   } else {
     _cpSavedSlug = slug;
-    // Link kutusunu yeni slug'la tazele
-    const linkEl = document.getElementById('coachBulLink');
-    if (linkEl && slug) linkEl.value = `${window.location.origin}/koc/${slug}`;
+    // Gözat butonunu yeni slug'la güncelle
+    const browseBtn = document.getElementById('cpSlugBrowseBtn');
+    if (browseBtn) {
+      browseBtn.href = slug ? `https://rostrumakademi.com/koc/${slug}` : `${window.location.origin}/koc_bul.html?coach=${userId}`;
+    }
     showToast('Profil başarıyla güncellendi ✓', true);
   }
 }
@@ -10293,6 +10438,7 @@ async function openCoachTaskEdit(ds, idx) {
     const searchEl = document.getElementById('tmBookSearch');
     if (searchEl) searchEl.placeholder = type === 'konu' ? 'Hoca veya playlist ara...' : 'Kitap veya yayınevi ara...';
   }
+  syncQCountVisibility();
 
   const isBookOrPlaylist = (type === 'soru' || type === 'konu') && exam;
   
