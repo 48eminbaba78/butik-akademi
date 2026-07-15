@@ -7548,7 +7548,7 @@ async function renderCoachUyelik() {
               <div style="font-size:11px;color:var(--text-dim)">${new Date(p.created_at).toLocaleDateString('tr-TR')}</div>
             </div>
             <div style="display:flex;align-items:center;gap:10px">
-              ${p.status === 'completed' ? `<a href="/api/generate-receipt?paymentId=${p.id}" target="_blank" style="font-size:11px;font-weight:700;color:var(--accent);text-decoration:none">📄 Makbuz</a>` : ''}
+              ${p.status === 'completed' ? `<a href="/api/generate-pdf-report?paymentId=${p.id}" target="_blank" style="font-size:11px;font-weight:700;color:var(--accent);text-decoration:none">📄 Makbuz</a>` : ''}
               <span style="font-size:11px;font-weight:700;color:${(statusLbl[p.status] || ['—', 'var(--text-dim)'])[1]}">${(statusLbl[p.status] || [p.status || '—'])[0]}</span>
             </div>
           </div>
@@ -7664,10 +7664,10 @@ async function submitCoachPayment(priceMonthly) {
     if (upErr) throw upErr;
 
     const { data: { session: authSess } } = await db.auth.getSession();
-    const res = await fetch('/api/submit-payment', {
+    const res = await fetch('/api/create-student', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authSess?.access_token || ''}` },
-      body: JSON.stringify({ months, receipt_path: path })
+      body: JSON.stringify({ type: 'submit-payment', months, receipt_path: path })
     });
     const out = await res.json();
     if (!res.ok) throw new Error(out.error || 'Ödeme bildirilemedi');

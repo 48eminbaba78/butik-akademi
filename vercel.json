@@ -4,7 +4,7 @@
   "crons": [
     { "path": "/api/generate", "schedule": "0 15 * * *" },
     { "path": "/api/instagram", "schedule": "30 16 * * *" },
-    { "path": "/api/onboarding-cron", "schedule": "0 8 * * *" }
+    { "path": "/api/generate?job=onboarding", "schedule": "0 8 * * *" }
   ],
   "functions": {
     "api/*.js": {
