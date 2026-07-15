@@ -486,15 +486,33 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
           <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="copyPaySql()">SQL'i Kopyala</button>
         </div>
 
+        <!-- ÖDEME AYARLARI (dinamik — banka/IBAN/fiyat kodda hardcode edilmez) -->
+        <div class="card" style="margin-bottom:16px;border-color:rgba(240,165,0,.25)">
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px">⚙️ Ödeme Ayarları</div>
+          <div style="font-size:11.5px;color:var(--dim);margin-bottom:12px">Bu bilgiler koçun panelindeki ödeme modalında gösterilir. Boş bırakılırsa koç ödeme yapamaz.</div>
+          <div class="field-row">
+            <div class="field"><label>Banka Adı</label><input id="psBankName" class="inp" placeholder="Örn: Garanti BBVA" style="width:100%"></div>
+            <div class="field"><label>Aylık Fiyat (₺)</label><input id="psPriceMonthly" type="number" min="0" step="1" class="inp" style="width:100%"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>IBAN</label><input id="psIban" class="inp" placeholder="TR.." style="width:100%"></div>
+            <div class="field"><label>Alıcı Unvanı</label><input id="psAccountHolder" class="inp" placeholder="Rostrum Akademi Eğt. Tekn. Ltd." style="width:100%"></div>
+          </div>
+          <button class="btn btn-acc btn-sm" onclick="savePaymentSettings()" id="psSaveBtn">Ayarları Kaydet</button>
+        </div>
+
         <div class="stats-grid">
           <div class="stat"><div class="stat-val" id="payMonthTotal">₺0</div><div class="stat-lbl">Bu Ay Tahsilat</div><div class="stat-delta" id="payMonthCount">0 ödeme</div></div>
           <div class="stat"><div class="stat-val" style="color:var(--acc3)" id="payAllTotal">₺0</div><div class="stat-lbl">Toplam Tahsilat</div><div class="stat-delta" id="payAllCount" style="color:var(--dim)">0 kayıt</div></div>
           <div class="stat"><div class="stat-val" style="color:var(--acc4)" id="payRenewSoon">0</div><div class="stat-lbl">7 Gün İçinde Yenileme</div></div>
           <div class="stat"><div class="stat-val" style="color:var(--red)" id="payOverdue">0</div><div class="stat-lbl">Süresi Dolan</div></div>
+          <div class="stat" style="border-color:rgba(240,165,0,.3)"><div class="stat-val" style="color:var(--acc)" id="payPendingCount">0</div><div class="stat-lbl">Onay Bekleyen Dekont</div></div>
         </div>
 
         <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
           <button class="btn btn-acc" onclick="openPaymentModal()">+ Ödeme Kaydet</button>
+          <button class="btn btn-ghost" id="payTabAll" onclick="setPayFilter('all',this)">Tümü</button>
+          <button class="btn btn-ghost" id="payTabPending" onclick="setPayFilter('pending',this)">Onay Bekleyenler <span id="payTabPendingBadge"></span></button>
           <input id="paySearch" class="inp" placeholder="Koç adı ara..." oninput="renderPayments()" style="margin-left:auto;min-width:200px">
           <button class="btn btn-ghost" onclick="loadPayments().then(renderPayments)">Yenile</button>
         </div>
@@ -515,9 +533,18 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
             <div class="card" style="border-color:rgba(240,165,0,.25)">
               <div style="font-size:11px;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Nasıl Çalışır?</div>
               <div style="font-size:12px;color:var(--mid);line-height:1.7">
-                Ödeme aldığınızda buradan kaydedin. Koçun <b style="color:var(--text)">erişim bitiş tarihi</b> ödenen dönem kadar otomatik uzatılır ve hesabı <b style="color:var(--acc3)">Aktif Abone</b> statüsüne geçer. Ödeme altyapısı (LemonSqueezy) devreye girene kadar tüm tahsilat bu ekrandan izlenir.
+                Koç panelinden dekont yükleyip ödeme bildirdiğinde burada "Onay Bekleyenler" listesinde çıkar. Onayladığınızda koçun <b style="color:var(--text)">erişim bitiş tarihi</b> ödenen dönem kadar otomatik uzatılır ve hesabı <b style="color:var(--acc3)">Aktif Abone</b> statüsüne geçer. Nakit/elden ödemeleri "+ Ödeme Kaydet" ile siz de doğrudan girebilirsiniz.
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- DEKONT GÖRÜNTÜLEME MODAL -->
+        <div class="modal-bg" id="receiptViewModal">
+          <div class="modal" style="max-width:520px">
+            <button class="modal-close" onclick="closeModal('receiptViewModal')">×</button>
+            <h2>Dekont</h2>
+            <div id="receiptViewBody" style="text-align:center;padding:12px 0"></div>
           </div>
         </div>
 
@@ -560,7 +587,7 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
       <!-- ABONELİKLER -->
       <div class="view" id="view-revenue">
         <div class="page-h">Abonelikler</div>
-        <div class="page-sub">Tek paket: <b style="color:var(--acc)">₺499/ay lansman fiyatı</b> (sonrası ₺999/ay) · 14 gün ücretsiz deneme · öğrenci ve veli ücretsiz</div>
+        <div class="page-sub">Tek paket: <b style="color:var(--acc)" id="revSubPrice">—</b> · 7 gün ücretsiz deneme (+3 gün müsamaha) · öğrenci ve veli ücretsiz</div>
 
         <div class="stats-grid">
           <div class="stat" style="border-color:rgba(62,207,142,.3)">
@@ -620,8 +647,8 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
             <div class="ff"><label>Şifre</label><input type="password" id="mcPass" placeholder="Geçici şifre"></div>
             <div class="ff"><label>Başlangıç Durumu</label>
               <select id="mcPlan" style="width:100%;background:var(--s2);border:1.5px solid var(--bd);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none">
-                <option value="trial" selected>Deneme (14 gün)</option>
-                <option value="pro">Aktif Abone (₺499/ay)</option>
+                <option value="trial" selected>Deneme (7 gün)</option>
+                <option value="pro">Aktif Abone</option>
               </select>
             </div>
             <div id="mcErr" style="display:none;color:var(--red);font-size:12px;margin-bottom:10px;padding:8px;background:var(--red-dim);border-radius:8px"></div>
@@ -1490,13 +1517,13 @@ function renderUserTable(){
   }).join('');
 }
 async function toggleUserActive(id,makeActive){
-  if(!confirm(makeActive?'Kullanıcı aktifleştirilsin mi?':'Kullanıcı pasifleştirilsin mi?'))return;
+  if(!(await customConfirm(makeActive?'Kullanıcı aktifleştirilsin mi?':'Kullanıcı pasifleştirilsin mi?')))return;
   await db.from('users').update({active:makeActive}).eq('id',id);
   showToast(makeActive?'Aktifleştirildi ✓':'Pasifleştirildi');
   loadUsers();
 }
 async function adminDeleteUser(id, name) {
-  if (!confirm(`"${name}" kullanıcısını kalıcı olarak silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`)) return;
+  if (!(await customConfirm(`"${name}" kullanıcısını kalıcı olarak silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`, 'Sil'))) return;
   const { data: { session: s } } = await db.auth.getSession();
   try {
     const resp = await fetch('/api/delete-user', {
@@ -1572,18 +1599,25 @@ async function doAddCoach(){
 // ── GELİR & ABONELİKLER ──────────────────────
 // ── ABONELİK / ERİŞİM YARDIMCILARI ───────────
 function coachAccessEnd(c){
-  return c.trial_ends_at ? new Date(c.trial_ends_at)
-    : new Date(new Date(c.created_at).getTime() + 14*24*3600*1000);
+  const trialEnd = c.trial_ends_at ? new Date(c.trial_ends_at)
+    : new Date(new Date(c.created_at).getTime() + 7*24*3600*1000);
+  // Müsamaha sürecinde erişim, deneme bitişinden +3 gün sonrasına kadar geçerli sayılır
+  if (c.plan === 'grace') return new Date(trialEnd.getTime() + 3*24*3600*1000);
+  return trialEnd;
 }
 function coachStatus(c){
-  const paid = c.plan && c.plan !== 'trial';
+  const plan = c.plan || 'trial';
+  if (plan === 'inactive') return 'expired';
   const end = coachAccessEnd(c);
-  if (end >= new Date()) return paid ? 'active' : 'trial';
-  return 'expired';
+  const active = end >= new Date();
+  if (plan === 'pro') return active ? 'active' : 'expired';
+  if (plan === 'grace') return active ? 'grace' : 'expired';
+  return active ? 'trial' : 'expired';
 }
 function coachStatusBadge(st){
   if(st==='active') return '<span class="status-badge st-approved">Aktif Abone</span>';
   if(st==='trial')  return '<span class="status-badge st-contacted">Deneme</span>';
+  if(st==='grace')  return '<span class="status-badge st-pending">Müsamaha</span>';
   return '<span class="status-badge st-rejected">Süresi Doldu</span>';
 }
 function fmtTL(n){ return '₺' + (+n||0).toLocaleString('tr-TR'); }
@@ -1592,12 +1626,13 @@ async function loadRevenue(){
   document.getElementById('subscriptionsTable').innerHTML='<tr><td colspan="7" class="loading">Yükleniyor...</td></tr>';
   const [{data:coaches}] = await Promise.all([
     db.from('users').select('*').eq('role','coach').order('created_at',{ascending:false}),
-    (_payments===null ? loadPayments() : Promise.resolve())
+    (_payments===null ? loadPayments() : Promise.resolve()),
+    loadPaymentSettings()
   ]);
   const allCoaches = coaches||[];
   const statuses = allCoaches.map(c=>({c, st:coachStatus(c)}));
   const nActive = statuses.filter(x=>x.st==='active').length;
-  const nTrial  = statuses.filter(x=>x.st==='trial').length;
+  const nTrial  = statuses.filter(x=>x.st==='trial' || x.st==='grace').length;
   const nExp    = statuses.filter(x=>x.st==='expired').length;
 
   document.getElementById('revActive').textContent = nActive;
@@ -1614,8 +1649,8 @@ async function loadRevenue(){
   }
 
   // Huni
-  const paidEver = allCoaches.filter(c=>c.plan && c.plan!=='trial').length;
-  const expiredNeverPaid = statuses.filter(x=>x.st==='expired' && (!x.c.plan || x.c.plan==='trial')).length;
+  const paidEver = allCoaches.filter(c=>c.plan==='pro').length;
+  const expiredNeverPaid = statuses.filter(x=>x.st==='expired' && x.c.plan!=='pro').length;
   document.getElementById('pdTrial').textContent = nTrial+' koç';
   document.getElementById('pdPaid').textContent = paidEver+' koç';
   document.getElementById('pdExpired').textContent = expiredNeverPaid+' koç';
@@ -1829,25 +1864,6 @@ async function createCoachAccount(lead){
       status: 'approved'
     }).eq('id', lead.id);
 
-    // Otomatik e-posta gönderimini tetikle
-    try {
-      await fetch('/api/mailer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'coach_welcome',
-          to: lead.email,
-          coach_name: lead.first_name,
-          username: username,
-          password: defaultPass
-        })
-      });
-      showToast('Giriş bilgileri koçun e-posta adresine otomatik gönderildi ✓');
-    } catch (mailErr) {
-      console.error('[Automated Coach Mail Error]', mailErr);
-      showToast('Hesap oluşturuldu fakat e-posta gönderimi başarısız oldu.', false);
-    }
-
     // Admin'e bilgi göster
     showCoachCreatedModal(lead.first_name, username, defaultPass, lead.email);
   }catch(e){
@@ -1883,7 +1899,7 @@ function showCoachCreatedModal(name, username, pass, email){
       </div>
       <div style="font-size:11px;color:var(--dim)">Giriş: ${appUrl}</div>
     </div>
-    <a href="mailto:${esc(email)}?subject=Rostrum Akademi Hesabınız Hazır&body=${mailBody}" class="btn" style="width:100%;justify-content:center;background:var(--acc);color:#07060a;padding:12px;border-radius:11px;text-decoration:none;font-size:14px;font-weight:700">✉️ E-postayı Tekrar Gönder (Yedek)</a>
+    <a href="mailto:${esc(email)}?subject=Rostrum Akademi Hesabınız Hazır&body=${mailBody}" class="btn" style="width:100%;justify-content:center;background:var(--acc);color:#07060a;padding:12px;border-radius:11px;text-decoration:none;font-size:14px;font-weight:700">✉️ E-posta Gönder</a>
   </div>`;
   document.getElementById('coachCreatedModal').classList.add('open');
 }
@@ -2010,7 +2026,7 @@ async function togglePublish(id,pub){
 }
 
 async function deleteBlog(id){
-  if(!confirm('Yazıyı silmek istediğinizden emin misiniz?'))return;
+  if(!(await customConfirm('Yazıyı silmek istediğinizden emin misiniz?', 'Sil')))return;
   await db.from('blog_posts').delete().eq('id',id);
   _blogs=_blogs.filter(b=>b.id!==id);renderBlogs();showToast('Silindi');
 }
@@ -2069,7 +2085,7 @@ async function toggleAnnounce(id,active){
 }
 
 async function deleteAnnounce(id){
-  if(!confirm('Duyuruyu sil?'))return;
+  if(!(await customConfirm('Duyuruyu sil?', 'Sil')))return;
   await db.from('announcements').delete().eq('id',id);
   _announces=_announces.filter(a=>a.id!==id);renderAnnounces();showToast('Silindi');
 }
@@ -2078,6 +2094,9 @@ async function deleteAnnounce(id){
 function renderDashboard(){
   const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
 
+  setEl('st-leads',    _leads.length);
+  setEl('st-pending',  _leads.filter(l=>l.status==='pending').length+' bekliyor');
+  setEl('st-approved', _leads.filter(l=>l.status==='approved').length);
   setEl('st-posts',    _blogs.filter(b=>b.published).length);
   setEl('st-announce', _announces.filter(a=>a.active).length);
 
@@ -2088,30 +2107,16 @@ function renderDashboard(){
   setEl('ds-rejected',  _leads.filter(l=>l.status==='rejected').length);
 
   // Kullanıcı özeti + üst stat kartları (Supabase'den gerçek veri)
-  db.from('users').select('id,role,created_at,full_name,username,email,plan').then(({data})=>{
+  db.from('users').select('id,role,created_at').then(({data})=>{
     const users=data||[];
     const coaches=users.filter(u=>u.role==='coach');
     const students=users.filter(u=>u.role==='student');
     const weekAgo=new Date(Date.now()-7*24*3600*1000).toISOString();
-    setEl('st-coaches-total', coaches.length);
-    setEl('st-coaches-new', coaches.filter(u=>u.created_at>weekAgo).length + ' bu hafta');
-    setEl('st-students-total', students.length);
+    setEl('st-coaches',  coaches.length);
+    setEl('st-students', students.length);
     setEl('ds-coaches',  coaches.length);
     setEl('ds-students', students.length);
     setEl('ds-new-week', users.filter(u=>u.created_at>weekAgo).length);
-
-    // Son 5 katılan koç
-    const recentCoaches = [...coaches].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5);
-    document.getElementById('dashNewCoaches').innerHTML = recentCoaches.length ? recentCoaches.map(c=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)">
-        <div style="width:32px;height:32px;border-radius:50%;background:rgba(13,148,136,.12);color:#0d9488;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">${(c.full_name||c.username||'?')[0]}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:700;color:var(--text)">${esc(c.full_name||c.username||'—')}</div>
-          <div style="font-size:11px;color:var(--dim)">${esc(c.email||'')}</div>
-        </div>
-        <span class="status-badge st-approved" style="font-size:10px">${c.plan==='trial'?'7 Günlük Deneme':'Aktif Abone'}</span>
-      </div>`).join('')+'<div style="padding-top:8px"><button class="btn btn-ghost btn-sm" onclick="switchView(\'users\',document.querySelector(\'[onclick*=users]\'))">Tümü Gör →</button></div>'
-    : '<div style="color:var(--dim);font-size:13px;text-align:center;padding:20px">Henüz kayıtlı koç yok</div>';
   });
 
   // Bu ay tahsilat (payments tablosu varsa)
@@ -2130,6 +2135,18 @@ function renderDashboard(){
     setEl('ds-match-done',    m.filter(x=>x.status==='completed').length);
   });
 
+  // Son 5 başvuru
+  const recent=_leads.slice(0,5);
+  document.getElementById('dashLeads').innerHTML=recent.length?recent.map(l=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)">
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#07060a;flex-shrink:0">${(l.first_name||'?')[0]}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700">${esc(l.first_name)} ${esc(l.last_name||'')} · ${esc(l.brand_name)}</div>
+        <div style="font-size:11px;color:var(--dim)">${new Date(l.created_at).toLocaleDateString('tr-TR')}</div>
+      </div>
+      <span class="status-badge st-${l.status}" style="font-size:10px">${statusLabel(l.status)}</span>
+    </div>`).join('')+'<div style="padding-top:8px"><button class="btn btn-ghost btn-sm" onclick="switchView(\'leads\',document.querySelector(\'[onclick*=leads]\'))">Tümünü Gör →</button></div>'
+  :'<div style="color:var(--dim);font-size:13px;text-align:center;padding:20px">Henüz başvuru yok</div>';
 }
 
 // ── MATCHES & PROFILES STATE ──────────────────
@@ -2248,7 +2265,7 @@ async function updateMatchStatus(id, status) {
 }
 
 async function deleteMatchRequest(id) {
-  if (!confirm('Eşleşme başvurusunu silmek istediğinizden emin misiniz?')) return;
+  if (!(await customConfirm('Eşleşme başvurusunu silmek istediğinizden emin misiniz?', 'Sil'))) return;
   const {error} = await db.from('match_requests').delete().eq('id', id);
   if (error) {
     showToast('Silinirken hata oluştu: ' + error.message, false);
@@ -2717,7 +2734,7 @@ function getStorySvg(d) {
     <text x="540" y="${1040+lines.length*70}" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="28" font-style="italic">— ${author||'Rostrum Akademi'}</text>
     <rect x="240" y="1680" width="600" height="80" rx="40" fill="url(#sgrad)"/>
     <text x="540" y="1730" text-anchor="middle" fill="#07060a" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="900">rostrumakademi.com</text>
-    <text x="540" y="1820" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="20">14 gun ucretsiz deneyin</text>
+    <text x="540" y="1820" text-anchor="middle" fill="#a09ab8" font-family="Arial,Helvetica,sans-serif" font-size="20">7 gun ucretsiz deneyin</text>
   </svg>`;
 }
 
@@ -2911,6 +2928,33 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// Native confirm() yerine site temasına uygun onay penceresi
+function customConfirm(message, okLabel){
+  return new Promise(resolve => {
+    let modal = document.getElementById('customConfirmModal');
+    if(!modal){
+      modal = document.createElement('div');
+      modal.id = 'customConfirmModal';
+      modal.className = 'modal-bg';
+      modal.style.zIndex = '999999';
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML = `<div class="modal" style="max-width:380px;text-align:center;padding:30px 26px">
+      <div style="font-size:34px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text);line-height:1.65;margin-bottom:24px;white-space:pre-line">${esc(message)}</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" id="ccCancelBtn" style="flex:1;justify-content:center">Vazgeç</button>
+        <button class="btn btn-danger" id="ccOkBtn" style="flex:1;justify-content:center">${esc(okLabel||'Onayla')}</button>
+      </div>
+    </div>`;
+    modal.classList.add('open');
+    const cleanup = result => { modal.classList.remove('open'); resolve(result); };
+    document.getElementById('ccOkBtn').onclick = () => cleanup(true);
+    document.getElementById('ccCancelBtn').onclick = () => cleanup(false);
+    modal.onclick = e => { if(e.target === modal) cleanup(false); };
+  });
+}
 
 // ── INSTAGRAM PANEL LOGIC ──────────────────────
 let _activeIgPanelTab = 'posts';
@@ -3373,7 +3417,7 @@ async function publishIgPost(isStory = false) {
     }
 
     btn.textContent = '⏳ Yayınlanıyor...';
-    const response = await fetch('/api/instagram?action=publish', {
+    const response = await fetch('/api/publish-instagram', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(fetchBody)
     });
@@ -4631,7 +4675,7 @@ async function publishManualPost(isStory) {
         btn.textContent = `⏳ Hikaye ${i+1}/${total}...`;
         const svgStr = getCarouselSlideSvg(_mpSlides[i] || { type: 'hook', headline: '' }, i, total);
         const imageBase64 = await svgToJpegBase64(svgStr, 1080, 1080);
-        const stRes = await fetch('/api/instagram?action=publish', {
+        const stRes = await fetch('/api/publish-instagram', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageBase64, caption: '', isStory: true })
@@ -4662,7 +4706,7 @@ async function publishManualPost(isStory) {
     }
 
     btn.textContent = '⏳ Yayınlanıyor...';
-    const res = await fetch('/api/instagram?action=publish', {
+    const res = await fetch('/api/publish-instagram', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -4747,7 +4791,7 @@ async function addIgRule() {
 }
 
 async function deleteIgRule(idx) {
-  if(!confirm('Bu otomasyon kuralını silmek istediğinizden emin misiniz?')) return;
+  if(!(await customConfirm('Bu otomasyon kuralını silmek istediğinizden emin misiniz?', 'Sil'))) return;
   _igRules.splice(idx, 1);
   try {
     const { error } = await db.from('platform_settings').upsert({ key: 'instagram_automation_rules', value: _igRules });
@@ -4877,6 +4921,8 @@ async function testIgConnection() {
 // ══════════════════════════════════════════════
 let _payments = null; // null: yüklenmedi, false: tablo yok, []: yüklendi
 let _payCoaches = [];
+let _payFilter = 'all'; // 'all' | 'pending'
+let _paymentSettings = null;
 
 async function loadPayments(){
   const {data,error} = await db.from('payments').select('*').order('created_at',{ascending:false});
@@ -4893,9 +4939,58 @@ async function loadPayCoaches(){
   return _payCoaches;
 }
 
+// Banka/IBAN/fiyat — kodda hardcode edilmez, platform_settings'ten yönetilir
+async function loadPaymentSettings(){
+  const {data} = await db.from('platform_settings').select('value').eq('key','payment_settings').maybeSingle();
+  _paymentSettings = data?.value || {bank_name:'',iban:'',account_holder:'',price_monthly:0};
+  const priceEl = document.getElementById('revSubPrice');
+  if(priceEl) priceEl.textContent = _paymentSettings.price_monthly ? fmtTL(_paymentSettings.price_monthly)+'/ay' : 'Ayarlanmadı';
+  return _paymentSettings;
+}
+
+function fillPaymentSettingsForm(){
+  if(!_paymentSettings) return;
+  document.getElementById('psBankName').value = _paymentSettings.bank_name || '';
+  document.getElementById('psIban').value = _paymentSettings.iban || '';
+  document.getElementById('psAccountHolder').value = _paymentSettings.account_holder || '';
+  document.getElementById('psPriceMonthly').value = _paymentSettings.price_monthly || '';
+}
+
+async function savePaymentSettings(){
+  const btn = document.getElementById('psSaveBtn');
+  const value = {
+    bank_name: document.getElementById('psBankName').value.trim(),
+    iban: document.getElementById('psIban').value.trim(),
+    account_holder: document.getElementById('psAccountHolder').value.trim(),
+    price_monthly: +document.getElementById('psPriceMonthly').value || 0
+  };
+  btn.disabled = true; btn.textContent = 'Kaydediliyor...';
+  try{
+    const {error} = await db.from('platform_settings').upsert({key:'payment_settings', value}, {onConflict:'key'});
+    if(error) throw error;
+    _paymentSettings = value;
+    document.getElementById('revSubPrice').textContent = value.price_monthly ? fmtTL(value.price_monthly)+'/ay' : 'Ayarlanmadı';
+    showToast('Ödeme ayarları kaydedildi ✓');
+  }catch(e){
+    showToast('Kaydedilemedi: '+e.message,false);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Ayarları Kaydet';
+  }
+}
+
+function setPayFilter(kind, el){
+  _payFilter = kind;
+  document.getElementById('payTabAll').classList.toggle('btn-acc', kind==='all');
+  document.getElementById('payTabAll').classList.toggle('btn-ghost', kind!=='all');
+  document.getElementById('payTabPending').classList.toggle('btn-acc', kind==='pending');
+  document.getElementById('payTabPending').classList.toggle('btn-ghost', kind!=='pending');
+  renderPayments();
+}
+
 async function initPaymentsView(){
   document.getElementById('paymentsTable').innerHTML='<tr><td colspan="7" class="loading">Yükleniyor...</td></tr>';
-  await Promise.all([loadPayments(), loadPayCoaches()]);
+  await Promise.all([loadPayments(), loadPayCoaches(), loadPaymentSettings()]);
+  fillPaymentSettingsForm();
   renderPayments();
 }
 
@@ -4938,22 +5033,99 @@ function renderPayments(){
     </div>`;
   }).join('') : '<div style="color:var(--dim);padding:10px 0;font-size:12px">Yaklaşan yenileme yok</div>';
 
+  // Onay bekleyen sayısı (badge + stat)
+  const pendingCount = list.filter(p=>p.status==='pending').length;
+  const pendingBadgeEl = document.getElementById('payTabPendingBadge');
+  if(pendingBadgeEl) pendingBadgeEl.textContent = pendingCount ? `(${pendingCount})` : '';
+  const payPendingCountEl = document.getElementById('payPendingCount');
+  if(payPendingCountEl) payPendingCountEl.textContent = pendingCount;
+
   // Ödeme tablosu
   const q = (document.getElementById('paySearch')?.value||'').toLowerCase();
-  const rows = list.filter(p=>!q || (p.coach_name||'').toLowerCase().includes(q));
+  let rows = list.filter(p=>!q || (p.coach_name||'').toLowerCase().includes(q));
+  if(_payFilter==='pending') rows = rows.filter(p=>p.status==='pending');
   const tEl = document.getElementById('paymentsTable');
   if(missing){ tEl.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--dim)">Önce payments tablosunu oluşturun</td></tr>'; return; }
-  if(!rows.length){ tEl.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--dim)">Henüz ödeme kaydı yok — ilk tahsilatınızı "+ Ödeme Kaydet" ile ekleyin</td></tr>'; return; }
+  if(!rows.length){ tEl.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--dim)">${_payFilter==='pending'?'Onay bekleyen dekont yok':'Henüz ödeme kaydı yok — ilk tahsilatınızı "+ Ödeme Kaydet" ile ekleyin'}</td></tr>`; return; }
   const methodLbl = {havale:'Havale/EFT', elden:'Elden', diger:'Diğer'};
+  const statusChip = {pending:'<span class="chip-method" style="color:var(--acc)">Onay Bekliyor</span>', rejected:'<span class="chip-method" style="color:var(--red)">Reddedildi</span>'};
   tEl.innerHTML = rows.map(p=>`<tr>
     <td style="font-size:12px;white-space:nowrap">${new Date(p.created_at).toLocaleDateString('tr-TR')}</td>
     <td><div style="font-weight:600;color:var(--text);font-size:13px">${esc(p.coach_name||'—')}</div></td>
     <td><span class="pay-amount">${fmtTL(p.amount)}</span></td>
-    <td><span class="chip-method">${methodLbl[p.method]||esc(p.method||'—')}</span></td>
+    <td><span class="chip-method">${methodLbl[p.method]||esc(p.method||'—')}</span>${statusChip[p.status]?'<br>'+statusChip[p.status]:''}</td>
     <td style="font-size:12px">${p.period_months||1} ay${p.period_end?`<div style="font-size:10px;color:var(--dim)">→ ${new Date(p.period_end).toLocaleDateString('tr-TR')}</div>`:''}</td>
     <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.receipt_note||'')}">${esc(p.receipt_note||'—')}</td>
-    <td><button class="btn btn-danger btn-sm" onclick="deletePayment('${p.id}')">Sil</button></td>
+    <td style="white-space:nowrap">
+      ${p.receipt_url ? `<button class="btn btn-ghost btn-sm" onclick="viewReceipt('${p.receipt_url}')">📄 Gör</button>` : ''}
+      ${p.status==='pending' ? `
+        <button class="btn btn-green btn-sm" onclick="approvePendingPayment('${p.id}')">Onayla</button>
+        <button class="btn btn-danger btn-sm" onclick="rejectPendingPayment('${p.id}')">Reddet</button>
+      ` : `<button class="btn btn-danger btn-sm" onclick="deletePayment('${p.id}')">Sil</button>`}
+    </td>
   </tr>`).join('');
+}
+
+async function viewReceipt(path){
+  const body = document.getElementById('receiptViewBody');
+  body.innerHTML = '<div class="loading">Yükleniyor...</div>';
+  openModal('receiptViewModal');
+  const {data,error} = await db.storage.from('receipts').createSignedUrl(path, 120);
+  if(error || !data?.signedUrl){ body.innerHTML = `<div style="color:var(--red)">Dekont açılamadı: ${esc(error?.message||'')}</div>`; return; }
+  const isPdf = /\.pdf$/i.test(path);
+  body.innerHTML = isPdf
+    ? `<a href="${data.signedUrl}" target="_blank" class="btn btn-acc">PDF'i Yeni Sekmede Aç</a>`
+    : `<img src="${data.signedUrl}" style="max-width:100%;max-height:70vh;border-radius:10px">`;
+}
+
+async function approvePendingPayment(id){
+  const p = (_payments||[]).find(x=>x.id===id);
+  if(!p) return;
+  const c = _payCoaches.find(x=>x.id===p.coach_id);
+  if(!c){ showToast('Koç bulunamadı',false); return; }
+  if(!(await customConfirm(`${c.full_name||c.username||'Koç'} için ${fmtTL(p.amount)} ödeme onaylansın mı? Erişim ${p.period_months||1} ay uzatılacak.`, 'Onayla'))) return;
+  try{
+    const months = p.period_months||1;
+    const base = new Date(Math.max(Date.now(), coachAccessEnd(c).getTime()));
+    const newEnd = new Date(base); newEnd.setMonth(newEnd.getMonth()+months);
+
+    const { data: { session: adminSess } } = await db.auth.getSession();
+    const {error:pErr} = await db.from('payments').update({
+      status:'completed', verified:true, recorded_by: adminSess?.user?.email || 'admin',
+      period_start: new Date().toISOString().split('T')[0],
+      period_end: newEnd.toISOString().split('T')[0]
+    }).eq('id', id);
+    if(pErr) throw pErr;
+
+    const {error:uErr} = await db.from('users').update({ plan:'pro', trial_ends_at: newEnd.toISOString() }).eq('id', p.coach_id);
+    if(uErr) throw uErr;
+
+    // Onay maili — best-effort, akışı engellemez
+    if(c.email){
+      fetch('/api/mailer', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type:'payment_approved', to:c.email, coach_name:c.full_name||c.username||'',
+          amount:p.amount, period_end:newEnd.toISOString().split('T')[0], ref_code:c.payment_reference_code||''
+        })
+      }).catch(()=>{});
+    }
+
+    showToast(`Onaylandı — erişim ${newEnd.toLocaleDateString('tr-TR')} tarihine uzatıldı`);
+    await Promise.all([loadPayments(), loadPayCoaches()]);
+    renderPayments();
+    if(document.getElementById('view-revenue').classList.contains('active')) loadRevenue();
+  }catch(e){
+    showToast('Onaylanamadı: '+e.message,false);
+  }
+}
+
+async function rejectPendingPayment(id){
+  if(!(await customConfirm('Bu ödeme bildirimi reddedilsin mi? Koç tekrar dekont yükleyebilir.', 'Reddet'))) return;
+  const {error} = await db.from('payments').update({status:'rejected'}).eq('id',id);
+  if(error){ showToast('Reddedilemedi: '+error.message,false); return; }
+  showToast('Ödeme bildirimi reddedildi');
+  await loadPayments(); renderPayments();
 }
 
 async function openPaymentModal(coachId){
@@ -5004,6 +5176,7 @@ async function savePayment(){
       period_months: months,
       period_start: dateStr,
       period_end: newEnd.toISOString().split('T')[0],
+      payment_date: dateStr,
       receipt_note: note||null
     });
     if(pErr) throw pErr;
@@ -5027,7 +5200,7 @@ async function savePayment(){
 }
 
 async function deletePayment(id){
-  if(!confirm('Bu ödeme kaydı silinsin mi?\n\nNot: Koçun erişim bitiş tarihi otomatik geri alınmaz; gerekiyorsa Abonelikler sayfasından elle düzeltin.'))return;
+  if(!(await customConfirm('Bu ödeme kaydı silinsin mi?\n\nNot: Koçun erişim bitiş tarihi otomatik geri alınmaz; gerekiyorsa Abonelikler sayfasından elle düzeltin.', 'Sil')))return;
   const {error} = await db.from('payments').delete().eq('id',id);
   if(error){ showToast('Silinemedi: '+error.message,false); return; }
   showToast('Ödeme kaydı silindi');
@@ -5274,7 +5447,7 @@ async function rspGenerate(){
 }
 
 async function rspRegen(dateStr){
-  if(!confirm(dateStr+' tarihi için yeniden üretilsin mi? Mevcut içeriğin üzerine yazılır.'))return;
+  if(!(await customConfirm(dateStr+' tarihi için yeniden üretilsin mi? Mevcut içeriğin üzerine yazılır.', 'Üret')))return;
   document.getElementById('rspGenDate').value = dateStr;
   document.getElementById('rspForce').checked = true;
   switchStudioTab('create');
@@ -5283,7 +5456,7 @@ async function rspRegen(dateStr){
 }
 
 async function rspPublishNow(){
-  if(!confirm('Yayın saati gelmiş onaylı story\'ler hemen Instagram\'a gönderilsin mi?'))return;
+  if(!(await customConfirm('Yayın saati gelmiş onaylı story\'ler hemen Instagram\'a gönderilsin mi?', 'Gönder')))return;
   try{
     const r = await rspFetch('/api/publish');
     const res = r.results||[];
@@ -5294,7 +5467,7 @@ async function rspPublishNow(){
 }
 
 async function rspPublishSingle(id){
-  if(!confirm('Bu story hemen Instagram\'a gönderilsin mi?'))return;
+  if(!(await customConfirm('Bu story hemen Instagram\'a gönderilsin mi?', 'Gönder')))return;
   try{
     const r = await rspFetch('/api/publish?id=' + id);
     const res = r.results||[];
@@ -5390,7 +5563,7 @@ async function uploadReelsAssets(files) {
 }
 
 async function deleteReelsAsset(path, name) {
-  if (!confirm(`"${name}" silinsin mi?`)) return;
+  if (!(await customConfirm(`"${name}" silinsin mi?`, 'Sil'))) return;
   await db.storage.from('platform_assets').remove([path]);
   await loadReelsAssets();
 }
@@ -5575,7 +5748,7 @@ async function publishReels() {
     status.textContent = 'Instagram\'a gönderiliyor (işleme ~1-2 dk sürebilir)...';
     const { data: { session } } = await db.auth.getSession();
 
-    const resp = await fetch('/api/instagram?action=publish', {
+    const resp = await fetch('/api/publish-instagram', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

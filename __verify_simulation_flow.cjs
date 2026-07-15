@@ -37,7 +37,7 @@ const ss = (name) => path.join(SS_DIR, name + '.png');
   await adminPage.screenshot({ path: ss('sim_admin_dashboard') });
 
   // Navigate to Users tab
-  await adminPage.locator('.tn-nav-item').filter({ hasText: /kullanıcı/i }).first().click();
+  await adminPage.locator('.sb-item').filter({ hasText: /kullanıcı/i }).first().click();
   await adminPage.waitForTimeout(2000);
   const totalCoaches = await adminPage.locator('#usTotalCoaches').textContent();
   const totalStudents = await adminPage.locator('#usTotalStudents').textContent();
@@ -51,8 +51,7 @@ const ss = (name) => path.join(SS_DIR, name + '.png');
   const coachPage = await coachCtx.newPage();
   
   await coachPage.goto('http://localhost:8080/app.html', { waitUntil: 'domcontentloaded' });
-  await coachPage.click('button.login-tab[onclick*="username"]');
-  await coachPage.fill('#loginUser', 'simkoc1');
+  await coachPage.fill('#loginEmail', 'simkoc1');
   await coachPage.fill('#loginPass', 'kocPass1!');
   await coachPage.click('.btn-login');
   await waitForRender(coachPage);
@@ -75,7 +74,7 @@ const ss = (name) => path.join(SS_DIR, name + '.png');
   // Click Student 1 row
   await coachPage.locator('.stu-row').first().click();
   await coachPage.waitForSelector('#view-student-detail', { state: 'visible', timeout: 10000 });
-  const activeDetailTitle = await coachPage.locator('#tbarTitle').textContent();
+  const activeDetailTitle = await coachPage.locator('#view-student-detail div[style*="font-size:20px"]').textContent();
   console.log(`  Selected Student: "${activeDetailTitle.trim()}"`);
   await coachPage.screenshot({ path: ss('sim_coach1_student_detail') });
   await coachCtx.close();
@@ -86,8 +85,7 @@ const ss = (name) => path.join(SS_DIR, name + '.png');
   const studentPage = await studentCtx.newPage();
 
   await studentPage.goto('http://localhost:8080/app.html', { waitUntil: 'domcontentloaded' });
-  await studentPage.click('button.login-tab[onclick*="username"]');
-  await studentPage.fill('#loginUser', 'simogr1');
+  await studentPage.fill('#loginEmail', 'simogr1');
   await studentPage.fill('#loginPass', 'ogrPass1!');
   await studentPage.click('.btn-login');
   await waitForRender(studentPage);
@@ -111,8 +109,7 @@ const ss = (name) => path.join(SS_DIR, name + '.png');
   const parentPage = await parentCtx.newPage();
 
   await parentPage.goto('http://localhost:8080/app.html', { waitUntil: 'domcontentloaded' });
-  await parentPage.click('button.login-tab[onclick*="username"]');
-  await parentPage.fill('#loginUser', 'simveli1');
+  await parentPage.fill('#loginEmail', 'simveli1');
   await parentPage.fill('#loginPass', 'veliPass1!');
   await parentPage.click('.btn-login');
   await waitForRender(parentPage);

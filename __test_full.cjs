@@ -22,17 +22,16 @@ async function screenshot(name) {
 
 async function loginAs(username, password) {
   await page.goto('http://localhost:8080/app.html', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(600);
-  await page.click('button.login-tab[onclick*="username"]');
-  await page.waitForTimeout(200);
-  await page.fill('#loginUser', username);
+  await page.waitForTimeout(1000);
+  // Giriş alanı e-posta veya kullanıcı adı kabul ediyor, doğrudan dolduruyoruz
+  await page.fill('#loginEmail', username);
   await page.fill('#loginPass', password);
   await page.click('.btn-login');
   await page.waitForFunction(
     () => document.getElementById('appShell')?.classList.contains('visible'),
     { timeout: 15000 }
   );
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(2000);
 }
 
 async function logout() {

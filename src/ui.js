@@ -8051,8 +8051,9 @@ async function renderCoachProfile() {
   const capacity_left = (profile?.capacity_left ?? '') === null ? '' : (profile?.capacity_left ?? '');
   _cpSavedSlug = slug;
 
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const coachBulUrl = slug
-    ? `${window.location.origin}/koc/${slug}`
+    ? (isLocal ? `${window.location.origin}/koc_bul.html?koc=${slug}` : `${window.location.origin}/koc/${slug}`)
     : window.location.origin + window.location.pathname.replace('app.html', 'koc_bul.html') + `?coach=${userId}`;
   
   el.innerHTML = `
@@ -8387,9 +8388,13 @@ function onCoachSlugInput(){
 
 // ── Kamu link kopyala/gözat — yalnızca KAYDEDİLMİŞ slug üzerinden çalışır ──
 function _cpSavedLink(){
-  return _cpSavedSlug
-    ? `${window.location.origin}/koc/${_cpSavedSlug}`
-    : `${window.location.origin}/koc_bul.html?coach=${session.dbUser.id}`;
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (_cpSavedSlug) {
+    return isLocal
+      ? `${window.location.origin}/koc_bul.html?koc=${_cpSavedSlug}`
+      : `${window.location.origin}/koc/${_cpSavedSlug}`;
+  }
+  return `${window.location.origin}/koc_bul.html?coach=${session.dbUser.id}`;
 }
 function _cpTypedDiffers(){
   const v = (document.getElementById('cpSlug')?.value||'').trim().toLowerCase();
@@ -8401,10 +8406,10 @@ function copyCoachLink(){
     .catch(()=>showToast('Kopyalanamadı'));
 }
 function browseCoachLink(e){
-  if (_cpTypedDiffers()){ if(e)e.preventDefault(); showToast('Yeni linki önce Kaydet\'e basarak etkinleştir'); return false; }
-  const a = document.getElementById('cpSlugBrowseBtn');
-  if (a) a.href = _cpSavedLink();
-  return true;
+  if (e) e.preventDefault();
+  if (_cpTypedDiffers()){ showToast('Yeni linki önce Kaydet\'e basarak etkinleştir'); return false; }
+  window.open(_cpSavedLink(), '_blank');
+  return false;
 }
 // Kayıttan sonra link kontrollerini tazele (yeni slug artık canlı)
 function _cpRefreshLinkUI(){

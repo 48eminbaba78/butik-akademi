@@ -660,11 +660,60 @@
       if (!target) {
         try {
           const { data } = await db.rpc('get_coach_by_slug', { p_slug: slugParam });
-          if (data && data.length) target = allCoaches.find(c => c.id === data[0].id);
+          if (data && data.length) {
+            target = {
+              id: data[0].id,
+              name: data[0].full_name,
+              color: data[0].color || '#f0a500',
+              brand: data[0].target || 'Rostrum Akademi Koçu',
+              profile: {
+                bio: data[0].bio,
+                subjects: data[0].subjects,
+                education: data[0].education,
+                experience: data[0].experience,
+                photo_url: data[0].photo_url,
+                instagram: data[0].instagram,
+                linkedin: data[0].linkedin,
+                slug: data[0].slug,
+                headline: data[0].headline,
+                capacity_left: data[0].capacity_left
+              }
+            };
+          } else {
+            // RPC role filter fallback for developers or hidden coaches (direct fetch)
+            const { data: p } = await db.from('coach_profiles').select('*').eq('slug', slugParam).maybeSingle();
+            if (p) {
+              const { data: u } = await db.from('users').select('id, full_name, color, target').eq('id', p.id).single();
+              if (u) {
+                target = {
+                  id: u.id,
+                  name: u.full_name,
+                  color: u.color || '#f0a500',
+                  brand: u.target || 'Rostrum Akademi Koçu',
+                  profile: p
+                };
+              }
+            }
+          }
         } catch(e) {}
       }
     } else if (coachParam) {
       target = allCoaches.find(c => c.id === coachParam);
+      if (!target) {
+        try {
+          const { data: u } = await db.from('users').select('id, full_name, color, target').eq('id', coachParam).single();
+          if (u) {
+            const { data: p } = await db.from('coach_profiles').select('*').eq('id', coachParam).maybeSingle();
+            target = {
+              id: u.id,
+              name: u.full_name,
+              color: u.color || '#f0a500',
+              brand: u.target || 'Rostrum Akademi Koçu',
+              profile: p || {}
+            };
+          }
+        } catch(e) {}
+      }
     }
     if (target) {
       // Slug ile gelen = kamu vitrini (tam ekran). ?coach=uuid eski yol = modal.
@@ -696,7 +745,10 @@
     if (p.capacity_left != null && p.capacity_left >= 0)
       stats.push({ ico:'', t:`Son ${p.capacity_left} Öğrenci Kontenjanı`, scarce:true });
     const statsHtml = stats.length ? `<div class="sc-stats">${stats.map(s=>`
-      <div class="sc-stat${s.scarce?' sc-scarce':''}">${s.scarce?'<span class="sc-dot"></span>':`<span class="sc-stat-ico">${s.ico}</span>`}<span>${esc(s.t)}</span></div>`).join('')}</div>` : '';
+      <div class="sc-stat${s.scarce?' sc-scarce':''}">
+        ${s.scarce?'<span class="sc-dot"></span>':`<span class="sc-stat-ico">${s.ico}</span>`}
+        <span>${esc(s.t)}</span>
+      </div>`).join('')}</div>` : '';
 
     const social = [];
     if (p.instagram) social.push(`<a href="https://instagram.com/${esc(p.instagram)}" target="_blank" class="sc-social">📸 @${esc(p.instagram)}</a>`);
@@ -706,62 +758,152 @@
     sc.style.display = 'block';
     sc.innerHTML = `
       <style>
-        body{background:#FBFAF8}
-        #showcaseContainer{--b:#E8613A;--ink:#1A1714;--mid:#6B6560;--dim:#9B958E;--surf:#fff;--surf2:#F6F4F0;--bd:#EAE6DF;
-          max-width:520px;margin:0 auto;padding:20px 16px 120px;color:var(--ink);
-          font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
-        .sc-hero{display:flex;gap:16px;align-items:center;margin-bottom:18px}
-        .sc-av{width:92px;height:92px;border-radius:24px;background-size:cover;background-position:center;flex-shrink:0;box-shadow:0 8px 24px rgba(28,25,23,.12)}
-        .sc-av-txt{display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff}
-        .sc-name{font-size:26px;font-weight:800;letter-spacing:-.6px;line-height:1.1}
-        .sc-headline{font-size:14px;color:var(--mid);font-weight:600;margin-top:4px}
-        .sc-socials{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
-        .sc-social{font-size:12px;font-weight:700;color:var(--b);text-decoration:none;background:rgba(232,97,58,.08);padding:4px 10px;border-radius:99px}
-        .sc-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
-        .sc-stat{flex-shrink:0;display:flex;align-items:center;gap:6px;background:var(--surf);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;font-size:12.5px;font-weight:700;box-shadow:0 1px 3px rgba(28,25,23,.04)}
-        .sc-stat-ico{font-size:15px}
-        .sc-scarce{border-color:rgba(220,38,38,.3)}
-        .sc-dot{width:8px;height:8px;border-radius:50%;background:#DC2626;box-shadow:0 0 0 3px rgba(220,38,38,.15)}
-        .sc-tabs{display:flex;gap:4px;background:var(--surf2);border-radius:12px;padding:4px;margin-bottom:14px}
-        .sc-tab{flex:1;padding:9px;border:none;background:none;border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;color:var(--mid);cursor:pointer;transition:.15s}
-        .sc-tab.on{background:var(--surf);color:var(--b);box-shadow:0 1px 4px rgba(28,25,23,.08)}
-        .sc-panel{background:var(--surf);border:1px solid var(--bd);border-radius:16px;padding:18px 20px;font-size:14px;line-height:1.7;color:var(--ink);min-height:90px;box-shadow:0 1px 3px rgba(28,25,23,.04)}
-        .sc-offer{margin-top:18px;background:linear-gradient(180deg,rgba(232,97,58,.06),rgba(232,97,58,.02));border:1px solid rgba(232,97,58,.2);border-radius:18px;padding:20px}
-        .sc-offer h3{font-size:16px;font-weight:800;color:var(--b);margin-bottom:14px}
-        .sc-offer-row{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+        body{background:#F2F2F7;min-height:100vh}
+        #showcaseContainer{
+          --b:#E8613A;--ink:#1A1714;--mid:#6B6560;--dim:#9B958E;
+          --surf:#fff;--surf2:#F2F2F7;--bd:#E5E5EA;--green:#34C759;
+          max-width:430px;margin:0 auto;padding:24px 16px 130px;color:var(--ink);
+          font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Arial,sans-serif;
+        }
+        /* Hero */
+        .sc-hero{display:flex;gap:18px;align-items:flex-start;margin-bottom:20px}
+        .sc-av{
+          width:88px;height:88px;border-radius:50%;
+          background-size:cover;background-position:center;flex-shrink:0;
+          box-shadow:0 4px 16px rgba(0,0,0,.14);
+          border:3px solid #fff;
+        }
+        .sc-av-txt{display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#fff}
+        .sc-name-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px}
+        .sc-name{font-size:22px;font-weight:800;letter-spacing:-.4px;line-height:1.15;color:var(--ink)}
+        .sc-verified{display:inline-flex;align-items:center;gap:3px;background:#34C759;color:#fff;
+          font-size:10px;font-weight:700;padding:2px 7px 2px 4px;border-radius:99px;white-space:nowrap;flex-shrink:0}
+        .sc-verified svg{width:11px;height:11px;fill:#fff}
+        .sc-headline{font-size:13px;color:var(--mid);font-weight:500;line-height:1.4;margin-bottom:6px}
+        .sc-socials{display:flex;gap:8px;flex-wrap:wrap}
+        .sc-social{font-size:11.5px;font-weight:700;color:var(--b);text-decoration:none;
+          background:rgba(232,97,58,.10);padding:3px 9px;border-radius:99px}
+        /* Stats chips */
+        .sc-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:18px;
+          -webkit-overflow-scrolling:touch;scrollbar-width:none}
+        .sc-stats::-webkit-scrollbar{display:none}
+        .sc-stat{
+          flex-shrink:0;display:flex;align-items:center;gap:6px;
+          background:var(--surf);border:1.5px solid var(--bd);
+          border-radius:14px;padding:9px 13px;
+          font-size:12px;font-weight:700;color:var(--ink);
+          box-shadow:0 1px 3px rgba(0,0,0,.06);
+        }
+        .sc-stat-ico{font-size:14px;line-height:1}
+        .sc-scarce{border-color:rgba(220,38,38,.35);color:#DC2626}
+        .sc-dot{width:8px;height:8px;border-radius:50%;background:#DC2626;
+          box-shadow:0 0 0 3px rgba(220,38,38,.18);flex-shrink:0}
+        /* Tabs */
+        .sc-tabs{display:flex;gap:0;background:var(--surf);border:1.5px solid var(--bd);
+          border-radius:13px;padding:3px;margin-bottom:12px;
+          box-shadow:0 1px 4px rgba(0,0,0,.06)}
+        .sc-tab{
+          flex:1;padding:9px 4px;border:none;background:none;border-radius:10px;
+          font-family:inherit;font-size:13px;font-weight:600;color:var(--mid);
+          cursor:pointer;transition:.18s;position:relative;
+        }
+        .sc-tab.on{
+          background:var(--b);color:#fff;
+          box-shadow:0 2px 8px rgba(232,97,58,.3);
+        }
+        /* Content panel */
+        .sc-panel{
+          background:var(--surf);border:1.5px solid var(--bd);border-radius:16px;
+          padding:18px 18px;font-size:14px;line-height:1.75;color:var(--ink);
+          min-height:90px;box-shadow:0 1px 3px rgba(0,0,0,.05);
+        }
+        /* Offer section */
+        .sc-offer{
+          margin-top:16px;
+          background:linear-gradient(160deg,rgba(232,97,58,.09) 0%,rgba(232,97,58,.03) 100%);
+          border:1.5px solid rgba(232,97,58,.22);border-radius:18px;padding:20px 18px;
+        }
+        .sc-offer-title{
+          font-size:15px;font-weight:800;color:var(--b);margin-bottom:16px;line-height:1.3
+        }
+        .sc-offer-row{
+          display:flex;gap:13px;align-items:center;margin-bottom:14px;
+        }
         .sc-offer-row:last-child{margin-bottom:0}
-        .sc-offer-ico{font-size:22px;flex-shrink:0;line-height:1.2}
-        .sc-offer-t{font-size:14px;font-weight:700}
-        .sc-offer-d{font-size:12px;color:var(--mid);margin-top:1px;line-height:1.45}
-        .sc-cta-wrap{position:fixed;bottom:0;left:0;right:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(251,250,248,0),rgba(251,250,248,.96) 30%);z-index:50}
-        .sc-cta{display:block;max-width:520px;margin:0 auto;text-align:center;background:var(--b);color:#fff;border:none;border-radius:14px;padding:16px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(232,97,58,.35);text-decoration:none}
-        .sc-brand-foot{text-align:center;font-size:11px;color:var(--dim);margin-top:22px}
+        .sc-offer-ico-wrap{
+          width:44px;height:44px;border-radius:12px;background:rgba(232,97,58,.12);
+          display:flex;align-items:center;justify-content:center;
+          font-size:22px;flex-shrink:0;
+        }
+        .sc-offer-t{font-size:14px;font-weight:700;color:var(--ink)}
+        /* Brand footer */
+        .sc-brand-foot{text-align:center;font-size:11px;color:var(--dim);margin-top:22px;padding-bottom:4px}
         .sc-brand-foot b{color:var(--b)}
-        /* Aydınlık başvuru sheet */
-        #scApplySheet{position:fixed;inset:0;background:rgba(26,23,20,.5);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-end;justify-content:center}
+        /* CTA bar */
+        .sc-cta-wrap{
+          position:fixed;bottom:0;left:0;right:0;
+          padding:10px 16px calc(14px + env(safe-area-inset-bottom));
+          background:linear-gradient(180deg,rgba(242,242,247,0) 0%,rgba(242,242,247,.97) 35%);
+          z-index:50;
+        }
+        .sc-cta{
+          display:block;max-width:430px;margin:0 auto;text-align:center;
+          background:var(--b);color:#fff;border:none;border-radius:16px;
+          padding:17px 20px;font-family:inherit;font-size:16px;font-weight:800;
+          cursor:pointer;box-shadow:0 6px 20px rgba(232,97,58,.38);text-decoration:none;
+          letter-spacing:.2px;
+        }
+        .sc-cta:active{opacity:.88;transform:scale(.985)}
+        /* Apply sheet */
+        #scApplySheet{
+          position:fixed;inset:0;background:rgba(0,0,0,.45);
+          backdrop-filter:blur(6px);z-index:100;display:none;
+          align-items:flex-end;justify-content:center;
+        }
         #scApplySheet.on{display:flex}
-        .sc-sheet{background:var(--surf);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:24px 20px calc(24px + env(safe-area-inset-bottom));animation:scUp .3s ease}
-        @keyframes scUp{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
-        .sc-sheet h3{font-size:19px;font-weight:800;margin-bottom:4px}
-        .sc-sheet p{font-size:13px;color:var(--mid);margin-bottom:18px}
-        .sc-f{margin-bottom:12px}
-        .sc-f label{display:block;font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
-        .sc-f input,.sc-f textarea{width:100%;background:var(--surf2);border:1.5px solid var(--bd);border-radius:10px;padding:12px 14px;font-size:14px;font-family:inherit;color:var(--ink);outline:none;box-sizing:border-box}
+        .sc-sheet{
+          background:var(--surf);width:100%;max-width:430px;
+          border-radius:24px 24px 0 0;
+          padding:28px 20px calc(28px + env(safe-area-inset-bottom));
+          animation:scUp .28s cubic-bezier(.32,1,.35,1);
+        }
+        @keyframes scUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+        .sc-sheet-handle{width:36px;height:4px;border-radius:99px;background:var(--bd);margin:0 auto 20px}
+        .sc-sheet h3{font-size:20px;font-weight:800;margin-bottom:4px;color:var(--ink)}
+        .sc-sheet p{font-size:13px;color:var(--mid);margin-bottom:20px;line-height:1.5}
+        .sc-f{margin-bottom:13px}
+        .sc-f label{display:block;font-size:11px;font-weight:700;color:var(--mid);
+          text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+        .sc-f input,.sc-f textarea{
+          width:100%;background:var(--surf2);border:1.5px solid var(--bd);
+          border-radius:11px;padding:13px 14px;font-size:15px;
+          font-family:inherit;color:var(--ink);outline:none;box-sizing:border-box;
+          -webkit-appearance:none;
+        }
         .sc-f input:focus,.sc-f textarea:focus{border-color:var(--b)}
         .sc-opt{font-weight:400;text-transform:none;color:var(--dim)}
       </style>
 
+      <!-- Hero -->
       <div class="sc-hero">
         ${avatar}
-        <div style="min-width:0">
-          <div class="sc-name">${esc(c.name)}</div>
+        <div style="min-width:0;padding-top:4px">
+          <div class="sc-name-row">
+            <div class="sc-name">${esc(c.name)}</div>
+            <div class="sc-verified">
+              <svg viewBox="0 0 12 12"><path d="M5 8.5L2.5 6l.7-.7L5 7.1l3.8-3.8.7.7z"/></svg>
+              Verified
+            </div>
+          </div>
           <div class="sc-headline">${esc(headline)}</div>
           <div class="sc-socials">${social.join('')}</div>
         </div>
       </div>
 
+      <!-- Stat chips -->
       ${statsHtml}
 
+      <!-- Tabs -->
       <div class="sc-tabs">
         <button class="sc-tab on" data-t="bio" onclick="scTab('bio')">Biyografi</button>
         <button class="sc-tab" data-t="edu" onclick="scTab('edu')">Eğitim</button>
@@ -769,28 +911,41 @@
       </div>
       <div class="sc-panel" id="scPanel">${esc(p.bio || 'Biyografi henüz eklenmedi.').replace(/\n/g,'<br>')}</div>
 
+      <!-- Offer section -->
       <div class="sc-offer">
-        <h3>Benimle Çalıştığında Seni Neler Bekliyor?</h3>
-        <div class="sc-offer-row"><span class="sc-offer-ico">📅</span><div><div class="sc-offer-t">Sana Özel Dijital Çalışma Odası</div><div class="sc-offer-d">Günlük hedeflerini işaretlediğin, hızını ölçtüğün kişisel panelin.</div></div></div>
-        <div class="sc-offer-row"><span class="sc-offer-ico">🤖</span><div><div class="sc-offer-t">7/24 Sokratik AI Ders Asistanı</div><div class="sc-offer-d">Takıldığın soruda cevabı söylemeden ipuçlarıyla öğreten yapay zekâ.</div></div></div>
-        <div class="sc-offer-row"><span class="sc-offer-ico">📊</span><div><div class="sc-offer-t">Haftalık Profesyonel Veli Raporu</div><div class="sc-offer-d">Gelişimin ve deneme netlerin veline şık PDF raporlarla sunulur.</div></div></div>
+        <div class="sc-offer-title">Rostrum Altyapısı ile Neler Sunuyorum?</div>
+        <div class="sc-offer-row">
+          <div class="sc-offer-ico-wrap">🖥️</div>
+          <div class="sc-offer-t">Dijital Çalışma Odası</div>
+        </div>
+        <div class="sc-offer-row">
+          <div class="sc-offer-ico-wrap">🤖</div>
+          <div class="sc-offer-t">Sokratik AI Asistanı</div>
+        </div>
+        <div class="sc-offer-row">
+          <div class="sc-offer-ico-wrap">📄</div>
+          <div class="sc-offer-t">Haftalık PDF Raporu</div>
+        </div>
       </div>
 
       <div class="sc-brand-foot">🎓 <b>Rostrum Akademi</b> altyapısıyla güçlendirilmiştir</div>
 
-      <div class="sc-cta-wrap"><button class="sc-cta" onclick="openScApply()">Koçluk İçin Ön Başvuru Yap →</button></div>
+      <div class="sc-cta-wrap">
+        <button class="sc-cta" onclick="openScApply()">Koçluk İçin Ön Başvuru Yap →</button>
+      </div>
 
-      <!-- Başvuru sheet -->
+      <!-- Apply sheet -->
       <div id="scApplySheet" onclick="if(event.target===this)this.classList.remove('on')">
         <div class="sc-sheet">
+          <div class="sc-sheet-handle"></div>
           <h3>Ön Başvuru</h3>
           <p><b>${esc(c.name)}</b> ile koçluk için bilgilerini bırak — en kısa sürede sana dönecek.</p>
           <input type="hidden" id="scApplyCoach" value="${esc(c.id)}">
           <div class="sc-f"><label>Adın Soyadın</label><input type="text" id="scName" placeholder="Ad Soyad"></div>
           <div class="sc-f"><label>WhatsApp Numaran</label><input type="tel" id="scPhone" placeholder="0 (5__) ___ __ __" oninput="scMaskPhone(this)"></div>
           <div class="sc-f"><label>E-posta <span class="sc-opt">(opsiyonel)</span></label><input type="email" id="scEmail" placeholder="ornek@gmail.com"></div>
-          <div class="sc-f"><label>YKS Hedefin & Şu Anki Durumun</label><textarea id="scGoal" rows="2" placeholder="Örn: Tıp istiyorum, Sayısal 12. sınıf"></textarea></div>
-          <button class="sc-cta" style="position:static;box-shadow:none;margin-top:4px" onclick="submitScApply()">Başvuruyu Gönder →</button>
+          <div class="sc-f"><label>YKS Hedefin &amp; Şu Anki Durumun</label><textarea id="scGoal" rows="2" placeholder="Örn: Tıp istiyorum, Sayısal 12. sınıf"></textarea></div>
+          <button class="sc-cta" style="position:static;box-shadow:none;margin-top:6px" onclick="submitScApply()">Başvuruyu Gönder →</button>
         </div>
       </div>
     `;

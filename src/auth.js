@@ -10,6 +10,10 @@ import { showLoading, sha256, normalizeUsername, showToast } from './helpers.js'
 // Prevents concurrent or duplicate session initialization calls
 let _sessionHandled = false;
 
+if (window.location.hash.includes('type=recovery')) {
+  window.isPasswordRecoveryActive = true;
+}
+
 export function loginErr(msg) {
   const el = document.getElementById('loginErr');
   el.textContent = msg;
@@ -138,7 +142,7 @@ export async function simOAuthLogin(type) {
 }
 
 export async function checkOAuthSession() {
-  if (window.location.hash.includes('type=recovery')) {
+  if (window.location.hash.includes('type=recovery') || window.isPasswordRecoveryActive) {
     console.log('[Auth] Recovery session active, skipping checkOAuthSession');
     return;
   }
@@ -666,6 +670,10 @@ export function doLogout() {
 }
 
 export function showForgotPassword() {
+  const loginEmail = (document.getElementById('loginEmail')?.value || document.getElementById('loginUser')?.value || '').trim();
+  if (loginEmail && document.getElementById('forgotEmail')) {
+    document.getElementById('forgotEmail').value = loginEmail;
+  }
   window.om('forgotPassModal');
 }
 
@@ -673,6 +681,14 @@ export async function sendResetEmail() {
   const email = document.getElementById('forgotEmail').value.trim();
   if (!email) return;
   const msgEl = document.getElementById('forgotMsg');
+  const btnEl = document.getElementById('btnSendReset');
+  
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = 'Gönderiliyor...';
+  }
+  msgEl.style.display = 'none';
+
   try {
     const resp = await fetch('/api/mailer', {
       method: 'POST',
@@ -690,6 +706,11 @@ export async function sendResetEmail() {
     msgEl.style.background = 'var(--red-dim)';
     msgEl.style.color = 'var(--red)';
     msgEl.textContent = 'Hata: ' + (e.message || 'Bir sorun oluştu.');
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = 'Sıfırlama Linki Gönder →';
+    }
   }
 }
 
@@ -752,8 +773,9 @@ window.onInviteCodeInput = onInviteCodeInput;
 window.applyInviteFromUrl = applyInviteFromUrl;
 
 db.auth.onAuthStateChange(async (event, sessionData) => {
-  const isRecovery = event === 'PASSWORD_RECOVERY' || window.location.hash.includes('type=recovery');
+  const isRecovery = event === 'PASSWORD_RECOVERY' || window.location.hash.includes('type=recovery') || window.isPasswordRecoveryActive;
   if (isRecovery) {
+    window.isPasswordRecoveryActive = true;
     console.log('[Auth] Password recovery flow active, showing resetPasswordModal');
     showLoading(false);
     window.om('resetPasswordModal');

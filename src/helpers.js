@@ -217,3 +217,19 @@ window.getStudentWeekStart = getStudentWeekStart;
 window.sha256 = sha256;
 window.normalizeUsername = normalizeUsername;
 window.requestNotificationPermission = requestNotificationPermission;
+
+export function togglePasswordVisibility(inputId, iconId) {
+  const input = document.getElementById(inputId);
+  const icon = document.getElementById(iconId);
+  if (input && icon) {
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.textContent = '🙈';
+    } else {
+      input.type = 'password';
+      icon.textContent = '👁️';
+    }
+  }
+}
+window.togglePasswordVisibility = togglePasswordVisibility;
+
