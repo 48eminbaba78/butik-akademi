@@ -22,7 +22,8 @@ export default defineConfig({
         test: resolve(__dirname, 'test.html'),
         kaynak_yoneticisi: resolve(__dirname, 'kaynak_yoneticisi.html'),
         nasil_yapilir: resolve(__dirname, 'nasil-yapilir.html'),
-        kayit: resolve(__dirname, 'kayit.html')
+        kayit: resolve(__dirname, 'kayit.html'),
+        davet: resolve(__dirname, 'davet.html')
       }
     }
   }
