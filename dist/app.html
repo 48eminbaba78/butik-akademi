@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
 <title>Rostrum Akademi</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/app-BkDLOpJp.js"></script>
+  <script type="module" crossorigin src="/assets/app-CIv2_pWC.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/app-985p5Trw.css">
 </head>
 <body>
@@ -527,13 +527,14 @@
     <button class="modal-close" onclick="cm('studentModal')">×</button>
     <h2 id="smTitle">Yeni Öğrenci</h2>
     <input type="hidden" id="smId">
-    <div class="field"><label>Ad Soyad</label><input id="smName" placeholder="Ad Soyad"></div>
-    <div class="field"><label>Hedef / Program</label><input id="smTarget" placeholder="TYT / AYT Hedefli"></div>
-    <div class="field-row">
-      <div class="field"><label>Kullanıcı Adı</label><input id="smUsername" type="text" placeholder="muzaffer (boş bırakılırsa ad kullanılır)"></div>
-      <div class="field"><label>Şifre</label><input id="smPass" type="text" placeholder="ogrenci123"></div>
+    <div class="field" id="smNameField"><label>Ad Soyad</label><input id="smName" placeholder="Ad Soyad"></div>
+    <div class="field" id="smEmailField"><label>E-posta Adresi (Davet Gönderilecek)</label><input id="smEmail" type="email" placeholder="ogrenci@email.com"></div>
+    <div class="field" id="smTargetField"><label>Hedef / Program</label><input id="smTarget" placeholder="TYT / AYT Hedefli"></div>
+    <div class="field-row" id="smInviteRow">
+      <div class="field"><label>Kullanıcı Adı Önerisi</label><input id="smUsername" type="text" placeholder="muzaffer (boş bırakılırsa ad kullanılır)"></div>
+      <div class="field" id="smPassField"><label>Şifre</label><input id="smPass" type="text" placeholder="Yeni şifre belirle (düzenleme için)"></div>
     </div>
-    <div class="field-row">
+    <div class="field-row" id="smYksRow">
       <div class="field"><label>Alan (YKS)</label>
         <select id="smYksArea">
           <option value="SAY">Sayısal (SAY)</option>
@@ -550,7 +551,7 @@
         </select>
       </div>
     </div>
-    <div class="field"><label>Renk</label>
+    <div class="field" id="smColorField"><label>Renk</label>
       <div class="color-pick" id="smColorPick">
         <div class="color-opt" data-c="#f0a500" style="background:#f0a500"></div>
         <div class="color-opt sel" data-c="#e8622a" style="background:#e8622a"></div>
@@ -560,7 +561,7 @@
         <div class="color-opt" data-c="#f472b6" style="background:#f472b6"></div>
       </div>
     </div>
-    <div class="field"><label>İlerleme (%)</label>
+    <div class="field" id="smProgField"><label>İlerleme (%)</label>
       <input type="range" id="smProg" min="0" max="100" value="0" style="width:100%">
       <div class="pct-display" id="smProgVal">0%</div>
     </div>

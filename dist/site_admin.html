@@ -3373,7 +3373,7 @@ async function publishIgPost(isStory = false) {
     }
 
     btn.textContent = '⏳ Yayınlanıyor...';
-    const response = await fetch('/api/publish-instagram', {
+    const response = await fetch('/api/instagram?action=publish', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(fetchBody)
     });
@@ -4631,7 +4631,7 @@ async function publishManualPost(isStory) {
         btn.textContent = `⏳ Hikaye ${i+1}/${total}...`;
         const svgStr = getCarouselSlideSvg(_mpSlides[i] || { type: 'hook', headline: '' }, i, total);
         const imageBase64 = await svgToJpegBase64(svgStr, 1080, 1080);
-        const stRes = await fetch('/api/publish-instagram', {
+        const stRes = await fetch('/api/instagram?action=publish', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageBase64, caption: '', isStory: true })
@@ -4662,7 +4662,7 @@ async function publishManualPost(isStory) {
     }
 
     btn.textContent = '⏳ Yayınlanıyor...';
-    const res = await fetch('/api/publish-instagram', {
+    const res = await fetch('/api/instagram?action=publish', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -5575,7 +5575,7 @@ async function publishReels() {
     status.textContent = 'Instagram\'a gönderiliyor (işleme ~1-2 dk sürebilir)...';
     const { data: { session } } = await db.auth.getSession();
 
-    const resp = await fetch('/api/publish-instagram', {
+    const resp = await fetch('/api/instagram?action=publish', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

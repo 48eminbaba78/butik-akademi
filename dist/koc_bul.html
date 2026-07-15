@@ -645,7 +645,32 @@
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
-  window.onload = loadCoaches;
+  // Derin link: /koc/<slug> (rewrite ?koc=) veya eski ?coach=<uuid> — profili doğrudan aç
+  async function openDeepLink() {
+    const params = new URLSearchParams(location.search);
+    const slugParam = (params.get('koc') || '').toLowerCase().trim();
+    const coachParam = (params.get('coach') || '').trim();
+    if (!slugParam && !coachParam) return;
+    let target = null;
+    if (slugParam) {
+      target = allCoaches.find(c => (c.profile.slug || '').toLowerCase() === slugParam);
+      if (!target) {
+        try {
+          const { data } = await db.rpc('get_coach_by_slug', { p_slug: slugParam });
+          if (data && data.length) target = allCoaches.find(c => c.id === data[0].id);
+        } catch(e) {}
+      }
+    } else if (coachParam) {
+      target = allCoaches.find(c => c.id === coachParam);
+    }
+    if (target) {
+      viewCoachDetails(target.id);
+    } else if (slugParam) {
+      showToast('Bu linkte bir koç profili bulunamadı.');
+    }
+  }
+
+  window.onload = async () => { await loadCoaches(); openDeepLink(); };
 </script>
 </body>
 </html>

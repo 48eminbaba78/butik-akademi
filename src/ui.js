@@ -711,9 +711,8 @@ function renderStudentsSearch(){
         <div style="font-size:12px;color:var(--text-dim);margin-top:3px">${totalStudents} öğrenci · ${activeThisWeek} bu hafta aktif · ${completedAll} hafta tamamladı</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="openInviteCodeModal()" style="gap:6px;font-size:13px;padding:9px 16px">🎟 Davet Kodu</button>
         <button class="btn btn-accent" onclick="openStudentModal()" style="gap:6px;font-size:13px;padding:9px 18px">
-          <span style="font-size:16px;line-height:1">+</span> Yeni Öğrenci
+          📩 Öğrenci Davet Et
         </button>
       </div>
     </div>
@@ -732,8 +731,8 @@ function renderStudentsSearch(){
         <div style="text-align:center;padding:64px 20px;color:var(--text-dim)">
           <div style="width:56px;height:56px;border-radius:16px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 16px">👤</div>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Henüz öğrenciniz yok</div>
-          <div style="font-size:12px;margin-bottom:16px">Sağ üstten kendiniz ekleyin ya da davet kodunuzu paylaşın — öğrenci kendi hesabını açsın.</div>
-          <button class="btn btn-accent btn-sm" onclick="openInviteCodeModal()">🎟 Davet Kodunu Paylaş</button>
+          <div style="font-size:12px;margin-bottom:16px">Öğrencilerinize e-posta ile davet gönderin, kendi hesaplarını açıp doğrudan başlasınlar.</div>
+          <button class="btn btn-accent btn-sm" onclick="openStudentModal()">📩 Öğrenci Davet Et</button>
         </div>
       ` : S.students.map(s=>{
         const w=weekStats[s.id]||{total:0,done:0,totalMin:0,doneMin:0};
@@ -3054,7 +3053,9 @@ function goProgram(id){
 }
 function openStudentModal(id){
   const s=id?S.students.find(x=>x.id===id):null;
-  document.getElementById('smTitle').textContent=s?'Öğrenciyi Düzenle':'Yeni Öğrenci';
+  const isEdit = !!s;
+
+  document.getElementById('smTitle').textContent=isEdit?'Öğrenciyi Düzenle':'Öğrenci Davet Et';
   document.getElementById('smId').value=id||'';
   document.getElementById('smName').value=s?.name||'';
   document.getElementById('smTarget').value=s?.target||'';
@@ -3065,10 +3066,31 @@ function openStudentModal(id){
   document.getElementById('smProg').value=s?.progress||0;
   document.getElementById('smProgVal').textContent=(s?.progress||0)+'%';
   document.querySelectorAll('.color-opt').forEach(el=>el.classList.toggle('sel',el.dataset.c===(s?.color||'#e8622a')));
-  // Koç modunda role field varsa gizle, save butonu normal çağırsın
+
+  // Toggle fields based on edit vs invite mode
+  const emailField = document.getElementById('smEmailField');
+  const targetField = document.getElementById('smTargetField');
+  const inviteRow = document.getElementById('smInviteRow');
+  const yksRow = document.getElementById('smYksRow');
+  const colorField = document.getElementById('smColorField');
+  const progField = document.getElementById('smProgField');
+  const submitBtn = document.querySelector('#studentModal .btn-accent');
+
+  if (emailField) emailField.style.display = isEdit ? 'none' : 'block';
+  if (targetField) targetField.style.display = isEdit ? 'block' : 'none';
+  if (inviteRow) inviteRow.style.display = isEdit ? 'flex' : 'none';
+  if (yksRow) yksRow.style.display = isEdit ? 'flex' : 'none';
+  if (colorField) colorField.style.display = isEdit ? 'block' : 'none';
+  if (progField) progField.style.display = isEdit ? 'block' : 'none';
+  
+  if (submitBtn) {
+    submitBtn.textContent = isEdit ? 'Kaydet' : 'Davet Gönder';
+    submitBtn.setAttribute('onclick', 'saveStudent()');
+  }
+
+  // Koç modunda role field varsa gizle
   const roleField=document.getElementById('smRoleField');
   if(roleField) roleField.style.display='none';
-  document.querySelector('#studentModal .btn-accent').setAttribute('onclick','saveStudent()');
   om('studentModal');
 }
 document.getElementById('smProg').addEventListener('input',function(){document.getElementById('smProgVal').textContent=this.value+'%';});
@@ -3083,6 +3105,7 @@ async function saveStudent(){
   const pass = await sha256(passRaw);
   const yksArea = document.getElementById('smYksArea').value;
   const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'Hedef belirtilmemiş',color,progress:Number(document.getElementById('smProg').value),password_hash:pass,week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:'student',coach_id:session.coachId,yks_area:yksArea};
+
   if(id){
     const {error}=await db.rpc('update_student_profile', {
       p_student_id: id,
@@ -3102,25 +3125,41 @@ async function saveStudent(){
     showToast('Güncellendi ✓');
     saveUI();cm('studentModal');renderStudentsSearch();
   } else {
-    const email = uname + '@rostrumakademi.com';
+    const email = document.getElementById('smEmail')?.value.trim();
+    if (!email || !email.includes('@')) return showToast('Geçerli bir e-posta adresi girin!');
+
     const { data: { session: authSess } } = await db.auth.getSession();
-    const resp = await fetch('/api/create-student', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authSess?.access_token||''}` },
-      body: JSON.stringify({ email, password: passRaw, full_name: payload.full_name, username: uname, color: payload.color, target: payload.target, progress: payload.progress, week_start: payload.week_start, coach_id: payload.coach_id, exam_profile: 'YKS', yks_area: payload.yks_area })
-    });
-    const result = await resp.json();
-    if (!resp.ok) return showToast('Hata: ' + result.error);
-    const newUserId = result.userId;
-    S.students.push({id:newUserId,name:payload.full_name,target:payload.target,color:payload.color,progress:payload.progress||0,pass:pass,weekStart:payload.week_start||0,username:uname,yksArea:payload.yks_area});
-    if(!S.activeStuId)S.activeStuId=newUserId;
-    saveUI();cm('studentModal');
-    // Davet bilgisi göster
-    showInviteInfo(payload.full_name, uname, passRaw);
+    showToast('Davet gönderiliyor...');
+    try {
+      const resp = await fetch('/api/invitation?action=create', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${authSess?.access_token||''}`,
+          'X-Coach-Id': session.dbUser?.id || '',
+          'X-Coach-Hash': session.dbUser?.password_hash || ''
+        },
+        body: JSON.stringify({ email, student_name: payload.full_name, username: uname })
+      });
+      const result = await resp.json();
+      if (!resp.ok) return showToast('Hata: ' + result.error);
+
+      // Sadece davet gönderildi uyarısı ver
+      showToast('Davet gönderildi ✓');
+      saveUI();cm('studentModal');
+      
+      const siteUrl = window.location.origin + window.location.pathname.replace('app.html','');
+      const invitationLink = `${siteUrl}davet.html?token=${result.token}`;
+      
+      showInviteInfo(payload.full_name, email, invitationLink);
+    } catch (e) {
+      console.error(e);
+      showToast('İletişim hatası oluştu.');
+    }
   }
 }
 // ── ÖĞRENCİ DAVET BİLGİSİ ──────────────────────
-function showInviteInfo(name, username, pass){
+function showInviteInfo(name, email, inviteUrl){
   let modal = document.getElementById('inviteModal');
   if(!modal){
     modal = document.createElement('div');
@@ -3129,97 +3168,43 @@ function showInviteInfo(name, username, pass){
     document.body.appendChild(modal);
     modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
   }
-  const siteUrl = window.location.origin + window.location.pathname.replace('app.html','');
-  const loginUrl = `${siteUrl}app.html`;
-  const whatsappText = encodeURIComponent(`Merhaba ${name}! 🎓\n\nSeni Rostrum Akademi platformuna ekledim.\n\n📱 Giriş adresi: ${loginUrl}\n👤 Kullanıcı adı: ${username}\n🔑 Şifre: ${pass}\n\nGiriş yaptıktan sonra programını görebileceksin!`);
+  const whatsappText = encodeURIComponent(`Merhaba ${name}! 🎓\n\nRostrum Akademi platformuna katılım davetin hazır. Aşağıdaki linke tıklayarak parolanı belirleyip hemen başlayabilirsin:\n\n🔗 Davet Linki: ${inviteUrl}`);
 
   modal.innerHTML = `<div class="modal" style="max-width:480px">
     <button class="modal-close" onclick="cm('inviteModal');renderStudentsSearch()">×</button>
     <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:40px;margin-bottom:8px">🎉</div>
-      <h2>${esc(name)} eklendi!</h2>
-      <p style="font-size:13px;color:var(--text-mid);margin-top:6px">Öğrencine aşağıdaki bilgileri paylaş</p>
+      <div style="font-size:40px;margin-bottom:8px">📬</div>
+      <h2>Davet Hazır!</h2>
+      <p style="font-size:13px;color:var(--text-mid);margin-top:6px">Öğrencinize aşağıdaki davet bağlantısını paylaşın</p>
     </div>
 
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Kullanıcı Adı</div>
-          <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;color:var(--accent)">${esc(username)}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Şifre</div>
-          <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;color:var(--accent)">${esc(pass)}</div>
-        </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Davet Edilen E-posta</div>
+        <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:800;color:var(--accent);margin-bottom:12px">${esc(email)}</div>
       </div>
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Giriş Adresi</div>
-        <div style="font-size:12px;color:var(--blue);word-break:break-all">${loginUrl}</div>
+      <div style="border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Davet Bağlantısı</div>
+        <div style="font-size:12px;color:var(--blue);word-break:break-all">${inviteUrl}</div>
       </div>
     </div>
 
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="copyInvite('${esc(username)}','${esc(pass)}','${loginUrl}')">📋 Kopyala</button>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="copyStudentInviteLink('${inviteUrl}')">📋 Bağlantıyı Kopyala</button>
       <a href="https://wa.me/?text=${whatsappText}" target="_blank" class="btn btn-accent" style="flex:1;justify-content:center;text-decoration:none">💬 WhatsApp ile Gönder</a>
     </div>
-
-    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:12px">
-      <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:8px">📧 E-posta ile gönder (opsiyonel)</div>
-      <div style="display:flex;gap:8px">
-        <input type="email" id="inviteEmailInput" placeholder="veli@ornek.com" style="flex:1;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
-        <button onclick="sendInviteEmail()" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Gönder</button>
-      </div>
-      <div id="inviteEmailMsg" style="display:none;font-size:12px;margin-top:6px;padding:6px 10px;border-radius:6px"></div>
-    </div>
-
-    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:12px" onclick="cm('inviteModal');renderStudentsSearch()">Kapat</button>
   </div>`;
-  window._pendingInvite = { name, username, pass, loginUrl };
+  window._pendingInvite = { name, email, inviteUrl };
   om('inviteModal');
 }
 
-async function sendInviteEmail() {
-  const email = document.getElementById('inviteEmailInput')?.value.trim();
-  const msgEl = document.getElementById('inviteEmailMsg');
-  if (!email || !email.includes('@')) {
-    if (msgEl) { msgEl.style.display = 'block'; msgEl.style.background = 'var(--red-dim)'; msgEl.style.color = 'var(--red)'; msgEl.textContent = 'Geçerli bir e-posta girin.'; }
-    return;
-  }
-  if (!window._pendingInvite) return;
-  const { name, username, pass, loginUrl } = window._pendingInvite;
-  if (msgEl) { msgEl.style.display = 'block'; msgEl.style.background = 'var(--surface2)'; msgEl.style.color = 'var(--text-mid)'; msgEl.textContent = 'Gönderiliyor...'; }
-  try {
-    const resp = await fetch('/api/mailer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'student_welcome',
-        to: email,
-        student_name: name,
-        username,
-        password: pass,
-        login_url: loginUrl,
-        coach_name: S.workspace?.brand_name || ''
-      })
-    });
-    const d = await resp.json();
-    if (resp.ok) {
-      if (msgEl) { msgEl.style.background = 'var(--green-dim)'; msgEl.style.color = 'var(--green)'; msgEl.textContent = '✓ Mail gönderildi!'; }
-    } else {
-      throw new Error(d.error || 'Sunucu hatası');
-    }
-  } catch (e) {
-    if (msgEl) { msgEl.style.background = 'var(--red-dim)'; msgEl.style.color = 'var(--red)'; msgEl.textContent = '✗ ' + e.message; }
-  }
-}
-window.sendInviteEmail = sendInviteEmail;
-
-function copyInvite(username, pass, url){
-  const text = `Giriş adresi: ${url}\nKullanıcı adı: ${username}\nŞifre: ${pass}`;
-  navigator.clipboard.writeText(text).then(()=>showToast('Kopyalandı ✓')).catch(()=>{
-    const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');el.remove();showToast('Kopyalandı ✓');
+function copyStudentInviteLink(url){
+  navigator.clipboard.writeText(url).then(()=>showToast('Bağlantı kopyalandı ✓')).catch(()=>{
+    const el=document.createElement('textarea');el.value=url;document.body.appendChild(el);el.select();document.execCommand('copy');el.remove();showToast('Bağlantı kopyalandı ✓');
   });
 }
+
+
 async function deleteStu(id){
   if(!await customConfirm('Bu öğrenciyi silmek istediğinizden emin misiniz?'))return;
   
@@ -6940,7 +6925,10 @@ window.addEventListener('beforeinstallprompt', e => {
     const {outcome} = await _pwaPrompt.userChoice;
     if(outcome==='accepted') { btn.remove(); showToast('Uygulama yüklendi ✓'); }
   };
-  document.querySelector('.tbar-right').insertBefore(btn, document.querySelector('.user-pill'));
+  const tbar = document.querySelector('.tbar-right');
+  if (tbar) {
+    tbar.insertBefore(btn, document.querySelector('.user-pill'));
+  }
 });
 
 // ═══════════════════════════════════════════════
@@ -7434,8 +7422,12 @@ async function renderCoachProfile() {
   const photo_url = profile?.photo_url || '';
   const instagram = profile?.instagram || '';
   const linkedin = profile?.linkedin || '';
-  
-  const coachBulUrl = window.location.origin + window.location.pathname.replace('app.html', 'koc_bul.html') + `?coach=${userId}`;
+  const slug = profile?.slug || '';
+  _cpSavedSlug = slug;
+
+  const coachBulUrl = slug
+    ? `${window.location.origin}/koc/${slug}`
+    : window.location.origin + window.location.pathname.replace('app.html', 'koc_bul.html') + `?coach=${userId}`;
   
   el.innerHTML = `
     <div style="max-width:900px;margin:0 auto">
@@ -7445,32 +7437,63 @@ async function renderCoachProfile() {
         "Koç Bul" sayfasında görünecek bilgilerinizi buradan düzenleyebilirsiniz.
       </p>
       
-      <div style="margin-bottom: 16px; background: var(--surface2); border: 1px dashed var(--border); padding: 12px; border-radius: 9px;">
-        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Kamuya Açık Profil Linkiniz</label>
-        <div style="display:flex; gap:8px;">
-          <input type="text" readonly value="${coachBulUrl}" id="coachBulLink" style="flex:1; background:var(--surface3); border:1px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13px; color:var(--text-mid); outline:none;">
+      <div style="margin-bottom: 16px; background: var(--surface2); border: 1px dashed var(--border); padding: 14px; border-radius: 11px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px;">Kamuya Açık Profil Linkiniz</label>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+          <input type="text" readonly value="${coachBulUrl}" id="coachBulLink" style="flex:1; min-width:220px; background:var(--surface3); border:1px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13px; color:var(--text-mid); outline:none;">
           <button class="btn btn-ghost" onclick="navigator.clipboard.writeText(document.getElementById('coachBulLink').value); showToast('Link kopyalandı ✓')">🔗 Kopyala</button>
-          <a href="${coachBulUrl}" target="_blank" class="btn btn-accent" style="text-decoration:none; display:inline-flex; align-items:center;">👁 Göster</a>
+          <a href="${coachBulUrl}" target="_blank" class="btn btn-accent" style="text-decoration:none; display:inline-flex; align-items:center;">👁 Gözat</a>
         </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <span style="font-size:13px; color:var(--text-dim); white-space:nowrap;">rostrumakademi.com/koc/</span>
+          <input type="text" id="cpSlug" value="${esc(slug)}" placeholder="ad-soyad" maxlength="40" autocomplete="off"
+            oninput="onCoachSlugInput()"
+            style="flex:1; min-width:140px; background:var(--surface); border:1.5px solid var(--border); border-radius:9px; padding:8px 12px; font-size:13px; font-weight:700; letter-spacing:.3px; color:var(--text); outline:none;">
+          <span id="cpSlugStatus" style="font-size:12px; font-weight:700; white-space:nowrap;"></span>
+        </div>
+        <div style="font-size:11px; color:var(--text-dim); margin-top:6px;">Instagram biyografine koyacağın kısa, akılda kalıcı link. Küçük harf, rakam ve tire kullan.</div>
       </div>
 
       <div class="coach-profile-container">
         <!-- Sol Sütun: Form -->
         <div class="card coach-profile-form" style="margin:0; padding:20px;">
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-            <div>
-              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Uzmanlık Alanı / Dersler (Virgülle ayırın)</label>
-              <input type="text" id="cpSubjects" value="${esc(subjects)}" placeholder="Örn: Matematik, Fizik, Türkçe" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none;">
-            </div>
-            <div>
-              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Profil Fotoğrafı URL'si</label>
-              <input type="text" id="cpPhotoUrl" value="${esc(photo_url)}" placeholder="https://..." oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none;">
+          <!-- FOTO: sürükle-bırak / dosya seç → Supabase Storage -->
+          <div style="margin-bottom:14px;">
+            <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Profil Fotoğrafı <span style="color:var(--red)">*</span></label>
+            <input type="hidden" id="cpPhotoUrl" value="${esc(photo_url)}">
+            <input type="file" id="cpPhotoFile" accept="image/*" style="display:none" onchange="uploadCoachPhoto(this.files[0])">
+            <div id="cpPhotoDrop" onclick="document.getElementById('cpPhotoFile').click()"
+              ondragover="event.preventDefault(); this.style.borderColor='var(--accent)'; this.style.background='var(--accent-dim)'"
+              ondragleave="this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'"
+              ondrop="event.preventDefault(); this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'; uploadCoachPhoto(event.dataTransfer.files[0])"
+              style="display:flex; align-items:center; gap:14px; padding:14px 16px; background:var(--surface2); border:2px dashed var(--border); border-radius:12px; cursor:pointer; transition:all .15s;">
+              <div id="cpPhotoThumb" style="width:56px; height:56px; border-radius:50%; flex-shrink:0; background:${photo_url ? `url('${esc(photo_url)}') center/cover` : 'var(--accent-dim)'}; display:flex; align-items:center; justify-content:center; font-size:22px;">${photo_url ? '' : '📷'}</div>
+              <div style="min-width:0;">
+                <div id="cpPhotoDropText" style="font-size:13px; font-weight:700; color:var(--text);">${photo_url ? 'Fotoğraf yüklendi ✓ — değiştirmek için tıkla' : 'Fotoğrafını sürükle ya da tıkla'}</div>
+                <div style="font-size:11px; color:var(--text-dim);">JPG/PNG · en fazla 3 MB · yüklenince önizlemede anında görünür</div>
+              </div>
             </div>
           </div>
-          
+
+          <!-- UZMANLIK: etiket seçici (virgül girişi kalktı) -->
+          <div style="margin-bottom:14px;">
+            <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px;">Uzmanlık Alanların <span style="color:var(--red)">*</span> <span style="color:var(--text-dim); font-weight:600; text-transform:none;">— tıklayarak seç</span></label>
+            <input type="hidden" id="cpSubjects" value="${esc(subjects)}">
+            <div id="cpTagWrap" style="display:flex; flex-wrap:wrap; gap:7px;"></div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <input type="text" id="cpTagCustom" placeholder="Başka bir etiket ekle…" maxlength="30"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); addCustomCoachTag();}"
+                style="flex:1; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:8px 12px; font-size:13px; color:var(--text); outline:none;">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="addCustomCoachTag()">+ Ekle</button>
+            </div>
+          </div>
+
           <div style="margin-bottom: 12px;">
-            <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:4px;">Hakkımda / Biyografi</label>
-            <textarea id="cpBio" oninput="updateProfilePreview()" style="width:100%; min-height:100px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none; resize:vertical;">${esc(bio)}</textarea>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <label style="font-size:11px; font-weight:700; color:var(--text-mid);">Hakkımda / Biyografi <span style="color:var(--red)">*</span></label>
+              <button type="button" id="cpAiBioBtn" class="btn btn-ghost btn-xs" onclick="generateCoachBio()" style="gap:5px;">🤖 AI ile Oluştur</button>
+            </div>
+            <textarea id="cpBio" oninput="updateProfilePreview()" placeholder="Eğitim felsefen, koçluk yaklaşımın ve kendinden kısaca bahset — ya da bilgilerini doldurup 'AI ile Oluştur'a bas." style="width:100%; min-height:100px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:14px; color:var(--text); outline:none; resize:vertical;">${esc(bio)}</textarea>
           </div>
 
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
@@ -7498,6 +7521,7 @@ async function renderCoachProfile() {
             </div>
           </div>
 
+          <div id="cpErr" style="display:none; color:var(--red); font-size:13px; font-weight:600; margin-bottom:10px; padding:10px 14px; background:var(--red-dim); border-radius:9px;"></div>
           <button class="btn btn-accent" style="width:100%; padding:12px; font-size:14px;" onclick="saveCoachProfile()">Kaydet ✓</button>
         </div>
 
@@ -7532,7 +7556,145 @@ async function renderCoachProfile() {
   `;
 
   // Initialize preview card fields
+  renderCoachTags();
   updateProfilePreview();
+}
+
+// ── Uzmanlık etiketleri ─────────────────────────
+const COACH_TAG_PRESETS = ['YKS','TYT','AYT','LGS','Sayısal','Eşit Ağırlık','Sözel','Dil',
+  'Matematik','Geometri','Fizik','Kimya','Biyoloji','Türkçe','Edebiyat','Tarih','Coğrafya'];
+function _cpTags(){
+  return (document.getElementById('cpSubjects')?.value || '').split(',').map(s=>s.trim()).filter(Boolean);
+}
+function renderCoachTags(){
+  const wrap = document.getElementById('cpTagWrap');
+  if (!wrap) return;
+  const selected = _cpTags();
+  const extras = selected.filter(t => !COACH_TAG_PRESETS.includes(t));
+  wrap.innerHTML = [...COACH_TAG_PRESETS, ...extras].map(t => {
+    const on = selected.includes(t);
+    return `<button type="button" onclick="toggleCoachTag('${esc(t).replace(/'/g,"\\'")}')"
+      style="padding:6px 13px; border-radius:99px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; transition:all .12s;
+      border:1.5px solid ${on?'var(--accent)':'var(--border)'};
+      background:${on?'var(--accent)':'var(--surface2)'};
+      color:${on?'#fff':'var(--text-mid)'};">${on?'✓ ':''}${esc(t)}</button>`;
+  }).join('');
+}
+function toggleCoachTag(tag){
+  const inp = document.getElementById('cpSubjects');
+  let tags = _cpTags();
+  tags = tags.includes(tag) ? tags.filter(t=>t!==tag) : [...tags, tag];
+  inp.value = tags.join(', ');
+  renderCoachTags();
+  updateProfilePreview();
+}
+function addCustomCoachTag(){
+  const el = document.getElementById('cpTagCustom');
+  const t = (el.value||'').trim();
+  if (!t) return;
+  const tags = _cpTags();
+  if (!tags.includes(t)) {
+    document.getElementById('cpSubjects').value = [...tags, t].join(', ');
+  }
+  el.value = '';
+  renderCoachTags();
+  updateProfilePreview();
+}
+
+// ── Foto yükleme (coach-photos bucket, migration_v26) ──
+async function uploadCoachPhoto(file){
+  if (!file) return;
+  if (!file.type.startsWith('image/')) return showToast('Lütfen bir görsel dosyası seçin');
+  if (file.size > 3*1024*1024) return showToast('Dosya 3 MB\'den büyük — daha küçük bir görsel seçin');
+  const txt = document.getElementById('cpPhotoDropText');
+  const thumb = document.getElementById('cpPhotoThumb');
+  if (txt) txt.textContent = 'Yükleniyor…';
+  try {
+    const ext = (file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
+    const path = `${session.dbUser.id}/avatar_${Date.now()}.${ext}`;
+    const { error } = await db.storage.from('coach-photos').upload(path, file, { upsert:true, contentType:file.type });
+    if (error) throw error;
+    const { data } = db.storage.from('coach-photos').getPublicUrl(path);
+    const url = data?.publicUrl;
+    if (!url) throw new Error('URL alınamadı');
+    document.getElementById('cpPhotoUrl').value = url;
+    if (thumb) { thumb.style.background = `url('${url}') center/cover`; thumb.textContent=''; }
+    if (txt) txt.textContent = 'Fotoğraf yüklendi ✓ — değiştirmek için tıkla';
+    updateProfilePreview();
+    showToast('Fotoğraf yüklendi ✓');
+  } catch(e) {
+    if (txt) txt.textContent = 'Yüklenemedi — tekrar dene';
+    showToast('Yükleme hatası: ' + (e.message||e) + (String(e.message||'').includes('bucket') ? ' (migration_v26 çalıştırıldı mı?)' : ''));
+  }
+}
+
+// ── Slug: canlı müsaitlik kontrolü ──────────────
+let _cpSavedSlug = '';
+let _cpSlugTimer = null;
+let _cpSlugOk = true;
+function onCoachSlugInput(){
+  const inp = document.getElementById('cpSlug');
+  const st = document.getElementById('cpSlugStatus');
+  let v = (inp.value||'').toLowerCase()
+    .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
+    .replace(/[^a-z0-9-]/g,'-').replace(/-+/g,'-');
+  inp.value = v;
+  clearTimeout(_cpSlugTimer);
+  _cpSlugOk = false;
+  if (!v || v === _cpSavedSlug) { st.textContent = ''; _cpSlugOk = true; return; }
+  if (v.length < 3) { st.textContent = 'en az 3 karakter'; st.style.color = 'var(--text-dim)'; return; }
+  st.textContent = 'kontrol ediliyor…'; st.style.color = 'var(--text-dim)';
+  _cpSlugTimer = setTimeout(async () => {
+    try {
+      const { data, error } = await db.rpc('check_coach_slug', { p_slug: v });
+      if (error) { st.textContent = ''; _cpSlugOk = true; return; } // RPC yoksa engelleme
+      _cpSlugOk = !!data;
+      st.textContent = data ? '✓ müsait' : '✗ alınmış';
+      st.style.color = data ? 'var(--green)' : 'var(--red)';
+    } catch(e) { st.textContent=''; _cpSlugOk = true; }
+  }, 450);
+}
+
+// ── AI ile biyografi ────────────────────────────
+async function generateCoachBio(){
+  const btn = document.getElementById('cpAiBioBtn');
+  const name = session.dbUser?.full_name || 'Koç';
+  const subjects = document.getElementById('cpSubjects')?.value || '';
+  const education = document.getElementById('cpEducation')?.value || '';
+  const experience = document.getElementById('cpExperience')?.value || '';
+  if (!subjects && !education && !experience)
+    return _cpShowErr('AI\'nın malzemeye ihtiyacı var — önce uzmanlık, eğitim veya deneyim alanlarından en az birini doldur.');
+  if (btn) { btn.disabled = true; btn.textContent = '🤖 Yazıyor…'; }
+  try {
+    const res = await fetch('/api/ai-chat', {
+      method: 'POST',
+      headers: await aiAuthHeaders(),
+      body: JSON.stringify({
+        userRole: 'coach',
+        messages: [{ role: 'user', content:
+`Koç Bul sayfamdaki kamuya açık profilim için "Hakkımda" biyografisi yaz.
+Bilgilerim — İsim: ${name}. Uzmanlık: ${subjects || '-'}. Eğitim: ${education || '-'}. Deneyim/Başarılar: ${experience || '-'}.
+Kurallar: 1. tekil şahıs ("...yım/...yorum"), veli ve öğrenciye güven veren sıcak-profesyonel ton, 60-90 kelime, tek paragraf, emoji ve başlık YOK, abartılı/uydurma iddia YOK (sadece verdiğim bilgileri kullan). Yalnızca biyografi metnini yaz, başka hiçbir şey ekleme.` }]
+      })
+    });
+    const d = await res.json();
+    if (!res.ok || !d.reply) throw new Error(d.error || 'Yanıt alınamadı');
+    document.getElementById('cpBio').value = d.reply.trim().replace(/^["']|["']$/g,'');
+    updateProfilePreview();
+    showToast('Biyografi taslağı hazır — dilediğin gibi düzenleyebilirsin ✓');
+  } catch(e) {
+    _cpShowErr('AI biyografi üretilemedi: ' + (e.message||e));
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '🤖 AI ile Oluştur'; }
+}
+
+function _cpShowErr(msg){
+  const el = document.getElementById('cpErr');
+  if (!el) return showToast(msg);
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  setTimeout(()=>{ el.style.display='none'; }, 6000);
 }
 
 let _activePreviewTab = 'bio';
@@ -7633,27 +7795,45 @@ async function saveCoachProfile() {
   const photo_url = document.getElementById('cpPhotoUrl').value.trim();
   const instagram = document.getElementById('cpInstagram').value.trim();
   const linkedin = document.getElementById('cpLinkedin').value.trim();
-  
+  const slug = (document.getElementById('cpSlug')?.value || '').trim();
+
+  // Zorunlu alan doğrulamaları — kamu profili yarım bilgiyle yayınlanmasın
+  if (!photo_url) return _cpShowErr('Profil fotoğrafı zorunlu — velilerin en çok baktığı güven sinyali.');
+  if (!subjects) return _cpShowErr('En az bir uzmanlık etiketi seç.');
+  if (bio.length < 30) return _cpShowErr('Biyografi en az 30 karakter olmalı — "AI ile Oluştur" butonunu kullanabilirsin.');
+  if (!education) return _cpShowErr('Eğitim bilgini gir (örn: Muğla Sıtkı Koçman Üniversitesi - Tıp Fakültesi).');
+  if (!experience) return _cpShowErr('Deneyim/başarı bilgini gir (örn: YKS 2025 Sayısal 9.805.lik).');
+  if (slug && slug.length < 3) return _cpShowErr('Profil linki en az 3 karakter olmalı.');
+  if (slug && !_cpSlugOk) return _cpShowErr('Bu profil linki alınmış — başka bir tane dene.');
+
   const payload = {
     id: userId,
-    bio,
-    subjects,
-    education,
-    experience,
-    photo_url,
-    instagram,
-    linkedin,
+    bio, subjects, education, experience,
+    photo_url, instagram, linkedin,
+    slug: slug || null,
     updated_at: new Date().toISOString()
   };
-  
+
   // Save to local storage as fallback first
   localStorage.setItem(`coach_profile_${userId}`, JSON.stringify(payload));
-  
-  const { error } = await db.from('coach_profiles').upsert(payload);
+
+  let { error } = await db.from('coach_profiles').upsert(payload);
+  if (error && /slug/i.test(error.message||'') && /column/i.test(error.message||'')) {
+    // migration_v26 çalıştırılmamış — slug'sız kaydet, kullanıcıyı bilgilendir
+    const { slug: _s, ...legacy } = payload;
+    ({ error } = await db.from('coach_profiles').upsert(legacy));
+    if (!error) showToast('Profil kaydedildi — link için migration_v26 gerekli', true);
+  }
   if (error) {
+    if (/duplicate|unique/i.test(error.message||''))
+      return _cpShowErr('Bu profil linki az önce başkası tarafından alındı — farklı bir tane dene.');
     console.warn('Database save failed, profile saved locally in localStorage:', error);
-    showToast('Profil yerel tarayıcıya kaydedildi (Veritabanı RLS hatası: ' + error.message + ')', true);
+    showToast('Profil yerel tarayıcıya kaydedildi (Veritabanı hatası: ' + error.message + ')', true);
   } else {
+    _cpSavedSlug = slug;
+    // Link kutusunu yeni slug'la tazele
+    const linkEl = document.getElementById('coachBulLink');
+    if (linkEl && slug) linkEl.value = `${window.location.origin}/koc/${slug}`;
     showToast('Profil başarıyla güncellendi ✓', true);
   }
 }
@@ -10814,7 +10994,6 @@ window.goProgram = goProgram;
 window.openStudentModal = openStudentModal;
 window.saveStudent = saveStudent;
 window.showInviteInfo = showInviteInfo;
-window.copyInvite = copyInvite;
 window.deleteStu = deleteStu;
 window.renderAppointments = renderAppointments;
 window.renderCalDays = renderCalDays;
@@ -10902,6 +11081,11 @@ window.changePassword = changePassword;
 window.renderCoachProfile = renderCoachProfile;
 window.updateProfilePreview = updateProfilePreview;
 window.switchPreviewTab = switchPreviewTab;
+window.toggleCoachTag = toggleCoachTag;
+window.addCustomCoachTag = addCustomCoachTag;
+window.uploadCoachPhoto = uploadCoachPhoto;
+window.onCoachSlugInput = onCoachSlugInput;
+window.generateCoachBio = generateCoachBio;
 window.nl2br = nl2br;
 window.saveCoachProfile = saveCoachProfile;
 window.renderDevMatches = renderDevMatches;
@@ -11302,3 +11486,5 @@ setTimeout(() => {
     }
   }
 }, 2000);
+
+window.copyStudentInviteLink = copyStudentInviteLink;

@@ -3,7 +3,8 @@
   "buildCommand": "npm run build",
   "crons": [
     { "path": "/api/generate", "schedule": "0 15 * * *" },
-    { "path": "/api/publish", "schedule": "30 16 * * *" }
+    { "path": "/api/instagram", "schedule": "30 16 * * *" },
+    { "path": "/api/onboarding-cron", "schedule": "0 8 * * *" }
   ],
   "functions": {
     "api/*.js": {
@@ -12,7 +13,8 @@
     }
   },
   "rewrites": [
-    { "source": "/admin/(.*)", "destination": "/admin/dist/index.html" }
+    { "source": "/admin/(.*)", "destination": "/admin/dist/index.html" },
+    { "source": "/koc/:slug", "destination": "/koc_bul.html?koc=:slug" }
   ],
   "headers": [
     {
