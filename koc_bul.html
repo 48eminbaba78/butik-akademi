@@ -651,8 +651,18 @@
   // Derin link: /koc/<slug> (rewrite ?koc=) veya eski ?coach=<uuid> — profili doğrudan aç
   async function openDeepLink() {
     const params = new URLSearchParams(location.search);
-    const slugParam = (params.get('koc') || '').toLowerCase().trim();
+    let slugParam = (params.get('koc') || '').toLowerCase().trim();
     const coachParam = (params.get('coach') || '').trim();
+    
+    // URL rewrite fallback: extract slug from pathname (e.g. /koc/slug-name)
+    if (!slugParam) {
+      const pathParts = location.pathname.split('/');
+      const kocIdx = pathParts.indexOf('koc');
+      if (kocIdx !== -1 && pathParts[kocIdx + 1]) {
+        slugParam = pathParts[kocIdx + 1].toLowerCase().trim();
+      }
+    }
+
     if (!slugParam && !coachParam) return;
     let target = null;
     if (slugParam) {
