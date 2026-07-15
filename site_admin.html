@@ -5073,6 +5073,17 @@ async function approvePendingPayment(id){
     const {error:uErr} = await db.from('users').update({ plan:'pro', trial_ends_at: newEnd.toISOString() }).eq('id', p.coach_id);
     if(uErr) throw uErr;
 
+    // Onay maili — best-effort, akışı engellemez
+    if(c.email){
+      fetch('/api/mailer', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          type:'payment_approved', to:c.email, coach_name:c.full_name||c.username||'',
+          amount:p.amount, period_end:newEnd.toISOString().split('T')[0], ref_code:c.payment_reference_code||''
+        })
+      }).catch(()=>{});
+    }
+
     showToast(`Onaylandı — erişim ${newEnd.toLocaleDateString('tr-TR')} tarihine uzatıldı`);
     await Promise.all([loadPayments(), loadPayCoaches()]);
     renderPayments();

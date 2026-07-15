@@ -10,7 +10,7 @@ const SB_URL = process.env.SUPABASE_URL || 'https://imyhenrwmsmyikpollur.supabas
 const SB_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const FROM = `Rostrum Akademi <${process.env.SENDER_EMAIL || 'onboarding@resend.dev'}>`;
-const SITE_URL = process.env.SITE_URL || 'https://www.rostrumakademi.com';
+const SITE_URL = process.env.SITE_URL || 'https://rostrumakademi.com';
 const GCAL_REDIRECT = 'https://www.rostrumakademi.com/app.html';
 const G_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const G_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -36,13 +36,13 @@ function wrap(inner) {
   return `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Rostrum Akademi</title></head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 0">
-<tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+<body style="margin:0;padding:0;background:#f8fafc;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:32px 0">
+<tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(30,41,59,.06);border:1px solid #e2e8f0">
 ${inner}
-<tr><td style="padding:24px 40px;text-align:center;background:#fafafa;border-top:1px solid #ebebeb">
-  <p style="margin:0;font-size:12px;color:#aaa">Bu e-posta Rostrum Akademi tarafından gönderildi.</p>
-  <p style="margin:4px 0 0;font-size:12px;color:#ccc">Beklemiyor idiysen lütfen görmezden gel.</p>
+<tr><td style="padding:24px 40px;text-align:center;background:#1e293b;border-top:1px solid #e2e8f0">
+  <p style="margin:0;font-size:12px;color:#94a3b8">Bu e-posta Rostrum Akademi tarafından gönderildi.</p>
+  <p style="margin:4px 0 0;font-size:12px;color:#64748b">Beklemiyorduysanız lütfen bu e-postayı görmezden gelin.</p>
 </td></tr>
 </table></td></tr></table>
 </body></html>`;
@@ -51,54 +51,305 @@ ${inner}
 function welcomeEmail({ student_name, username, password, login_url, coach_name }) {
   const url = login_url || `${SITE_URL}/app.html`;
   return wrap(`
-<tr><td style="background:linear-gradient(135deg,#f0a500 0%,#e08800 100%);padding:40px;text-align:center">
-  <div style="font-size:48px;margin-bottom:12px">🎓</div>
-  <h1 style="color:#fff;font-size:26px;font-weight:800;margin:0 0 8px">Rostrum Akademi'ye Hoş Geldin!</h1>
-  <p style="color:rgba(255,255,255,.85);margin:0;font-size:15px">${coach_name ? coach_name + ' seni platforma ekledi' : 'Hesabın hazır'}</p>
+<tr><td style="background:#1e293b;padding:40px;text-align:center;border-bottom:4px solid #0d9488">
+  <div style="font-size:48px;margin-bottom:12px">🚀</div>
+  <h1 style="color:#ffffff;font-size:26px;font-weight:800;margin:0 0 8px">Rostrum Akademi'ye Hoş Geldin!</h1>
+  <p style="color:#38bdf8;margin:0;font-size:15px">${coach_name ? 'Koçun ' + coach_name + ' seni platforma davet etti!' : 'Hesabın hazır'}</p>
 </td></tr>
 <tr><td style="padding:36px 40px">
-  <p style="margin:0 0 20px;font-size:15px;color:#444">Merhaba${student_name ? ' <strong>' + student_name + '</strong>' : ''},</p>
-  <p style="margin:0 0 24px;font-size:14px;color:#666;line-height:1.6">Aşağıdaki bilgilerle platforma giriş yapabilirsin. Bu bilgileri güvenli bir yerde sakla.</p>
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f8f8;border:1px solid #e8e8e8;border-radius:12px;margin-bottom:28px">
+  <p style="margin:0 0 20px;font-size:15px;color:#1e293b">Merhaba <strong>${student_name || 'Öğrencimiz'}</strong>,</p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.6">Senin için oluşturulan giriş bilgileri aşağıdadır. Bu bilgilerle giriş yapıp haftalık ders programını takip edebilir, hedeflerini gerçekleştirebilirsin.</p>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:12px;margin-bottom:28px">
     <tr>
-      <td width="50%" style="padding:18px 20px;vertical-align:top;border-right:1px solid #e8e8e8">
-        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Kullanıcı Adı</div>
-        <div style="font-size:22px;font-weight:800;color:#f0a500;font-family:monospace,monospace">${username}</div>
+      <td width="50%" style="padding:18px 20px;vertical-align:top;border-right:1px solid #cbd5e1">
+        <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Kullanıcı Adı / E-Posta</div>
+        <div style="font-size:16px;font-weight:800;color:#0d9488;font-family:monospace">${username}</div>
       </td>
       <td width="50%" style="padding:18px 20px;vertical-align:top">
-        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Şifre</div>
-        <div style="font-size:22px;font-weight:800;color:#f0a500;font-family:monospace,monospace">${password}</div>
+        <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Şifre</div>
+        <div style="font-size:16px;font-weight:800;color:#0d9488;font-family:monospace">${password}</div>
       </td>
     </tr>
-    <tr><td colspan="2" style="padding:14px 20px;border-top:1px solid #e8e8e8">
-      <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Giriş Adresi</div>
-      <a href="${url}" style="font-size:13px;color:#3b82f6;text-decoration:none">${url}</a>
+  </table>
+  <div style="text-align:center;margin-bottom:20px">
+    <a href="${url}" style="display:inline-block;background:#0d9488;color:#ffffff;padding:15px 40px;border-radius:10px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 14px rgba(13,148,136,.3)">Hadi Başlayalım! 🚀</a>
+  </div>
+</td></tr>`);
+}
+
+function parentReportEmail({ student_name, student_id, coach_name, completion_percentage, coach_note }) {
+  const reportUrl = `${SITE_URL}/api/generate-pdf-report?studentId=${student_id}`;
+  return wrap(`
+<tr><td style="background:#1e293b;padding:40px;text-align:center;border-bottom:4px solid #0d9488">
+  <div style="font-size:48px;margin-bottom:12px">📈</div>
+  <h1 style="color:#ffffff;font-size:24px;font-weight:800;margin:0 0 8px">Haftalık Performans Raporu</h1>
+  <p style="color:#38bdf8;margin:0;font-size:14px">Öğrenci: ${student_name}</p>
+</td></tr>
+<tr><td style="padding:36px 40px">
+  <p style="margin:0 0 16px;font-size:15px;color:#1e293b">Değerli Velimiz,</p>
+  <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6">Öğrencimiz <strong>${student_name}</strong> bu hafta programındaki hedeflerin <strong>%${completion_percentage}</strong>'sini tamamlayarak harika bir çaba gösterdi.</p>
+  
+  ${coach_note ? `
+    <div style="background:#f1f5f9;border-left:4px solid #0d9488;padding:16px 20px;border-radius:0 10px 10px 0;margin-bottom:28px;font-size:14px;color:#334155;line-height:1.65">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:6px">Koç Değerlendirmesi</div>
+      "${coach_note}"
+    </div>
+  ` : ''}
+  
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.6">Detaylı gelişim analizini ve haftalık ders programını PDF olarak indirmek veya tarayıcınızda görüntülemek için aşağıdaki butona tıklayabilirsiniz:</p>
+  
+  <div style="text-align:center;margin-bottom:20px">
+    <a href="${reportUrl}" style="display:inline-block;background:#0d9488;color:#ffffff;padding:15px 40px;border-radius:10px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 14px rgba(13,148,136,.3)">Raporu Görüntüle / İndir 📊</a>
+  </div>
+</td></tr>`);
+}
+
+function coachWelcomeEmail({ coach_name, email, brand_name }) {
+  const url = `${SITE_URL}/app.html`;
+  const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  return wrap(`
+<tr><td style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:48px 40px;text-align:center;border-bottom:4px solid #E8613A">
+  <div style="font-size:56px;margin-bottom:16px">🎉</div>
+  <h1 style="color:#ffffff;font-size:28px;font-weight:800;margin:0 0 10px;letter-spacing:-0.5px">Hesabınız Hazır!</h1>
+  <p style="color:#94a3b8;margin:0;font-size:15px">Rostrum Akademi koçluk portalına hoş geldiniz</p>
+</td></tr>
+<tr><td style="padding:40px">
+  <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
+  <p style="margin:0 0 28px;font-size:14px;color:#475569;line-height:1.7">
+    ${brand_name ? `<strong>${brand_name}</strong> için koçluk paneliniz başarıyla oluşturuldu.` : 'Koçluk paneliniz başarıyla oluşturuldu.'} Sisteme kayıt sırasında belirlediğiniz şifrenizle giriş yapabilirsiniz.
+  </p>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:28px">
+    <tr>
+      <td style="padding:20px 24px">
+        <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Giriş E-postanız</div>
+        <div style="font-size:15px;font-weight:800;color:#E8613A;font-family:monospace">${email || '—'}</div>
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(232,97,58,.08) 0%,rgba(232,97,58,.04) 100%);border:1px solid rgba(232,97,58,.2);border-radius:12px;margin-bottom:32px">
+    <tr><td style="padding:20px 24px">
+      <div style="font-size:11px;font-weight:700;color:#E8613A;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">🎁 7 Günlük Ücretsiz Deneme</div>
+      <p style="margin:0;font-size:14px;color:#334155;line-height:1.6">Kredi kartı gerekmeden, tüm özelliklere erişimle <strong>${trialEnd}</strong> tarihine kadar ücretsiz kullanabilirsiniz. Deneme süresinde sınırsız öğrenci ekleyebilir, PDF raporlar oluşturabilirsiniz.</p>
     </td></tr>
   </table>
-  <div style="text-align:center">
-    <a href="${url}" style="display:inline-block;background:#f0a500;color:#fff;padding:15px 40px;border-radius:10px;font-size:16px;font-weight:800;text-decoration:none">Platforma Giriş Yap →</a>
+
+  <div style="text-align:center;margin-bottom:28px">
+    <a href="${url}" style="display:inline-block;background:#E8613A;color:#ffffff;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 20px rgba(232,97,58,.35);letter-spacing:-.2px">Koç Paneline Giriş Yap →</a>
+  </div>
+
+  <div style="background:#f1f5f9;border-radius:10px;padding:16px 20px;font-size:13px;color:#64748b;line-height:1.6">
+    💡 <strong>İlk adımlar:</strong> Giriş yaptıktan sonra <em>Öğrencilerim</em> sekmesinden ilk öğrencinizi ekleyebilir, haftalık program oluşturabilir ve PDF veli raporu gönderebilirsiniz.
   </div>
 </td></tr>`);
 }
 
 function applicationEmail({ student_name, status, coach_name }) {
+  const pending = status === 'pending';
   const accepted = status === 'accepted';
-  const color = accepted ? '#22c55e' : '#ef4444';
-  const icon = accepted ? '🎉' : '📋';
-  const title = accepted ? 'Başvurunuz Kabul Edildi!' : 'Başvurunuz Hakkında Bilgi';
-  const body = accepted
-    ? `<strong>${coach_name || 'Koçunuz'}</strong> başvurunuzu kabul etti! Yakında hesap bilgilerinizi alacaksınız.`
-    : `<strong>${coach_name || 'Koçumuz'}</strong> şu an için yeni öğrenci kabul etmiyor. Daha fazla bilgi için koçla iletişime geçebilirsiniz.`;
+  const color = pending ? '#E8613A' : accepted ? '#0d9488' : '#ef4444';
+  const icon = pending ? '📬' : accepted ? '🎉' : '📋';
+  const title = pending
+    ? 'Başvurunuz Alındı!'
+    : accepted
+      ? 'Başvurunuz Kabul Edildi!'
+      : 'Başvurunuz Hakkında Bilgi';
+  const body = pending
+    ? `Kurumsal başvurunuz <strong>başarıyla alındı</strong>. <strong>${coach_name || 'Rostrum Akademi ekibi'}</strong> en kısa sürede (ortalama 1 iş günü içinde) sizinle iletişime geçecektir.`
+    : accepted
+      ? `<strong>${coach_name || 'Koçunuz'}</strong> başvurunuzu kabul etti! Yakında hesap bilgilerinizi alacaksınız.`
+      : `<strong>${coach_name || 'Koçumuz'}</strong> şu an için yeni öğrenci kabul etmiyor. Daha fazla bilgi için koçla iletişime geçebilirsiniz.`;
 
   return wrap(`
-<tr><td style="background:linear-gradient(135deg,${color} 0%,${color}bb 100%);padding:40px;text-align:center">
+<tr><td style="background:#1e293b;padding:40px;text-align:center;border-bottom:4px solid ${color}">
   <div style="font-size:48px;margin-bottom:12px">${icon}</div>
   <h1 style="color:#fff;font-size:24px;font-weight:800;margin:0">${title}</h1>
 </td></tr>
 <tr><td style="padding:36px 40px">
   <p style="margin:0 0 16px;font-size:15px;color:#444">Merhaba${student_name ? ' <strong>' + student_name + '</strong>' : ''},</p>
   <p style="margin:0 0 28px;font-size:15px;color:#555;line-height:1.7">${body}</p>
+  ${pending ? `
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;font-size:13px;color:#64748b;line-height:1.6">
+      📞 <strong>Hızlı iletişim:</strong> Acil sorularınız için <a href="mailto:info@rostrumakademi.com" style="color:#E8613A;text-decoration:none">info@rostrumakademi.com</a> adresine yazabilirsiniz.
+    </div>
+  ` : ''}
   ${accepted ? `<div style="text-align:center"><a href="${SITE_URL}/app.html" style="display:inline-block;background:${color};color:#fff;padding:15px 40px;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none">Platforma Git →</a></div>` : ''}
+</td></tr>`);
+}
+
+function studentInvitationEmail({ student_name, coach_name, invitation_link }) {
+  return wrap(`
+<tr><td style="background:#1e293b;padding:40px;text-align:center;border-bottom:4px solid #0d9488">
+  <div style="font-size:48px;margin-bottom:12px">🎓</div>
+  <h1 style="color:#ffffff;font-size:24px;font-weight:800;margin:0 0 8px">Rostrum Akademi'ye Davet Edildiniz!</h1>
+  <p style="color:#38bdf8;margin:0;font-size:15px">Koçunuz <strong>${coach_name}</strong> sizi platforma davet etti.</p>
+</td></tr>
+<tr><td style="padding:36px 40px">
+  <p style="margin:0 0 20px;font-size:15px;color:#1e293b">Merhaba<strong>${student_name ? ' ' + student_name : ''}</strong>,</p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.6">
+    Koçunuz ile ders programınızı takip etmek, hedeflerinizi belirlemek ve gelişiminizi izlemek için Rostrum Akademi platformunda üyeliğinizi tamamlamanız gerekiyor.
+  </p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.6">
+    Aşağıdaki butona tıklayarak parolanızı belirleyebilir ve hesabınızı anında aktif hale getirebilirsiniz.
+  </p>
+  <div style="text-align:center;margin-bottom:24px">
+    <a href="${invitation_link}" style="display:inline-block;background:#0d9488;color:#ffffff;padding:15px 40px;border-radius:10px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 14px rgba(13,148,136,.3)">Hesabımı Aktif Et 🚀</a>
+  </div>
+  <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5">Bu davet bağlantısı <strong>48 saat</strong> geçerlidir. Süre dolduktan sonra koçunuzdan yeni bir davet talep edebilirsiniz.</p>
+</td></tr>`);
+}
+
+function onboardingDay1Email({ coach_name }) {
+  const url = `${SITE_URL}/app.html`;
+  return wrap(`
+<tr><td style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:48px 40px;text-align:center;border-bottom:4px solid #E8613A">
+  <div style="font-size:56px;margin-bottom:16px">⏱️</div>
+  <h1 style="color:#ffffff;font-size:26px;font-weight:800;margin:0 0 10px;letter-spacing:-0.5px">5 Dakikada Haftalık Program</h1>
+  <p style="color:#94a3b8;margin:0;font-size:15px">Pazar günlerinizi kendinize geri kazandırın</p>
+</td></tr>
+<tr><td style="padding:40px">
+  <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.75">
+    Koçlarımızın en çok vakit harcadığı konunun <strong>öğrenci programı hazırlamak</strong> olduğunu biliyoruz. Rostrum Akademi ile bu süreci 5 dakikaya indirmeniz için harika araçlar hazırladık:
+  </p>
+  <ul style="margin:0 0 28px;padding-left:20px;font-size:14px;color:#475569;line-height:1.8">
+    <li><strong>Akıllı Süre Tahmini:</strong> Yapay zeka, konuların zorluğuna göre çalışma sürelerini otomatik hesaplar.</li>
+    <li><strong>Hazır Şablonlar:</strong> Sık kullandığınız programları şablon olarak kaydedip tüm öğrencilere tek tıkla uygulayabilirsiniz.</li>
+    <li><strong>YouTube Entegrasyonu:</strong> İzlenmesi gereken videoları doğrudan görevlere ekleyin.</li>
+  </ul>
+  <div style="text-align:center;margin-bottom:28px">
+    <a href="${url}" style="display:inline-block;background:#E8613A;color:#ffffff;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 20px rgba(232,97,58,.35)">Hemen Program Oluştur →</a>
+  </div>
+</td></tr>`);
+}
+
+function onboardingDay3Email({ coach_name }) {
+  const url = `${SITE_URL}/app.html`;
+  return wrap(`
+<tr><td style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:48px 40px;text-align:center;border-bottom:4px solid #E8613A">
+  <div style="font-size:56px;margin-bottom:16px">📄</div>
+  <h1 style="color:#ffffff;font-size:26px;font-weight:800;margin:0 0 10px;letter-spacing:-0.5px">Velileriniz Bu Rapora Bayılacak!</h1>
+  <p style="color:#94a3b8;margin:0;font-size:15px">Tek tıkla markalı ve kurumsal PDF gelişim raporu</p>
+</td></tr>
+<tr><td style="padding:40px">
+  <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.75">
+    Öğrencilerinizin başarısı kadar, velilerinizin bu emeği görmesi de önemlidir. Rostrum Akademi ile velilere WhatsApp üzerinden gönderebileceğiniz profesyonel gelişim analizleri oluşturabilirsiniz:
+  </p>
+  <ul style="margin:0 0 28px;padding-left:20px;font-size:14px;color:#475569;line-height:1.8">
+    <li><strong>Tamamlanma Yüzdeleri:</strong> Öğrencinin haftalık hedeflerine uyumunu grafiklerle gösterin.</li>
+    <li><strong>Koç Değerlendirmesi:</strong> Kendi profesyonel görüşlerinizi ve haftalık notunuzu rapora ekleyin.</li>
+    <li><strong>Kurumsal Markalama:</strong> Raporlarda sizin logonuz ve marka renkleriniz yer alır.</li>
+  </ul>
+  <div style="text-align:center;margin-bottom:28px">
+    <a href="${url}" style="display:inline-block;background:#E8613A;color:#ffffff;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 20px rgba(232,97,58,.35)">İlk PDF Raporunu İncele →</a>
+  </div>
+</td></tr>`);
+}
+
+function onboardingDay5Email({ coach_name }) {
+  const url = `${SITE_URL}/app.html`;
+  return wrap(`
+<tr><td style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:48px 40px;text-align:center;border-bottom:4px solid #E8613A">
+  <div style="font-size:56px;margin-bottom:16px">🤖</div>
+  <h1 style="color:#ffffff;font-size:26px;font-weight:800;margin:0 0 10px;letter-spacing:-0.5px">Yapay Zeka Ders Asistanı</h1>
+  <p style="color:#94a3b8;margin:0;font-size:15px">Sokratik yöntemle öğrenen öğrenciler</p>
+</td></tr>
+<tr><td style="padding:40px">
+  <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.75">
+    Öğrencileriniz ders çalışırken takıldıklarında Rostrum AI onlara yardımcı olmaya hazır. Rostrum Sokratik AI asistanı:
+  </p>
+  <ul style="margin:0 0 28px;padding-left:20px;font-size:14px;color:#475569;line-height:1.8">
+    <li><strong>Sorunun Doğrudan Cevabını Vermez:</strong> Sokratik sorular yönlendirerek öğrencinin çözümü kendisinin bulmasını sağlar.</li>
+    <li><strong>7/24 Aktif:</strong> Öğrencileriniz gece çalışırken bile yalnız kalmaz.</li>
+    <li><strong>Koç Kontrolünde:</strong> Öğrencilerinizin yapay zeka ile diyalog özetlerini kendi panelinizden takip edebilirsiniz.</li>
+  </ul>
+  <div style="text-align:center;margin-bottom:28px">
+    <a href="${url}" style="display:inline-block;background:#E8613A;color:#ffffff;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 20px rgba(232,97,58,.35)">Öğrenci Portalını İncele →</a>
+  </div>
+</td></tr>`);
+}
+
+function onboardingDay6Email({ coach_name, student_count }) {
+  const url = `${SITE_URL}/app.html`;
+  return wrap(`
+<tr><td style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:48px 40px;text-align:center;border-bottom:4px solid #E8613A">
+  <div style="font-size:56px;margin-bottom:16px">⏱️🔥</div>
+  <h1 style="color:#ffffff;font-size:26px;font-weight:800;margin:0 0 10px;letter-spacing:-0.5px">Son 24 Saat!</h1>
+  <p style="color:#94a3b8;margin:0;font-size:15px">Kurucu Üye fiyatını ömür boyu sabitleyin</p>
+</td></tr>
+<tr><td style="padding:40px">
+  <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.75">
+    Rostrum Akademi deneme sürenizin bitmesine son 24 saat kaldı. İlk 100 koçumuza özel <strong>₺499/ay</strong> Kurucu Üye fiyat avantajı ve ömür boyu sabit fiyat garantisi yarın sona eriyor.
+  </p>
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin-bottom:28px">
+    <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Aktif Durumunuz</div>
+    <div style="font-size:14px;color:#334155">Mevcut öğrenci sayınız: <strong>${student_count || 0} öğrenci</strong>. Aboneliğinizi başlattığınızda tüm verileriniz kesintisiz olarak korunacaktır.</div>
+  </div>
+  <div style="text-align:center;margin-bottom:28px">
+    <a href="${url}" style="display:inline-block;background:#E8613A;color:#ffffff;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 20px rgba(232,97,58,.35)">Kurucu Üye Ol (₺499/Ay) →</a>
+  </div>
+</td></tr>`);
+}
+
+function onboardingDay7Email({ coach_name, delete_date }) {
+  const url = `${SITE_URL}/app.html`;
+  return wrap(`
+<tr><td style="background:linear-gradient(135deg,#ea580c 0%,#c2410c 100%);padding:48px 40px;text-align:center;border-bottom:4px solid #c2410c">
+  <div style="font-size:56px;margin-bottom:16px">⏳</div>
+  <h1 style="color:#ffffff;font-size:26px;font-weight:800;margin:0 0 10px;letter-spacing:-0.5px">Deneme Süreniz Sona Erdi</h1>
+  <p style="color:rgba(255,255,255,.85);margin:0;font-size:15px">Öğrencileriniz mağdur olmasın diye 3 gün daha erişiminiz açık</p>
+</td></tr>
+<tr><td style="padding:40px">
+  <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.75">
+    Rostrum Akademi'nin 7 günlük ücretsiz deneme süreniz doldu. Öğrencilerinizin çalışmaları kesintiye uğramasın diye panelinize <strong>3 gün daha</strong> erişiminiz açık tutulacak. Bu süre dolduktan sonra da öğrencileriniz, hazırladığınız programlar ve tüm geçmiş verileriniz **${delete_date || '30 gün boyunca'}** silinmeyecektir.
+  </p>
+  <p style="margin:0 0 28px;font-size:14px;color:#475569;line-height:1.75">
+    Aboneliğinizi başlatmak için panelinizdeki <strong>"Üyeliğim"</strong> sayfasından güncel fiyatı, banka bilgilerini ve size özel referans kodunuzu görebilir, dekontunuzu yükleyebilirsiniz.
+  </p>
+  <div style="text-align:center;margin-bottom:28px">
+    <a href="${url}" style="display:inline-block;background:#ea580c;color:#ffffff;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 20px rgba(234,88,12,.35)">Aboneliğimi Başlat →</a>
+  </div>
+</td></tr>`);
+}
+
+function paymentApprovedEmail({ coach_name, amount, period_end, ref_code }) {
+  const url = `${SITE_URL}/app.html`;
+  const amountTxt = amount ? `₺${Number(amount).toLocaleString('tr-TR')}` : '';
+  const endTxt = period_end ? new Date(period_end).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  return wrap(`
+<tr><td style="background:linear-gradient(135deg,#0d9488 0%,#0f766e 100%);padding:48px 40px;text-align:center;border-bottom:4px solid #0f766e">
+  <div style="font-size:56px;margin-bottom:16px">🥳</div>
+  <h1 style="color:#ffffff;font-size:26px;font-weight:800;margin:0 0 10px;letter-spacing:-0.5px">Ödemeniz Onaylandı!</h1>
+  <p style="color:rgba(255,255,255,.85);margin:0;font-size:15px">Sınırsız erişiminiz aktif</p>
+</td></tr>
+<tr><td style="padding:40px">
+  <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.75">
+    ${amountTxt ? `<strong>${amountTxt}</strong> tutarındaki ödemeniz onaylandı ve hesabınız aktif abone statüsüne geçti.` : 'Ödemeniz onaylandı ve hesabınız aktif abone statüsüne geçti.'} Panelinize ve tüm özelliklere sınırsız erişebilirsiniz.
+  </p>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdfa;border:1px solid rgba(13,148,136,.25);border-radius:12px;margin-bottom:28px">
+    <tr>
+      ${endTxt ? `<td style="padding:18px 20px;vertical-align:top;${ref_code ? 'border-right:1px solid rgba(13,148,136,.2)' : ''}">
+        <div style="font-size:10px;font-weight:700;color:#0f766e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Bir Sonraki Yenileme Tarihi</div>
+        <div style="font-size:15px;font-weight:800;color:#0f172a">${endTxt}</div>
+      </td>` : ''}
+      ${ref_code ? `<td style="padding:18px 20px;vertical-align:top">
+        <div style="font-size:10px;font-weight:700;color:#0f766e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Referans Kodunuz</div>
+        <div style="font-size:15px;font-weight:800;color:#0f172a;font-family:monospace">${ref_code}</div>
+      </td>` : ''}
+    </tr>
+  </table>
+  <div style="text-align:center;margin-bottom:28px">
+    <a href="${url}" style="display:inline-block;background:#0d9488;color:#ffffff;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 20px rgba(13,148,136,.35)">Panele Git →</a>
+  </div>
+  <div style="background:#f1f5f9;border-radius:10px;padding:16px 20px;font-size:13px;color:#64748b;line-height:1.6">
+    💡 Ödeme makbuzunuza panelinizdeki <strong>"Üyeliğim"</strong> sayfasındaki ödeme geçmişinden ulaşabilirsiniz.
+  </div>
 </td></tr>`);
 }
 
@@ -106,50 +357,50 @@ function newMessageEmail({ student_name, message_preview, login_url }) {
   const url = login_url || `${SITE_URL}/app.html`;
   const preview = message_preview || '';
   return wrap(`
-<tr><td style="background:linear-gradient(135deg,#E8613A 0%,#d45025 100%);padding:40px;text-align:center">
+<tr><td style="background:#1e293b;padding:40px;text-align:center;border-bottom:4px solid #0d9488">
   <div style="font-size:48px;margin-bottom:12px">💬</div>
   <h1 style="color:#fff;font-size:24px;font-weight:800;margin:0 0 8px">Yeni Mesaj</h1>
   <p style="color:rgba(255,255,255,.85);margin:0;font-size:15px">${student_name ? `<strong>${student_name}</strong> sana yazdı` : 'Öğrenciniz sana yazdı'}</p>
 </td></tr>
 <tr><td style="padding:36px 40px">
   <p style="margin:0 0 20px;font-size:15px;color:#444">Merhaba,</p>
-  ${preview ? `<div style="background:#fef7f5;border-left:4px solid #E8613A;padding:16px 20px;border-radius:0 10px 10px 0;margin-bottom:28px;font-size:14px;color:#555;line-height:1.65">${preview}</div>` : ''}
+  ${preview ? `<div style="background:#f1f5f9;border-left:4px solid #0d9488;padding:16px 20px;border-radius:0 10px 10px 0;margin-bottom:28px;font-size:14px;color:#555;line-height:1.65">${preview}</div>` : ''}
   <div style="text-align:center">
-    <a href="${url}" style="display:inline-block;background:#E8613A;color:#fff;padding:15px 40px;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none">Mesajı Gör →</a>
+    <a href="${url}" style="display:inline-block;background:#0d9488;color:#fff;padding:15px 40px;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none">Mesajı Gör →</a>
   </div>
 </td></tr>`);
 }
 
 function templateShareEmail({ coach_name, template_name, task_count, tasks_json }) {
   return wrap(`
-<tr><td style="background:linear-gradient(135deg,#6366f1 0%,#4f46e5 100%);padding:40px;text-align:center">
+<tr><td style="background:#1e293b;padding:40px;text-align:center;border-bottom:4px solid #0d9488">
   <div style="font-size:48px;margin-bottom:12px">📋</div>
   <h1 style="color:#fff;font-size:24px;font-weight:800;margin:0">Yeni Şablon Paylaşıldı</h1>
-</td></tr>
-<tr><td style="padding:36px 40px">
+ </td></tr>
+ <tr><td style="padding:36px 40px">
   <p style="margin:0 0 16px;font-size:15px;color:#444"><strong>${coach_name || 'Bir koç'}</strong> bir program şablonu paylaştı:</p>
-  <div style="background:#f8f8f8;border:1px solid #e8e8e8;border-radius:12px;padding:20px;margin-bottom:24px">
+  <div style="background:#f8f8f8;border:1px solid #cbd5e1;border-radius:12px;padding:20px;margin-bottom:24px">
     <div style="font-size:16px;font-weight:800;color:#111;margin-bottom:4px">${template_name || 'İsimsiz Şablon'}</div>
     <div style="font-size:13px;color:#888">${task_count || 0} görev</div>
   </div>
-  <pre style="background:#f8f8f8;border:1px solid #e8e8e8;border-radius:8px;padding:16px;font-size:11px;line-height:1.5;overflow:auto;max-height:400px;white-space:pre-wrap;word-break:break-all">${tasks_json || ''}</pre>
-</td></tr>`);
+  <pre style="background:#f8f8f8;border:1px solid #cbd5e1;border-radius:8px;padding:16px;font-size:11px;line-height:1.5;overflow:auto;max-height:400px;white-space:pre-wrap;word-break:break-all">${tasks_json || ''}</pre>
+ </td></tr>`);
 }
 
 function passwordResetEmail({ action_link }) {
   return wrap(`
-<tr><td style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);padding:40px;text-align:center">
-  <div style="font-size:48px;margin-bottom:12px">🔐</div>
-  <h1 style="color:#fff;font-size:24px;font-weight:800;margin:0 0 8px">Şifre Sıfırlama</h1>
-  <p style="color:rgba(255,255,255,.85);margin:0;font-size:14px">Rostrum Akademi hesabın için</p>
+<tr><td style="background:#1e293b;padding:40px;text-align:center;border-bottom:4px solid #E8613A">
+  <img src="${SITE_URL}/logo.png" alt="Rostrum Akademi" style="height:48px;width:auto;margin-bottom:16px;border-radius:8px;display:inline-block;vertical-align:middle;">
+  <h1 style="color:#ffffff;font-size:24px;font-weight:800;margin:0 0 8px">Şifre Sıfırlama</h1>
+  <p style="color:#ff9e80;margin:0;font-size:14px">Rostrum Akademi Hesabı</p>
 </td></tr>
 <tr><td style="padding:36px 40px">
-  <p style="margin:0 0 16px;font-size:15px;color:#444">Merhaba,</p>
-  <p style="margin:0 0 28px;font-size:14px;color:#666;line-height:1.6">Rostrum Akademi hesabın için şifre sıfırlama talebinde bulundun. Aşağıdaki butona tıkla:</p>
+  <p style="margin:0 0 16px;font-size:15px;color:#1e293b">Merhaba,</p>
+  <p style="margin:0 0 28px;font-size:14px;color:#475569;line-height:1.6">Hesabınız için şifre sıfırlama talebinde bulundunuz. Yeni şifrenizi belirlemek için aşağıdaki butona tıklayın:</p>
   <div style="text-align:center;margin-bottom:28px">
-    <a href="${action_link}" style="display:inline-block;background:#6366f1;color:#fff;padding:15px 40px;border-radius:10px;font-size:16px;font-weight:800;text-decoration:none">Şifremi Sıfırla →</a>
+    <a href="${action_link}" style="display:inline-block;background:#E8613A;color:#ffffff;padding:15px 40px;border-radius:10px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 14px rgba(232,97,58,.3)">Şifremi Sıfırla →</a>
   </div>
-  <p style="margin:0;font-size:13px;color:#999;line-height:1.5">Bu link <strong>1 saat</strong> geçerlidir. Şifre sıfırlamak istemediysen bu e-postayı görmezden gelebilirsin.</p>
+  <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5">Bu bağlantı <strong>1 saat</strong> geçerlidir. Şifrenizi sıfırlamak istemediyseniz bu e-postayı güvenle yoksayabilirsiniz.</p>
 </td></tr>`);
 }
 
@@ -161,8 +412,65 @@ export default async function handler(req, res) {
   try {
     if (type === 'student_welcome') {
       if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
-      const subject = `${data.student_name ? data.student_name + ', p' : 'P'}latformumuza hoş geldin! 🎓`;
+      const subject = `${data.student_name ? data.student_name + ', P' : 'P'}latformumuza Hoş Geldin! 🎓`;
       await sendEmail(data.to, subject, welcomeEmail(data));
+      return res.status(200).json({ success: true });
+    }
+
+    if (type === 'student_invitation') {
+      if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
+      const subject = `${data.coach_name || 'Koçunuz'} sizi Rostrum Akademi'ye davet etti! 🎓`;
+      await sendEmail(data.to, subject, studentInvitationEmail(data));
+      return res.status(200).json({ success: true });
+    }
+
+    if (type === 'coach_welcome') {
+      if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
+      const subject = `Rostrum Akademi Hesabınız Hazır! 🎉`;
+      await sendEmail(data.to, subject, coachWelcomeEmail(data));
+      return res.status(200).json({ success: true });
+    }
+
+    if (type === 'onboarding_day1') {
+      if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
+      await sendEmail(data.to, 'Pazar günlerinizi geri kazanın: 5 Dakikada Haftalık Program ⏱️', onboardingDay1Email(data));
+      return res.status(200).json({ success: true });
+    }
+
+    if (type === 'onboarding_day3') {
+      if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
+      await sendEmail(data.to, 'Velileriniz bu rapora bayılacak! (Tek tıkla PDF) 📄', onboardingDay3Email(data));
+      return res.status(200).json({ success: true });
+    }
+
+    if (type === 'onboarding_day5') {
+      if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
+      await sendEmail(data.to, 'Öğrencilerinizin yeni favorisi: Sokratik AI Ders Asistanı 🤖', onboardingDay5Email(data));
+      return res.status(200).json({ success: true });
+    }
+
+    if (type === 'onboarding_day6') {
+      if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
+      await sendEmail(data.to, 'Son 24 Saat: Ömür boyu sabit fiyat avantajını kaçırmayın! ⏱️🔥', onboardingDay6Email(data));
+      return res.status(200).json({ success: true });
+    }
+
+    if (type === 'onboarding_day7') {
+      if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
+      await sendEmail(data.to, 'Deneme süreniz sona erdi ⏳ (3 gün ek süreniz var)', onboardingDay7Email(data));
+      return res.status(200).json({ success: true });
+    }
+
+    if (type === 'payment_approved') {
+      if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
+      await sendEmail(data.to, 'Ödemeniz Onaylandı! 🥳 Sınırsız Erişiminiz Aktif', paymentApprovedEmail(data));
+      return res.status(200).json({ success: true });
+    }
+
+    if (type === 'parent_report') {
+      if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
+      const subject = `📊 Öğrencimiz ${data.student_name || 'Öğrencimizin'} Gelişim Raporu`;
+      await sendEmail(data.to, subject, parentReportEmail(data));
       return res.status(200).json({ success: true });
     }
 
@@ -183,10 +491,33 @@ export default async function handler(req, res) {
         auth: { autoRefreshToken: false, persistSession: false }
       });
 
+      // E-posta veya kullanıcı adı girilmiş olabilir, veritabanından asıl e-postayı bulalım
+      const input = data.email.trim().toLowerCase();
+      let targetEmail = input;
+
+      const { data: userProfile } = await admin
+        .from('users')
+        .select('email')
+        .or(`username.eq.${input},email.eq.${input}`)
+        .maybeSingle();
+
+      if (userProfile?.email) {
+        targetEmail = userProfile.email;
+      } else if (!input.includes('@')) {
+        // Eğer veritabanında bulunamadıysa ve @ işareti yoksa varsayılan domain ile deneyelim
+        targetEmail = input + '@rostrumakademi.com';
+      }
+
+      // Dinamik redirect URL oluşturma (Localhost veya canlı domain)
+      const host = req.headers.host || '';
+      const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
+      const redirectBase = host ? `${protocol}://${host}` : (process.env.SITE_URL || 'https://rostrumakademi.com');
+      const redirectTo = `${redirectBase}/app.html`;
+
       const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'recovery',
-        email: data.email,
-        options: { redirectTo: `${SITE_URL}/app.html` }
+        email: targetEmail,
+        options: { redirectTo }
       });
 
       if (linkErr) throw new Error(linkErr.message);
@@ -194,7 +525,7 @@ export default async function handler(req, res) {
       const action_link = linkData?.properties?.action_link;
       if (!action_link) throw new Error('Sıfırlama linki oluşturulamadı');
 
-      await sendEmail(data.email, '🔐 Rostrum Akademi — Şifre Sıfırlama', passwordResetEmail({ action_link }));
+      await sendEmail(targetEmail, '🔐 Rostrum Akademi — Şifre Sıfırlama', passwordResetEmail({ action_link }));
       return res.status(200).json({ success: true });
     }
 

@@ -7547,7 +7547,10 @@ async function renderCoachUyelik() {
               <div style="font-size:13px;font-weight:600;color:var(--text)">${p.amount ? Number(p.amount).toLocaleString('tr-TR') + ' ₺' : '—'} · ${p.period_months || 1} ay</div>
               <div style="font-size:11px;color:var(--text-dim)">${new Date(p.created_at).toLocaleDateString('tr-TR')}</div>
             </div>
-            <span style="font-size:11px;font-weight:700;color:${(statusLbl[p.status] || ['—', 'var(--text-dim)'])[1]}">${(statusLbl[p.status] || [p.status || '—'])[0]}</span>
+            <div style="display:flex;align-items:center;gap:10px">
+              ${p.status === 'completed' ? `<a href="/api/generate-receipt?paymentId=${p.id}" target="_blank" style="font-size:11px;font-weight:700;color:var(--accent);text-decoration:none">📄 Makbuz</a>` : ''}
+              <span style="font-size:11px;font-weight:700;color:${(statusLbl[p.status] || ['—', 'var(--text-dim)'])[1]}">${(statusLbl[p.status] || [p.status || '—'])[0]}</span>
+            </div>
           </div>
         `).join('') : '<div style="padding:16px 18px;font-size:12px;color:var(--text-dim)">Henüz ödeme kaydı yok</div>'}
       </div>
