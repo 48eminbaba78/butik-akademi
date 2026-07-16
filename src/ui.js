@@ -5387,8 +5387,22 @@ function openStudentExamModal(id){
   document.getElementById('emId').value=id||'';
   document.getElementById('emName').value=e?.name||'';
   document.getElementById('emDate').value=e?.date||fmtDate(new Date());
-  document.getElementById('emStudentWrap').style.display='none';
-  document.getElementById('emStudent').innerHTML=`<option value="${session.studentId}">${esc(S.students.find(s=>s.id===session.studentId)?.name||'')}</option>`;
+
+  const isStudent = session.role === 'student';
+  const currentStudentId = e?.studentId || S.activeStuId || session.studentId;
+
+  if (isStudent) {
+    document.getElementById('emStudentWrap').style.display='none';
+    const sName = S.students.find(s => s.id === session.studentId)?.name || '';
+    document.getElementById('emStudent').innerHTML=`<option value="${session.studentId}">${esc(sName)}</option>`;
+  } else {
+    document.getElementById('emStudentWrap').style.display='';
+    document.getElementById('emStudent').innerHTML=S.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+    if (currentStudentId) {
+      document.getElementById('emStudent').value = currentStudentId;
+    }
+  }
+
   document.getElementById('emExamType').value=e?.type||'TYT';
   document.getElementById('emNote').value=e?.note||'';
   renderNetInputs();
@@ -5417,10 +5431,7 @@ function openStudentExamModal(id){
   om('examModal');
 }
 function openExamModal(id){
-  document.getElementById('emStudentWrap').style.display='';
-  document.getElementById('emStudent').innerHTML=S.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
   openStudentExamModal(id);
-  document.getElementById('emStudentWrap').style.display='';
 }
 let _examDetails = {}; // { 'Türkçe': { dogru, yanlis, bos, yanlis_konular:[] }, ... }
 
