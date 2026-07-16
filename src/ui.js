@@ -5569,7 +5569,10 @@ async function saveExam(){
 
   if(id){
     const { error } = await _tryExamSave(payload, true, id);
-    if(error) return showToast('Hata: '+error.message);
+    if(error) {
+      console.error('[saveExam UPDATE error]', error);
+      return showToast(`Hata: ${error.message || 'Kaydedilemedi'} (${error.code || 'unknown'})`);
+    }
     const e=S.exams.find(x=>x.id===id);
     if(e)Object.assign(e,{name:payload.name,date:payload.date,studentId:stuId,type,nets,examDetails:_examDetails,note:payload.student_note});
     showToast('Güncellendi ✓');
@@ -5581,7 +5584,10 @@ async function saveExam(){
       .pop();
 
     const {data,error}=await _tryExamSave(payload, false, null);
-    if(error)return showToast('Hata: '+error.message);
+    if(error) {
+      console.error('[saveExam INSERT error]', error);
+      return showToast(`Hata: ${error.message || 'Kaydedilemedi'} (${error.code || 'unknown'})`);
+    }
     S.exams.push({id:data.id,studentId:data.student_id,name:data.name,date:data.date,type:data.exam_type,nets:data.nets||{},examDetails:data.exam_details||{},note:data.student_note,coachComment:''});
     showToast('Deneme eklendi ✓');
 
