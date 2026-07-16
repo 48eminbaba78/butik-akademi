@@ -1802,7 +1802,7 @@ let _taskDate='';
 function _taskCardHtml(t, ds, ti, role){
   const timeBadge = t.start_time ? `<div class="tc-time-badge">🕒 ${t.start_time}</div>` : '';
   const roleArg = role==='coach' ? 'coach' : 'student';
-  const toggleFn = role==='coach' ? `toggleTask('${ds}',${ti})` : `stuToggleTask2('${ds}',${ti})`;
+  const toggleFn = role==='coach' ? `toggleTask('${ds}',${ti})` : `openTaskDetail('${ds}',${ti},'student','completed')`;
   const menuBtn = role==='coach' ? `<button class="tc-menu-btn" onclick="event.stopPropagation();showTaskMenu('${ds}',${ti},this)">⋯</button>` : '';
   return `
     <div data-task-id="${t._id}" class="task-card task-${t.type} ${t.done?'done':''} ${t.start_time?'hourly-card':''}" onclick="openTaskDetail('${ds}',${ti},'${roleArg}')" style="cursor:pointer">
@@ -4735,9 +4735,9 @@ window._fbStar = function(n) {
   }
 };
 
-function _fbStudentHtml(t) {
+function _fbStudentHtml(t, defaultStatus) {
   const fb  = t.student_feedback || {};
-  const st  = fb.status || (t.done ? 'completed' : '');
+  const st  = fb.status || defaultStatus || (t.done ? 'completed' : '');
   const th  = fb.time_spent != null ? Math.floor(fb.time_spent / 60) : '';
   const tm  = fb.time_spent != null ? fb.time_spent % 60 : '';
   const fc  = fb.focus      || 0;
@@ -4861,7 +4861,7 @@ function _fbCoachHtml(t) {
 }
 
 // ── GÖREV DETAY MODALI ──────────────────────────
-async function openTaskDetail(ds, idx, role){
+async function openTaskDetail(ds, idx, role, defaultStatus){
   const stuId = session.role==='student' ? session.studentId : S.activeStuId;
   const key = `${stuId}_${ds}`;
   const t = S.tasks[key]?.[idx];
@@ -4942,7 +4942,7 @@ async function openTaskDetail(ds, idx, role){
     </div>
 
     <!-- Geri bildirim: öğrenci=form, koç=özet+durum -->
-    ${role==='student' ? _fbStudentHtml(t) : `
+    ${role==='student' ? _fbStudentHtml(t, defaultStatus) : `
     <div style="background:var(--surface2);border:1.5px solid ${t.done?'var(--green)':'var(--border)'};border-radius:11px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:20px;height:20px;border-radius:5px;background:${t.done?'var(--green)':'transparent'};border:2px solid ${t.done?'var(--green)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">${t.done?'✓':''}</div>
       <div style="font-size:13px;font-weight:700;color:${t.done?'var(--green)':'var(--text-dim)'}">${t.done?'Tamamlandı':'Henüz tamamlanmadı'}</div>
