@@ -1841,6 +1841,7 @@ function renderProgram(){
       <div class="prog-actions">
         <button class="btn btn-ghost btn-sm" onclick="saveWeekAsTemplate()">Şablon Kaydet</button>
         <button class="btn btn-ghost btn-sm" onclick="applyTemplateToWeek()">Şablon Uygula</button>
+        <button class="btn btn-accent btn-sm" onclick="openWeeklyReportModal()" style="font-weight:700">📊 Haftalık Rapor</button>
         <button class="btn btn-ghost btn-sm" onclick="openWeeklyPDFModal()">📄 PDF</button>
         <button class="btn btn-danger btn-sm" onclick="openClearWeekModal()">Temizle</button>
       </div>
@@ -11548,6 +11549,234 @@ async function applyTemplateToWeek() {
   om('applyTemplateModal');
 }
 
+function openWeeklyReportModal() {
+  const stu = S.students.find(s=>s.id===S.activeStuId);
+  if(!stu) return showToast('Öğrenci bulunamadı.');
+  const ws = stu.weekStart ?? 0;
+  const wStart = getWeekStart(S.weekOffset, ws);
+  const wEnd = addDays(wStart, 6);
+
+  let weekTasks = [];
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(wStart, i);
+    const ds = fmtDate(d);
+    const key = `${S.activeStuId}_${ds}`;
+    const dayTasks = S.tasks[key] || [];
+    weekTasks = weekTasks.concat(dayTasks);
+  }
+
+  if (weekTasks.length === 0) {
+    return showToast('Bu haftaya ait atanmış görev bulunmuyor.');
+  }
+
+  const totalTasks = weekTasks.length;
+  const completedTasks = weekTasks.filter(t => t.done).length;
+  const completionRate = Math.round((completedTasks / totalTasks) * 100);
+
+  const tasksWithFocus = weekTasks.filter(t => t.student_feedback?.focus);
+  const avgFocus = tasksWithFocus.length 
+    ? (tasksWithFocus.reduce((sum, t) => sum + t.student_feedback.focus, 0) / tasksWithFocus.length).toFixed(1)
+    : '—';
+
+  const diffCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const DL = { 1: 'Çok Kolay', 2: 'Kolay', 3: 'Orta', 4: 'Zor', 5: 'Çok Zor' };
+  weekTasks.forEach(t => {
+    const diff = t.student_feedback?.difficulty;
+    if (diff && diffCounts[diff] !== undefined) {
+      diffCounts[diff]++;
+    }
+  });
+
+  const totalPlannedMin = weekTasks.reduce((sum, t) => sum + Number(t.duration || 0), 0);
+  const totalSpentMin = weekTasks.reduce((sum, t) => sum + Number(t.student_feedback?.time_spent || 0), 0);
+
+  const blockers = [];
+  const BL = { time: 'Zamanı yetmedi', topic: 'Konuyu anlayamadı', hard: 'Kaynak çok zordu', moti: 'Motivasyon yok' };
+  weekTasks.forEach(t => {
+    const blocker = t.student_feedback?.blocker;
+    if (blocker) {
+      blockers.push({
+        task: t.subject,
+        reason: BL[blocker] || blocker
+      });
+    }
+  });
+
+  let totalSolved = 0;
+  let totalCorrect = 0;
+  let totalWrong = 0;
+  let totalBlank = 0;
+  
+  weekTasks.forEach(t => {
+    if (t.student_result) {
+      totalCorrect += Number(t.student_result.dogru || 0);
+      totalWrong += Number(t.student_result.yanlis || 0);
+      totalBlank += Number(t.student_result.bos || 0);
+    }
+  });
+  totalSolved = totalCorrect + totalWrong + totalBlank;
+  const net = (totalCorrect - (totalWrong / 4)).toFixed(2);
+
+  let modal = document.getElementById('weeklyReportModal');
+  if(!modal) {
+    modal = document.createElement('div');
+    modal.id = 'weeklyReportModal';
+    modal.className = 'modal-bg';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+  }
+
+  modal.innerHTML = `<div class="modal" style="max-width:800px; width:95%; max-height:85vh; overflow-y:auto; padding:24px; border-radius:16px; position:relative;">
+    <button class="modal-close" onclick="cm('weeklyReportModal')">×</button>
+    <h2 style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">📊 Haftalık Gelişim Raporu</h2>
+    <p style="font-size:13px; color:var(--text-mid); margin-bottom:20px;">
+      Öğrenci: <strong style="color:var(--accent);">${esc(stu.name)}</strong> &nbsp;|&nbsp; 
+      Hafta: <strong>${wStart.getDate()} ${MONTHS_TR[wStart.getMonth()]} — ${wEnd.getDate()} ${MONTHS_TR[wEnd.getMonth()]} ${wEnd.getFullYear()}</strong>
+    </p>
+    
+    <!-- SUMMARY CARDS -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:20px;">
+      <div class="card" style="padding:16px; text-align:center;">
+        <div style="font-size:24px; font-weight:800; color:var(--accent);">${completionRate}%</div>
+        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; margin-top:4px;">Görev Tamamlama</div>
+        <div style="font-size:12px; color:var(--text-mid); margin-top:2px;">${completedTasks} / ${totalTasks} Görev</div>
+      </div>
+      <div class="card" style="padding:16px; text-align:center;">
+        <div style="font-size:24px; font-weight:800; color:#f0a500;">
+          ${avgFocus} <span style="font-size:16px;">★</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; margin-top:4px;">Ortalama Odaklanma</div>
+        <div style="font-size:12px; color:var(--text-mid); margin-top:2px;">${tasksWithFocus.length} Geri Bildirim</div>
+      </div>
+      <div class="card" style="padding:16px; text-align:center;">
+        <div style="font-size:24px; font-weight:800; color:var(--blue);">${totalSolved}</div>
+        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; margin-top:4px;">Çözülen Soru</div>
+        <div style="font-size:12px; color:var(--text-mid); margin-top:2px;">Net: <strong style="color:var(--green);">${net}</strong></div>
+      </div>
+      <div class="card" style="padding:16px; text-align:center;">
+        <div style="font-size:24px; font-weight:800; color:var(--green);">${totalSpentMin} dk</div>
+        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; margin-top:4px;">Çalışma Süresi</div>
+        <div style="font-size:12px; color:var(--text-mid); margin-top:2px;">Planlanan: ${totalPlannedMin} dk</div>
+      </div>
+    </div>
+
+    <!-- DETAILS SECTIONS -->
+    <div style="display:grid; grid-template-columns:1fr; gap:16px; margin-bottom:20px;">
+      ${totalSolved > 0 ? `
+      <div class="card" style="padding:16px;">
+        <h3 style="margin-bottom:12px; font-size:14px; font-weight:700;">📊 Soru Dağılımı ve Net Analizi</h3>
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:14px;">
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+              <span>Doğru Soru Oranı</span>
+              <strong>${Math.round((totalCorrect/totalSolved)*100)}%</strong>
+            </div>
+            <div style="height:8px; background:var(--surface2); border-radius:4px; overflow:hidden;">
+              <div style="width:${(totalCorrect/totalSolved)*100}%; height:100%; background:var(--green);"></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; text-align:center;">
+          <div style="background:var(--surface2); padding:8px; border-radius:8px;">
+            <div style="font-size:10px; color:var(--green); font-weight:700;">✓ DOĞRU</div>
+            <div style="font-size:16px; font-weight:800; margin-top:4px;">${totalCorrect}</div>
+          </div>
+          <div style="background:var(--surface2); padding:8px; border-radius:8px;">
+            <div style="font-size:10px; color:var(--red); font-weight:700;">✗ YANLIŞ</div>
+            <div style="font-size:16px; font-weight:800; margin-top:4px;">${totalWrong}</div>
+          </div>
+          <div style="background:var(--surface2); padding:8px; border-radius:8px;">
+            <div style="font-size:10px; color:var(--text-dim); font-weight:700;">— BOŞ</div>
+            <div style="font-size:16px; font-weight:800; margin-top:4px;">${totalBlank}</div>
+          </div>
+          <div style="background:var(--accent-dim); padding:8px; border-radius:8px; border:1px solid var(--accent-border);">
+            <div style="font-size:10px; color:var(--accent); font-weight:700;">⚡ NET</div>
+            <div style="font-size:16px; font-weight:800; color:var(--accent); margin-top:4px;">${net}</div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+
+      <div class="card" style="padding:16px;">
+        <h3 style="margin-bottom:12px; font-size:14px; font-weight:700;">📈 Görev Zorluk Derecesi Dağılımı</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${[5, 4, 3, 2, 1].map(level => {
+            const count = diffCounts[level] || 0;
+            const hasDiffCount = weekTasks.filter(t => t.student_feedback?.difficulty).length;
+            const pct = hasDiffCount ? Math.round((count / hasDiffCount) * 100) : 0;
+            const color = { 1: '#3ecf8e', 2: '#86efac', 3: '#f0a500', 4: '#fb923c', 5: '#ef4444' }[level];
+            return `
+              <div style="display:flex; align-items:center; gap:8px; font-size:12px;">
+                <span style="width:70px; font-weight:600; color:var(--text-mid);">${DL[level]}</span>
+                <div style="flex:1; height:6px; background:var(--surface2); border-radius:3px; overflow:hidden;">
+                  <div style="width:${pct}%; height:100%; background:${color};"></div>
+                </div>
+                <span style="width:30px; text-align:right; font-weight:700; color:var(--text-mid);">${count}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      ${blockers.length > 0 ? `
+      <div class="card" style="padding:16px; border:1.5px solid rgba(251,146,60,.3); background:rgba(251,146,60,.03);">
+        <h3 style="margin-bottom:8px; font-size:14px; font-weight:700; color:#fb923c; display:flex; align-items:center; gap:6px;">⚠️ Karşılaşılan Engeller</h3>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          ${blockers.map(b => `
+            <div style="font-size:12px; color:var(--text-mid);">
+              📌 <strong>${esc(b.task)}</strong>: <span style="color:#fb923c; font-weight:600;">${b.reason}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
+    </div>
+
+    <!-- DETAILED TABLE -->
+    <div class="card" style="padding:16px;">
+      <h3 style="margin-bottom:12px; font-size:14px; font-weight:700;">📋 Görev Bazlı Detaylı Tablo</h3>
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border); color:var(--text-dim); font-size:11px; text-transform:uppercase;">
+              <th style="padding:8px 4px;">Görev / Konu</th>
+              <th style="padding:8px 4px; text-align:center;">Durum</th>
+              <th style="padding:8px 4px; text-align:center;">Sonuç (D/Y/B)</th>
+              <th style="padding:8px 4px; text-align:center;">Süre</th>
+              <th style="padding:8px 4px; text-align:center;">Odak</th>
+              <th style="padding:8px 4px; text-align:center;">Zorluk</th>
+              <th style="padding:8px 4px;">Öğrenci Notu</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${weekTasks.map(t => {
+              const statusLabel = t.done ? '✓ Tamam' : '✗ Eksik';
+              const statusColor = t.done ? 'var(--green)' : 'var(--text-dim)';
+              const res = t.student_result ? `${t.student_result.dogru || 0}/${t.student_result.yanlis || 0}/${t.student_result.bos || 0}` : '—';
+              const focus = t.student_feedback?.focus ? '★'.repeat(t.student_feedback.focus) : '—';
+              const diff = t.student_feedback?.difficulty ? DL[t.student_feedback.difficulty] : '—';
+              const spent = t.student_feedback?.time_spent ? `${t.student_feedback.time_spent} dk` : '—';
+              return `
+                <tr style="border-bottom:1px solid var(--border); transition:background .15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+                  <td style="padding:8px 4px; font-weight:600; color:var(--text);">${esc(t.subject)}</td>
+                  <td style="padding:8px 4px; text-align:center; font-weight:700; color:${statusColor};">${statusLabel}</td>
+                  <td style="padding:8px 4px; text-align:center; font-weight:700; color:var(--accent);">${res}</td>
+                  <td style="padding:8px 4px; text-align:center;">${spent}</td>
+                  <td style="padding:8px 4px; text-align:center; color:#f0a500; font-size:10px;">${focus}</td>
+                  <td style="padding:8px 4px; text-align:center;">${diff}</td>
+                  <td style="padding:8px 4px; color:var(--text-mid); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(t.student_note || '')}">${esc(t.student_note || '—')}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+
+  om('weeklyReportModal');
+}
+
 async function confirmApplyTemplate() {
   const templateId = document.getElementById('atmSelect').value;
   if(!templateId) return;
@@ -12122,6 +12351,7 @@ window.openStudentExamModal = openStudentExamModal;
 window.openExamModal = openExamModal;
 window.renderNetInputs = renderNetInputs;
 window.saveExam = saveExam;
+window.openWeeklyReportModal = openWeeklyReportModal;
 window.renderSMessages = renderSMessages;
 window.initRealtime = initRealtime;
 window.destroyRealtime = destroyRealtime;
