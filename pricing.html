@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fiyatlar Yakında — Rostrum Akademi</title>
-<meta name="description" content="Rostrum Akademi fiyatlandırma bilgileri yakında açıklanacak.">
+<title>Fiyatlandırma — Rostrum Akademi</title>
+<meta name="description" content="Rostrum Akademi fiyatlandırma: Bireysel ve Profesyonel paketler, kurucu üye lansman fiyatlarıyla, 7 gün ücretsiz deneme.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -149,144 +149,68 @@ footer{border-top:1px solid var(--bd);padding:32px 40px;display:flex;align-items
   </div>
 </nav>
 
-<!-- YAKINDA SAYFASI -->
-<section class="hero" style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
-  <div class="hero-chip"><span class="chip-dot"></span> Çok Yakında</div>
-  <h1>Fiyatlar <span>yakında</span><br>açıklanacak</h1>
-  <p>Fiyatlandırma bilgilerimiz hazırlanıyor. Erken erişim için kayıt olun.</p>
-  <a href="/app.html" style="display:inline-block;margin-top:32px;background:var(--acc);color:#07060a;border-radius:12px;padding:14px 32px;font-weight:700;font-size:15px;text-decoration:none">Platforma Giriş Yap →</a>
-</section>
-
-<div style="display:none">
-  <div class="billing-toggle">
-    <button class="bt-btn active" id="btnMonthly" onclick="setBilling('monthly')">Aylık</button>
-    <button class="bt-btn" id="btnAnnual" onclick="setBilling('annual')">
-      Yıllık
-      <span class="bt-badge">%20 İndirim</span>
-    </button>
-  </div>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-chip"><span class="chip-dot"></span> Lansman Fiyatları</div>
+  <h1>Size uygun<br><span>kapasiteyi</span> seçin</h1>
+  <p>Kurucu üyelere özel lansman fiyatları — sezon sonuna kadar geçerli, kaydolan herkes için ömür boyu sabit.</p>
 </section>
 
 <!-- PRICING CARDS -->
-<div class="pricing-grid">
+<div class="pricing-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));max-width:760px">
 
-  <!-- BAŞLANGIÇ -->
+  <!-- BİREYSEL -->
   <div class="pc">
-    <div class="pc-name">Başlangıç</div>
-    <div class="pc-desc">Yeni koçlar için ideal. Temel özellikleri ücretsiz keşfedin.</div>
+    <div class="pc-name">Bireysel</div>
+    <div class="pc-desc">Butik bireysel koçluk yapan, işini profesyonelleştirmek isteyenler için.</div>
     <div class="pc-price-wrap">
-      <div class="pc-price"><sup>₺</sup><span class="price-val" data-monthly="0" data-annual="0">0</span></div>
+      <div style="font-size:15px;color:var(--dim);text-decoration:line-through;margin-bottom:2px">₺1.999 / ay</div>
+      <div class="pc-price"><sup>₺</sup><span>999</span></div>
     </div>
-    <div class="pc-period">/ ay · Sonsuza kadar ücretsiz</div>
-    <div class="pc-annual-note" id="ann-free"></div>
-    <a href="/app.html" class="pc-cta pc-cta-ghost">Ücretsiz Başla</a>
+    <div class="pc-period">/ ay · Kurucu üye fiyatı ömür boyu sabit</div>
+    <div class="pc-annual-note">💰 10 aylık peşin: ₺5.990 (aylık ₺599 — %70 indirim)</div>
+    <a href="/app.html" class="pc-cta pc-cta-ghost">Bireysel Paketi Seç →</a>
     <hr class="pc-divider">
     <div class="pc-features-title">Dahil özellikler</div>
     <div class="pc-features">
-      <div class="pf"><div class="pf-check"></div><span>3 öğrenciye kadar</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Haftalık program oluşturma</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Görev & not yönetimi</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Öğrenci portal erişimi</span></div>
-      <div class="pf"><div class="pf-x"></div><span>AI koçluk asistanı</span></div>
-      <div class="pf"><div class="pf-x"></div><span>Deneme analiz paneli</span></div>
-      <div class="pf"><div class="pf-x"></div><span>PDF rapor oluşturma</span></div>
-      <div class="pf"><div class="pf-x"></div><span>Kaynak kütüphanesi</span></div>
-      <div class="pf"><div class="pf-x"></div><span>Mesajlaşma & bildirimler</span></div>
+      <div class="pf"><div class="pf-check"></div><span><strong>15 öğrenciye</strong> kadar öğrenci yönetimi</span></div>
+      <div class="pf"><div class="pf-check"></div><span>Gelişmiş deneme takibi + net analiz grafikleri</span></div>
+      <div class="pf"><div class="pf-check"></div><span>AI Koç Yardımcısı &amp; AI Ders Asistanı</span></div>
+      <div class="pf"><div class="pf-check"></div><span><strong>Markalı PDF raporlar</strong> (kendi logonuzla)</span></div>
+      <div class="pf"><div class="pf-check"></div><span>YouTube · Meet · Zoom entegrasyonu</span></div>
+      <div class="pf"><div class="pf-check"></div><span>Anlık mesajlaşma</span></div>
     </div>
   </div>
 
-  <!-- KOÇPRO (ÖNERİLEN) -->
+  <!-- PROFESYONEL (ÖNERİLEN) -->
   <div class="pc featured">
-    <div class="pc-badge">✦ En Popüler</div>
-    <div class="pc-name">Koç Pro</div>
-    <div class="pc-desc">Aktif koçlar için eksiksiz çözüm. Sınırsız öğrenci, tam özellik seti.</div>
+    <div class="pc-badge">🌟 En Popüler</div>
+    <div class="pc-name">Profesyonel</div>
+    <div class="pc-desc">Geniş öğrenci portföyüne sahip, tam zamanlı profesyonel koçlar için.</div>
     <div class="pc-price-wrap">
-      <div class="pc-price"><sup>₺</sup><span class="price-val" data-monthly="499" data-annual="399">499</span></div>
+      <div style="font-size:15px;color:var(--dim);text-decoration:line-through;margin-bottom:2px">₺2.999 / ay</div>
+      <div class="pc-price"><sup>₺</sup><span>1.899</span></div>
     </div>
-    <div class="pc-period">/ ay · KDV dahil</div>
-    <div class="pc-annual-note" id="ann-pro">Yıllık ödemede ₺<span id="ann-pro-save">1200</span> tasarruf</div>
-    <a href="/app.html" class="pc-cta pc-cta-main" id="cta-pro" onclick="startCheckout('pro')">7 Gün Ücretsiz Dene →</a>
+    <div class="pc-period">/ ay · Kurucu üye fiyatı ömür boyu sabit</div>
+    <div class="pc-annual-note">💰 10 aylık peşin: ₺11.900 (aylık ₺1.190)</div>
+    <a href="/app.html" class="pc-cta pc-cta-main">Profesyonel Paketi Seç →</a>
     <hr class="pc-divider">
-    <div class="pc-features-title">Başlangıç + şunlar</div>
+    <div class="pc-features-title">Bireysel + şunlar</div>
     <div class="pc-features">
-      <div class="pf"><div class="pf-check"></div><span><strong>Sınırsız öğrenci</strong></span></div>
-      <div class="pf"><div class="pf-check"></div><span><strong>AI koçluk asistanı</strong></span></div>
-      <div class="pf"><div class="pf-check"></div><span>TYT / AYT deneme takibi</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Net analiz & puan tahmini</span></div>
-      <div class="pf"><div class="pf-check"></div><span>PDF haftalık rapor</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Kaynak kütüphanesi (soru bankaları)</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Öğrenci mesajlaşma sistemi</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Program şablonları</span></div>
-      <div class="pf"><div class="pf-check"></div><span>E-posta desteği</span></div>
-    </div>
-  </div>
-
-  <!-- KURUM -->
-  <div class="pc">
-    <div class="pc-name">Kurum</div>
-    <div class="pc-desc">Dershaneler ve özel okullar için. Çoklu koç, merkezi yönetim.</div>
-    <div class="pc-price-wrap">
-      <div class="pc-price" style="font-size:36px;letter-spacing:-1px;margin-top:6px">Özel Fiyat</div>
-    </div>
-    <div class="pc-period">Ekibinize özel teklif alın</div>
-    <div class="pc-annual-note" id="ann-inst"></div>
-    <a href="mailto:info@rostrumakademi.com?subject=Kurum Planı Teklif Talebi" class="pc-cta pc-cta-ghost">Teklif Al →</a>
-    <hr class="pc-divider">
-    <div class="pc-features-title">Koç Pro + şunlar</div>
-    <div class="pc-features">
-      <div class="pf"><div class="pf-check"></div><span><strong>Sınırsız koç hesabı</strong></span></div>
-      <div class="pf"><div class="pf-check"></div><span>Kurum dashboard & analitik</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Koç performans raporları</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Özel marka (white-label)</span></div>
-      <div class="pf"><div class="pf-check"></div><span>API erişimi</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Toplu öğrenci aktarımı (Excel)</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Öncelikli destek + SLA</span></div>
-      <div class="pf"><div class="pf-check"></div><span>Özel onboarding eğitimi</span></div>
+      <div class="pf"><div class="pf-check"></div><span>Bireysel paketteki her şey</span></div>
+      <div class="pf"><div class="pf-check"></div><span><strong>40 öğrenciye</strong> kadar öğrenci yönetimi</span></div>
+      <div class="pf"><div class="pf-check"></div><span>Öncelikli destek</span></div>
     </div>
   </div>
 
 </div>
 
-<!-- COMPARISON TABLE -->
-<section class="compare-sec">
-  <h2>Plan Karşılaştırması</h2>
-  <table class="compare-table">
-    <thead>
-      <tr>
-        <th>Özellik</th>
-        <th>Başlangıç</th>
-        <th class="ct-pop">Koç Pro</th>
-        <th>Kurum</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td class="ct-sect" colspan="4">Temel</td></tr>
-      <tr><td>Öğrenci kapasitesi</td><td>3</td><td class="ct-pop">Sınırsız</td><td>Sınırsız</td></tr>
-      <tr><td>Haftalık program</td><td class="ct-check">✓</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-      <tr><td>Görev yönetimi</td><td class="ct-check">✓</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-      <tr><td>Öğrenci portal</td><td class="ct-check">✓</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-
-      <tr><td class="ct-sect" colspan="4">Gelişmiş Özellikler</td></tr>
-      <tr><td>AI Koçluk Asistanı</td><td class="ct-dash">—</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-      <tr><td>Deneme analiz paneli</td><td class="ct-dash">—</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-      <tr><td>PDF haftalık raporlar</td><td class="ct-dash">—</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-      <tr><td>Kaynak kütüphanesi</td><td class="ct-dash">—</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-      <tr><td>Program şablonları</td><td class="ct-dash">—</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-      <tr><td>Excel ile öğrenci aktarımı</td><td class="ct-dash">—</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-
-      <tr><td class="ct-sect" colspan="4">Kurum</td></tr>
-      <tr><td>Çoklu koç yönetimi</td><td class="ct-dash">—</td><td class="ct-dash">—</td><td class="ct-check">✓</td></tr>
-      <tr><td>Kurum dashboard</td><td class="ct-dash">—</td><td class="ct-dash">—</td><td class="ct-check">✓</td></tr>
-      <tr><td>White-label / özel marka</td><td class="ct-dash">—</td><td class="ct-dash">—</td><td class="ct-check">✓</td></tr>
-      <tr><td>API erişimi</td><td class="ct-dash">—</td><td class="ct-dash">—</td><td class="ct-check">✓</td></tr>
-
-      <tr><td class="ct-sect" colspan="4">Destek</td></tr>
-      <tr><td>Topluluk desteği</td><td class="ct-check">✓</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-      <tr><td>E-posta desteği</td><td class="ct-dash">—</td><td class="ct-check ct-pop">✓</td><td class="ct-check">✓</td></tr>
-      <tr><td>Öncelikli destek + SLA</td><td class="ct-dash">—</td><td class="ct-dash">—</td><td class="ct-check">✓</td></tr>
-    </tbody>
-  </table>
-</section>
+<div style="max-width:760px;margin:0 auto;padding:0 40px 40px;text-align:center">
+  <div style="display:inline-block;background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);border-radius:16px;padding:18px 28px;max-width:640px">
+    <div style="font-weight:800;color:var(--acc);margin-bottom:6px">🎓 Öğrenciler ve Veliler İçin %100 Ücretsizdir</div>
+    <div style="font-size:13px;color:var(--mid);line-height:1.6">Koçunuz sizi sisteme davet ettiğinde, size tanımlanan hesapla doğrudan giriş yaparsınız — hiçbir ücret ödemezsiniz.</div>
+  </div>
+</div>
 
 <!-- FAQ -->
 <section class="faq-sec">
@@ -297,7 +221,23 @@ footer{border-top:1px solid var(--bd);padding:32px 40px;display:flex;align-items
       7 günlük deneme nasıl çalışır?
       <span class="arr">+</span>
     </button>
-    <div class="faq-a">Koç Pro planını seçtiğinizde kredi kartı bilgisi girmeden 7 gün tam özelliğe erişebilirsiniz. Deneme süresi bitiminde ücret alınmaz; planı aktifleştirmeyi tercih ederseniz ödeme yaparsınız.</div>
+    <div class="faq-a">Kaydolduktan sonra 7 gün boyunca tüm özelliklere sınırsız erişirsiniz. Kredi kartı bilgisi gerekmez. Süre dolduğunda size uygun paketi (Bireysel veya Profesyonel) seçerek lansman fiyatıyla aboneliğinizi başlatabilir ya da dilediğiniz zaman vazgeçebilirsiniz.</div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-q" onclick="toggleFaq(this)">
+      Neden otomatik kartla ödeme yerine havale/EFT kullanıyorsunuz?
+      <span class="arr">+</span>
+    </button>
+    <div class="faq-a">Aracı ödeme kuruluşlarının işlem başına aldığı yüksek komisyonları (%5'e varan) sistemden tamamen çıkardık ve bu tasarrufu doğrudan size indirim olarak yansıttık. Ödemenizi havale/EFT ile yaparsınız, dekontunuzu panelden yüklersiniz — onayımız kısa sürede tamamlanır.</div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-q" onclick="toggleFaq(this)">
+      Lansman fiyatından üye olursam fiyatlar sonradan artar mı?
+      <span class="arr">+</span>
+    </button>
+    <div class="faq-a">Hayır. Kurucu üyelerimize özel lansman fiyatı, üyeliğiniz devam ettiği sürece ömür boyu sabit kalır. İlerleyen dönemlerde liste fiyatlarını ne kadar artırırsak artıralım, siz üyeliğinizi iptal etmediğiniz sürece ilk kaydolduğunuz fiyattan ödemeye devam edersiniz.</div>
   </div>
 
   <div class="faq-item">
@@ -305,7 +245,7 @@ footer{border-top:1px solid var(--bd);padding:32px 40px;display:flex;align-items
       İstediğim zaman iptal edebilir miyim?
       <span class="arr">+</span>
     </button>
-    <div class="faq-a">Evet, istediğiniz an admin panelinizden aboneliğinizi iptal edebilirsiniz. İptal sonrasında mevcut ödeme döneminizin sonuna kadar erişiminiz devam eder. Bağlayıcı sözleşme yoktur.</div>
+    <div class="faq-a">Evet, herhangi bir zamanda iptal edebilirsiniz. İptal sonrası mevcut dönemin sonuna kadar platformu kullanmaya devam edersiniz. Ek ücret veya ceza yoktur.</div>
   </div>
 
   <div class="faq-item">
@@ -318,26 +258,10 @@ footer{border-top:1px solid var(--bd);padding:32px 40px;display:flex;align-items
 
   <div class="faq-item">
     <button class="faq-q" onclick="toggleFaq(this)">
-      Yıllık plana geçiş nasıl yapılır?
-      <span class="arr">+</span>
-    </button>
-    <div class="faq-a">Hesabınızın ayarlar bölümünden aylık → yıllık geçiş yapabilirsiniz. Kalan günler oransal olarak yıllık ücretle mahsup edilir; fark iade veya kredi olarak hesabınıza yansır.</div>
-  </div>
-
-  <div class="faq-item">
-    <button class="faq-q" onclick="toggleFaq(this)">
-      Hangi ödeme yöntemlerini kabul ediyorsunuz?
-      <span class="arr">+</span>
-    </button>
-    <div class="faq-a">Tüm Türk bankalarının kredi ve banka kartlarını (Visa, Mastercard, Troy) kabul ediyoruz. Kurumsal müşteriler için EFT / havale seçeneği de mevcuttur.</div>
-  </div>
-
-  <div class="faq-item">
-    <button class="faq-q" onclick="toggleFaq(this)">
       Verilerim güvende mi?
       <span class="arr">+</span>
     </button>
-    <div class="faq-a">Tüm veriler Supabase (PostgreSQL) üzerinde şifrelenmiş şekilde saklanır. HTTPS zorunludur. Verileriniz üçüncü taraflarla paylaşılmaz. İstediğinizde tüm verilerinizi dışa aktarabilirsiniz.</div>
+    <div class="faq-a">Her koç yalnızca kendi öğrencilerinin verilerini görür. Veriler Supabase (PostgreSQL) altyapısında saklanır ve koç bazında tamamen izole edilir. Row Level Security ile başka hiçbir kullanıcı sizin verilerinize erişemez.</div>
   </div>
 
 </section>
@@ -366,43 +290,11 @@ footer{border-top:1px solid var(--bd);padding:32px 40px;display:flex;align-items
 </footer>
 
 <script>
-let _billing = 'monthly';
-
-function setBilling(mode) {
-  _billing = mode;
-  document.getElementById('btnMonthly').classList.toggle('active', mode==='monthly');
-  document.getElementById('btnAnnual').classList.toggle('active', mode==='annual');
-
-  document.querySelectorAll('.price-val').forEach(el => {
-    const val = parseInt(el.dataset[mode] || 0);
-    el.textContent = val;
-  });
-
-  // Annual note for pro
-  const annPro = document.getElementById('ann-pro');
-  if (mode === 'annual') {
-    const monthlyCost = 499 * 12;
-    const annualCost = 399 * 12;
-    annPro.innerHTML = 'Yıllık ödemede ₺' + (monthlyCost - annualCost) + ' tasarruf';
-  } else {
-    annPro.innerHTML = '';
-  }
-
-  // CTA text
-  const cta = document.getElementById('cta-pro');
-  cta.textContent = '7 Gün Ücretsiz Dene →';
-}
-
 function toggleFaq(btn) {
   const item = btn.parentElement;
   item.classList.toggle('open');
   btn.classList.toggle('open');
 }
-
-function startCheckout(plan) {
-  window.location.href = '/app.html';
-}
 </script>
-</div>
 </body>
 </html>

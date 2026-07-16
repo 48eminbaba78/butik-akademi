@@ -569,6 +569,7 @@ nav.scrolled{background:var(--nav-bg);backdrop-filter:blur(24px);border-bottom-c
 .bt-track.on .bt-thumb{transform:translateX(24px);}
 .bt-save{background:rgba(62,207,142,.1);color:var(--acc3);border:1px solid rgba(62,207,142,.2);border-radius:99px;padding:3px 12px;font-size:11px;font-weight:700;}
 .pg{display:grid;grid-template-columns:1fr 1.06fr 1fr;gap:12px;align-items:start;}
+.pg-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:820px;margin:36px auto 0;align-items:start;}
 .pc{background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:32px;position:relative;transition:transform .25s;}
 .pc:hover{transform:translateY(-4px);}
 .pc.feat{background:linear-gradient(150deg,rgba(232,97,58,.05),rgba(232,97,58,.02));border-color:rgba(232,97,58,.22);}
@@ -739,6 +740,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   .timeline{grid-template-columns:1fr 1fr;gap:24px;}
   .timeline::before{display:none;}
   .pg{grid-template-columns:1fr;}
+  .pg-2{grid-template-columns:1fr;}
   .reg-inner{grid-template-columns:1fr;gap:36px;}
   .footer-grid{grid-template-columns:1fr 1fr;gap:24px;}
   .sec{padding:60px 20px;}
@@ -996,7 +998,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </h1>
 
   <p class="hero-desc">
-    Haftalık program, TYT/AYT deneme takibi, veli raporu ve mesajlaşma tek yerde. Kurulum yok — ilk programınızı 5 dakikada oluşturun.
+    Dağınık WhatsApp gruplarını da geride bırakın. Üç ayrı yapay zeka ajanı, gelişmiş deneme takibi ve markanızla özelleştirilmiş PDF raporlamayla koçluğunuzu kurumsal bir seviyeye taşıyoruz.
   </p>
 
   <div class="hero-cta">
@@ -1171,6 +1173,33 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     </div>
   </div>
 </div>
+
+<!-- 3 BOYUTLU YAPAY ZEKA -->
+<section class="sec" id="ai-ecosystem">
+  <div class="reveal">
+    <div class="sec-chip">Yapay Zeka Gücü</div>
+    <div class="sec-h" style="text-align:center;margin-top:10px">3 Boyutlu Yapay Zeka Ekosistemi</div>
+    <div class="sec-p" style="margin:0 auto;text-align:center">Rostrum Akademi'yi farklı kılan şey tek bir "AI özelliği" değil — koçunuz, öğrenciniz ve sizin aranızda eş zamanlı çalışan üç ayrı yapay zeka ajanı.</div>
+  </div>
+
+  <div class="bento reveal" style="grid-auto-rows:minmax(220px,auto)">
+    <div class="bc bc-4" style="cursor:default">
+      <div class="bc-icon">🧠</div>
+      <div class="bc-title">AI Koç Yardımcısı</div>
+      <div class="bc-desc">Deneme sonuçlarınızı sizin yerinize tarar; düşüşü ve anomaliyi saniyeler içinde yakalar. Haftalık telafi programını taslak halinde önünüze koyar — siz sadece onaylayıp gönderirsiniz.</div>
+    </div>
+    <div class="bc bc-4" style="cursor:default">
+      <div class="bc-icon">🦉</div>
+      <div class="bc-title">AI Ders Asistanı</div>
+      <div class="bc-desc">Öğrencinizin cebindeki sonsuz sabırlı akademik sırdaşı. Cevabı ezberletmez; Sokratik ipuçlarıyla düşündürerek çözdürür ve sınav kaygısını pedagojik olarak yönetir.</div>
+    </div>
+    <div class="bc bc-4" style="cursor:default">
+      <div class="bc-icon">🛟</div>
+      <div class="bc-title">Destek AI</div>
+      <div class="bc-desc">Koçların ve öğrencilerin teknik sorularını anında yanıtlar. Çözemediği durumda tüm konuşma geçmişini özetleyip doğrudan kurucunun WhatsApp hattına iletir.</div>
+    </div>
+  </div>
+</section>
 
 <!-- FEATURES BENTO -->
 <section class="sec" id="features">
@@ -1520,52 +1549,74 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </div>
 </section>
 
-<!-- PRICING — Kurucu Üye -->
+<!-- PRICING — Bireysel / Profesyonel -->
 <section class="pricing-sec" id="pricing">
   <div class="pricing-inner">
     <div class="reveal" style="text-align:center">
-      <div class="sec-chip" style="display:inline-block">Kurucu Üye Fırsatı</div>
-      <div class="sec-h" style="text-align:center;margin-top:10px">Tek plan. Her şey dahil.</div>
-      <div class="sec-p" style="margin:0 auto;text-align:center">7 gün ücretsiz deneyin. Kredi kartı gerekmez, dilediğiniz zaman iptal edin.</div>
+      <div class="sec-chip" style="display:inline-block">Lansman Fiyatları</div>
+      <div class="sec-h" style="text-align:center;margin-top:10px">Size uygun kapasiteyi seçin</div>
+      <div class="sec-p" style="margin:0 auto;text-align:center">Kurucu üyelere özel lansman fiyatları — sezon sonuna kadar geçerli, kaydolan herkes için ömür boyu sabit.</div>
     </div>
 
-    <div class="reveal" style="max-width:460px;margin:36px auto 0">
-      <div class="pc feat">
-        <div class="pc-badge">🔥 Kurucu Üye Fiyatı</div>
-        <div class="pc-plan">Kurucu Üye</div>
-        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0 2px">
-          <span style="font-size:19px;color:var(--dim);text-decoration:line-through;font-weight:600">₺1.099</span>
-          <span style="font-size:11px;font-weight:800;color:var(--acc);background:var(--acc-dim,rgba(232,97,58,.1));border:1px solid rgba(232,97,58,.25);border-radius:99px;padding:3px 10px">%55 indirim</span>
+    <div class="urgency reveal">
+      <span class="urgency-fire">🔥</span>
+      <span class="urgency-text">Lansman fiyatları sınırlı süre için geçerli — sezon sonu zam gelmeden fiyatınızı kilitleyin.</span>
+    </div>
+
+    <div class="pg-2 reveal">
+      <div class="pc">
+        <div class="pc-plan">Bireysel</div>
+        <div style="font-size:12px;color:var(--mid);margin-bottom:14px">Butik bireysel koçluk yapan, işini profesyonelleştirmek isteyenler için</div>
+        <div style="display:flex;align-items:center;gap:10px;margin:8px 0 2px">
+          <span style="font-size:17px;color:var(--dim);text-decoration:line-through;font-weight:600">₺1.999</span>
+          <span style="font-size:11px;font-weight:800;color:var(--acc);background:var(--acc-dim,rgba(232,97,58,.1));border:1px solid rgba(232,97,58,.25);border-radius:99px;padding:3px 10px">%50 indirim</span>
         </div>
         <div class="pc-price">
           <span class="pc-cur">₺</span>
-          <span class="pc-num">499</span>
+          <span class="pc-num">999</span>
           <span class="pc-per"> / ay</span>
         </div>
         <div class="pc-period">Kurucu üye fiyatın <b style="color:var(--acc)">ömür boyu sabit</b> — sonraki zamlar sana yansımaz</div>
+        <div style="font-size:12px;color:var(--mid);margin-bottom:10px">💰 10 aylık peşin: <b style="color:var(--text)">₺5.990</b> <span style="color:var(--dim)">(aylık ₺599 — %70 indirim)</span></div>
         <div class="pc-sep"></div>
         <ul class="pc-list">
-          <li><span class="ok">✓</span><b>Sınırsız</b> öğrenci</li>
-          <li><span class="ok">✓</span>Haftalık program &amp; görev yönetimi</li>
-          <li><span class="ok">✓</span>Gelişmiş deneme takibi + grafikler</li>
-          <li><span class="ok">✓</span><b>Markalı PDF raporlar</b> (Kendi logonuzla)</li>
-          <li><span class="ok">✓</span>Anlık mesajlaşma</li>
+          <li><span class="ok">✓</span><b>15 öğrenciye</b> kadar öğrenci yönetimi</li>
+          <li><span class="ok">✓</span>Gelişmiş deneme takibi + net analiz grafikleri</li>
+          <li><span class="ok">✓</span>AI Koç Yardımcısı &amp; AI Ders Asistanı</li>
+          <li><span class="ok">✓</span><b>Markalı PDF raporlar</b> (kendi logonuzla)</li>
           <li><span class="ok">✓</span>YouTube · Meet · Zoom entegrasyonu</li>
-          <li><span class="ok">✓</span>AI koçluk asistanı</li>
+          <li><span class="ok">✓</span>Anlık mesajlaşma</li>
+        </ul>
+        <button class="pc-btn out" onclick="goReg()">Bireysel Paketi Seç →</button>
+        <div style="text-align:center;font-size:12px;color:var(--dim);margin-top:12px">7 gün ücretsiz · kart gerekmez · anında iptal</div>
+      </div>
+
+      <div class="pc feat">
+        <div class="pc-badge">🌟 En Popüler</div>
+        <div class="pc-plan">Profesyonel</div>
+        <div style="font-size:12px;color:var(--mid);margin-bottom:14px">Geniş öğrenci portföyüne sahip, tam zamanlı profesyonel koçlar için</div>
+        <div style="display:flex;align-items:center;gap:10px;margin:8px 0 2px">
+          <span style="font-size:17px;color:var(--dim);text-decoration:line-through;font-weight:600">₺2.999</span>
+          <span style="font-size:11px;font-weight:800;color:var(--acc);background:var(--acc-dim,rgba(232,97,58,.1));border:1px solid rgba(232,97,58,.25);border-radius:99px;padding:3px 10px">%37 indirim</span>
+        </div>
+        <div class="pc-price">
+          <span class="pc-cur">₺</span>
+          <span class="pc-num">1.899</span>
+          <span class="pc-per"> / ay</span>
+        </div>
+        <div class="pc-period">Kurucu üye fiyatın <b style="color:var(--acc)">ömür boyu sabit</b> — sonraki zamlar sana yansımaz</div>
+        <div style="font-size:12px;color:var(--mid);margin-bottom:10px">💰 10 aylık peşin: <b style="color:var(--text)">₺11.900</b> <span style="color:var(--dim)">(aylık ₺1.190)</span></div>
+        <div class="pc-sep"></div>
+        <ul class="pc-list">
+          <li><span class="ok">✓</span>Bireysel paketteki her şey</li>
+          <li><span class="ok">✓</span><b>40 öğrenciye</b> kadar öğrenci yönetimi</li>
           <li><span class="ok">✓</span>Öncelikli destek</li>
         </ul>
-        <button class="pc-btn main" onclick="goReg()">7 Gün Ücretsiz Başla →</button>
-        <div style="background:rgba(255,255,255,0.03); border: 1px dashed var(--bd); border-radius:10px; padding:12px; margin-top:14px; text-align:left; font-size:11.5px; line-height:1.5; color:var(--mid)">
-          💡 <strong>Sınırsız Öğrenci Avantajı:</strong> 25-30 öğrenci yöneten bir koç için öğrenci başı maliyet ayda sadece 15-20 TL'ye denk gelir. Kağıt-kalem parasına tüm operasyonunuzu dijitalleştirin!
-        </div>
-        <div style="text-align:center; font-size:11px; color:var(--dim); margin-top:10px; line-height:1.4">
-          🎨 Markalı PDF raporları (kendi logonuz ve renginiz) bu plana dahildir. Tüm sistemin kurumsal markalanması (White Label - Özel Logo ve Giriş Ekranı) ise yalnızca kurumsal üyelik kapsamındadır.
-        </div>
+        <button class="pc-btn main" onclick="goReg()">Profesyonel Paketi Seç →</button>
         <div style="text-align:center;font-size:12px;color:var(--dim);margin-top:12px">7 gün ücretsiz · kart gerekmez · anında iptal</div>
       </div>
     </div>
 
-    
     <!-- Student Banner in Pricing -->
     <div class="reveal" style="margin-top:40px;text-align:center">
       <div style="display:inline-block;background:rgba(77,166,255,.07);border:1px solid rgba(77,166,255,.2);border-radius:16px;padding:20px 32px;max-width:800px">
@@ -1590,7 +1641,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </div>
   <div class="faq-item reveal">
     <div class="faq-q" onclick="toggleFaq(this)">Ücretsiz deneme süresi nasıl çalışır?<span class="faq-arr">↓</span></div>
-    <div class="faq-a">Kaydolduktan sonra 7 gün boyunca tüm özelliklere sınırsız erişirsiniz. Kredi kartı bilgisi gerekmez. Süre dolduğunda Kurucu Üye fiyatıyla (₺499/ay) aboneliğinizi başlatabilir ya da dilediğiniz zaman iptal edebilirsiniz.</div>
+    <div class="faq-a">Kaydolduktan sonra 7 gün boyunca tüm özelliklere sınırsız erişirsiniz. Kredi kartı bilgisi gerekmez. Süre dolduğunda size uygun paketi (Bireysel veya Profesyonel) seçerek lansman fiyatıyla aboneliğinizi başlatabilir ya da dilediğiniz zaman vazgeçebilirsiniz.</div>
   </div>
   <div class="faq-item reveal d1">
     <div class="faq-q" onclick="toggleFaq(this)">Öğrenci verileri güvende mi?<span class="faq-arr">↓</span></div>
@@ -1610,7 +1661,15 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </div>
   <div class="faq-item reveal d1">
     <div class="faq-q" onclick="toggleFaq(this)">Birden fazla koç aynı platformu kullanabilir mi?<span class="faq-arr">↓</span></div>
-    <div class="faq-a">Evet. Dershane ve koçluk merkezleri için her koç kendi hesabıyla katılır ve kendi öğrencilerini bağımsız yönetir. Kurucu Üye planında öğrenci sayısı sınırsızdır. Birden fazla koç için tek faturada özel kurulum isterseniz bizimle iletişime geçin.</div>
+    <div class="faq-a">Evet. Dershane ve koçluk merkezleri için her koç kendi hesabıyla katılır ve kendi öğrencilerini bağımsız yönetir. Birden fazla koç için tek faturada özel kurulum isterseniz bizimle iletişime geçin.</div>
+  </div>
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="toggleFaq(this)">Neden otomatik kartla ödeme yerine havale/EFT kullanıyorsunuz?<span class="faq-arr">↓</span></div>
+    <div class="faq-a">Aracı ödeme kuruluşlarının işlem başına aldığı yüksek komisyonları (%5'e varan) sistemden tamamen çıkardık ve bu tasarrufu doğrudan size indirim olarak yansıttık. Böylece premium yapay zeka özelliklerimizi rakiplerimizin genellikle yarı fiyatına, üstelik ömür boyu sabit kalan bir lansman fiyatıyla sunabiliyoruz. Ödemenizi havale/EFT ile yaparsınız, dekontunuzu panelden yüklersiniz — onayımız kısa sürede tamamlanır.</div>
+  </div>
+  <div class="faq-item reveal d1">
+    <div class="faq-q" onclick="toggleFaq(this)">Lansman fiyatından üye olursam fiyatlar sonradan artar mı?<span class="faq-arr">↓</span></div>
+    <div class="faq-a">Hayır. Kurucu üyelerimize özel lansman fiyatı, üyeliğiniz devam ettiği sürece ömür boyu sabit kalır. İlerleyen dönemlerde liste fiyatlarını ne kadar artırırsak artıralım, siz üyeliğinizi iptal etmediğiniz sürece ilk kaydolduğunuz fiyattan ödemeye devam edersiniz.</div>
   </div>
 </section>
 
@@ -1722,9 +1781,13 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
           <div class="ff" id="fieldPlan" style="display:none">
             <label>Plan seçin</label>
             <div class="plan-pills">
-              <div class="plan-pill sel" onclick="selPlan(this,'kurucu')" style="flex:1">
-                <div class="pp-name">Kurucu Üye ✦</div>
-                <div class="pp-price">7 gün ücretsiz · sonra ₺499/ay · sınırsız öğrenci</div>
+              <div class="plan-pill sel" onclick="selPlan(this,'bireysel')" style="flex:1">
+                <div class="pp-name">Bireysel ✦</div>
+                <div class="pp-price">7 gün ücretsiz · sonra ₺999/ay · 15 öğrenciye kadar</div>
+              </div>
+              <div class="plan-pill" onclick="selPlan(this,'profesyonel')" style="flex:1">
+                <div class="pp-name">Profesyonel 🌟</div>
+                <div class="pp-price">7 gün ücretsiz · sonra ₺1.899/ay · 40 öğrenciye kadar</div>
               </div>
             </div>
           </div>
