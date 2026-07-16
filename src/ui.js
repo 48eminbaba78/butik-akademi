@@ -4835,12 +4835,21 @@ async function openTaskDetail(ds, idx, role){
   const col = typeColors[t.type]||'var(--accent)';
   const isVideo = t.type==='konu';
   const items = t.task_items || [];
+  const totalQ = items.reduce((sum, item) => sum + (item.soru || 0), 0);
+  const defDogru = t.student_result?.dogru ?? '';
+  const defYanlis = t.student_result?.yanlis ?? '';
+  const defBos = t.student_result?.bos ?? (t.student_result == null && totalQ > 0 ? totalQ : '');
 
   // Test/video listesi HTML
   let itemsHtml = '';
   if(items.length > 0){
     itemsHtml = `<div style="margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${isVideo?'Videolar':'Testler'} (${items.length})</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">${isVideo?'Videolar':'Testler'} (${items.length})</div>
+        ${role==='coach'?'':`<button onclick="toggleAllDetailItems('${ds}',${idx},'${role}')"
+          style="background:none;border:none;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background .1s"
+          onmouseover="this.style.background='var(--accent-dim)'" onmouseout="this.style.background='none'">☑ Tümünü İşaretle</button>`}
+      </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;max-height:200px;overflow-y:auto">
         ${items.map((item,i)=>`
           <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);${i===items.length-1?'border-bottom:none':''};cursor:${role==='coach'?'default':'pointer'};transition:background .1s"
@@ -4893,20 +4902,26 @@ async function openTaskDetail(ds, idx, role){
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div>
           <div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:4px">✓ Doğru</div>
-          <input type="number" id="tdDogru" min="0" value="${t.student_result?.dogru??''}" placeholder="0" ${role==='coach'?'disabled':''}
+          <input type="number" id="tdDogru" min="0" value="${defDogru}" placeholder="0" ${role==='coach'?'disabled':''} oninput="onTaskResultInput(${totalQ}, this)"
             style="width:100%;padding:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;font-weight:700;text-align:center;box-sizing:border-box">
         </div>
         <div>
           <div style="font-size:10px;font-weight:700;color:var(--red);margin-bottom:4px">✗ Yanlış</div>
-          <input type="number" id="tdYanlis" min="0" value="${t.student_result?.yanlis??''}" placeholder="0" ${role==='coach'?'disabled':''}
+          <input type="number" id="tdYanlis" min="0" value="${defYanlis}" placeholder="0" ${role==='coach'?'disabled':''} oninput="onTaskResultInput(${totalQ}, this)"
             style="width:100%;padding:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;font-weight:700;text-align:center;box-sizing:border-box">
         </div>
         <div>
           <div style="font-size:10px;font-weight:700;color:var(--text-dim);margin-bottom:4px">— Boş</div>
-          <input type="number" id="tdBos" min="0" value="${t.student_result?.bos??''}" placeholder="0" ${role==='coach'?'disabled':''}
+          <input type="number" id="tdBos" min="0" value="${defBos}" placeholder="0" ${role==='coach'?'disabled':''} oninput="onTaskResultInput(${totalQ}, this)"
             style="width:100%;padding:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;font-weight:700;text-align:center;box-sizing:border-box">
         </div>
       </div>
+      ${totalQ > 0 ? `
+      <div style="font-size:12px;font-weight:700;color:var(--text-mid);margin-top:12px;display:flex;justify-content:space-between;border-top:1px dashed var(--border);padding-top:10px">
+        <span>📋 Toplam Soru Sayısı:</span>
+        <span style="color:var(--accent);font-weight:800" id="tdTotalQSpan">${totalQ} Soru</span>
+      </div>
+      ` : ''}
       ${t.student_result ? `<div style="font-size:11px;color:var(--text-dim);margin-top:8px;text-align:right">Son güncelleme: ${new Date(t.student_result.ts||Date.now()).toLocaleDateString('tr-TR')}</div>` : ''}
     </div>
     ${(()=>{
@@ -5177,6 +5192,59 @@ async function toggleDetailItem(ds, idx, itemIdx, role){
   showToast('İlerleme kaydedildi ✓');
 }
 
+async function toggleAllDetailItems(ds, idx, role){
+  if(role==='coach') return;
+  const stuId = session.role==='student' ? session.studentId : S.activeStuId;
+  const key = `${stuId}_${ds}`;
+  const t = S.tasks[key]?.[idx]; if(!t || !t.task_items) return;
+  
+  const allDone = t.task_items.every(item => item.done);
+  t.task_items.forEach(item => { item.done = !allDone; });
+  t.done = !allDone;
+  
+  showLoading(true);
+  await db.from('tasks').update({task_items: t.task_items, done: t.done}).eq('id', t._id);
+  showLoading(false);
+  
+  openTaskDetail(ds, idx, role);
+  if(role==='student') renderSPortal(); else renderProgram();
+  showToast('İlerleme kaydedildi ✓');
+}
+
+function onTaskResultInput(totalQ, target){
+  if(totalQ <= 0) return;
+  const dEl = document.getElementById('tdDogru');
+  const yEl = document.getElementById('tdYanlis');
+  const bEl = document.getElementById('tdBos');
+  if(!dEl || !yEl || !bEl) return;
+  
+  let d = parseInt(dEl.value) || 0;
+  let y = parseInt(yEl.value) || 0;
+  let b = parseInt(bEl.value) || 0;
+  
+  if(target === dEl || target === yEl) {
+    if(d + y > totalQ) {
+      if(target === dEl) {
+        d = totalQ - y;
+        dEl.value = Math.max(0, d);
+      } else {
+        y = totalQ - d;
+        yEl.value = Math.max(0, y);
+      }
+      d = parseInt(dEl.value) || 0;
+      y = parseInt(yEl.value) || 0;
+    }
+    bEl.value = Math.max(0, totalQ - d - y);
+  } else if(target === bEl) {
+    if(d + b > totalQ) {
+      b = totalQ - d;
+      bEl.value = Math.max(0, b);
+      b = parseInt(bEl.value) || 0;
+    }
+    yEl.value = Math.max(0, totalQ - d - b);
+  }
+}
+
 function selectVideoSpeed(btn, speed){
   // Butonları güncelle
   btn.closest('div').querySelectorAll('button[data-speed]').forEach(b=>{
@@ -5233,6 +5301,16 @@ async function saveTaskDetail(ds, idx, role){
     const dogru = parseInt(dogEl.value) || 0;
     const yanlis = parseInt(yanEl.value) || 0;
     const bos = parseInt(bosEl.value) || 0;
+    
+    // Sum validation (Doğru + Yanlış + Boş === totalQ)
+    const totalQ = (t.task_items || []).reduce((sum, item) => sum + (item.soru || 0), 0);
+    if (totalQ > 0 && (dogru > 0 || yanlis > 0 || bos > 0)) {
+      if (dogru + yanlis + bos !== totalQ) {
+        showToast(`Hata: Doğru + Yanlış + Boş toplamı (${dogru + yanlis + bos}) toplam soru sayısına (${totalQ}) eşit olmalıdır!`);
+        return;
+      }
+    }
+
     if (dogru > 0 || yanlis > 0 || bos > 0 || _wrongTopics.length > 0) {
       updatePayload.student_result = {
         dogru, yanlis, bos,
@@ -12018,6 +12096,8 @@ window.chWeekS = chWeekS;
 window.openTaskDetail = openTaskDetail;
 window.toggleTaskDetail = toggleTaskDetail;
 window.toggleDetailItem = toggleDetailItem;
+window.toggleAllDetailItems = toggleAllDetailItems;
+window.onTaskResultInput = onTaskResultInput;
 window.selectVideoSpeed = selectVideoSpeed;
 window.saveTaskDetail = saveTaskDetail;
 window.renderSExams = renderSExams;
