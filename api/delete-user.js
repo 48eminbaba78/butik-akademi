@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════
 // ROSTRUM AKADEMI — DELETE USER (Auth + DB)
 // Endpoint: /api/delete-user
-// Requires: caller must be developer role
+// Yetki: developer herkesi; koç yalnızca KENDİ öğrencisini silebilir
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from '@supabase/supabase-js';
@@ -24,10 +24,24 @@ export default async function handler(req, res) {
   if (authErr || !user) return res.status(401).json({ error: 'Yetkisiz' });
 
   const { data: caller } = await db.from('users').select('role').eq('id', user.id).single();
-  if (caller?.role !== 'developer') return res.status(403).json({ error: 'Sadece developer silebilir' });
 
   // Kendini silmeye çalışıyor mu?
   if (targetUserId === user.id) return res.status(400).json({ error: 'Kendi hesabını silemezsin' });
+
+  if (caller?.role === 'coach') {
+    // Koç yalnızca kendi öğrencisini silebilir — hedefi service-role ile doğrula
+    // (anon istemci RLS'e takılabilir; yetki kararını güvenilir veriyle ver)
+    const adminCheck = createClient(SB_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+    const { data: target } = await adminCheck.from('users').select('role, coach_id').eq('id', targetUserId).single();
+    if (!target) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    if (target.role !== 'student' || target.coach_id !== user.id) {
+      return res.status(403).json({ error: 'Sadece kendi öğrencinizi silebilirsiniz' });
+    }
+  } else if (caller?.role !== 'developer') {
+    return res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
+  }
 
   // Admin API ile hem auth hem DB'den sil (CASCADE ile public.users da silinir)
   const admin = createClient(SB_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {

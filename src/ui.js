@@ -750,9 +750,11 @@ function renderStudentsSearch(){
     weekStats[s.id]={total,done,totalMin,doneMin};
   });
 
-  const totalStudents = S.students.length;
-  const activeThisWeek = S.students.filter(s=>{ const w=weekStats[s.id]; return w&&w.total>0; }).length;
-  const completedAll   = S.students.filter(s=>{ const w=weekStats[s.id]; return w&&w.total>0&&w.done===w.total; }).length;
+  const activeStudents = S.students.filter(s=>s.active!==false);
+  const pasifStudents  = S.students.filter(s=>s.active===false);
+  const totalStudents = activeStudents.length;
+  const activeThisWeek = activeStudents.filter(s=>{ const w=weekStats[s.id]; return w&&w.total>0; }).length;
+  const completedAll   = activeStudents.filter(s=>{ const w=weekStats[s.id]; return w&&w.total>0&&w.done===w.total; }).length;
 
   el.innerHTML = `<div style="max-width:640px;margin:0 auto">
     <!-- Üst başlık -->
@@ -778,14 +780,14 @@ function renderStudentsSearch(){
 
     <!-- Öğrenci listesi -->
     <div id="stuSearchResults" style="display:flex;flex-direction:column;gap:8px">
-      ${S.students.length === 0 ? `
+      ${activeStudents.length === 0 && pasifStudents.length === 0 ? `
         <div style="text-align:center;padding:64px 20px;color:var(--text-dim)">
           <div style="width:56px;height:56px;border-radius:16px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 16px">👤</div>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Henüz öğrenciniz yok</div>
           <div style="font-size:12px;margin-bottom:16px">Öğrencilerinize e-posta ile davet gönderin, kendi hesaplarını açıp doğrudan başlasınlar.</div>
           <button class="btn btn-accent btn-sm" onclick="openStudentModal()">📩 Öğrenci Davet Et</button>
         </div>
-      ` : S.students.map(s=>{
+      ` : activeStudents.map(s=>{
         const w=weekStats[s.id]||{total:0,done:0,totalMin:0,doneMin:0};
         const pct=w.total>0?Math.round((w.done/w.total)*100):0;
         const pctColor=pct>=80?'var(--green)':pct>=40?'var(--accent)':'var(--red)';
@@ -810,6 +812,21 @@ function renderStudentsSearch(){
         </div>`;
       }).join('')}
     </div>
+    ${pasifStudents.length > 0 ? `
+    <!-- Pasif öğrenciler — soluk, ayrı bölüm -->
+    <div style="margin-top:22px">
+      <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">⏸ Pasif Öğrenciler (${pasifStudents.length})</div>
+      <div style="display:flex;flex-direction:column;gap:8px;opacity:.55">
+        ${pasifStudents.map(s=>`
+          <div class="stu-row" onclick="openStudentModal('${s.id}')" style="padding:12px 16px;align-items:center;gap:12px;border-radius:10px;cursor:pointer">
+            <div style="width:38px;height:38px;border-radius:10px;background:${s.color};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0;filter:grayscale(.6)">${s.name[0]}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(s.name)}</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:1px">Giriş kapalı · verileri korunuyor · düzenle → Aktifleştir</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>` : ''}
     <div id="stuSearchNoResults" style="display:none;text-align:center;padding:48px 20px;color:var(--text-dim)">
       <div style="font-size:13px">Aramanızla eşleşen öğrenci bulunamadı.</div>
     </div>
@@ -878,7 +895,7 @@ function openStudentDetail(stuId){
         {label:'Denemeler', icon:'📊', fn:`openStudentExams('${s.id}')`},
         {label:'Randevular', icon:'📅', fn:`openStudentAppointments('${s.id}')`},
         {label:'Notlar', icon:'📝', fn:`openStudentNotes('${s.id}')`},
-        {label:'Kaynaklar', icon:'📖', fn:`openStudentKaynaklar('${s.id}')`},
+        {label:'Kaynak İlerlemesi', icon:'📖', fn:`openStudentKaynaklar('${s.id}')`},
         {label:'Konu Haritası', icon:'🗺️', fn:`openKonuHaritasi('${s.id}')`},
         {label:'Hız', icon:'⚡', fn:`openSpeedModal('${s.id}')`},
         {label:'Rapor', icon:'📄', fn:`openReportModal('${s.id}')`},
@@ -1591,16 +1608,28 @@ async function saveProfile(){
   const brand = document.getElementById('pf_brand')?.value?.trim();
   if(!name) return showToast('Ad boş olamaz!');
   const payload = {full_name:name};
+
+  // Kullanıcı adı — normalize edilir (küçük harf, sadece a-z0-9), boşsa dokunulmaz
+  const rawUser = document.getElementById('pf_user')?.value?.trim() || '';
+  const username = rawUser.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if(rawUser && !username) return showToast('Kullanıcı adı harf/rakam içermeli!');
+  if(username && username !== session.dbUser.username) payload.username = username;
+
   if(pass) payload.password_hash = await sha256(pass);
-  await db.from('users').update(payload).eq('id',session.dbUser.id);
+  const { error } = await db.from('users').update(payload).eq('id',session.dbUser.id);
+  if(error){
+    if(/duplicate|unique|23505/i.test(error.message||'')) return showToast('Bu kullanıcı adı alınmış, başka bir tane deneyin');
+    return showToast('Kaydedilemedi: '+error.message);
+  }
   if(brand && (session.role==='coach' || session.role==='developer')) {
     await db.from('workspaces').update({brand_name:brand}).eq('coach_id',session.coachId);
     S.workspace = {...(S.workspace||{}), brand_name:brand};
     document.querySelector('.sb-logo-text').textContent = brand;
   }
-  session.dbUser = {...session.dbUser, full_name:name};
+  session.dbUser = {...session.dbUser, full_name:name, ...(payload.username ? {username: payload.username} : {})};
   document.getElementById('sbName').textContent = name;
   showToast('Profil kaydedildi ✓');
+  renderProfile();
 }
 
 // ── AYARLAR ──────────────────────────────────────
@@ -2965,18 +2994,33 @@ function renderAgenda(){
   const selStyle='font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit';
 
   // Eğer takvim yapısı kurulmadıysa HTML iskeletini oluştur
+  // Google Takvim durumu (eski Randevular ekranından taşındı)
+  const gcalConnected = S.workspace?.google_calendar_connected;
+  const gcalHtml = gcalConnected
+    ? `<span style="font-size:12px;color:var(--green);font-weight:600;display:flex;align-items:center;gap:4px">✓ Google Takvim${_gcalSyncLabel()}</span>`
+    : `<button class="btn btn-ghost btn-sm" onclick="connectGoogleCalendar()">🔗 Google Takvim Bağla</button>`;
+
   let calendarContainer = document.getElementById('fc-calendar');
   if (!calendarContainer) {
     el.innerHTML = `
       <div style="display:flex;flex-direction:column;gap:12px;height:calc(100vh - 104px);overflow:hidden;box-sizing:border-box">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0">
-          <select style="${selStyle}" onchange="agendaSetFilter('studentId',this.value)">${studentOpts}</select>
+          <select id="agendaStuSel" style="${selStyle}" onchange="agendaSetFilter('studentId',this.value)">${studentOpts}</select>
           <select style="${selStyle}" onchange="agendaSetFilter('type',this.value)">${typeOpts}</select>
           <button onclick="exportAgendaICS()" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;color:var(--text)">📥 ICS İndir</button>
+          ${gcalHtml}
           <div style="flex:1"></div>
           <button class="btn btn-accent btn-sm" onclick="openAgendaApptModal(null)">+ Randevu Ekle</button>
         </div>
-        <div id="fc-calendar" style="flex:1;min-height:0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;box-shadow:var(--shadow)"></div>
+        <div style="display:flex;gap:12px;flex:1;min-height:0">
+          <div id="fc-calendar" style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;box-shadow:var(--shadow)"></div>
+          <div id="agendaSidePanel" style="width:280px;flex-shrink:0;overflow-y:auto;${window.innerWidth<900?'display:none':''}">
+            <div class="card cp">
+              <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)" id="apptListTitle">Yaklaşan Görüşmeler</div>
+              <div id="apptList"></div>
+            </div>
+          </div>
+        </div>
       </div>
     `;
     calendarContainer = document.getElementById('fc-calendar');
@@ -2986,6 +3030,8 @@ function renderAgenda(){
     if (selects[0]) selects[0].innerHTML = studentOpts;
     if (selects[1]) selects[1].innerHTML = typeOpts;
   }
+  // Yan panel: yaklaşan randevu listesi
+  if (document.getElementById('apptList')) renderApptList();
 
   // FullCalendar kurulumu veya güncellemesi
   if (typeof FullCalendar !== 'undefined') {
@@ -3204,8 +3250,65 @@ function openStudentModal(id){
   // Koç modunda role field varsa gizle
   const roleField=document.getElementById('smRoleField');
   if(roleField) roleField.style.display='none';
+
+  // Tehlikeli bölge — yalnızca düzenlemede; pasif/aktif etiketi öğrencinin durumuna göre
+  const dangerZone = document.getElementById('smDangerZone');
+  if(dangerZone){
+    dangerZone.style.display = isEdit ? 'block' : 'none';
+    const tBtn = document.getElementById('smToggleActiveBtn');
+    if(tBtn && s) tBtn.textContent = s.active === false ? '▶️ Aktifleştir' : '⏸ Pasifleştir';
+  }
   om('studentModal');
 }
+
+// ── Öğrenci pasifleştir / aktifleştir (veri korunur, giriş kapanır) ──
+async function toggleStudentActive(){
+  const id = document.getElementById('smId').value;
+  const s = S.students.find(x=>x.id===id);
+  if(!s) return;
+  const makeActive = s.active === false;
+  const msg = makeActive
+    ? `${s.name} yeniden aktifleştirilsin mi? Öğrenci tekrar giriş yapabilecek.`
+    : `${s.name} pasifleştirilsin mi? Girişi kapanır, tüm verileri korunur; dilediğinizde geri açabilirsiniz.`;
+  if(!await customConfirm(msg)) return;
+  const { error } = await db.from('users').update({ active: makeActive }).eq('id', id);
+  if(error) return showToast('Hata: '+error.message);
+  s.active = makeActive;
+  cm('studentModal');
+  renderStudentsSearch();
+  showToast(makeActive ? 'Öğrenci aktifleştirildi ✓' : 'Öğrenci pasifleştirildi — verileri korunuyor');
+}
+window.toggleStudentActive = toggleStudentActive;
+
+// ── Öğrenci kalıcı silme (auth + tüm veriler, geri döndürülemez) ──
+async function hardDeleteStudent(){
+  const id = document.getElementById('smId').value;
+  const s = S.students.find(x=>x.id===id);
+  if(!s) return;
+  if(!await customConfirm(`"${s.name}" KALICI olarak silinsin mi?\n\nGörevler, denemeler, mesajlar ve hesap geri döndürülemez şekilde yok edilir. Verileri korumak istiyorsanız Pasifleştir'i kullanın.`)) return;
+  showLoading(true);
+  try{
+    const { data: { session: authSess } } = await db.auth.getSession();
+    const res = await fetch('/api/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authSess?.access_token||''}` },
+      body: JSON.stringify({ targetUserId: id })
+    });
+    const out = await res.json();
+    if(!res.ok) throw new Error(out.error || 'Silinemedi');
+    S.students = S.students.filter(x=>x.id!==id);
+    if(S.activeStuId===id) S.activeStuId = S.students[0]?.id || null;
+    saveUI();
+    cm('studentModal');
+    renderStudentsSearch();
+    showToast('Öğrenci kalıcı olarak silindi');
+  }catch(e){
+    showToast('Hata: '+e.message);
+  }finally{
+    showLoading(false);
+  }
+}
+window.hardDeleteStudent = hardDeleteStudent;
 document.getElementById('smProg').addEventListener('input',function(){document.getElementById('smProgVal').textContent=this.value+'%';});
 document.getElementById('smColorPick').addEventListener('click',function(e){const o=e.target.closest('.color-opt');if(!o)return;document.querySelectorAll('.color-opt').forEach(el=>el.classList.remove('sel'));o.classList.add('sel');});
 async function saveStudent(){
@@ -3271,22 +3374,22 @@ async function saveStudent(){
       const result = await resp.json();
       if (!resp.ok) return showToast('Hata: ' + result.error);
 
-      // Sadece davet gönderildi uyarısı ver
-      showToast('Davet gönderildi ✓');
+      // Davet hazır — gönderim kanalını (e-posta / WhatsApp) koç modaldan seçer
+      showToast('Davet oluşturuldu ✓');
       saveUI();cm('studentModal');
-      
+
       const siteUrl = window.location.origin + window.location.pathname.replace('app.html','');
       const invitationLink = `${siteUrl}davet.html?token=${result.token}`;
-      
-      showInviteInfo(payload.full_name, email, invitationLink);
+
+      showInviteInfo(payload.full_name, email, invitationLink, result.token);
     } catch (e) {
       console.error(e);
       showToast('İletişim hatası oluştu.');
     }
   }
 }
-// ── ÖĞRENCİ DAVET BİLGİSİ ──────────────────────
-function showInviteInfo(name, email, inviteUrl){
+// ── ÖĞRENCİ DAVET BİLGİSİ — kanal seçimi (e-posta / WhatsApp) koçta ──
+function showInviteInfo(name, email, inviteUrl, inviteToken){
   let modal = document.getElementById('inviteModal');
   if(!modal){
     modal = document.createElement('div');
@@ -3302,28 +3405,54 @@ function showInviteInfo(name, email, inviteUrl){
     <div style="text-align:center;margin-bottom:20px">
       <div style="font-size:40px;margin-bottom:8px">📬</div>
       <h2>Davet Hazır!</h2>
-      <p style="font-size:13px;color:var(--text-mid);margin-top:6px">Öğrencinize aşağıdaki davet bağlantısını paylaşın</p>
+      <p style="font-size:13px;color:var(--text-mid);margin-top:6px">Daveti nasıl iletmek istersiniz?</p>
     </div>
 
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Davet Edilen E-posta</div>
-        <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:800;color:var(--accent);margin-bottom:12px">${esc(email)}</div>
-      </div>
-      <div style="border-top:1px solid var(--border);padding-top:10px">
-        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Davet Bağlantısı</div>
-        <div style="font-size:12px;color:var(--blue);word-break:break-all">${inviteUrl}</div>
-      </div>
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <button class="btn" id="inviteMailBtn" onclick="sendInviteEmail('${inviteToken||''}')" style="flex:1;flex-direction:column;gap:6px;padding:18px 12px;justify-content:center;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px">
+        <span style="font-size:26px">📧</span>
+        <span style="font-size:13px;font-weight:700">E-posta ile Gönder</span>
+        <span style="font-size:10px;color:var(--text-dim)">${esc(email)}</span>
+      </button>
+      <a href="https://wa.me/?text=${whatsappText}" target="_blank" class="btn" style="flex:1;flex-direction:column;gap:6px;padding:18px 12px;justify-content:center;background:rgba(37,211,102,.1);border:1.5px solid rgba(37,211,102,.4);border-radius:12px;text-decoration:none;color:var(--text)">
+        <span style="font-size:26px">💬</span>
+        <span style="font-size:13px;font-weight:700">WhatsApp ile Gönder</span>
+        <span style="font-size:10px;color:var(--text-dim)">Kişi seçerek paylaş</span>
+      </a>
     </div>
 
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="copyStudentInviteLink('${inviteUrl}')">📋 Bağlantıyı Kopyala</button>
-      <a href="https://wa.me/?text=${whatsappText}" target="_blank" class="btn btn-accent" style="flex:1;justify-content:center;text-decoration:none">💬 WhatsApp ile Gönder</a>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Davet Bağlantısı <span style="font-weight:400;text-transform:none">(48 saat geçerli)</span></div>
+      <div style="font-size:12px;color:var(--blue);word-break:break-all">${inviteUrl}</div>
     </div>
+
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="copyStudentInviteLink('${inviteUrl}')">📋 Bağlantıyı Kopyala</button>
   </div>`;
   window._pendingInvite = { name, email, inviteUrl };
   om('inviteModal');
 }
+
+// Var olan davet için e-posta gönder (koç kanal olarak maili seçti)
+async function sendInviteEmail(token){
+  if(!token) return showToast('Davet bilgisi eksik — bağlantıyı kopyalayıp iletebilirsiniz');
+  const btn = document.getElementById('inviteMailBtn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '.6'; }
+  try{
+    const resp = await fetch('/api/invitation?action=send_email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    const out = await resp.json();
+    if(!resp.ok) throw new Error(out.error || 'Gönderilemedi');
+    showToast('Davet e-postası gönderildi ✓');
+    if(btn) btn.innerHTML = '<span style="font-size:26px">✅</span><span style="font-size:13px;font-weight:700">E-posta Gönderildi</span>';
+  }catch(e){
+    showToast('Hata: '+e.message);
+    if(btn){ btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+window.sendInviteEmail = sendInviteEmail;
 
 function copyStudentInviteLink(url){
   navigator.clipboard.writeText(url).then(()=>showToast('Bağlantı kopyalandı ✓')).catch(()=>{
@@ -3332,24 +3461,7 @@ function copyStudentInviteLink(url){
 }
 
 
-async function deleteStu(id){
-  if(!await customConfirm('Bu öğrenciyi silmek istediğinizden emin misiniz?'))return;
-  
-  const rowEl = document.getElementById(`sturow_${id}`);
-  if (rowEl) {
-    rowEl.style.transition = 'all 0.3s ease';
-    rowEl.style.opacity = '0';
-    rowEl.style.transform = 'translateX(30px)';
-    rowEl.innerHTML = '<div style="color:var(--red); font-weight:700; font-size:13px; display:flex; align-items:center; gap:6px">🗑️ Siliniyor...</div>';
-  }
-  
-  await new Promise(resolve => setTimeout(resolve, 300));
-  const {error}=await db.from('users').delete().eq('id',id);
-  if(error)return showToast('Hata: '+error.message);
-  S.students=S.students.filter(s=>s.id!==id);
-  if(S.activeStuId===id)S.activeStuId=S.students[0]?.id||null;
-  saveUI();renderStudents();showToast('Silindi');
-}
+// (deleteStu kaldırıldı — yerine toggleStudentActive / hardDeleteStudent, öğrenci düzenleme modalında)
 
 // ═══════════════════════════════════════════════
 // APPOINTMENTS
@@ -3830,79 +3942,151 @@ function _examChartHtml(exams, stu) {
   </div>`;
 }
 
+// ── Deneme ekranı durumu: tip filtresi + sıralama + açık detay satırı ──
+let _exFilterType = 'all';           // 'all' | 'TYT' | 'AYT-SAY' | ...
+let _exSort = { key: 'date', dir: -1 };
+
+function setExamFilter(t){ _exFilterType = t; renderExams(); }
+window.setExamFilter = setExamFilter;
+function setExamSort(key){
+  if(_exSort.key===key) _exSort.dir *= -1; else _exSort = { key, dir: -1 };
+  renderExams();
+}
+window.setExamSort = setExamSort;
+function switchExamStudent(id){
+  S.activeStuId = id; _exFilterType = 'all'; saveUI(); renderExams();
+}
+window.switchExamStudent = switchExamStudent;
+function toggleExamRow(id){
+  const row = document.getElementById('exd_'+id);
+  if(row) row.style.display = row.style.display==='none' ? 'table-row' : 'none';
+}
+window.toggleExamRow = toggleExamRow;
+
+// Bir denemenin genişletilmiş detay içeriği (ders kutuları, D/Y/B, yorum)
+function _examDetailHtml(e, allExams){
+  const fields=EXAM_DEFS[e.type]||[];
+  return `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+      ${fields.map(f=>{
+        const v=Number(e.nets?.[f]||0);
+        const col=v>=20?'var(--green)':v>=12?'var(--accent)':'var(--red)';
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:8px 12px;min-width:70px;text-align:center">
+          <div style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">${f}</div>
+          <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;color:${col}">${v}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${puanCardHtml(e, allExams)}
+    ${e.note?`<div style="margin-top:10px;font-size:12px;color:var(--text-mid);font-style:italic">"${esc(e.note)}"</div>`:''}
+    ${(()=>{
+      if (!e.examDetails || !Object.keys(e.examDetails).length) return '';
+      const rows = fields.map(ders => {
+        const d = e.examDetails[ders];
+        if (!d) return '';
+        const net = Math.max(0,(d.dogru||0)-(d.yanlis||0)/4).toFixed(2);
+        const wrongKonular = d.yanlis_konular||[];
+        return `<div style="padding:6px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${wrongKonular.length?'5px':'0'}">
+            <span style="font-size:11px;font-weight:700;color:var(--text-mid)">${esc(ders)}</span>
+            <span style="font-size:11px;color:var(--text-dim)">D:<b style="color:var(--green)">${d.dogru||0}</b> Y:<b style="color:var(--red)">${d.yanlis||0}</b> B:<b>${d.bos||0}</b> · Net <b style="color:var(--accent)">${net}</b></span>
+          </div>
+          ${wrongKonular.length?`<div style="display:flex;flex-wrap:wrap;gap:3px">${wrongKonular.map(k=>`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,92,122,.1);color:var(--red);border:1px solid rgba(255,92,122,.2)">${esc(k)}</span>`).join('')}</div>`:''}
+        </div>`;
+      }).filter(Boolean).join('');
+      return rows ? `<div style="margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 14px">
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📋 Ders Detayları</div>
+        ${rows}
+      </div>` : '';
+    })()}
+    ${e.coachComment?`<div style="margin-top:8px;background:var(--accent-dim);border:1px solid rgba(240,165,0,.2);border-radius:8px;padding:9px 12px;font-size:12px"><span style="font-weight:700;color:var(--accent)">Koç: </span>${esc(e.coachComment)}</div>`:''}`;
+}
+
 function renderExams(){
   const el=document.getElementById('view-exams');
   const stu = S.students.find(s=>s.id===S.activeStuId);
-  const exams=[...S.exams].filter(e=>e.studentId===S.activeStuId).sort((a,b)=>b.date.localeCompare(a.date));
+  const allExams=[...S.exams].filter(e=>e.studentId===S.activeStuId).sort((a,b)=>b.date.localeCompare(a.date));
+
+  // Tip filtresi — yalnız kayıtlı denemelerde geçen tipler çip olur
+  const typesPresent = [...new Set(allExams.map(e=>e.type))];
+  const exams = _exFilterType==='all' ? allExams : allExams.filter(e=>e.type===_exFilterType);
+
+  // Sıralama
+  const totalOf = e => (EXAM_DEFS[e.type]||[]).reduce((s,f)=>s+Number(e.nets?.[f]||0),0);
+  const sorted = [...exams].sort((a,b)=>{
+    const va = _exSort.key==='net' ? totalOf(a) : a.date;
+    const vb = _exSort.key==='net' ? totalOf(b) : b.date;
+    return (va<vb?-1:va>vb?1:0) * _exSort.dir;
+  });
 
   const chartHtml = _examChartHtml(exams, stu);
+  const arrow = k => _exSort.key===k ? (_exSort.dir===-1?' ▾':' ▴') : '';
 
-  const list=exams.length?exams.map(e=>{
-    const fields=EXAM_DEFS[e.type]||[];
-    const total=fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0).toFixed(1);
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-        <div>
-          <div style="font-size:14px;font-weight:700">${esc(e.name)}</div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="text-align:right">
-            <div style="font-size:10px;color:var(--text-dim)">Toplam Net</div>
-            <div style="font-family:'Inter',sans-serif;font-size:22px;font-weight:900;line-height:1">${total}</div>
-          </div>
-          <button class="btn btn-ghost btn-xs" onclick="openCommentModal('${e.id}')">💬 Yorumla</button>
-        </div>
+  const tableHtml = sorted.length ? `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:var(--surface2);text-align:left">
+            <th onclick="setExamSort('date')" style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;cursor:pointer;white-space:nowrap">Tarih${arrow('date')}</th>
+            <th style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px">Deneme</th>
+            <th style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px">Tip</th>
+            <th onclick="setExamSort('net')" style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;cursor:pointer;text-align:right;white-space:nowrap">Toplam Net${arrow('net')}</th>
+            <th style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;text-align:right">Değişim</th>
+            <th style="padding:10px 14px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.map(e=>{
+            const total=totalOf(e);
+            // Değişim: aynı tipteki bir önceki (tarihçe) denemeye göre
+            const prev = allExams.filter(x=>x.type===e.type && x.date<e.date).sort((a,b)=>b.date.localeCompare(a.date))[0];
+            const diff = prev ? total - totalOf(prev) : null;
+            const diffHtml = diff===null ? '<span style="color:var(--text-dim)">—</span>'
+              : diff>0 ? `<span style="color:var(--green);font-weight:700">▲ +${diff.toFixed(1)}</span>`
+              : diff<0 ? `<span style="color:var(--red);font-weight:700">▼ ${diff.toFixed(1)}</span>`
+              : `<span style="color:var(--text-dim)">0</span>`;
+            return `
+            <tr onclick="toggleExamRow('${e.id}')" style="border-top:1px solid var(--border);cursor:pointer" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+              <td style="padding:11px 14px;white-space:nowrap;color:var(--text-mid)">${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'2-digit',month:'short',year:'numeric'})}</td>
+              <td style="padding:11px 14px;font-weight:700">${esc(e.name)}</td>
+              <td style="padding:11px 14px"><span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;background:${e.type==='TYT'?'var(--blue-dim)':'var(--accent-dim)'};color:${e.type==='TYT'?'var(--blue)':'var(--accent)'}">${e.type}</span></td>
+              <td style="padding:11px 14px;text-align:right;font-family:'Inter',sans-serif;font-size:16px;font-weight:900">${total.toFixed(1)}</td>
+              <td style="padding:11px 14px;text-align:right;font-size:12px">${diffHtml}</td>
+              <td style="padding:11px 14px;text-align:right;white-space:nowrap">
+                <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openCommentModal('${e.id}')">💬</button>
+                <span style="color:var(--text-dim);font-size:11px">▸</span>
+              </td>
+            </tr>
+            <tr id="exd_${e.id}" style="display:none;border-top:1px solid var(--border)">
+              <td colspan="6" style="padding:14px 16px;background:var(--surface2)">${_examDetailHtml(e, allExams)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${fields.map(f=>{
-          const v=Number(e.nets?.[f]||0);
-          const col=v>=20?'var(--green)':v>=12?'var(--accent)':'var(--red)';
-          return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 12px;min-width:70px;text-align:center">
-            <div style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">${f}</div>
-            <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;color:${col}">${v}</div>
-          </div>`;
-        }).join('')}
-      </div>
-      ${puanCardHtml(e, exams)}
-      ${e.note?`<div style="margin-top:10px;font-size:12px;color:var(--text-mid);font-style:italic">"${esc(e.note)}"</div>`:''}
-      ${(()=>{
-        if (!e.examDetails || !Object.keys(e.examDetails).length) return '';
-        const rows = fields.map(ders => {
-          const d = e.examDetails[ders];
-          if (!d) return '';
-          const net = Math.max(0,(d.dogru||0)-(d.yanlis||0)/4).toFixed(2);
-          const wrongKonular = d.yanlis_konular||[];
-          return `<div style="padding:6px 0;border-bottom:1px solid var(--border)">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${wrongKonular.length?'5px':'0'}">
-              <span style="font-size:11px;font-weight:700;color:var(--text-mid)">${esc(ders)}</span>
-              <span style="font-size:11px;color:var(--text-dim)">D:<b style="color:var(--green)">${d.dogru||0}</b> Y:<b style="color:var(--red)">${d.yanlis||0}</b> B:<b>${d.bos||0}</b> · Net <b style="color:var(--accent)">${net}</b></span>
-            </div>
-            ${wrongKonular.length?`<div style="display:flex;flex-wrap:wrap;gap:3px">${wrongKonular.map(k=>`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,92,122,.1);color:var(--red);border:1px solid rgba(255,92,122,.2)">${esc(k)}</span>`).join('')}</div>`:''}
-          </div>`;
-        }).filter(Boolean).join('');
-        return rows ? `<div style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 14px">
-          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📋 Ders Detayları</div>
-          ${rows}
-        </div>` : '';
-      })()}
-      ${e.coachComment?`<div style="margin-top:8px;background:var(--accent-dim);border:1px solid rgba(240,165,0,.2);border-radius:8px;padding:9px 12px;font-size:12px"><span style="font-weight:700;color:var(--accent)">Koç: </span>${esc(e.coachComment)}</div>`:''}
-    </div>`;
-  }).join(''):'<div class="empty"><p>Henüz deneme sonucu yok</p></div>';
+    </div>` : '<div class="empty"><p>Bu filtrede deneme sonucu yok</p></div>';
 
   el.innerHTML=`
     <button class="back-link" onclick="switchTab('student-detail')">← ${stu?esc(stu.name):'Öğrenci'}</button>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div>
-        <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800">${stu?esc(stu.name)+'  — ':''} Denemeler</div>
-        <div style="font-size:12px;color:var(--text-mid);margin-top:2px">${exams.length} deneme kaydı</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <select onchange="switchExamStudent(this.value)" style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;font-weight:700;font-family:inherit;color:var(--text);outline:none;cursor:pointer">
+          ${S.students.filter(s=>s.active!==false).map(s=>`<option value="${s.id}" ${s.id===S.activeStuId?'selected':''}>${esc(s.name)}</option>`).join('')}
+        </select>
+        <div style="font-size:12px;color:var(--text-mid)">${allExams.length} deneme kaydı</div>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost btn-sm" onclick="openKonuRaporu('${S.activeStuId}')">📊 Konu Raporu</button>
       </div>
     </div>
+    ${typesPresent.length>1?`
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-sm ${_exFilterType==='all'?'btn-accent':'btn-ghost'}" onclick="setExamFilter('all')">Tümü</button>
+      ${typesPresent.map(t=>`<button class="btn btn-sm ${_exFilterType===t?'btn-accent':'btn-ghost'}" onclick="setExamFilter('${t}')">${t}</button>`).join('')}
+    </div>`:''}
     ${chartHtml}
-    ${list}`;
+    ${tableHtml}`;
 }
 
 let _krStuId = null;
@@ -5727,13 +5911,49 @@ async function savePlan() {
 
 // ── KAYNAK YÖNETİMİ ───────────────────────────
 let _devResources = [];
+let _devResFilter = 'all'; // 'all' | 'global' | 'coach'
+let _devCoachNames = {};   // coach_id → ad (sahip çipi için)
+
+function setDevResFilter(f){ _devResFilter = f; renderDevResources(); }
+window.setDevResFilter = setDevResFilter;
+
+// Koç kaynağını tüm koçlara aç (coach_id → null)
+async function globalizeResource(id){
+  const r = _devResources.find(x=>x.id===id);
+  if(!r) return;
+  if(!await customConfirm(`"${r.name}" globale alınsın mı?\n\nKaynak tüm koçların kütüphanesinde görünür olacak.`)) return;
+  const { error } = await db.from('resources').update({ coach_id: null }).eq('id', id);
+  if(error) return showToast('Hata: '+error.message);
+  showToast('Kaynak globale alındı 🌍');
+  renderDevResources();
+}
+window.globalizeResource = globalizeResource;
+
+// Sahip çipi: koça özel mi, global mi
+function _resOwnerChip(r){
+  return r.coach_id
+    ? `<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--blue-dim);color:var(--blue);white-space:nowrap" title="Bu kaynağı yalnızca bu koç görür">👤 ${esc(_devCoachNames[r.coach_id]||'Koç')}</span>`
+    : `<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--green-dim);color:var(--green);white-space:nowrap" title="Tüm koçlara açık">🌍 Global</span>`;
+}
+function _resGlobalizeBtn(r){
+  return r.coach_id ? `<button class="btn btn-ghost btn-xs" onclick="globalizeResource('${r.id}')" title="Tüm koçlara aç">🌍</button>` : '';
+}
+
 async function renderDevResources() {
   const el = document.getElementById('view-dev-resources');
-  const {data} = await db.from('resources').select('*').order('resource_type,exam_type,subject,name');
+  const [{data}, {data: coaches}] = await Promise.all([
+    db.from('resources').select('*').order('resource_type,exam_type,subject,name'),
+    db.from('users').select('id, full_name').eq('role','coach')
+  ]);
   _devResources = data||[];
+  _devCoachNames = Object.fromEntries((coaches||[]).map(c=>[c.id, c.full_name||'Koç']));
 
-  const books = _devResources.filter(r=>r.resource_type!=='playlist');
-  const playlists = _devResources.filter(r=>r.resource_type==='playlist');
+  const filtered = _devResources.filter(r =>
+    _devResFilter==='global' ? !r.coach_id :
+    _devResFilter==='coach'  ? !!r.coach_id : true);
+  const books = filtered.filter(r=>r.resource_type!=='playlist');
+  const playlists = filtered.filter(r=>r.resource_type==='playlist');
+  const coachOwned = _devResources.filter(r=>!!r.coach_id).length;
 
   el.innerHTML = `
     <div class="sh"><h2>📚 Kaynak & Müfredat Yönetimi</h2>
@@ -5744,10 +5964,17 @@ async function renderDevResources() {
     </div>
 
     <!-- STATS -->
-    <div class="stats-row" style="margin-bottom:20px">
-      <div class="stat-card"><div class="stat-label">Soru Bankası</div><div class="stat-val">${books.length}</div></div>
-      <div class="stat-card"><div class="stat-label">Playlist</div><div class="stat-val">${playlists.length}</div></div>
-      <div class="stat-card"><div class="stat-label">Toplam Kaynak</div><div class="stat-val">${_devResources.length}</div></div>
+    <div class="stats-row" style="margin-bottom:14px">
+      <div class="stat-card"><div class="stat-label">Soru Bankası</div><div class="stat-val">${_devResources.filter(r=>r.resource_type!=='playlist').length}</div></div>
+      <div class="stat-card"><div class="stat-label">Playlist</div><div class="stat-val">${_devResources.filter(r=>r.resource_type==='playlist').length}</div></div>
+      <div class="stat-card"><div class="stat-label">Koç Kaynağı</div><div class="stat-val" style="color:var(--blue)">${coachOwned}</div></div>
+      <div class="stat-card"><div class="stat-label">Toplam</div><div class="stat-val">${_devResources.length}</div></div>
+    </div>
+
+    <!-- FİLTRE -->
+    <div style="display:flex;gap:8px;margin-bottom:18px">
+      ${[['all','Tümü'],['global','🌍 Global'],['coach','👤 Koç Kaynakları']].map(([f,lbl])=>`
+        <button class="btn btn-sm ${_devResFilter===f?'btn-accent':'btn-ghost'}" onclick="setDevResFilter('${f}')">${lbl}</button>`).join('')}
     </div>
 
     <!-- PLAYLİSTLER -->
@@ -5762,9 +5989,11 @@ async function renderDevResources() {
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
               <div style="flex:1;min-width:0">
                 <div style="font-size:13px;font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</div>
-                <div style="font-size:11px;color:var(--text-dim)">${esc(p.publisher)} · ${p.exam_type} ${p.subject} · ${(p.tests||[]).length} video</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">${esc(p.publisher)} · ${p.exam_type} ${p.subject} · ${(p.tests||[]).length} video</div>
+                ${_resOwnerChip(p)}
               </div>
               <div style="display:flex;gap:4px;flex-shrink:0">
+                ${_resGlobalizeBtn(p)}
                 <button class="btn btn-ghost btn-xs" onclick="openResourceModal('${p.id}','playlist')">✏️</button>
                 <button class="btn btn-danger btn-xs" onclick="devDeleteResource('${p.id}')" style="opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑</button>
               </div>
@@ -5786,10 +6015,12 @@ async function renderDevResources() {
               <div style="flex:1;min-width:0">
                 <div style="font-size:11px;color:var(--accent);font-weight:700;margin-bottom:2px">${b.exam_type} · ${b.subject}</div>
                 <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.name)}</div>
-                <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${esc(b.publisher)} · ${(b.tests||[]).length} test</div>
+                <div style="font-size:11px;color:var(--text-dim);margin:2px 0 6px">${esc(b.publisher)} · ${(b.tests||[]).length} test</div>
+                ${_resOwnerChip(b)}
               </div>
               <div style="display:flex;gap:4px;flex-shrink:0">
                 <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:${b.active?'var(--green-dim)':'var(--red-dim)'};color:${b.active?'var(--green)':'var(--red)'}">${b.active?'Aktif':'Pasif'}</span>
+                ${_resGlobalizeBtn(b)}
                 <button class="btn btn-ghost btn-xs" onclick="openResourceModal('${b.id}','book')">✏️</button>
                 <button class="btn btn-danger btn-xs" onclick="devDeleteResource('${b.id}')" style="opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑</button>
               </div>
@@ -11762,7 +11993,6 @@ window.goProgram = goProgram;
 window.openStudentModal = openStudentModal;
 window.saveStudent = saveStudent;
 window.showInviteInfo = showInviteInfo;
-window.deleteStu = deleteStu;
 window.renderAppointments = renderAppointments;
 window.renderCalDays = renderCalDays;
 window.selCalDay = selCalDay;

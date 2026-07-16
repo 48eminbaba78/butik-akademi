@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       coachName = caller.full_name || 'Koçunuz';
     }
 
-    const { email, student_name, username } = req.body;
+    const { email, student_name, username, send_email } = req.body;
     if (!email) return res.status(400).json({ error: 'E-posta adresi zorunludur' });
 
     const inviteToken = crypto.randomUUID();
@@ -89,34 +89,47 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Davet oluşturulurken bir hata oluştu' });
     }
 
-    // Trigger invitation email
-    try {
-      const protocol = req.headers.host.includes('localhost') || req.headers.host.includes('127.0.0.1') ? 'http' : 'https';
-      const siteUrl = process.env.SITE_URL || `${protocol}://${req.headers.host}`;
-      const invitationLink = `${siteUrl}/davet.html?token=${inviteToken}`;
-      const mailerUrl = `${protocol}://${req.headers.host}/api/mailer`;
-
-      const mailRes = await fetch(mailerUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'student_invitation',
-          to: email,
-          student_name: student_name || '',
-          coach_name: coachName,
-          invitation_link: invitationLink
-        })
-      });
-
-      if (!mailRes.ok) {
-        const errText = await mailRes.text();
-        console.warn('[Invitation Email Warning]', errText);
+    // E-posta yalnız istenirse gider — koç kanalı (mail/WhatsApp) modaldan seçer
+    if (send_email) {
+      try {
+        await _sendInviteMail(req, { token: inviteToken, email, student_name, coachName });
+      } catch (err) {
+        console.error('[Invitation Email Error]', err.message);
       }
-    } catch (err) {
-      console.error('[Invitation Email Error]', err.message);
     }
 
     return res.status(200).json({ success: true, token: inviteToken });
+  }
+
+  // ── ACTION: SEND_EMAIL (Mevcut davet için e-posta gönder) ──
+  if (action === 'send_email') {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Token gereklidir' });
+
+    const { data: invite } = await supabaseAdmin
+      .from('student_invitations')
+      .select('token, email, student_name, coach_id, used_at, expires_at')
+      .eq('token', token)
+      .maybeSingle();
+    if (!invite) return res.status(404).json({ error: 'Davet bulunamadı' });
+    if (invite.used_at) return res.status(400).json({ error: 'Bu davet zaten kullanılmış' });
+    if (new Date(invite.expires_at) < new Date()) return res.status(400).json({ error: 'Davet süresi dolmuş' });
+
+    const { data: coach } = await supabaseAdmin
+      .from('users').select('full_name').eq('id', invite.coach_id).maybeSingle();
+
+    try {
+      await _sendInviteMail(req, {
+        token: invite.token,
+        email: invite.email,
+        student_name: invite.student_name,
+        coachName: coach?.full_name || 'Koçunuz'
+      });
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('[Invitation Email Error]', err.message);
+      return res.status(500).json({ error: 'E-posta gönderilemedi' });
+    }
   }
 
   // ── ACTION: ACCEPT (Davet Kabul Etme) ──
@@ -158,4 +171,25 @@ export default async function handler(req, res) {
   }
 
   return res.status(400).json({ error: 'Geçersiz aksiyon' });
+}
+
+// Davet e-postasını mailer üzerinden tetikler
+async function _sendInviteMail(req, { token, email, student_name, coachName }) {
+  const protocol = req.headers.host.includes('localhost') || req.headers.host.includes('127.0.0.1') ? 'http' : 'https';
+  const siteUrl = process.env.SITE_URL || `${protocol}://${req.headers.host}`;
+  const invitationLink = `${siteUrl}/davet.html?token=${token}`;
+  const mailerUrl = `${protocol}://${req.headers.host}/api/mailer`;
+
+  const mailRes = await fetch(mailerUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'student_invitation',
+      to: email,
+      student_name: student_name || '',
+      coach_name: coachName,
+      invitation_link: invitationLink
+    })
+  });
+  if (!mailRes.ok) throw new Error(await mailRes.text());
 }

@@ -143,7 +143,8 @@ async function _fetchAll() {
     weekStart:s.week_start || 0,
     username: s.username,
     coachId:  s.coach_id,
-    yksArea:  s.yks_area || 'SAY'
+    yksArea:  s.yks_area || 'SAY',
+    active:   s.active !== false
   }));
 
   S.tasks = {};

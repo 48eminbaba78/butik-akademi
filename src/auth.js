@@ -42,25 +42,9 @@ export function setLoginMode(mode) {
   document.getElementById('loginUserField').style.display = mode === 'username' ? 'block' : 'none';
 }
 
+// Kayıt varsayılanı koç — öğrenci modu yalnız davet linki (applyInviteFromUrl) ile açılır
 export function setRegRole(role) {
   window._regRole = role;
-  // Görsel vurguyu inline bas — markup'taki inline border/background stillerini
-  // CSS class'ı ezemediği için seçim aksi halde görünmez oluyor
-  [['rrbCoach','coach'],['rrbStudent','student']].forEach(([id, r]) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const on = role === r;
-    el.classList.toggle('sel', on);
-    el.style.borderColor = on ? 'var(--accent)' : 'var(--border)';
-    el.style.background = on ? 'var(--accent-dim)' : 'var(--surface2)';
-    el.style.boxShadow = on ? '0 0 0 1px var(--accent)' : 'none';
-  });
-}
-
-export function setOnbRole(role) {
-  window._onbRole = role;
-  document.getElementById('onbRoleCoach').classList.toggle('sel', role === 'coach');
-  document.getElementById('onbRoleStudent').classList.toggle('sel', role === 'student');
 }
 
 export async function loginWithGoogle() {
@@ -216,24 +200,20 @@ export async function completeOnboarding() {
     document.getElementById('onbErr').style.display = 'block';
     return;
   }
-  if (!window._onbRole) {
-    document.getElementById('onbErr').textContent = 'Hesap türü seçin';
-    document.getElementById('onbErr').style.display = 'block';
-    return;
-  }
   document.getElementById('onbErr').style.display = 'none';
   showLoading(true);
   const user = window._oauthUser;
   const username = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
 
+  // OAuth ile yeni hesap = daima koç; öğrenciler yalnız davet linkiyle katılır
   const payload = {
     id: user.id,
     full_name: name,
     email: user.email,
-    role: window._onbRole,
+    role: 'coach',
     username: username + '_' + Math.random().toString(36).slice(2, 6),
     password_hash: 'supabase_managed',
-    color: window._onbRole === 'coach' ? '#f0a500' : '#4da6ff',
+    color: '#f0a500',
     week_start: 0,
     progress: 0,
     target: ''
@@ -250,7 +230,8 @@ export async function completeOnboarding() {
   await finishLogin(newProfile);
 }
 
-let _signUpStep = 0;
+let _signUpStep = 1; // Wizard koç marka adımıyla başlar (rol seçimi kaldırıldı)
+window._regRole = 'coach';
 
 export function setRegBrandColor(color, el) {
   document.getElementById('regBrandColor').value = color;
@@ -259,23 +240,7 @@ export function setRegBrandColor(color, el) {
 }
 
 export function nextRegWizardStep() {
-  const errEl = document.getElementById('regErr0');
-  if (errEl) errEl.style.display = 'none';
-
-  if (_signUpStep === 0) {
-    if (!window._regRole) {
-      if (errEl) {
-        errEl.textContent = 'Lütfen bir hesap türü seçin.';
-        errEl.style.display = 'block';
-      }
-      return;
-    }
-    if (window._regRole === 'student') {
-      _signUpStep = 3; // Skip coach steps
-    } else {
-      _signUpStep = 1;
-    }
-  } else if (_signUpStep === 1) {
+  if (_signUpStep === 1) {
     const brand = document.getElementById('regBrandName').value.trim();
     if (!brand) {
       alert('Lütfen akademi / koçluk adını girin.');
@@ -291,27 +256,25 @@ export function nextRegWizardStep() {
 
 export function prevRegWizardStep() {
   if (_signUpStep === 3) {
-    if (window._regRole === 'student') {
-      _signUpStep = 0;
-    } else {
-      _signUpStep = 2;
-    }
+    // Öğrenci (davet linki) modunda geri adım yok; koçta profil adımına dön
+    if (window._regRole !== 'student') _signUpStep = 2;
   } else if (_signUpStep === 2) {
     _signUpStep = 1;
-  } else if (_signUpStep === 1) {
-    _signUpStep = 0;
   }
   showRegWizardStep(_signUpStep);
 }
 
 function showRegWizardStep(step) {
-  document.getElementById('regWizardStep0').style.display = step === 0 ? 'block' : 'none';
   document.getElementById('regWizardStepCoach1').style.display = step === 1 ? 'block' : 'none';
   document.getElementById('regWizardStepCoach2').style.display = step === 2 ? 'block' : 'none';
   document.getElementById('regWizardStepFinal').style.display = step === 3 ? 'block' : 'none';
-  // Davet kodu alanı yalnızca öğrenci kaydında görünür
+  const isStudent = window._regRole === 'student';
+  // Davet kodu alanı yalnızca öğrenci (davet linki) kaydında görünür
   const invWrap = document.getElementById('regInviteWrap');
-  if (invWrap) invWrap.style.display = (step === 3 && window._regRole === 'student') ? 'block' : 'none';
+  if (invWrap) invWrap.style.display = (step === 3 && isStudent) ? 'block' : 'none';
+  // Öğrenci modunda "Geri" anlamsız — koç adımları hiç gösterilmedi
+  const backWrap = document.getElementById('regFinalBackWrap');
+  if (backWrap) backWrap.style.display = (step === 3 && isStudent) ? 'none' : 'flex';
 }
 
 // ── Davet linki (?davet=KOD) — kayıt ekranını öğrenci moduna hazır açar ──
@@ -400,8 +363,7 @@ export async function doRegister() {
       const brand = document.getElementById('regBrandName').value.trim();
       const color = document.getElementById('regBrandColor').value || '#f0a500';
       const phone = document.getElementById('regPhone').value.trim();
-      const selectedExamLabels = [...document.querySelectorAll('#regExamTypesWrap .ob-exam-sel input')].map(i=>i.value);
-      const examTypes = selectedExamLabels.length > 0 ? selectedExamLabels.join(',') : 'YKS';
+      const examTypes = 'YKS'; // Platform yalnız YKS — seçim UI'ı kaldırıldı
       const studentCount = document.getElementById('regStudentCountRange').value || '1-5';
 
       metadata.ob_brand = brand;
@@ -435,8 +397,9 @@ export async function doRegister() {
       setTimeout(() => (succ.style.display = 'none'), 10000);
       
       // Reset step
-      _signUpStep = 0;
-      showRegWizardStep(0);
+      _signUpStep = 1;
+      window._regRole = 'coach';
+      showRegWizardStep(1);
       setAuthMode('login');
     }
   } catch (e) {
@@ -518,6 +481,14 @@ export async function doLogin() {
 
 export async function finishLogin(rows) {
   showLoading(false);
+
+  // Pasifleştirilmiş hesap — giriş engellenir, veriler korunur
+  if (rows.active === false) {
+    try { await db.auth.signOut(); } catch (e) {}
+    loginErr('Hesabınız pasifleştirilmiş. Koçunuzla iletişime geçin.');
+    return;
+  }
+
   const coachId = (rows.role === 'coach' || rows.role === 'developer') ? rows.id : (rows.role === 'student' || rows.role === 'parent') ? rows.coach_id : null;
   
   session.role = rows.role;
@@ -751,7 +722,6 @@ window.regErr = regErr;
 window.setAuthMode = setAuthMode;
 window.setLoginMode = setLoginMode;
 window.setRegRole = setRegRole;
-window.setOnbRole = setOnbRole;
 window.loginWithGoogle = loginWithGoogle;
 window.triggerRealGoogleLogin = triggerRealGoogleLogin;
 window.showGoogleSimulator = showGoogleSimulator;
