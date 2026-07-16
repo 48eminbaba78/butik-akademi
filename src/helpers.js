@@ -82,12 +82,61 @@ export function typeLabel(t) {
 }
 
 export function om(id) {
-  document.getElementById(id).classList.add('open');
+  const modalBg = document.getElementById(id);
+  modalBg.classList.add('open');
+  _wireModalSheet(modalBg);
 }
 
 export function cm(id) {
-  document.getElementById(id).classList.remove('open');
+  const modalBg = document.getElementById(id);
+  modalBg.classList.remove('open');
+  const modal = modalBg.querySelector('.modal');
+  if (modal) modal.style.transform = '';
 }
+
+// Mobilde tüm .modal'ları alt-çekmeceye çeviren sürükle-kapat tutamacı — tek merkezden bağlanır (app.css'teki bottom-sheet dönüşümüyle birlikte çalışır)
+function _wireModalSheet(modalBg) {
+  const modal = modalBg.querySelector('.modal');
+  if (!modal) return;
+  modal.style.transform = '';
+  if (modal.querySelector('.modal-drag-handle')) return;
+  const handle = document.createElement('div');
+  handle.className = 'modal-drag-handle';
+  modal.prepend(handle);
+  _wireModalDrag(modalBg, modal, handle);
+}
+
+function _wireModalDrag(modalBg, modal, handle) {
+  let startY = 0, dy = 0, dragging = false;
+  handle.addEventListener('touchstart', e => {
+    if (window.innerWidth >= 768) return;
+    dragging = true;
+    startY = e.touches[0].clientY;
+    modal.style.transition = 'none';
+  }, { passive: true });
+  handle.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    dy = Math.max(0, e.touches[0].clientY - startY);
+    modal.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+  handle.addEventListener('touchend', () => {
+    if (!dragging) return;
+    dragging = false;
+    modal.style.transition = '';
+    if (dy > 80) modalBg.classList.remove('open');
+    modal.style.transform = '';
+    dy = 0;
+  });
+}
+
+// Klavye açıldığında odaklanılan input'un modal içinde görünür kalmasını sağlar (mobil dvh/keyboard-avoidance)
+document.addEventListener('focusin', e => {
+  const t = e.target;
+  if (window.innerWidth >= 768) return;
+  if (!(t instanceof HTMLElement) || !['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
+  if (!t.closest('.modal-bg.open')) return;
+  setTimeout(() => t.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+});
 
 export function showToast(msg) {
   const t = document.getElementById('toast');
@@ -100,12 +149,16 @@ export function showToast(msg) {
 document.addEventListener('click', e => {
   if (e.target.classList.contains('modal-bg') && e.target.id !== 'trialExpiredModal') {
     e.target.classList.remove('open');
+    e.target.querySelector('.modal')?.style.setProperty('transform', '');
   }
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     document.querySelectorAll('.modal-bg.open').forEach(el => {
-      if (el.id !== 'trialExpiredModal') el.classList.remove('open');
+      if (el.id !== 'trialExpiredModal') {
+        el.classList.remove('open');
+        el.querySelector('.modal')?.style.setProperty('transform', '');
+      }
     });
   }
 });

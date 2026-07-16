@@ -10,6 +10,7 @@ export const S = {
   messages: {},
   coachTodos: {},
   weekOffset: 0,
+  selectedDayIdx: null,
   calMonth: new Date().getMonth(),
   calYear: new Date().getFullYear(),
   calSelDay: null,

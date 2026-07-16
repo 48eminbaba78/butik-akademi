@@ -25,6 +25,32 @@ function formatMinToHours(mins) {
 }
 window.formatMinToHours = formatMinToHours;
 
+// Yükleme öncesi görsel sıkıştırma (dekont/profil/sohbet ekleri) — resim değilse veya zaten küçükse dosyayı olduğu gibi döner
+function compressImageFile(file, { maxWidth = 1600, quality = 0.8 } = {}) {
+  return new Promise(resolve => {
+    if (!file || !file.type || !file.type.startsWith('image/') || file.type === 'image/gif') return resolve(file);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxWidth / img.width);
+      if (scale >= 1 && file.size < 400 * 1024) return resolve(file);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => {
+        if (!blob) return resolve(file);
+        const newName = (file.name || 'image').replace(/\.\w+$/, '') + '.jpg';
+        resolve(new File([blob], newName, { type: 'image/jpeg' }));
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+window.compressImageFile = compressImageFile;
+
 function customConfirm(message) {
   return new Promise((resolve) => {
     let modal = document.getElementById('customConfirmModal');
@@ -255,6 +281,11 @@ const parentTabs=[
   {id:'parent-messages',lbl:'💬',name:'Koça Yaz'},
   {id:'parent-ai',lbl:'🤖',name:'AI Asistan'},
 ];
+// coach/student/parent dizileri zaten ≤5 kalemle mobil nav'a bire bir uyuyor;
+// developer dizisi (coachTabs+devTabs=7) taşıyor, mobil bar için ayrıca öncelik listesi lazım.
+const MOBILE_TAB_IDS = {
+  developer: ['home','students','todolist','dev-dashboard','dev-tickets'],
+};
 
 function toggleSidebar(){
   document.getElementById('mainSidebar')?.classList.toggle('open');
@@ -282,8 +313,10 @@ function setupShell(){
       <span>${t.name}</span>
     </div>`).join('');
 
-  // Mobile nav
-  document.getElementById('mobileNav').innerHTML = tabs.slice(0,5).map(t=>`
+  // Mobile nav — rol için özel öncelik listesi varsa onu, yoksa ilk 5 sekmeyi kullan
+  const mobileIds = MOBILE_TAB_IDS[session.role];
+  const mobileTabs = mobileIds ? mobileIds.map(id=>allTabs.find(t=>t.id===id)).filter(Boolean) : tabs.slice(0,5);
+  document.getElementById('mobileNav').innerHTML = mobileTabs.map(t=>`
     <button class="mnav-btn" id="mntab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}<span style="font-size:9px;display:block">${t.name}</span></button>`).join('');
 
   // Content views
@@ -1850,6 +1883,30 @@ function _dayTasksBodyHtml(ds, tasks, role, progMode){
   return tasks.map((t,ti)=>_taskCardHtml(t, ds, ti, role)).join('');
 }
 
+// Mobil gün seçici şeridi — week-grid'in yerini alır, seçili gün S.selectedDayIdx'te kalıcı olur
+function _resolveSelDayIdx(wStart, today){
+  if(S.selectedDayIdx!=null && S.selectedDayIdx>=0 && S.selectedDayIdx<=6) return S.selectedDayIdx;
+  for(let i=0;i<7;i++){ if(fmtDate(addDays(wStart,i))===today) return i; }
+  return 0;
+}
+function _daySelectorStripHtml(stripMeta, selIdx){
+  return stripMeta.map((dm,i)=>`
+    <button class="day-chip ${i===selIdx?'active':''}" onclick="selectDayIdx(${i})">
+      <span class="day-chip-dow">${dm.shortDay}</span>
+      <span class="day-chip-num">${dm.dateNum}</span>
+      ${dm.isToday?'<span class="day-chip-dot"></span>':''}
+    </button>`).join('');
+}
+function selectDayIdx(i){
+  S.selectedDayIdx=i; saveS();
+  document.querySelectorAll('.day-selector-strip .day-chip').forEach((c,idx)=>{
+    c.classList.toggle('active', idx===i);
+    if(idx===i) c.scrollIntoView({inline:'center',behavior:'smooth',block:'nearest'});
+  });
+  document.querySelectorAll('.week-grid .day-col').forEach((c,idx)=>c.classList.toggle('sel-day', idx===i));
+}
+window.selectDayIdx = selectDayIdx;
+
 function renderProgram(){
   const el=document.getElementById('view-program');
   const stu=S.students.find(s=>s.id===S.activeStuId);
@@ -1858,8 +1915,9 @@ function renderProgram(){
   const wEnd=addDays(wStart,6);
   const today=todayStr();
   const progMode = localStorage.getItem('ra_program_mode') || 'weekly';
+  const selIdx=_resolveSelDayIdx(wStart,today);
 
-  let dayCards='';
+  let dayCards='',stripMeta=[];
   for(let i=0;i<7;i++){
     const d=addDays(wStart,i);
     const ds=fmtDate(d);
@@ -1873,7 +1931,8 @@ function renderProgram(){
     const taskHtml = _dayTasksBodyHtml(ds, tasks, 'coach', progMode);
 
     const shortDay = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][(ws+i)%7];
-    dayCards+=`<div class="day-col ${isToday?'today':''}">
+    stripMeta.push({shortDay,dateNum:d.getDate(),isToday});
+    dayCards+=`<div class="day-col ${isToday?'today':''} ${i===selIdx?'sel-day':''}">
       <div class="day-hd">
         <div>
           <div class="day-name-lbl">${shortDay}</div>
@@ -1890,6 +1949,7 @@ function renderProgram(){
   }
 
   el.innerHTML=`
+    <div class="day-selector-strip">${_daySelectorStripHtml(stripMeta,selIdx)}</div>`+`
     <button class="back-link" onclick="switchTab('student-detail')">← ${stu?esc(stu.name):'Öğrenci'}</button>
     <div class="card prog-banner">
       <div class="prog-avatar" style="background:${stu?.color||'var(--accent)'};color:#fff">${stu?stu.name[0]:'?'}</div>
@@ -3902,9 +3962,9 @@ function _examChartHtml(exams, stu) {
   // ── Toplam net trend (alan grafiği, tek çizgi) ──
   const totals=sorted.map(e=>{const f=EXAM_DEFS[e.type]||[];return f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);});
   const maxTot=Math.max(...totals,10);
-  const W=600,H=160,PL=40,PR=16,PT=28,PB=30;
-  const CW=W-PL-PR,CH=H-PT-PB;
   const n=sorted.length;
+  const W=Math.max(560,n*85),H=160,PL=40,PR=16,PT=28,PB=30;
+  const CW=W-PL-PR,CH=H-PT-PB;
   const xOf=i=>PL+(n<=1?CW/2:(i/(n-1))*CW);
   const yOf=v=>PT+CH-(v/maxTot)*CH;
 
@@ -3926,8 +3986,10 @@ function _examChartHtml(exams, stu) {
 
   const dotsSvg=sorted.map((e,i)=>{
     const cx=xOf(i).toFixed(1),cy=yOf(totals[i]).toFixed(1);
-    return `<circle cx="${cx}" cy="${cy}" r="5" fill="${accent}" stroke="#0d0d0f" stroke-width="2.5"/>`
-      +`<text x="${cx}" y="${(yOf(totals[i])-10).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="${accent}" font-family="system-ui,sans-serif">${totals[i].toFixed(0)}</text>`;
+    const tapFn=`toggleExamRow('${e.id}');document.getElementById('exd_${e.id}')?.scrollIntoView({behavior:'smooth',block:'center'})`;
+    return `<circle cx="${cx}" cy="${cy}" r="16" fill="transparent" style="cursor:pointer" onclick="${tapFn}"/>`
+      +`<circle cx="${cx}" cy="${cy}" r="5" fill="${accent}" stroke="#0d0d0f" stroke-width="2.5" style="pointer-events:none"/>`
+      +`<text x="${cx}" y="${(yOf(totals[i])-10).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="${accent}" font-family="system-ui,sans-serif" style="pointer-events:none">${totals[i].toFixed(0)}</text>`;
   }).join('');
 
   const xLabSvg=sorted.map((e,i)=>{
@@ -3936,7 +3998,8 @@ function _examChartHtml(exams, stu) {
     return `<text x="${xOf(i).toFixed(1)}" y="${(H-PB+14).toFixed(1)}" text-anchor="middle" font-size="9" fill="rgba(200,215,230,0.35)" font-family="system-ui,sans-serif">${esc(l)}</text>`;
   }).join('');
 
-  const trendSvg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">
+  const trendSvg=`<div class="chart-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x">
+  <svg viewBox="0 0 ${W} ${H}" style="width:${W}px;max-width:none;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">
   <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="${accent}" stop-opacity="0.2"/>
     <stop offset="100%" stop-color="${accent}" stop-opacity="0"/>
@@ -3945,7 +4008,7 @@ function _examChartHtml(exams, stu) {
   <path d="${areaD}" fill="url(#${gid})"/>
   <polyline points="${linePts}" fill="none" stroke="${accent}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
   ${dotsSvg}${xLabSvg}
-</svg>`;
+</svg></div>`;
 
   return `<div class="card cp" style="margin-bottom:16px">
     <div style="font-size:11px;font-weight:700;margin-bottom:12px;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px">📊 Deneme Takibi</div>
@@ -4246,7 +4309,7 @@ function renderThreadHTML(stuId, role){
   const rows = thread.map(m => {
     const isOut = (role==='coach'&&m.from==='coach')||(role==='student'&&m.from==='student');
     const imgHtml = m.image_url
-      ? `<img src="${esc(m.image_url)}" onclick="window.open('${esc(m.image_url)}','_blank')" />`
+      ? `<img src="${esc(m.image_url)}" loading="lazy" onclick="window.open('${esc(m.image_url)}','_blank')" />`
       : '';
     const textHtml = m.text ? esc(m.text) : '';
     const content = imgHtml + (imgHtml && textHtml ? `<div style="margin-top:5px">${textHtml}</div>` : textHtml);
@@ -4343,7 +4406,7 @@ async function sendMsg(stuId, role){
 
   let image_url = null;
   if (_msgPendingImg) {
-    const file = _msgPendingImg.file;
+    const file = await compressImageFile(_msgPendingImg.file);
     const extFromName = file.name?.includes('.') ? file.name.split('.').pop() : '';
     const ext = extFromName || (file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg');
     const path = `${stuId}/${Date.now()}.${ext}`;
@@ -4524,8 +4587,9 @@ function renderSPortal(){
   const wEnd=addDays(wStart,6);
   const today=todayStr();
   const progMode = localStorage.getItem('ra_program_mode') || 'weekly';
+  const selIdx=_resolveSelDayIdx(wStart,today);
 
-  let dayCards='';
+  let dayCards='',stripMeta=[];
   for(let i=0;i<7;i++){
     const d=addDays(wStart,i);const ds=fmtDate(d);const isToday=ds===today;
     const key=`${stu.id}_${ds}`;const tasks=S.tasks[key]||[];
@@ -4536,7 +4600,8 @@ function renderSPortal(){
     const taskHtml = _dayTasksBodyHtml(ds, tasks, 'student', progMode);
 
     const shortDay = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][(ws+i)%7];
-    dayCards+=`<div class="day-col ${isToday?'today':''}">
+    stripMeta.push({shortDay,dateNum:d.getDate(),isToday});
+    dayCards+=`<div class="day-col ${isToday?'today':''} ${i===selIdx?'sel-day':''}">
       <div class="day-hd">
         <div><div class="day-name-lbl">${shortDay}</div><div class="day-num">${d.getDate()}</div></div>
         <span class="day-badge" style="font-size:8.5px">${formatMinToHours(doneMin)} / ${formatMinToHours(totalMin)}</span>
@@ -4549,6 +4614,7 @@ function renderSPortal(){
 
   el.innerHTML=`
     ${_daysToYks > 0 ? `<div style="text-align:center;margin-bottom:10px;padding:7px 12px;background:var(--surface2);border-radius:10px;font-size:12px;color:var(--text-mid)">📅 YKS ${_yksInfo.year}'ye <strong style="color:var(--accent)">${_daysToYks}</strong> gün kaldı</div>` : ''}
+    <div class="day-selector-strip">${_daySelectorStripHtml(stripMeta,selIdx)}</div>
     <div class="week-nav" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div style="display:flex;gap:6px;align-items:center">
         <button class="btn btn-ghost btn-sm" onclick="chWeekS(-1)">← Önceki</button>
@@ -5335,17 +5401,19 @@ function renderSExams(){
     const maxT=Math.max(...chartData.map(e=>{const f=EXAM_DEFS[e.type]||[];return f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);}),1);
     chartHtml=`<div class="card cp" style="margin-bottom:16px">
       <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px">📈 Net Gelişimim</div>
+      <div class="bar-chart-scroll">
       <div class="bar-chart">
         ${chartData.map(e=>{
           const f=EXAM_DEFS[e.type]||[];
           const total=f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);
           const h=Math.max(Math.round((total/maxT)*100),4);
-          return `<div class="bar-wrap">
+          return `<div class="bar-wrap" onclick="document.getElementById('exi_${e.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
             <div class="bar-val">${total.toFixed(0)}</div>
             <div class="bar" style="height:${h}%;background:${stu.color}"></div>
             <div class="bar-label">${esc(e.name.replace('Deneme ','#').replace('TYT ','').replace('AYT ',''))}</div>
           </div>`;
         }).join('')}
+      </div>
       </div>
     </div>`;
   }
@@ -5354,7 +5422,7 @@ function renderSExams(){
     const fields=EXAM_DEFS[e.type]||[];
     const total=fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0).toFixed(1);
     const netBoxes=fields.map(f=>{const v=Number(e.nets?.[f]||0);return `<div class="net-box"><div class="net-label">${f}</div><div class="net-val ${netColor(v)}">${v}</div></div>`;}).join('');
-    return `<div class="exam-item">
+    return `<div class="exam-item" id="exi_${e.id}">
       <div class="exam-header">
         <div><div class="exam-name">${esc(e.name)}</div><div class="exam-date">${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}</div></div>
         <button class="btn btn-ghost btn-xs" onclick="openStudentExamModal('${e.id}')">✏️ Düzenle</button>
@@ -8281,7 +8349,7 @@ async function submitCoachPayment(priceMonthly) {
   const errEl = document.getElementById('cpmErr');
   const btn = document.getElementById('cpmSubmitBtn');
   errEl.style.display = 'none';
-  const file = document.getElementById('cpmFile')?.files?.[0];
+  let file = document.getElementById('cpmFile')?.files?.[0];
   if (!file) { errEl.textContent = 'Lütfen dekont dosyası seçin.'; errEl.style.display = 'block'; return; }
   if (file.size > 8 * 1024 * 1024) { errEl.textContent = 'Dosya 8MB\'dan küçük olmalı.'; errEl.style.display = 'block'; return; }
 
@@ -8290,6 +8358,7 @@ async function submitCoachPayment(priceMonthly) {
   btn.disabled = true; btn.textContent = 'Yükleniyor...';
 
   try {
+    file = await compressImageFile(file);
     const ext = (file.name.split('.').pop() || 'dat').toLowerCase();
     const path = `${uid}/${Date.now()}.${ext}`;
     const { error: upErr } = await db.storage.from('receipts').upload(path, file, { contentType: file.type });
@@ -8657,6 +8726,7 @@ async function uploadCoachPhoto(file){
   const thumb = document.getElementById('cpPhotoThumb');
   if (txt) txt.textContent = 'Yükleniyor…';
   try {
+    file = await compressImageFile(file);
     const ext = (file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
     const path = `${session.dbUser.id}/avatar_${Date.now()}.${ext}`;
     const { error } = await db.storage.from('coach-photos').upload(path, file, { upsert:true, contentType:file.type });
@@ -11539,21 +11609,42 @@ async function applyTemplateToWeek() {
   om('applyTemplateModal');
 }
 
-function openWeeklyReportModal() {
+async function openWeeklyReportModal() {
   const stu = S.students.find(s=>s.id===S.activeStuId);
   if(!stu) return showToast('Öğrenci bulunamadı.');
   const ws = stu.weekStart ?? 0;
   const wStart = getWeekStart(S.weekOffset, ws);
   const wEnd = addDays(wStart, 6);
 
-  let weekTasks = [];
-  for (let i = 0; i < 7; i++) {
-    const d = addDays(wStart, i);
-    const ds = fmtDate(d);
-    const key = `${S.activeStuId}_${ds}`;
-    const dayTasks = S.tasks[key] || [];
-    weekTasks = weekTasks.concat(dayTasks);
+  showLoading(true);
+  const { data: freshTasks, error } = await db.from('tasks')
+    .select('*')
+    .eq('student_id', S.activeStuId)
+    .gte('date', fmtDate(wStart))
+    .lte('date', fmtDate(wEnd));
+  showLoading(false);
+
+  if (error) {
+    console.error('Haftalık Rapor verisi yüklenemedi:', error);
+    return showToast('Veriler yüklenemedi: ' + error.message);
   }
+
+  const weekTasks = (freshTasks || []).map(t => ({
+    _id: t.id,
+    type: t.type,
+    exam: t.exam_type,
+    subject: t.subject,
+    duration: t.duration,
+    note: t.note,
+    done: t.done,
+    student_note: t.student_note || '',
+    student_feedback: t.student_feedback || null,
+    student_result: t.student_result || null,
+    task_items: t.task_items || [],
+    date: t.date
+  }));
+
+  weekTasks.sort((a, b) => a.date.localeCompare(b.date));
 
   if (weekTasks.length === 0) {
     return showToast('Bu haftaya ait atanmış görev bulunmuyor.');

@@ -33,7 +33,7 @@
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
-body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);display:flex;flex-direction:column;}
+body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);display:flex;flex-direction:column;touch-action:manipulation;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
@@ -383,9 +383,10 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
   gap: 16px;
   overflow-x: auto;
   padding: 8px 4px 16px 4px;
+  touch-action: pan-x;
 }
 @media(max-width:1100px){.week-grid{grid-template-columns:repeat(7, minmax(180px, 1fr));}}
-@media(max-width:640px){
+@media(max-width:768px){
   .week-grid{grid-template-columns:repeat(7, minmax(160px, 1fr));}
   .tn-nav{display:none;}
   .tn-divider{display:none;}
@@ -397,6 +398,29 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
   .home-bottom-grid{grid-template-columns:1fr;}
   .action-grid{grid-template-columns:repeat(2,1fr);}
   .stu-detail-card{flex-wrap:wrap;gap:12px;}
+}
+
+/* GÜN SEÇİCİ ŞERİDİ — mobilde week-grid'in yerini alan kaydırılabilir gün sekmesi */
+.day-selector-strip{display:none;}
+@media(max-width:768px){
+  .day-selector-strip{
+    display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:8px;
+    touch-action:pan-x;-webkit-overflow-scrolling:touch;
+    padding:4px 2px 12px;margin-bottom:2px;
+  }
+  .day-chip{
+    scroll-snap-align:center;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:8px 15px;border-radius:14px;border:1.5px solid var(--border);background:var(--surface2);
+    color:var(--text-mid);cursor:pointer;font-family:inherit;position:relative;transition:all .15s;
+  }
+  .day-chip-dow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
+  .day-chip-num{font-size:15px;font-weight:800;color:var(--text);}
+  .day-chip.active{background:var(--accent-dim);border-color:var(--accent);}
+  .day-chip.active .day-chip-dow,.day-chip.active .day-chip-num{color:var(--accent);}
+  .day-chip-dot{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--accent);}
+  .week-grid{display:block;}
+  .week-grid .day-col{display:none;}
+  .week-grid .day-col.sel-day{display:flex;}
 }
 
 .day-col {
@@ -815,7 +839,8 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 /* MODALS */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(26,23,20,.5);z-index:2000;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px);}
 .modal-bg.open{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);width:100%;max-width:520px;padding:28px 32px;position:relative;box-shadow:var(--shadow-lg);animation:fadeUp .2s ease;max-height:92vh;overflow-y:auto;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);width:100%;max-width:520px;padding:28px 32px;position:relative;box-shadow:var(--shadow-lg);animation:fadeUp .2s ease;max-height:92vh;max-height:92dvh;overflow-y:auto;}
+.modal-drag-handle{display:none;}
 .modal-lg{max-width:620px;}
 .modal-close{position:absolute;top:14px;right:14px;background:var(--surface2);border:1px solid var(--border);width:28px;height:28px;border-radius:7px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-mid);transition:all .15s;}
 .modal-close:hover{background:var(--red-dim);color:var(--red);}
@@ -856,14 +881,16 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 .wday-btn:hover:not(.sel){color:var(--text);}
 
 /* MOBILE NAV */
-.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:8px 0 calc(8px + env(safe-area-inset-bottom));justify-content:space-around;z-index:100;box-shadow:0 -2px 16px rgba(28,25,23,.06);}
-.mnav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;font-size:10px;font-weight:700;color:var(--text-dim);cursor:pointer;padding:5px 10px;border-radius:10px;font-family:inherit;transition:color .15s,background .15s;}
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(26,23,20,.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);padding:8px 0 calc(8px + env(safe-area-inset-bottom));justify-content:space-around;z-index:100;box-shadow:0 -2px 16px rgba(28,25,23,.06);}
+[data-theme="light"] .mobile-nav{background:rgba(255,255,255,.75);}
+.mnav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;font-size:10px;font-weight:700;color:var(--text-dim);cursor:pointer;padding:5px 10px;border-radius:10px;font-family:inherit;transition:color .15s,background .15s,transform .15s;}
 .mnav-btn svg{width:20px;height:20px;}
-.mnav-btn.active{color:var(--accent);background:var(--accent-dim);}
+.mnav-btn.active{color:var(--accent);background:var(--accent-dim);transform:scale(1.08);box-shadow:0 0 0 1px var(--accent-dim),0 2px 12px var(--accent-dim);}
 
 /* CHART */
+.bar-chart-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x;}
 .bar-chart{display:flex;align-items:flex-end;gap:6px;height:100px;margin-top:10px;}
-.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.bar-wrap{flex:1;min-width:40px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;}
 .bar{width:100%;border-radius:4px 4px 0 0;transition:height .5s ease;min-height:3px;}
 .bar-label{font-size:9px;color:var(--text-dim);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;}
 .bar-val{font-size:10px;font-weight:700;color:var(--text-mid);}
@@ -1246,17 +1273,32 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 }
 
 /* Modal — mobilde ekranın altından yükselen sayfa */
-@media(max-width:640px) {
+@media(max-width:768px) {
   .modal-bg { align-items: flex-end; padding: 0; }
   .modal {
     border-radius: 22px 22px 0 0;
     max-width: 100%;
     width: 100%;
-    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    padding: 32px 20px calc(24px + env(safe-area-inset-bottom));
     max-height: 90vh;
+    max-height: 90dvh;
   }
   .modal-lg { max-width: 100%; }
-
+  .modal-drag-handle {
+    display: block;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    border-radius: 3px;
+    background: var(--border2, var(--border));
+  }
+  /* Mnav btn daha geniş dokunma alanı */
+  .mnav-btn { padding: 6px 8px; min-width: 48px; }
+}
+@media(max-width:640px) {
   /* İçerik alanları */
   .view { padding: 12px 14px; }
   #view-home { padding: 12px 14px; }
@@ -1297,13 +1339,10 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
   #aiChatBubble { bottom: 76px !important; right: 14px !important; }
 
   /* Deneme sonuç tabloları — yatay kaydırma */
-  .exam-table-wrap, .net-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .exam-table-wrap, .net-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
 
   /* Takvim / randevu ekranı */
   .appts-layout { grid-template-columns: 1fr !important; }
-
-  /* Mnav btn daha geniş dokunma alanı */
-  .mnav-btn { padding: 6px 8px; min-width: 48px; }
 }
 
 /* Orta boyutlu tablet (768px) */
@@ -1314,7 +1353,7 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 }
 
 /* Geniş içerik tabloları için scroll container */
-.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
 .table-scroll table { min-width: 480px; }
 
 /* ══════════════════════════════════════════════════
