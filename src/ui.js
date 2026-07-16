@@ -293,7 +293,7 @@ function setupShell(){
     {id:'coach-resources'}, {id:'coach-applications'}, {id:'coach-notes'}, {id:'coach-profile'},
     {id:'messages'}, {id:'todolist'}, {id:'suyelik'},
     // program ayrı view — student-detail'dan açılır
-    {id:'program'},{id:'appointments'},{id:'exams'}
+    {id:'program'},{id:'exams'}
   ].map(t=>`<div class="view" id="view-${t.id}"></div>`).join('');
 
   // Profile pill
@@ -369,7 +369,7 @@ function switchTab(tab, updateHash = true){
   const allTabs = [...coachTabs,...stuTabs,...devTabs,...parentTabs,
     {id:'profile',name:'Profil'},{id:'settings',name:'Ayarlar'},
     {id:'student-detail',name:S.students.find(s=>s.id===S.activeStuId)?.name||'Öğrenci'},
-    {id:'program',name:'Program'},{id:'appointments',name:'Randevular'},{id:'exams',name:'Denemeler'}
+    {id:'program',name:'Program'},{id:'exams',name:'Denemeler'}
   ];
   const tabDef = allTabs.find(t=>t.id===tab);
   const tbarTitle = document.getElementById('tbarTitle'); if(tbarTitle) tbarTitle.textContent = tabDef?.name || tab;
@@ -384,7 +384,6 @@ function switchTab(tab, updateHash = true){
     'student-detail': () => { if(S.activeStuId) openStudentDetail(S.activeStuId); else switchTab('students'); },
     program: () => { if(S.activeStuId) openStudentProgram(S.activeStuId); else switchTab('students'); },
     exams: () => { if(S.activeStuId) renderExams(); else switchTab('students'); },
-    appointments: () => { if(S.activeStuId) renderAppointments(); else switchTab('students'); },
     'dev-dashboard':renderDevDashboard,'dev-users':renderDevUsers,
     'dev-resources':renderDevResources,'dev-finance':renderDevFinance,
     'dev-announce':renderDevAnnounce,'dev-tickets':renderDevTickets,
@@ -1404,11 +1403,11 @@ function openStudentExams(stuId){
   renderExams();
 }
 
+// Randevular artık Takvim sekmesinde — öğrenci filtresi önceden seçili açılır
 function openStudentAppointments(stuId){
   S.activeStuId = stuId;
-  if(currentTab !== 'appointments') switchTab('appointments');
-  const _tt4=document.getElementById('tbarTitle'); if(_tt4) _tt4.textContent = (S.students.find(s=>s.id===S.activeStuId)?.name||'')+' · Randevular';
-  renderAppointments();
+  _agendaFilter.studentId = stuId;
+  switchTab('todolist');
 }
 
 // ═══════════════════════════════════════════════
@@ -1766,6 +1765,91 @@ function saveGeminiKey(){
 // PROGRAM
 // ═══════════════════════════════════════════════
 let _taskDate='';
+// ── Görev kartı (koç/öğrenci ortak) — hem haftalık liste hem saatlik "Saatsiz" bölümünde kullanılır ──
+function _taskCardHtml(t, ds, ti, role){
+  const timeBadge = t.start_time ? `<div class="tc-time-badge">🕒 ${t.start_time}</div>` : '';
+  const roleArg = role==='coach' ? 'coach' : 'student';
+  const toggleFn = role==='coach' ? `toggleTask('${ds}',${ti})` : `stuToggleTask2('${ds}',${ti})`;
+  const menuBtn = role==='coach' ? `<button class="tc-menu-btn" onclick="event.stopPropagation();showTaskMenu('${ds}',${ti},this)">⋯</button>` : '';
+  return `
+    <div data-task-id="${t._id}" class="task-card task-${t.type} ${t.done?'done':''} ${t.start_time?'hourly-card':''}" onclick="openTaskDetail('${ds}',${ti},'${roleArg}')" style="cursor:pointer">
+      <div class="tc-check ${t.done?'on':''}" onclick="event.stopPropagation();${toggleFn}"></div>
+      <div class="tc-body">
+        ${timeBadge}
+        <div class="tc-type">${typeLabel(t.type)}${t.exam?' · '+t.exam:''}</div>
+        <div class="tc-subject">${esc(t.subject)}</div>
+        <div class="tc-meta">${t.duration} dk</div>
+      </div>
+      ${menuBtn}
+    </div>`;
+}
+
+// ── Saatlik Ajanda: zaman eksenli gün görünümü ──
+const TL_START_H = 7, TL_END_H = 24, TL_HOUR_PX = 44;
+function _tlParseMin(hhmm){ const p=(hhmm||'0:0').split(':').map(Number); return (p[0]||0)*60+(p[1]||0); }
+function _tlFmtMin(min){ min=((min%1440)+1440)%1440; return String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0'); }
+
+function _hourlyTimelineHtml(ds, tasks, role){
+  const scheduled=[], unscheduled=[];
+  tasks.forEach((t,idx)=>{
+    if(t.start_time) scheduled.push({ t, idx, startMin:_tlParseMin(t.start_time), dur:Number(t.duration)||30 });
+    else unscheduled.push({ t, idx });
+  });
+  scheduled.sort((a,b)=>a.startMin-b.startMin);
+
+  // Basit 2-kolon çakışma yerleşimi
+  const colEnds=[];
+  scheduled.forEach(item=>{
+    const end=item.startMin+item.dur;
+    let col=-1;
+    for(let c=0;c<colEnds.length && c<2;c++){ if(colEnds[c]<=item.startMin){ col=c; colEnds[c]=end; break; } }
+    if(col===-1){ if(colEnds.length<2){ col=colEnds.length; colEnds.push(end); } else { col=1; colEnds[1]=Math.max(colEnds[1],end); } }
+    item.col=col;
+  });
+  const colCount=Math.max(1,Math.min(2,colEnds.length));
+  const rangeStart=TL_START_H*60, rangeEnd=TL_END_H*60;
+  const totalH=(rangeEnd-rangeStart)/60*TL_HOUR_PX;
+
+  let hourRows='';
+  for(let h=TL_START_H; h<=TL_END_H; h++){
+    const top=(h*60-rangeStart)/60*TL_HOUR_PX;
+    hourRows+=`<div class="tl-hour-row" style="top:${top}px"><span class="tl-hour-lbl">${String(h%24).padStart(2,'0')}:00</span></div>`;
+  }
+
+  const roleArg = role==='coach' ? 'coach' : 'student';
+  const blocks = scheduled.map(item=>{
+    const { t, idx, startMin, dur, col } = item;
+    const clampedStart=Math.max(startMin,rangeStart);
+    const top=(clampedStart-rangeStart)/60*TL_HOUR_PX;
+    const height=Math.max(22, dur/60*TL_HOUR_PX);
+    const wPct=100/colCount, lPct=col*wPct;
+    return `<div class="tl-block ${t.done?'done':''}" data-task-id="${t._id}"
+        style="top:${top}px;height:${height}px;left:calc(${lPct}% + 2px);width:calc(${wPct}% - 4px)"
+        onclick="openTaskDetail('${ds}',${idx},'${roleArg}')" title="${esc(t.subject)}">
+      <div class="tl-block-time">${t.start_time}–${_tlFmtMin(startMin+dur)}</div>
+      <div class="tl-block-subj">${esc(t.subject)}</div>
+    </div>`;
+  }).join('');
+
+  const unschedHtml = unscheduled.length ? `
+    <div class="tl-unscheduled">
+      <div class="tl-unscheduled-lbl">⏱ Saatsiz</div>
+      ${unscheduled.map(({t,idx})=>_taskCardHtml(t, ds, idx, role)).join('')}
+    </div>` : '';
+
+  return `${unschedHtml}
+    <div class="tl-scroll"><div class="tl-wrap" style="--tl-height:${totalH}px">
+      <div class="tl-ruler">${hourRows}</div>
+      <div class="tl-col">${blocks}</div>
+    </div></div>`;
+}
+
+// Gün kartının görev listesi/timeline gövdesi — haftalık liste veya saatlik ajanda
+function _dayTasksBodyHtml(ds, tasks, role, progMode){
+  if(progMode==='hourly') return _hourlyTimelineHtml(ds, tasks, role);
+  return tasks.map((t,ti)=>_taskCardHtml(t, ds, ti, role)).join('');
+}
+
 function renderProgram(){
   const el=document.getElementById('view-program');
   const stu=S.students.find(s=>s.id===S.activeStuId);
@@ -1786,32 +1870,7 @@ function renderProgram(){
     const doneMin=tasks.reduce((s,t)=>s+(t.done?Number(t.duration):0),0);
     const dayLabel=DAYS_TR[(ws+i)%7];
 
-    // Saatlik moda göre sırala
-    const sortedTasks = [...tasks];
-    if (progMode === 'hourly') {
-      sortedTasks.sort((a, b) => {
-        if (a.start_time && !b.start_time) return -1;
-        if (!a.start_time && b.start_time) return 1;
-        if (a.start_time && b.start_time) return a.start_time.localeCompare(b.start_time);
-        return 0;
-      });
-    }
-
-    const taskHtml=sortedTasks.map((t)=> {
-      const ti = tasks.indexOf(t);
-      const timeBadge = t.start_time ? `<div class="tc-time-badge">🕒 ${t.start_time}</div>` : '';
-      return `
-        <div data-task-id="${t._id}" class="task-card task-${t.type} ${t.done?'done':''} ${t.start_time?'hourly-card':''}" onclick="openTaskDetail('${ds}',${ti},'coach')" style="cursor:pointer">
-          <div class="tc-check ${t.done?'on':''}" onclick="event.stopPropagation();toggleTask('${ds}',${ti})"></div>
-          <div class="tc-body">
-            ${timeBadge}
-            <div class="tc-type">${typeLabel(t.type)}${t.exam?' · '+t.exam:''}</div>
-            <div class="tc-subject">${esc(t.subject)}</div>
-            <div class="tc-meta">${t.duration} dk</div>
-          </div>
-          <button class="tc-menu-btn" onclick="event.stopPropagation();showTaskMenu('${ds}',${ti},this)">⋯</button>
-        </div>`;
-    }).join('');
+    const taskHtml = _dayTasksBodyHtml(ds, tasks, 'coach', progMode);
 
     const shortDay = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][(ws+i)%7];
     dayCards+=`<div class="day-col ${isToday?'today':''}">
@@ -1825,7 +1884,7 @@ function renderProgram(){
           ${_clipboardTask?`<button class="btn btn-ghost btn-xs" onclick="pasteTaskFromClipboard('${ds}')" style="font-size:9px;color:var(--accent);border-color:rgba(240,165,0,.3);background:var(--accent-dim);padding:2px 6px">Yapıştır</button>`:''}
         </div>
       </div>
-      <div class="day-tasks-list">${taskHtml||''}</div>
+      <div class="day-tasks-list ${progMode==='hourly'?'tl-mode':''}">${taskHtml||''}</div>
       <button class="add-day-btn" onclick="openTaskModal('${ds}','${dayLabel}')" ${!S.activeStuId?'disabled':''}>+ Görev Ekle</button>
     </div>`;
   }
@@ -3489,55 +3548,7 @@ function _gcalSyncLabel() {
   } catch { return ''; }
 }
 
-function renderAppointments(){
-  const el=document.getElementById('view-appointments');
-  const gcalConnected = S.workspace?.google_calendar_connected;
-  const gcalBtn = gcalConnected
-    ? `<span style="font-size:12px;color:var(--green);font-weight:600;display:flex;align-items:center;gap:4px">✓ Google Takvim</span>`
-    : `<button class="btn btn-ghost btn-sm" onclick="connectGoogleCalendar()">🔗 Google Takvim Bağla</button>`;
-  el.innerHTML=`
-    <button class="back-link" onclick="switchTab('student-detail')">← ${S.students.find(s=>s.id===S.activeStuId)?.name||'Öğrenci'}</button>
-    <div class="sh"><h2>Randevular</h2><div style="display:flex;gap:8px;align-items:flex-start">${gcalBtn}<button class="btn btn-ghost btn-sm" onclick="downloadICS()">📅 Takvime Aktar</button><button class="btn btn-accent" onclick="openApptModal()">+ Yeni Randevu</button></div></div>
-    <div class="appts-layout">
-      <div class="card cp">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <span style="font-family:'Inter',sans-serif;font-size:17px;font-weight:700" id="calMonthLbl"></span>
-          <div style="display:flex;gap:6px">
-            <button class="btn btn-ghost btn-sm" onclick="chCalMonth(-1)">‹</button>
-            <button class="btn btn-ghost btn-sm" onclick="chCalMonth(1)">›</button>
-          </div>
-        </div>
-        <div class="cal-dow-row">${['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map(d=>`<div class="cal-dow">${d}</div>`).join('')}</div>
-        <div class="cal-days-grid" id="calDaysGrid"></div>
-      </div>
-      <div>
-        <div class="card cp">
-          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)" id="apptListTitle">Yaklaşan Görüşmeler</div>
-          <div id="apptList"></div>
-          <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="S.calSelDay=null;renderCalDays();renderApptList()">Tümünü Göster</button>
-        </div>
-      </div>
-    </div>`;
-  renderCalDays();renderApptList();
-}
-function renderCalDays(){
-  const y=S.calYear,m=S.calMonth;
-  document.getElementById('calMonthLbl').textContent=`${MONTHS_TR[m]} ${y}`;
-  const firstDow=new Date(y,m,1).getDay();
-  const dim=new Date(y,m+1,0).getDate();
-  const ts=todayStr();
-  const apptDays=new Set(S.appointments.filter(a=>{const d=new Date(a.date);return d.getFullYear()===y&&d.getMonth()===m;}).map(a=>new Date(a.date).getDate()));
-  const pad=firstDow===0?6:firstDow-1;
-  let html='';
-  for(let i=0;i<pad;i++)html+=`<div class="cal-day empty"></div>`;
-  for(let d=1;d<=dim;d++){
-    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    html+=`<div class="cal-day ${ds===ts?'today':''} ${ds===S.calSelDay&&ds!==ts?'selected':''} ${apptDays.has(d)?'has-appt':''}" onclick="selCalDay('${ds}')">${d}</div>`;
-  }
-  document.getElementById('calDaysGrid').innerHTML=html;
-}
-function selCalDay(ds){S.calSelDay=S.calSelDay===ds?null:ds;renderCalDays();renderApptList();}
-function chCalMonth(delta){S.calMonth+=delta;if(S.calMonth>11){S.calMonth=0;S.calYear++;}if(S.calMonth<0){S.calMonth=11;S.calYear--;}saveS();renderCalDays();}
+// (renderAppointments/renderCalDays/chCalMonth/selCalDay kaldırıldı — Takvim sekmesi altında birleştirildi)
 function renderApptList(){
   const ts=todayStr();let appts=S.appointments;let title='Yaklaşan Görüşmeler';
   if(S.calSelDay){appts=appts.filter(a=>a.date===S.calSelDay);title=new Date(S.calSelDay+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long'});}
@@ -3616,7 +3627,8 @@ async function _doSaveAppt(){
     }
   }
   cm('apptModal');
-  if(currentTab === 'todolist') renderAgenda(); else if(document.getElementById('view-appointments')?.classList.contains('active')) renderAppointments();
+  if(currentTab === 'todolist') renderAgenda();
+  if(document.getElementById('apptList')) renderApptList();
 }
 
 async function syncFromGoogle() {
@@ -3642,7 +3654,8 @@ async function syncFromGoogle() {
     if (result.deleted > 0) parts.push(`${result.deleted} randevu silindi`);
     if (result.updated > 0) parts.push(`${result.updated} randevu güncellendi`);
     showToast(parts.length ? 'Senkronize edildi: ' + parts.join(', ') + ' ✓' : 'Senkronize edildi, değişiklik yok ✓');
-    renderAppointments();
+    if(currentTab === 'todolist') renderAgenda();
+    if(document.getElementById('apptList')) renderApptList();
   } catch(e) {
     showToast('Senkronizasyon hatası: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = '🔄 Senkronize Et'; }
@@ -3680,7 +3693,8 @@ async function deleteAppt(id){
   }
   await db.from('appointments').delete().eq('id',id);
   S.appointments=S.appointments.filter(a=>a.id!==id);
-  renderAppointments();
+  if(currentTab === 'todolist') renderAgenda();
+  if(document.getElementById('apptList')) renderApptList();
   showToast('Silindi');
 }
 
@@ -4519,31 +4533,7 @@ function renderSPortal(){
     const doneMin=tasks.reduce((s,t)=>s+(t.done?Number(t.duration):0),0);
     const dayLabel=DAYS_TR[(ws+i)%7];
 
-    // Saatlik moda göre sırala
-    const sortedTasks = [...tasks];
-    if (progMode === 'hourly') {
-      sortedTasks.sort((a, b) => {
-        if (a.start_time && !b.start_time) return -1;
-        if (!a.start_time && b.start_time) return 1;
-        if (a.start_time && b.start_time) return a.start_time.localeCompare(b.start_time);
-        return 0;
-      });
-    }
-
-    const taskHtml=sortedTasks.map((t)=> {
-      const ti = tasks.indexOf(t);
-      const timeBadge = t.start_time ? `<div class="tc-time-badge">🕒 ${t.start_time}</div>` : '';
-      return `
-        <div data-task-id="${t._id}" class="task-card task-${t.type} ${t.done?'done':''} ${t.start_time?'hourly-card':''}" onclick="openTaskDetail('${ds}',${ti},'student')" style="cursor:pointer">
-          <div class="tc-check ${t.done?'on':''}" onclick="event.stopPropagation();stuToggleTask2('${ds}',${ti})"></div>
-          <div class="tc-body">
-            ${timeBadge}
-            <div class="tc-type">${typeLabel(t.type)}${t.exam?' · '+t.exam:''}</div>
-            <div class="tc-subject">${esc(t.subject)}</div>
-            <div class="tc-meta">${t.duration} dk</div>
-          </div>
-        </div>`;
-    }).join('');
+    const taskHtml = _dayTasksBodyHtml(ds, tasks, 'student', progMode);
 
     const shortDay = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][(ws+i)%7];
     dayCards+=`<div class="day-col ${isToday?'today':''}">
@@ -4551,7 +4541,7 @@ function renderSPortal(){
         <div><div class="day-name-lbl">${shortDay}</div><div class="day-num">${d.getDate()}</div></div>
         <span class="day-badge" style="font-size:8.5px">${formatMinToHours(doneMin)} / ${formatMinToHours(totalMin)}</span>
       </div>
-      <div class="day-tasks-list">${taskHtml||'<div class="empty" style="padding:8px 0"><p style="font-size:11px">Görev yok</p></div>'}</div>
+      <div class="day-tasks-list ${progMode==='hourly'?'tl-mode':''}">${taskHtml||(progMode==='hourly'?'':'<div class="empty" style="padding:8px 0"><p style="font-size:11px">Görev yok</p></div>')}</div>
     </div>`;
   }
   const _yksInfo = getNextYks();
@@ -12317,10 +12307,6 @@ window.goProgram = goProgram;
 window.openStudentModal = openStudentModal;
 window.saveStudent = saveStudent;
 window.showInviteInfo = showInviteInfo;
-window.renderAppointments = renderAppointments;
-window.renderCalDays = renderCalDays;
-window.selCalDay = selCalDay;
-window.chCalMonth = chCalMonth;
 window.renderApptList = renderApptList;
 window.openApptModal = openApptModal;
 window.saveAppt = saveAppt;

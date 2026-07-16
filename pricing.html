@@ -201,11 +201,11 @@ footer{border-top:1px solid var(--bd);padding:32px 40px;display:flex;align-items
     <div class="pc-name">Koç Pro</div>
     <div class="pc-desc">Aktif koçlar için eksiksiz çözüm. Sınırsız öğrenci, tam özellik seti.</div>
     <div class="pc-price-wrap">
-      <div class="pc-price"><sup>₺</sup><span class="price-val" data-monthly="299" data-annual="239">299</span></div>
+      <div class="pc-price"><sup>₺</sup><span class="price-val" data-monthly="499" data-annual="399">499</span></div>
     </div>
     <div class="pc-period">/ ay · KDV dahil</div>
-    <div class="pc-annual-note" id="ann-pro">Yıllık ödemede ₺<span id="ann-pro-save">720</span> tasarruf</div>
-    <a href="/app.html" class="pc-cta pc-cta-main" id="cta-pro" onclick="startCheckout('pro')">14 Gün Ücretsiz Dene →</a>
+    <div class="pc-annual-note" id="ann-pro">Yıllık ödemede ₺<span id="ann-pro-save">1200</span> tasarruf</div>
+    <a href="/app.html" class="pc-cta pc-cta-main" id="cta-pro" onclick="startCheckout('pro')">7 Gün Ücretsiz Dene →</a>
     <hr class="pc-divider">
     <div class="pc-features-title">Başlangıç + şunlar</div>
     <div class="pc-features">
@@ -294,10 +294,10 @@ footer{border-top:1px solid var(--bd);padding:32px 40px;display:flex;align-items
 
   <div class="faq-item">
     <button class="faq-q" onclick="toggleFaq(this)">
-      14 günlük deneme nasıl çalışır?
+      7 günlük deneme nasıl çalışır?
       <span class="arr">+</span>
     </button>
-    <div class="faq-a">Koç Pro planını seçtiğinizde kredi kartı bilgisi girmeden 14 gün tam özelliğe erişebilirsiniz. Deneme süresi bitiminde ücret alınmaz; planı aktifleştirmeyi tercih ederseniz ödeme yaparsınız.</div>
+    <div class="faq-a">Koç Pro planını seçtiğinizde kredi kartı bilgisi girmeden 7 gün tam özelliğe erişebilirsiniz. Deneme süresi bitiminde ücret alınmaz; planı aktifleştirmeyi tercih ederseniz ödeme yaparsınız.</div>
   </div>
 
   <div class="faq-item">
@@ -345,7 +345,7 @@ footer{border-top:1px solid var(--bd);padding:32px 40px;display:flex;align-items
 <!-- CTA BANNER -->
 <div class="cta-banner">
   <div class="cta-inner">
-    <h2>Bugün başlayın,<br>14 gün bedava deneyin.</h2>
+    <h2>Bugün başlayın,<br>7 gün bedava deneyin.</h2>
     <p>Kredi kartı gerekmez. Kurulum birkaç dakika sürer.</p>
     <div class="cta-btns">
       <a href="/app.html" class="btn-cta-main">Ücretsiz Başla →</a>
@@ -381,8 +381,8 @@ function setBilling(mode) {
   // Annual note for pro
   const annPro = document.getElementById('ann-pro');
   if (mode === 'annual') {
-    const monthlyCost = 299 * 12;
-    const annualCost = 239 * 12;
+    const monthlyCost = 499 * 12;
+    const annualCost = 399 * 12;
     annPro.innerHTML = 'Yıllık ödemede ₺' + (monthlyCost - annualCost) + ' tasarruf';
   } else {
     annPro.innerHTML = '';
@@ -390,11 +390,7 @@ function setBilling(mode) {
 
   // CTA text
   const cta = document.getElementById('cta-pro');
-  if (mode === 'annual') {
-    cta.textContent = '14 Gün Ücretsiz Dene →';
-  } else {
-    cta.textContent = '14 Gün Ücretsiz Dene →';
-  }
+  cta.textContent = '7 Gün Ücretsiz Dene →';
 }
 
 function toggleFaq(btn) {

@@ -464,6 +464,23 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
   gap: 8px;
   margin-bottom: 14px;
 }
+
+/* ── Saatlik Ajanda: zaman eksenli gün görünümü ── */
+.day-tasks-list.tl-mode { display: block; }
+.tl-unscheduled { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.tl-unscheduled-lbl { font-size: 9px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 2px; }
+.tl-scroll { max-height: 440px; overflow-y: auto; border: 1px solid var(--surface2); border-radius: 12px; background: var(--surface2); }
+.tl-wrap { position: relative; height: var(--tl-height, 748px); }
+.tl-ruler { position: absolute; inset: 0; }
+.tl-hour-row { position: absolute; left: 0; right: 0; height: 1px; border-top: 1px dashed var(--border); }
+.tl-hour-lbl { position: absolute; left: 4px; top: -7px; font-size: 9px; color: var(--text-dim); font-weight: 700; background: var(--surface2); padding: 0 3px; }
+.tl-col { position: absolute; left: 34px; right: 4px; top: 0; bottom: 0; }
+.tl-block { position: absolute; border-radius: 8px; padding: 4px 7px; overflow: hidden; cursor: pointer; box-shadow: var(--shadow); border-left: 3px solid var(--accent); background: var(--surface); transition: box-shadow .15s; }
+.tl-block:hover { box-shadow: var(--shadow-md, 0 4px 14px rgba(0,0,0,.12)); z-index: 2; }
+.tl-block.done { opacity: .5; }
+.tl-block.done .tl-block-subj { text-decoration: line-through; }
+.tl-block-time { font-size: 9px; font-weight: 800; color: var(--accent); line-height: 1.3; }
+.tl-block-subj { font-size: 10.5px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .task-card {
   border-radius: 12px;
   padding: 12px 14px;

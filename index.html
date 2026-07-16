@@ -1952,22 +1952,6 @@ const cObs=new IntersectionObserver(entries=>{
 },{threshold:.3});
 const nb=document.querySelector('.numbers');if(nb)cObs.observe(nb);
 
-// BILLING TOGGLE
-let yearly=false;
-let prices=[[0,0],[299,249],[699,579]]; // Supabase'den güncellenir
-function toggleBill(){
-  yearly=!yearly;
-  const t=document.getElementById('btTrack');
-  t.classList.toggle('on',yearly);
-  [0,1,2].forEach(i=>{
-    const el=document.getElementById('pr'+i);
-    if(el)el.textContent=prices[i][yearly?1:0];
-  });
-  const _pd1=document.getElementById('pd1'); if(_pd1)_pd1.textContent=yearly?'Yıllık · 2 ay hediye':'Aylık faturalandırma';
-  const _pd2=document.getElementById('pd2'); if(_pd2)_pd2.textContent=yearly?'Yıllık faturalandırma':'Dershane veya merkez';
-}
-
-
 // FAQ
 function toggleFaq(el){
   const item=el.parentElement;
@@ -2391,22 +2375,6 @@ async function loadSiteContent(){
     const {data,error}=await _SB.from('site_content').select('*');
     if(error||!data){ console.warn('site_content load error:',error); return; }
     data.forEach(r=>{ _siteContent[r.key]=r.value; });
-
-    // Fiyatlar — hem array'i güncelle hem direkt HTML'e yaz
-    const pPro = parseInt(_siteContent.price_pro)||299;
-    const pEnt = parseInt(_siteContent.price_enterprise)||699;
-    const pProY = Math.round(pPro*10/12);
-    const pEntY = Math.round(pEnt*10/12);
-
-    // Global prices array güncelle (billing toggle için)
-    prices[1][0]=pPro; prices[1][1]=pProY;
-    prices[2][0]=pEnt; prices[2][1]=pEntY;
-
-    // Direkt HTML'e yaz (yearly durumuna göre)
-    const prEl1=document.getElementById('pr1');
-    const prEl2=document.getElementById('pr2');
-    if(prEl1) prEl1.textContent = yearly ? pProY : pPro;
-    if(prEl2) prEl2.textContent = yearly ? pEntY : pEnt;
 
     // İstatistikler
     const countMap={

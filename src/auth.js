@@ -564,7 +564,7 @@ export async function finishLogin(rows) {
       const _gcalCode = _urlParams.get('code');
       window.history.replaceState({}, '', window.location.pathname + window.location.hash);
       document.getElementById('aiChatBubble').style.display = 'flex';
-      setTimeout(() => window.switchTab('appointments'), 50);
+      setTimeout(() => window.switchTab('todolist'), 50);
       db.auth.getSession().then(({ data: { session: authSess } }) => {
         if (!authSess?.access_token) return;
         fetch('/api/mailer', {
@@ -575,7 +575,7 @@ export async function finishLogin(rows) {
           if (result.success) {
             if (S.workspace) S.workspace.google_calendar_connected = true;
             showToast('Google Takvim bağlandı ✓');
-            window.renderAppointments && window.renderAppointments();
+            window.renderAgenda && window.renderAgenda();
           } else {
             showToast('Google bağlanamadı: ' + (result.error || 'Bilinmeyen hata'));
           }

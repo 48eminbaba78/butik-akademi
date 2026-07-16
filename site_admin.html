@@ -1416,12 +1416,9 @@ let _leads=[], _content={}, _blogs=[], _announces=[];
 let _leadFilter='all';
 
 // ── INIT ──────────────────────────────────────
+// Not: panel kendi Supabase Auth girişini yapmaz — app.html'de zaten oturum açmış
+// (role='developer') hesabın localStorage'daki gerçek oturumunu miras alır.
 async function init(){
-  try {
-    await db.auth.signInWithPassword({ email: 'dev@rostrumakademi.com', password: 'dev123' });
-  } catch (e) {
-    console.warn('Admin Supabase Auth sync failed:', e.message);
-  }
   await Promise.all([loadLeads(),loadContent(),loadBlogs(),loadAnnounces()]);
   renderDashboard();
   document.getElementById('lastSync').textContent='Son sync: '+new Date().toLocaleTimeString('tr-TR');
@@ -3620,7 +3617,7 @@ Sadece ham JSON döndür, başka açıklama ekleme.`;
       {
         quote: "Öğrencinin neti düştüğünde, onu ilk gören koçtur.",
         author: "Rostrum Akademi",
-        caption: "Bir öğrencinizin Matematik neti 3 hafta üst üste düşse, ne zaman fark edersiniz?\n\nEğer cevabınız 'veliden haber alınca' ise — bu post tam size.\n\nRostrum Akademi'de her deneme sonrası TYT/AYT netleri sisteme girilir, düşüş otomatik işaretlenir. Koç müdahale edecek vakti bulur, öğrenci sürüklenmez.\n\n✓ Analiz sistemi, ✓ müdahale zamanlaması, ✓ veli bilgilendirmesi — hepsi aynı yerde.\n\n→ 14 günlük deneme için bağlantı profilde.\n\n#ykskoçu #özelkoç #yks2027 #tytpuanı #aytpuanı #sınavkoçu #ykshazırlık",
+        caption: "Bir öğrencinizin Matematik neti 3 hafta üst üste düşse, ne zaman fark edersiniz?\n\nEğer cevabınız 'veliden haber alınca' ise — bu post tam size.\n\nRostrum Akademi'de her deneme sonrası TYT/AYT netleri sisteme girilir, düşüş otomatik işaretlenir. Koç müdahale edecek vakti bulur, öğrenci sürüklenmez.\n\n✓ Analiz sistemi, ✓ müdahale zamanlaması, ✓ veli bilgilendirmesi — hepsi aynı yerde.\n\n→ 7 günlük deneme için bağlantı profilde.\n\n#ykskoçu #özelkoç #yks2027 #tytpuanı #aytpuanı #sınavkoçu #ykshazırlık",
         title: "NET ANALİZİ",
         subtitle: "Düşüşü Erken Gör, Erken Müdahale Et",
         story_slides: [
