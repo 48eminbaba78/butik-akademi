@@ -11813,9 +11813,37 @@ async function openWeeklyReportModal() {
       ` : ''}
     </div>
 
-    <!-- DETAILED TABLE -->
+    <!-- DETAILED TABLE WITH FILTERS & SORTING -->
     <div class="card" style="padding:16px;">
       <h3 style="margin-bottom:12px; font-size:14px; font-weight:700;">📋 Görev Bazlı Detaylı Tablo</h3>
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px; background:var(--surface2); padding:10px 14px; border-radius:10px; border:1px solid var(--border);">
+        <!-- Kategori Filtresi -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.5px;">📁 Kategori:</span>
+          <select id="wrCategoryFilter" onchange="window.filterSortWeeklyReport()" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:8px; background:var(--surface); border:1.5px solid var(--border); color:var(--text); outline:none; cursor:pointer;">
+            <option value="all">Tüm Tipler</option>
+            <option value="soru">Soru Bankası</option>
+            <option value="konu">Konu Anlatımı</option>
+            <option value="deneme">Deneme</option>
+            <option value="diger">Diğer</option>
+          </select>
+        </div>
+        <!-- Sıralama Seçenekleri -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.5px;">⚡ Sırala:</span>
+          <select id="wrSortSelect" onchange="window.filterSortWeeklyReport()" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:8px; background:var(--surface); border:1.5px solid var(--border); color:var(--text); outline:none; cursor:pointer;">
+            <option value="date">Tarih (Varsayılan)</option>
+            <option value="alpha">Alfabetik (A-Z)</option>
+            <option value="status">Durum (Önce Tamamlananlar)</option>
+            <option value="result">Sonuç (Çözülen Soru Sayısı)</option>
+            <option value="duration">Çalışma Süresi (Çoktan Aza)</option>
+            <option value="focus">Odaklanma Derecesi</option>
+            <option value="difficulty">Zorluk Derecesi</option>
+          </select>
+        </div>
+      </div>
+
       <div style="overflow-x:auto;">
         <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
           <thead>
@@ -11829,33 +11857,84 @@ async function openWeeklyReportModal() {
               <th style="padding:8px 4px;">Öğrenci Notu</th>
             </tr>
           </thead>
-          <tbody>
-            ${weekTasks.map(t => {
-              const statusLabel = t.done ? '✓ Tamam' : '✗ Eksik';
-              const statusColor = t.done ? 'var(--green)' : 'var(--text-dim)';
-              const res = t.student_result ? `${t.student_result.dogru || 0}/${t.student_result.yanlis || 0}/${t.student_result.bos || 0}` : '—';
-              const focus = t.student_feedback?.focus ? '★'.repeat(t.student_feedback.focus) : '—';
-              const diff = t.student_feedback?.difficulty ? DL[t.student_feedback.difficulty] : '—';
-              const spent = t.student_feedback?.time_spent ? `${t.student_feedback.time_spent} dk` : '—';
-              return `
-                <tr style="border-bottom:1px solid var(--border); transition:background .15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
-                  <td style="padding:8px 4px; font-weight:600; color:var(--text);">${esc(t.subject)}</td>
-                  <td style="padding:8px 4px; text-align:center; font-weight:700; color:${statusColor};">${statusLabel}</td>
-                  <td style="padding:8px 4px; text-align:center; font-weight:700; color:var(--accent);">${res}</td>
-                  <td style="padding:8px 4px; text-align:center;">${spent}</td>
-                  <td style="padding:8px 4px; text-align:center; color:#f0a500; font-size:10px;">${focus}</td>
-                  <td style="padding:8px 4px; text-align:center;">${diff}</td>
-                  <td style="padding:8px 4px; color:var(--text-mid); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(t.student_note || '')}">${esc(t.student_note || '—')}</td>
-                </tr>
-              `;
-            }).join('')}
+          <tbody id="wrTableBody">
+            <!-- Dinamik olarak filterSortWeeklyReport tarafından doldurulacak -->
           </tbody>
         </table>
       </div>
     </div>
   </div>`;
 
+  window.currentWRTasks = weekTasks;
   om('weeklyReportModal');
+  setTimeout(() => {
+    if (window.filterSortWeeklyReport) window.filterSortWeeklyReport();
+  }, 50);
+}
+
+window.filterSortWeeklyReport = function() {
+  const cat = document.getElementById('wrCategoryFilter')?.value || 'all';
+  const sortVal = document.getElementById('wrSortSelect')?.value || 'date';
+  const DL = { 1: 'Çok Kolay', 2: 'Kolay', 3: 'Orta', 4: 'Zor', 5: 'Çok Zor' };
+
+  let tasks = [...(window.currentWRTasks || [])];
+
+  // 1. Kategori Filtrele
+  if (cat !== 'all') {
+    tasks = tasks.filter(t => t.type === cat);
+  }
+
+  // 2. Sırala
+  if (sortVal === 'alpha') {
+    tasks.sort((a, b) => a.subject.localeCompare(b.subject, 'tr'));
+  } else if (sortVal === 'status') {
+    tasks.sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0));
+  } else if (sortVal === 'result') {
+    const getQ = t => {
+      if (!t.student_result) return 0;
+      return (Number(t.student_result.dogru || 0) + Number(t.student_result.yanlis || 0) + Number(t.student_result.bos || 0));
+    };
+    tasks.sort((a, b) => getQ(b) - getQ(a));
+  } else if (sortVal === 'duration') {
+    const getDur = t => Number(t.student_feedback?.time_spent || 0);
+    tasks.sort((a, b) => getDur(b) - getDur(a));
+  } else if (sortVal === 'focus') {
+    const getFocus = t => Number(t.student_feedback?.focus || 0);
+    tasks.sort((a, b) => getFocus(b) - getFocus(a));
+  } else if (sortVal === 'difficulty') {
+    const getDiff = t => Number(t.student_feedback?.difficulty || 0);
+    tasks.sort((a, b) => getDiff(b) - getDiff(a));
+  } else {
+    tasks.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  // 3. Tabloyu Doldur
+  const tbody = document.getElementById('wrTableBody');
+  if (tbody) {
+    if (tasks.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-dim);">Filtreye uygun görev bulunamadı.</td></tr>`;
+    } else {
+      tbody.innerHTML = tasks.map(t => {
+        const statusLabel = t.done ? '✓ Tamam' : '✗ Eksik';
+        const statusColor = t.done ? 'var(--green)' : 'var(--text-dim)';
+        const res = t.student_result ? `${t.student_result.dogru || 0}/${t.student_result.yanlis || 0}/${t.student_result.bos || 0}` : '—';
+        const focus = t.student_feedback?.focus ? '★'.repeat(t.student_feedback.focus) : '—';
+        const diff = t.student_feedback?.difficulty ? DL[t.student_feedback.difficulty] : '—';
+        const spent = t.student_feedback?.time_spent ? `${t.student_feedback.time_spent} dk` : '—';
+        return `
+          <tr style="border-bottom:1px solid var(--border); transition:background .15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+            <td style="padding:8px 4px; font-weight:600; color:var(--text);">${esc(t.subject)}</td>
+            <td style="padding:8px 4px; text-align:center; font-weight:700; color:${statusColor};">${statusLabel}</td>
+            <td style="padding:8px 4px; text-align:center; font-weight:700; color:var(--accent);">${res}</td>
+            <td style="padding:8px 4px; text-align:center;">${spent}</td>
+            <td style="padding:8px 4px; text-align:center; color:#f0a500; font-size:10px;">${focus}</td>
+            <td style="padding:8px 4px; text-align:center;">${diff}</td>
+            <td style="padding:8px 4px; color:var(--text-mid); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(t.student_note || '')}">${esc(t.student_note || '—')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
 }
 
 async function confirmApplyTemplate() {
@@ -12429,6 +12508,7 @@ window.openExamModal = openExamModal;
 window.renderNetInputs = renderNetInputs;
 window.saveExam = saveExam;
 window.openWeeklyReportModal = openWeeklyReportModal;
+window.filterSortWeeklyReport = filterSortWeeklyReport;
 window.renderSMessages = renderSMessages;
 window.initRealtime = initRealtime;
 window.destroyRealtime = destroyRealtime;
