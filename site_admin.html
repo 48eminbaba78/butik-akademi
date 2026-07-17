@@ -194,6 +194,9 @@ tbody tr:hover td{background:rgba(255,255,255,.015);}
 .rsp-meta{display:flex;flex-direction:column;gap:8px;min-width:0;}
 .rsp-cap{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit;color:var(--text);outline:none;resize:vertical;min-height:64px;line-height:1.5;}
 .rsp-cap:focus{border-color:var(--acc);}
+.fp-phone{width:150px;aspect-ratio:1/1;border-radius:12px;border:1px solid var(--bd2);background:#000;padding:0;}
+.fp-scr{width:100%;height:100%;border-radius:11px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#0a0a0c;}
+.fp-scr svg{width:100%;height:100%;display:block;}
 
 /* LOADING */
 .loading{text-align:center;padding:40px;color:var(--mid);}
@@ -693,141 +696,74 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
             style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(244,162,97,0.7);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto">✦ Manuel Post</button>
         </div>
 
-        <!-- 1. GÖNDERİLER TABI -->
-        <div id="ig-posts-section" style="display:flex;flex:1;overflow:hidden">
+        <!-- 1. GÖNDERİLER TABI (Story Otomasyon ile aynı motor — rostrum-story-panel, type=feed) -->
+        <div id="ig-posts-section" style="display:none;padding:20px 24px;overflow-y:auto;flex:1;background:var(--bg)">
 
-          <!-- SOL PANEL -->
-          <div style="flex:1;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:14px">
-
-            <div id="igErrorBanner" style="display:none;background:rgba(224,90,90,0.12);border:0.5px solid rgba(224,90,90,0.35);border-radius:6px;padding:7px 12px;font-size:12px;color:#e05a5a">
-              ⚠ Supabase bağlantı hatası — veriler yüklenemedi
-            </div>
-
-            <!-- Haftalık Tema Banner -->
-            <div style="background:rgba(244,162,97,0.07);border:0.5px solid rgba(244,162,97,0.2);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
-              <div style="display:flex;align-items:center;gap:12px">
-                <div style="width:8px;height:8px;border-radius:50%;background:#F4A261;flex-shrink:0;box-shadow:0 0 6px rgba(244,162,97,0.5)"></div>
-                <div>
-                  <div style="font-size:10px;color:rgba(244,162,97,0.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px">Bu hafta · Tema <span id="igCurrentWeekNum">1</span>/4</div>
-                  <div id="igCurrentThemeName" style="font-size:15px;font-weight:700;color:#F4A261">—</div>
-                </div>
-              </div>
-              <div style="text-align:right">
-                <div style="font-size:10px;color:rgba(230,237,243,0.25);margin-bottom:2px">Sonraki →</div>
-                <div id="igNextThemeName" style="font-size:12px;color:rgba(230,237,243,0.45)">—</div>
-              </div>
-            </div>
-
-            <!-- Rotasyon Pills -->
-            <div id="igWeekPills" style="display:flex;gap:8px"></div>
-
-            <!-- İçerik Kuyruğu -->
-            <div style="background:#161b22;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;overflow:hidden;flex:1">
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:0.5px solid rgba(255,255,255,0.06)">
-                <span style="font-size:10px;font-weight:700;color:rgba(230,237,243,0.35);text-transform:uppercase;letter-spacing:.6px">İçerik Kuyruğu</span>
-                <button id="btnRegenAll" onclick="regenerateAllIgPosts()"
-                  style="background:none;border:0.5px solid rgba(255,255,255,0.12);border-radius:5px;padding:3px 10px;font-size:11px;color:rgba(230,237,243,0.45);cursor:pointer;font-family:inherit">↺ Tümünü Yenile</button>
-              </div>
-              <table style="width:100%;border-collapse:collapse">
-                <thead>
-                  <tr style="border-bottom:0.5px solid rgba(255,255,255,0.05)">
-                    <th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:rgba(230,237,243,0.3);text-transform:uppercase;letter-spacing:.5px">İçerik Türü</th>
-                    <th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:rgba(230,237,243,0.3);text-transform:uppercase;letter-spacing:.5px">Tema</th>
-                    <th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:rgba(230,237,243,0.3);text-transform:uppercase;letter-spacing:.5px">Yayın Zamanı</th>
-                    <th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:rgba(230,237,243,0.3);text-transform:uppercase;letter-spacing:.5px">Durum</th>
-                  </tr>
-                </thead>
-                <tbody id="igPostsTable">
-                  <tr><td colspan="4" style="text-align:center;padding:40px;color:rgba(230,237,243,0.25);font-size:13px">Yükleniyor…</td></tr>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Ay Özeti Şeridi -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-              <div style="background:#161b22;border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px">
-                <div style="font-size:10px;color:rgba(230,237,243,0.3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">İçgörü / Platform</div>
-                <div id="igSummaryInsight" style="font-size:22px;font-weight:700;color:#e6edf3">—</div>
-              </div>
-              <div style="background:#161b22;border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px">
-                <div style="font-size:10px;color:rgba(230,237,243,0.3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Sosyal Kanıt</div>
-                <div id="igSummarySocial" style="font-size:22px;font-weight:700;color:#e6edf3">— / 1</div>
-              </div>
-              <div style="background:#161b22;border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px">
-                <div style="font-size:10px;color:rgba(230,237,243,0.3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Haftalık Toplam</div>
-                <div id="igSummaryTotal" style="font-size:22px;font-weight:700;color:#e6edf3">—</div>
-              </div>
-            </div>
-
+          <div id="fpNoConnHint" class="banner warn" style="display:none;margin-bottom:14px">
+            Bağlantı ayarları henüz girilmemiş — <b>Story Otomasyon</b> sekmesinden Story Panel API adresi ve şifresini kaydedin, bu sekme aynı bağlantıyı kullanır.
           </div>
 
-          <!-- SAĞ PANEL (320px sabit) — flex column, scroll yok, her şey görünür -->
-          <div style="width:320px;flex-shrink:0;background:#0a0d10;border-left:0.5px solid rgba(255,255,255,0.07);display:flex;flex-direction:column;overflow:hidden">
+          <!-- Otomasyon akışı -->
+          <div class="banner info" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+            <span><b>1.</b> Üret — elle "İçerik Oluştur"dan tetikle</span>
+            <span style="color:var(--dim)">→</span>
+            <span><b>2.</b> Onayla — onaysız taslak asla yayınlanmaz</span>
+            <span style="color:var(--dim)">→</span>
+            <span><b>3.</b> Yayınla — onaylı gönderi Instagram akışına gider</span>
+          </div>
 
-            <!-- Önizleme (sabit yükseklik, hep görünür) -->
-            <div style="flex-shrink:0;background:#0D1B2A;border-bottom:0.5px solid rgba(255,255,255,0.07)">
-              <div style="padding:5px 12px;display:flex;align-items:center;justify-content:space-between">
-                <span style="font-size:9px;font-weight:700;color:rgba(244,162,97,0.55);letter-spacing:1.2px;text-transform:uppercase">Carousel Önizleme</span>
-                <div id="slide-btn-container" style="display:flex;gap:4px">
-                  <button onclick="selectStorySlide(0)" id="slide-btn-0" style="width:22px;height:18px;background:rgba(244,162,97,0.15);border:0.5px solid #F4A261;border-radius:3px;font-size:8px;color:#F4A261;cursor:pointer;font-family:inherit">01</button>
-                  <button onclick="selectStorySlide(1)" id="slide-btn-1" style="width:22px;height:18px;background:none;border:0.5px solid rgba(255,255,255,0.1);border-radius:3px;font-size:8px;color:rgba(230,237,243,0.38);cursor:pointer;font-family:inherit">02</button>
-                  <button onclick="selectStorySlide(2)" id="slide-btn-2" style="width:22px;height:18px;background:none;border:0.5px solid rgba(255,255,255,0.1);border-radius:3px;font-size:8px;color:rgba(230,237,243,0.38);cursor:pointer;font-family:inherit">03</button>
-                  <button onclick="selectStorySlide(3)" id="slide-btn-3" style="width:22px;height:18px;background:none;border:0.5px solid rgba(255,255,255,0.1);border-radius:3px;font-size:8px;color:rgba(230,237,243,0.38);cursor:pointer;font-family:inherit">04</button>
-                  <button onclick="selectStorySlide(4)" id="slide-btn-4" style="width:22px;height:18px;background:none;border:0.5px solid rgba(255,255,255,0.1);border-radius:3px;font-size:8px;color:rgba(230,237,243,0.38);cursor:pointer;font-family:inherit">05</button>
+          <!-- Sekmeler -->
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-acc" id="igFpTab-queue" onclick="switchFpStudioTab('queue',this)">Kuyruk &amp; Onay <span id="fpQueueCount" style="opacity:.75"></span></button>
+            <button class="btn btn-ghost" id="igFpTab-create" onclick="switchFpStudioTab('create',this)">İçerik Oluştur</button>
+            <button class="btn btn-ghost" id="igFpTab-archive" onclick="switchFpStudioTab('archive',this)">Arşiv</button>
+            <button class="btn btn-ghost" style="margin-left:auto" onclick="loadFeedPostPanel()">Yenile</button>
+            <button class="btn btn-green" onclick="fpPublishNow()" title="Yayın saati gelmiş onaylı gönderileri hemen Instagram'a gönderir">Yayın Kuyruğunu Şimdi Çalıştır</button>
+          </div>
+
+          <!-- SEKME: İÇERİK OLUŞTUR -->
+          <div id="ig-fp-tab-create" style="display:none">
+            <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px;align-items:start">
+              <div class="card">
+                <div style="font-size:13px;font-weight:700;margin-bottom:14px">Yeni Gönderi Üret</div>
+                <div class="field-row">
+                  <div class="field"><label>Yayın Tarihi</label><input type="date" id="fpGenDate" onchange="updateFpThemeHint()"></div>
+                  <div class="field"><label>Günün İçerik Sütunu</label>
+                    <div id="fpThemeHint" style="background:var(--s2);border:1.5px solid var(--bd);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--acc);font-weight:600">—</div>
+                  </div>
                 </div>
+                <div class="field">
+                  <label>Kendi Fikrin (isteğe bağlı)</label>
+                  <textarea id="fpIdea" style="min-height:90px" placeholder="Boş bırakırsan AI günün temasına göre üretir. Fikir yazarsan gönderi o fikir üzerine kurulur.&#10;Örn: 'Deneme analizinde öğrencilerin en çok atladığı 3 nokta'"></textarea>
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid);margin-bottom:14px;cursor:pointer">
+                  <input type="checkbox" id="fpForce" style="accent-color:var(--acc);width:15px;height:15px"> Bu tarihte içerik varsa üzerine yaz
+                </label>
+                <button class="btn btn-acc" id="fpGenBtn" style="width:100%;justify-content:center;padding:12px" onclick="fpGenerate()">Gönderi Üret (~20 sn)</button>
               </div>
-              <div id="igPanelPreviewContainer" style="width:100%;height:220px;background:#0D1117;display:flex;align-items:center;justify-content:center;overflow:hidden">
-                <span style="font-size:11px;color:rgba(230,237,243,0.2);text-align:center;line-height:1.6">İçerik seçince<br>önizleme burada görünür</span>
+              <div class="card" style="border-color:rgba(192,132,252,.25)">
+                <div style="font-size:11px;font-weight:700;color:var(--acc2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Haftalık Tema Rotasyonu</div>
+                <div id="fpRotationList" style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--mid)"></div>
               </div>
             </div>
+          </div>
 
-            <!-- Kaydırılabilir kısım: caption + butonlar -->
-            <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px">
+          <!-- SEKME: KUYRUK & ONAY -->
+          <div id="ig-fp-tab-queue">
+            <div id="fpQueueList" class="rsp-grid"><div class="loading" style="grid-column:1/-1">Bağlantı ayarlarını Story Otomasyon sekmesinden girin</div></div>
+          </div>
 
-              <!-- Caption -->
-              <div>
-                <div style="font-size:9px;font-weight:700;color:rgba(230,237,243,0.3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px">Caption</div>
-                <textarea id="igPanelCaptionPreview"
-                  style="width:100%;min-height:72px;background:#161b22;border:0.5px solid rgba(255,255,255,0.08);border-radius:7px;padding:8px;font-size:11px;color:#e6edf3;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;line-height:1.5"
-                  placeholder="İçerik seçince caption burada görünür…"></textarea>
-              </div>
-
-              <!-- Hashtag + bellek (yan yana, kompakt) -->
-              <div style="display:flex;gap:8px;align-items:flex-start">
-                <div style="flex:1;min-width:0">
-                  <div style="font-size:9px;font-weight:700;color:rgba(230,237,243,0.3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Hashtag'ler</div>
-                  <div id="igHashtagDisplay" style="font-size:10px;color:#60a0e0;line-height:1.7;background:#161b22;border:0.5px solid rgba(255,255,255,0.07);border-radius:7px;padding:7px 9px;word-break:break-word;min-height:28px">—</div>
-                </div>
-                <div style="flex-shrink:0;background:#161b22;border:0.5px solid rgba(255,255,255,0.07);border-radius:7px;padding:7px 9px;font-size:10px;line-height:1.8;min-width:90px">
-                  <div style="display:flex;justify-content:space-between"><span style="color:rgba(230,237,243,0.35)">Son</span><span id="igMemLastType" style="color:#e6edf3">—</span></div>
-                  <div style="display:flex;justify-content:space-between"><span style="color:rgba(230,237,243,0.35)">Risk</span><span id="igMemRepeatRisk" style="color:#3dba8f;font-weight:600">Yok</span></div>
-                  <div style="display:flex;justify-content:space-between"><span style="color:rgba(230,237,243,0.35)">Kanıt</span><span id="igMemSocialCount" style="color:#e6edf3">—/1</span></div>
-                </div>
-              </div>
-
-              <!-- Slayt metin editörü (gizli, kompakt) -->
-              <textarea id="igStorySlideText" style="display:none"
-                placeholder="Slayt metni…"></textarea>
-
-              <!-- Aksiyon Butonları -->
-              <div style="display:flex;flex-direction:column;gap:6px;margin-top:auto">
-                <div style="display:flex;gap:6px">
-                  <button id="btnIgRegen" onclick="regenerateIgPost()" disabled
-                    style="flex:1;padding:9px;background:#161b22;border:0.5px solid rgba(255,255,255,0.12);border-radius:7px;font-size:12px;color:rgba(230,237,243,0.6);cursor:pointer;font-weight:500;font-family:inherit">↺ Yeniden Üret</button>
-                  <button id="btnIgApprove" onclick="approveIgPost()" disabled
-                    style="flex:1;padding:9px;background:rgba(61,186,143,0.1);border:0.5px solid rgba(61,186,143,0.3);border-radius:7px;font-size:12px;color:#3dba8f;cursor:pointer;font-weight:600;font-family:inherit">✓ Onayla</button>
-                </div>
-                <div style="display:flex;gap:6px">
-                  <button id="btnPanelApproveIg" onclick="publishIgPost(false)" disabled
-                    style="flex:1;padding:9px;background:rgba(61,186,143,0.06);border:0.5px solid rgba(61,186,143,0.15);border-radius:7px;font-size:12px;color:rgba(61,186,143,0.35);cursor:not-allowed;font-weight:600;font-family:inherit">🚀 Post Yayınla</button>
-                  <button id="btnPanelStoryIg" onclick="publishIgPost(true)" disabled
-                    style="flex:1;padding:9px;background:rgba(155,149,224,0.06);border:0.5px solid rgba(155,149,224,0.15);border-radius:7px;font-size:12px;color:rgba(155,149,224,0.35);cursor:not-allowed;font-weight:600;font-family:inherit">📱 Hikaye</button>
-                </div>
-              </div>
-
+          <!-- SEKME: ARŞİV -->
+          <div id="ig-fp-tab-archive" style="display:none">
+            <div style="display:flex;gap:8px;margin-bottom:14px">
+              <button class="btn btn-acc btn-sm" id="fpArcF-all" onclick="setFpArchiveFilter('all',this)">Tümü</button>
+              <button class="btn btn-ghost btn-sm" id="fpArcF-published" onclick="setFpArchiveFilter('published',this)">Yayınlananlar</button>
+              <button class="btn btn-ghost btn-sm" id="fpArcF-rejected" onclick="setFpArchiveFilter('rejected',this)">Reddedilenler</button>
             </div>
+            <div id="fpArchiveList" class="rsp-grid"><div class="loading" style="grid-column:1/-1">—</div></div>
           </div>
         </div>
+
 
         <!-- 2. KURALLAR TABI -->
         <div id="ig-rules-section" style="display:none;padding:20px 24px;overflow-y:auto;flex:1">
@@ -3051,6 +2987,7 @@ function switchIgPanelTab(tab) {
   document.getElementById('ig-manual-section').style.display = tab === 'manual' ? 'flex' : 'none';
   document.getElementById('ig-story-section').style.display = tab === 'story' ? 'block' : 'none';
   document.getElementById('ig-reels-section').style.display = tab === 'reels' ? 'block' : 'none';
+  if (tab === 'posts') initFeedPostTab();
   if (tab === 'story') initStoryPanelTab();
   if (tab === 'rules') loadAndRenderIgRules();
   if (tab === 'config') { loadIgConfig(); loadAiConfig(); }
@@ -3058,52 +2995,13 @@ function switchIgPanelTab(tab) {
   if (tab === 'reels') loadReelsAssets();
 }
 
-async function loadAndRenderInstagramPanel() {
-  try {
-    const { data: mem } = await db.from('content_memory').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
-    _igMemory = mem || { current_week: 1, yks_days_remaining: 360, monthly_social_proof_count: 0, last_published_type: null, last_published_theme: null };
-  } catch(e) {
-    const { data: settData } = await db.from('platform_settings').select('value').eq('key', 'instagram_drafts').maybeSingle();
-    _igPosts = settData?.value || DEFAULT_IG_DRAFTS;
-    _igMemory = { current_week: 1, yks_days_remaining: 360, monthly_social_proof_count: 0 };
-    renderIgTopbar();
-    renderIgThemeBanner();
-    renderIgPosts();
-    switchIgPanelTab(_activeIgPanelTab);
-    return;
-  }
-
-  try {
-    const { data: posts, error } = await db.from('instagram_posts').select('*').in('status', ['draft','pending','approved']).order('created_at', { ascending: true });
-    if (error) throw error;
-    if (posts && posts.length > 0) {
-      _igPosts = posts;
-    } else {
-      const { data: settData } = await db.from('platform_settings').select('value').eq('key', 'instagram_drafts').maybeSingle();
-      _igPosts = (settData?.value || DEFAULT_IG_DRAFTS).map(d => ({
-        id: d.id, content_type: d.type, theme_category: 'pain_point',
-        caption: d.caption, hashtags: '', story_slides: (d.story_slides || []).map((t,i)=>({slide:i+1,text:t})),
-        status: d.status || 'draft', week_number: 1,
-        preview_data: { type: d.type, days_left: d.days_left, quote: d.quote, author: d.author, title: d.title, subtitle: d.subtitle, points: d.points }
-      }));
-    }
-  } catch(e) {
-    document.getElementById('igErrorBanner').style.display = 'block';
-    const { data: settData } = await db.from('platform_settings').select('value').eq('key', 'instagram_drafts').maybeSingle();
-    _igPosts = (settData?.value || DEFAULT_IG_DRAFTS).map(d => ({
-      id: d.id, content_type: d.type, theme_category: 'pain_point',
-      caption: d.caption, hashtags: '', story_slides: [],
-      status: d.status || 'draft', week_number: 1,
-      preview_data: { type: d.type, days_left: d.days_left, quote: d.quote, author: d.author, title: d.title, subtitle: d.subtitle, points: d.points }
-    }));
-  }
-
-  renderIgTopbar();
-  renderIgThemeBanner();
-  renderIgPosts();
-  renderMonthSummary();
+// Instagram & AI panelinin girişi — YKS geri sayımını basar ve aktif alt sekmeyi açar
+// (posts/story alt sekmeleri artık aynı rostrum-story-panel motorunu kullanıyor, bkz. FEED POST ENTEGRASYONU)
+function loadAndRenderInstagramPanel() {
+  const days = Math.max(0, Math.ceil((YKS_DATE - new Date()) / (1000 * 60 * 60 * 24)));
+  const el = document.getElementById('igTopbarCountdown');
+  if (el) el.textContent = days;
   switchIgPanelTab(_activeIgPanelTab);
-  if (_igPosts.length > 0) selectIgPost(_igPosts[0].id);
 }
 
 function renderIgTopbar() {
@@ -4623,13 +4521,7 @@ async function saveManualPostAsDraft() {
   try {
     const { data, error } = await db.from('instagram_posts').insert([patch]).select();
     if (error) throw error;
-    showToast('Taslak başarıyla kaydedildi! "Gönderi Taslakları" sekmesinde görebilirsiniz. ✓');
-    
-    // Refresh the posts list
-    loadAndRenderInstagramPanel();
-    
-    // Switch to Posts tab
-    switchIgPanelTab('posts');
+    showToast('Taslak kaydedildi ✓ (bu ekrandan yayınlayabilirsiniz)');
   } catch (e) {
     console.error('Taslak kaydetme hatası:', e);
     showToast('Hata: ' + (e.message || e), false);
@@ -5477,6 +5369,223 @@ async function rspPublishSingle(id){
       showToast('İçerik paylaşılamadı.', false);
     }
     loadStoryPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+// ══════════════════════════════════════════════
+// FEED POST ENTEGRASYONU (rostrum-story-panel API, ?type=feed)
+// Story Otomasyon ile aynı bağlantı (rspCfg/rspFetch) ve aynı motor — sadece
+// media_type olmadan (feed image post) yayınlanıyor. bkz. plan: post_type ayrımı.
+// ══════════════════════════════════════════════
+let _fpPosts = [];
+let _fpStudioTab = 'queue';
+let _fpArchiveFilter = 'all';
+
+function initFeedPostTab(){
+  const c = rspCfg();
+  const hint = document.getElementById('fpNoConnHint');
+  if (hint) hint.style.display = (c.url && c.key) ? 'none' : 'block';
+  const gd = document.getElementById('fpGenDate');
+  if(gd && !gd.value) gd.value = new Date(Date.now()+86400000).toISOString().split('T')[0];
+  updateFpThemeHint();
+  if(c.url && c.key) loadFeedPostPanel();
+}
+
+function updateFpThemeHint(){
+  const d = document.getElementById('fpGenDate').value;
+  const el = document.getElementById('fpThemeHint');
+  if(!d){ el.textContent='—'; return; }
+  const t = themeForDate(d);
+  el.textContent = t.name + ' · ' + t.hour;
+  renderFpRotationList();
+}
+
+function renderFpRotationList(){
+  const el = document.getElementById('fpRotationList');
+  if(!el) return;
+  const days = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+  const sel = document.getElementById('fpGenDate').value;
+  const selDay = sel ? new Date(sel+'T12:00:00Z').getUTCDay() : -1;
+  el.innerHTML = [1,2,3,4,5,6,0].map(i=>{
+    const t = RSP_THEMES[i];
+    const on = i===selDay;
+    return `<div style="display:flex;justify-content:space-between;gap:10px;${on?'color:var(--acc);font-weight:700':''}">
+      <span>${days[i]}</span><span style="text-align:right">${t.name} · ${t.hour}</span></div>`;
+  }).join('');
+}
+
+function switchFpStudioTab(tab, el){
+  _fpStudioTab = tab;
+  ['queue','create','archive'].forEach(t=>{
+    const b=document.getElementById('igFpTab-'+t);
+    b.classList.toggle('btn-acc', t===tab);
+    b.classList.toggle('btn-ghost', t!==tab);
+    document.getElementById('ig-fp-tab-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+}
+
+function setFpArchiveFilter(f, el){
+  _fpArchiveFilter = f;
+  document.querySelectorAll('[id^="fpArcF-"]').forEach(b=>{b.classList.remove('btn-acc');b.classList.add('btn-ghost');});
+  el.classList.remove('btn-ghost'); el.classList.add('btn-acc');
+  renderFeedPostPanel();
+}
+
+async function loadFeedPostPanel(){
+  try{
+    const d = await rspFetch('/api/posts');
+    _fpPosts = (d.posts||[]).filter(p => (p.post_type||'story') === 'feed');
+    renderFeedPostPanel();
+  }catch(e){
+    document.getElementById('fpQueueList').innerHTML = '<div class="loading" style="grid-column:1/-1">'+esc(e.message)+'</div>';
+  }
+}
+
+function fpCard(p, isArchive){
+  const [stLbl, stCls] = RSP_ST[p.status]||[p.status,'st-draft'];
+  const theme = RSP_TH[p.theme]||p.theme||'—';
+  const dt = new Date(p.post_date+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
+  const pub = p.publish_at ? new Date(p.publish_at).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+  const svg = p.svg || '';
+
+  let timeInfo = '';
+  const opt = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
+  if (p.status === 'published' && p.updated_at) timeInfo = `Yayınlandı: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
+  else if (p.status === 'approved' && p.updated_at) timeInfo = `Onaylandı: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
+  else if (p.status === 'rejected' && p.updated_at) timeInfo = `Reddedildi: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
+  else if (p.status === 'error' && p.updated_at) timeInfo = `Hata: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
+  else if (p.created_at) timeInfo = `Oluşturuldu: ${new Date(p.created_at).toLocaleString('tr-TR', opt)}`;
+
+  const actions = isArchive
+    ? (p.status==='rejected'
+        ? `<button class="btn btn-ghost btn-sm" onclick="fpRestore('${p.id}')">Kuyruğa Geri Al</button>
+           <button class="btn btn-ghost btn-sm" onclick="fpRegen('${p.post_date}')">Yeniden Üret</button>`
+        : `<button class="btn btn-green btn-sm" onclick="fpPublishSingle('${p.id}')">🚀 Tekrar Paylaş</button>
+           <button class="btn btn-ghost btn-sm" onclick="fpRestore('${p.id}')">Kuyruğa Geri Al</button>
+           <button class="btn btn-ghost btn-sm" onclick="fpRegen('${p.post_date}')">Bu Temayla Yeni Üret</button>`)
+    : `<button class="btn btn-ghost btn-sm" onclick="fpSave('${p.id}')">Kaydet</button>
+       ${p.status === 'approved' ? `<button class="btn btn-green btn-sm" onclick="fpPublishSingle('${p.id}')">🚀 Hemen Paylaş</button>` : `<button class="btn btn-green btn-sm" onclick="fpAction('${p.id}','approve')">Onayla</button>`}
+       <button class="btn btn-danger btn-sm" onclick="fpAction('${p.id}','reject')">Arşive Kaldır</button>
+       <button class="btn btn-ghost btn-sm" onclick="fpRegen('${p.post_date}')">Yeniden Üret</button>`;
+  return `<div class="rsp-card">
+    <div class="fp-phone"><div class="fp-scr">${svg||'<span style="font-size:11px;color:var(--dim);padding:10px;text-align:center">Görsel yok</span>'}</div></div>
+    <div class="rsp-meta">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-weight:700;font-size:13px;color:var(--text)">${dt}</span>
+        <span class="status-badge ${stCls}">${stLbl}</span>
+        <span class="chip-method" style="color:var(--acc2)">${esc(theme)}</span>
+      </div>
+      <div style="font-size:10px;color:var(--dim);display:flex;flex-direction:column;gap:2px;margin-top:2px">
+        <div>Planlı yayın: ${pub}</div>
+        ${timeInfo ? `<div style="color:rgba(230,237,243,0.35);font-size:9.5px">${timeInfo}</div>` : ''}
+      </div>
+      ${p.error_msg?`<div style="font-size:11px;color:var(--red);background:var(--red-dim);border-radius:8px;padding:6px 10px;max-height:60px;overflow:auto">${esc(p.error_msg)}</div>`:''}
+      ${isArchive
+        ? `<div style="font-size:11.5px;color:var(--mid);line-height:1.5;max-height:80px;overflow:auto;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;white-space:pre-wrap">${esc(p.caption||'—')}</div>`
+        : `<textarea class="rsp-cap" id="fpCap-${p.id}">${esc(p.caption||'')}</textarea>`}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto">${actions}</div>
+    </div>
+  </div>`;
+}
+
+function renderFeedPostPanel(){
+  const queue = _fpPosts.filter(p=>['draft','approved','error'].includes(p.status));
+  let archive = _fpPosts.filter(p=>['published','rejected'].includes(p.status));
+  if(_fpArchiveFilter!=='all') archive = archive.filter(p=>p.status===_fpArchiveFilter);
+
+  const pending = queue.filter(p=>p.status==='draft').length;
+  document.getElementById('fpQueueCount').textContent = pending ? '· '+pending : '';
+
+  document.getElementById('fpQueueList').innerHTML = queue.length
+    ? queue.map(p=>fpCard(p,false)).join('')
+    : '<div class="loading" style="grid-column:1/-1">Kuyruk boş — "İçerik Oluştur" sekmesinden yeni gönderi üretin</div>';
+
+  document.getElementById('fpArchiveList').innerHTML = archive.length
+    ? archive.map(p=>fpCard(p,true)).join('')
+    : '<div class="loading" style="grid-column:1/-1">Arşivde içerik yok</div>';
+}
+
+async function fpAction(id, action){
+  try{
+    await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action,id})});
+    showToast(action==='approve'?'Onaylandı — planlı saatte otomatik yayınlanacak':'Arşive kaldırıldı');
+    loadFeedPostPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+async function fpSave(id){
+  const caption = document.getElementById('fpCap-'+id).value;
+  try{
+    await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action:'save',id,caption})});
+    showToast('Kaydedildi — tekrar onaylamayı unutmayın');
+    loadFeedPostPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+async function fpRestore(id){
+  const p = _fpPosts.find(x=>x.id===id);
+  try{
+    await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action:'save',id,caption:p?.caption||''})});
+    showToast('Kuyruğa geri alındı (taslak)');
+    loadFeedPostPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+async function fpGenerate(){
+  const btn = document.getElementById('fpGenBtn');
+  const d = document.getElementById('fpGenDate').value;
+  const idea = document.getElementById('fpIdea').value.trim();
+  const force = document.getElementById('fpForce').checked;
+  if(!d){ showToast('Yayın tarihi seçin',false); return; }
+  btn.disabled = true; btn.textContent = 'Üretiliyor… (~20 sn)';
+  try{
+    let q = '?date='+d+'&type=feed' + (force?'&force=1':'') + (idea?'&idea='+encodeURIComponent(idea):'');
+    const r = await rspFetch('/api/generate'+q);
+    if(r.skipped){ showToast(r.reason||'Bu tarihte içerik zaten var — üzerine yazmak için kutucuğu işaretleyin',false); }
+    else{
+      showToast('Gönderi üretildi — Kuyruk & Onay sekmesinde sizi bekliyor');
+      document.getElementById('fpIdea').value='';
+      switchFpStudioTab('queue');
+    }
+    loadFeedPostPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+  finally{ btn.disabled=false; btn.textContent='Gönderi Üret (~20 sn)'; }
+}
+
+async function fpRegen(dateStr){
+  if(!(await customConfirm(dateStr+' tarihi için yeniden üretilsin mi? Mevcut içeriğin üzerine yazılır.', 'Üret')))return;
+  document.getElementById('fpGenDate').value = dateStr;
+  document.getElementById('fpForce').checked = true;
+  switchFpStudioTab('create');
+  updateFpThemeHint();
+  fpGenerate();
+}
+
+async function fpPublishNow(){
+  if(!(await customConfirm('Yayın saati gelmiş onaylı gönderiler hemen Instagram\'a gönderilsin mi?', 'Gönder')))return;
+  try{
+    const r = await rspFetch('/api/publish');
+    const res = r.results||[];
+    if(res.length && res[0].disabled){ showToast(res[0].note,false); }
+    else showToast(r.processed ? r.processed+' içerik işlendi' : 'Yayın saati gelmiş onaylı içerik yok');
+    loadFeedPostPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+async function fpPublishSingle(id){
+  if(!(await customConfirm('Bu gönderi hemen Instagram\'a paylaşılsın mı?', 'Gönder')))return;
+  try{
+    const r = await rspFetch('/api/publish?id=' + id);
+    const res = r.results||[];
+    if(res.length && res[0].disabled){ showToast(res[0].note,false); }
+    else if(res.length && res[0].ok){
+      showToast('Gönderi Instagram\'da başarıyla paylaşıldı! ✓');
+    }else if(res.length && res[0].error){
+      showToast('Hata: ' + res[0].error, false);
+    }else{
+      showToast('İçerik paylaşılamadı.', false);
+    }
+    loadFeedPostPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
 }
 
