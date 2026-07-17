@@ -569,6 +569,7 @@ nav.scrolled{background:var(--nav-bg);backdrop-filter:blur(24px);border-bottom-c
 .bt-track.on .bt-thumb{transform:translateX(24px);}
 .bt-save{background:rgba(62,207,142,.1);color:var(--acc3);border:1px solid rgba(62,207,142,.2);border-radius:99px;padding:3px 12px;font-size:11px;font-weight:700;}
 .pg{display:grid;grid-template-columns:1fr 1.06fr 1fr;gap:12px;align-items:start;}
+.pg-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:820px;margin:36px auto 0;align-items:start;}
 .pc{background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:32px;position:relative;transition:transform .25s;}
 .pc:hover{transform:translateY(-4px);}
 .pc.feat{background:linear-gradient(150deg,rgba(232,97,58,.05),rgba(232,97,58,.02));border-color:rgba(232,97,58,.22);}
@@ -662,13 +663,13 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 .footer-grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr;gap:40px;margin-bottom:48px;}
 .fl-logo{font-family:'Geist',sans-serif;font-size:19px;font-weight:800;margin-bottom:12px;}
 .fl-logo b{color:var(--acc);}
-.fl-tagline{font-size:13px;color:var(--dim);max-width:220px;line-height:1.65;margin-bottom:20px;}
-.footer-col-h{font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;}
+.fl-tagline{font-size:13px;color:var(--mid);max-width:220px;line-height:1.65;margin-bottom:20px;}
+.footer-col-h{font-size:11px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;}
 .footer-links{display:flex;flex-direction:column;gap:10px;}
-.footer-links a{font-size:13px;color:var(--dim);text-decoration:none;transition:color .15s;}
-.footer-links a:hover{color:var(--text);}
+.footer-links a{font-size:13px;color:var(--mid);text-decoration:none;transition:color .15s;}
+.footer-links a:hover{color:var(--acc);}
 .footer-bottom{max-width:1100px;margin:0 auto;border-top:1px solid var(--bd);padding-top:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
-.footer-copy{font-size:12px;color:var(--dim);}
+.footer-copy{font-size:12px;color:var(--mid);}
 .footer-made{background:rgba(232,97,58,.06);border:1px solid rgba(232,97,58,.12);color:var(--acc);font-size:11px;font-weight:700;padding:4px 14px;border-radius:99px;}
 .footer-socials{display:flex;gap:10px;margin-top:16px;}
 .footer-socials a{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--s2);border:1px solid var(--bd);color:var(--mid);text-decoration:none;transition:all .2s;font-size:16px;}
@@ -739,6 +740,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   .timeline{grid-template-columns:1fr 1fr;gap:24px;}
   .timeline::before{display:none;}
   .pg{grid-template-columns:1fr;}
+  .pg-2{grid-template-columns:1fr;}
   .reg-inner{grid-template-columns:1fr;gap:36px;}
   .footer-grid{grid-template-columns:1fr 1fr;gap:24px;}
   .sec{padding:60px 20px;}
@@ -996,7 +998,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </h1>
 
   <p class="hero-desc">
-    Haftalık program, TYT/AYT deneme takibi, veli raporu ve mesajlaşma tek yerde. Kurulum yok — ilk programınızı 5 dakikada oluşturun.
+    Dağınık WhatsApp gruplarını da geride bırakın. Üç ayrı yapay zeka ajanı, gelişmiş deneme takibi ve markanızla özelleştirilmiş PDF raporlamayla koçluğunuzu kurumsal bir seviyeye taşıyoruz.
   </p>
 
   <div class="hero-cta">
@@ -1086,31 +1088,31 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     <div class="gallery-scroll">
       <div class="gallery-item">
         <div class="gallery-img-container">
-          <img src="screenshots/1_dashboard.png" alt="Genel Panel & Öğrenci Yönetimi" loading="lazy">
+          <img src="/assets/1_dashboard-DGpzEpYV.png" alt="Genel Panel & Öğrenci Yönetimi" loading="lazy">
         </div>
         <div class="gallery-caption">🖥️ Genel Panel &amp; Öğrenci Yönetimi</div>
       </div>
       <div class="gallery-item">
         <div class="gallery-img-container">
-          <img src="screenshots/2_student_detail.png" alt="Haftalık Program Görünümü" loading="lazy">
+          <img src="/assets/2_student_detail-CsOv4jK7.png" alt="Haftalık Program Görünümü" loading="lazy">
         </div>
         <div class="gallery-caption">📅 Öğrenci Haftalık Programı</div>
       </div>
       <div class="gallery-item">
         <div class="gallery-img-container">
-          <img src="screenshots/3_student_exams.png" alt="Ders ve Deneme Net Analizleri" loading="lazy">
+          <img src="/assets/3_student_exams-DLt-Zwf3.png" alt="Ders ve Deneme Net Analizleri" loading="lazy">
         </div>
         <div class="gallery-caption">📊 Ders ve Deneme Net Analizleri</div>
       </div>
       <div class="gallery-item">
         <div class="gallery-img-container">
-          <img src="screenshots/4_student_notes.png" alt="Öğrenci Notları & Koç Değerlendirmeleri" loading="lazy">
+          <img src="/assets/4_student_notes-IT9-n8tI.png" alt="Öğrenci Notları & Koç Değerlendirmeleri" loading="lazy">
         </div>
         <div class="gallery-caption">📝 Öğrenci Notları &amp; Koç Değerlendirmeleri</div>
       </div>
       <div class="gallery-item">
         <div class="gallery-img-container">
-          <img src="screenshots/5_calendar.png" alt="Google Takvim Entegrasyonu ve Ders Planlama" loading="lazy">
+          <img src="/assets/5_calendar-CciqUhN2.png" alt="Google Takvim Entegrasyonu ve Ders Planlama" loading="lazy">
         </div>
         <div class="gallery-caption">📅 Takvim Entegrasyonu &amp; Randevular</div>
       </div>
@@ -1171,6 +1173,33 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     </div>
   </div>
 </div>
+
+<!-- 3 BOYUTLU YAPAY ZEKA -->
+<section class="sec" id="ai-ecosystem">
+  <div class="reveal">
+    <div class="sec-chip">Yapay Zeka Gücü</div>
+    <div class="sec-h" style="text-align:center;margin-top:10px">3 Boyutlu Yapay Zeka Ekosistemi</div>
+    <div class="sec-p" style="margin:0 auto;text-align:center">Rostrum Akademi'yi farklı kılan şey tek bir "AI özelliği" değil — koçunuz, öğrenciniz ve sizin aranızda eş zamanlı çalışan üç ayrı yapay zeka ajanı.</div>
+  </div>
+
+  <div class="bento reveal" style="grid-auto-rows:minmax(220px,auto)">
+    <div class="bc bc-4" style="cursor:default">
+      <div class="bc-icon">🧠</div>
+      <div class="bc-title">AI Koç Yardımcısı</div>
+      <div class="bc-desc">Gerçek deneme verilerinizi analiz eder; düşüşü ve zayıf dersi saniyeler içinde yakalar, veliye gönderilmeye hazır çaba-odaklı bir metin yazar. Siz sadece gözden geçirip yollarsınız.</div>
+    </div>
+    <div class="bc bc-4" style="cursor:default">
+      <div class="bc-icon">🦉</div>
+      <div class="bc-title">AI Ders Asistanı</div>
+      <div class="bc-desc">Öğrencinizin cebindeki sonsuz sabırlı akademik sırdaşı. Cevabı ezberletmez; Sokratik ipuçlarıyla düşündürerek çözdürür ve sınav kaygısını pedagojik olarak yönetir.</div>
+    </div>
+    <div class="bc bc-4" style="cursor:default">
+      <div class="bc-icon">🛟</div>
+      <div class="bc-title">Destek AI</div>
+      <div class="bc-desc">Koçların ve öğrencilerin sorularını anında yanıtlar. Yeterli gelmezse tek tıkla kurucu ve destek ekibiyle doğrudan yazışmaya geçersiniz.</div>
+    </div>
+  </div>
+</section>
 
 <!-- FEATURES BENTO -->
 <section class="sec" id="features">
@@ -1337,7 +1366,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     <div class="bc bc-4" onclick="openFeatureModal('meet-zoom')">
       <div class="bc-icon">📅</div>
       <div class="bc-title">Meet & Zoom Randevu</div>
-      <div class="bc-desc">Tek tıkla Google Meet veya Zoom linki oluşturun. Görüşme takvimini entegre edin.</div>
+      <div class="bc-desc">Görüşme linkinizi (Google Meet, Zoom, Teams) randevuya ekleyin, öğrenci tek tıkla katılsın. Takvime otomatik işlenir.</div>
     </div>
 
     <!-- Güvenlik - 4 col -->
@@ -1520,52 +1549,74 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </div>
 </section>
 
-<!-- PRICING — Kurucu Üye -->
+<!-- PRICING — Bireysel / Profesyonel -->
 <section class="pricing-sec" id="pricing">
   <div class="pricing-inner">
     <div class="reveal" style="text-align:center">
-      <div class="sec-chip" style="display:inline-block">Kurucu Üye Fırsatı</div>
-      <div class="sec-h" style="text-align:center;margin-top:10px">Tek plan. Her şey dahil.</div>
-      <div class="sec-p" style="margin:0 auto;text-align:center">7 gün ücretsiz deneyin. Kredi kartı gerekmez, dilediğiniz zaman iptal edin.</div>
+      <div class="sec-chip" style="display:inline-block">Lansman Fiyatları</div>
+      <div class="sec-h" style="text-align:center;margin-top:10px">Size uygun kapasiteyi seçin</div>
+      <div class="sec-p" style="margin:0 auto;text-align:center">Kurucu üyelere özel lansman fiyatları — sezon sonuna kadar geçerli, kaydolan herkes için ömür boyu sabit.</div>
     </div>
 
-    <div class="reveal" style="max-width:460px;margin:36px auto 0">
-      <div class="pc feat">
-        <div class="pc-badge">🔥 Kurucu Üye Fiyatı</div>
-        <div class="pc-plan">Kurucu Üye</div>
-        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0 2px">
-          <span style="font-size:19px;color:var(--dim);text-decoration:line-through;font-weight:600">₺1.099</span>
-          <span style="font-size:11px;font-weight:800;color:var(--acc);background:var(--acc-dim,rgba(232,97,58,.1));border:1px solid rgba(232,97,58,.25);border-radius:99px;padding:3px 10px">%55 indirim</span>
+    <div class="urgency reveal">
+      <span class="urgency-fire">🔥</span>
+      <span class="urgency-text">Lansman fiyatları sınırlı süre için geçerli — sezon sonu zam gelmeden fiyatınızı kilitleyin.</span>
+    </div>
+
+    <div class="pg-2 reveal">
+      <div class="pc">
+        <div class="pc-plan">Bireysel</div>
+        <div style="font-size:12px;color:var(--mid);margin-bottom:14px">Butik bireysel koçluk yapan, işini profesyonelleştirmek isteyenler için</div>
+        <div style="display:flex;align-items:center;gap:10px;margin:8px 0 2px">
+          <span style="font-size:17px;color:var(--dim);text-decoration:line-through;font-weight:600">₺1.999</span>
+          <span style="font-size:11px;font-weight:800;color:var(--acc);background:var(--acc-dim,rgba(232,97,58,.1));border:1px solid rgba(232,97,58,.25);border-radius:99px;padding:3px 10px">%50 indirim</span>
         </div>
         <div class="pc-price">
           <span class="pc-cur">₺</span>
-          <span class="pc-num">499</span>
+          <span class="pc-num">999</span>
           <span class="pc-per"> / ay</span>
         </div>
         <div class="pc-period">Kurucu üye fiyatın <b style="color:var(--acc)">ömür boyu sabit</b> — sonraki zamlar sana yansımaz</div>
+        <div style="font-size:12px;color:var(--mid);margin-bottom:10px">💰 10 aylık peşin: <b style="color:var(--text)">₺5.990</b> <span style="color:var(--dim)">(aylık ₺599 — %70 indirim)</span></div>
         <div class="pc-sep"></div>
         <ul class="pc-list">
-          <li><span class="ok">✓</span><b>Sınırsız</b> öğrenci</li>
-          <li><span class="ok">✓</span>Haftalık program &amp; görev yönetimi</li>
-          <li><span class="ok">✓</span>Gelişmiş deneme takibi + grafikler</li>
-          <li><span class="ok">✓</span><b>Markalı PDF raporlar</b> (Kendi logonuzla)</li>
-          <li><span class="ok">✓</span>Anlık mesajlaşma</li>
+          <li><span class="ok">✓</span><b>15 öğrenciye</b> kadar öğrenci yönetimi</li>
+          <li><span class="ok">✓</span>Gelişmiş deneme takibi + net analiz grafikleri</li>
+          <li><span class="ok">✓</span>AI Koç Yardımcısı &amp; AI Ders Asistanı</li>
+          <li><span class="ok">✓</span><b>Markalı PDF raporlar</b> (kendi logonuzla)</li>
           <li><span class="ok">✓</span>YouTube · Meet · Zoom entegrasyonu</li>
-          <li><span class="ok">✓</span>AI koçluk asistanı</li>
+          <li><span class="ok">✓</span>Anlık mesajlaşma</li>
+        </ul>
+        <button class="pc-btn out" onclick="goReg()">Bireysel Paketi Seç →</button>
+        <div style="text-align:center;font-size:12px;color:var(--dim);margin-top:12px">7 gün ücretsiz · kart gerekmez · anında iptal</div>
+      </div>
+
+      <div class="pc feat">
+        <div class="pc-badge">🌟 En Popüler</div>
+        <div class="pc-plan">Profesyonel</div>
+        <div style="font-size:12px;color:var(--mid);margin-bottom:14px">Geniş öğrenci portföyüne sahip, tam zamanlı profesyonel koçlar için</div>
+        <div style="display:flex;align-items:center;gap:10px;margin:8px 0 2px">
+          <span style="font-size:17px;color:var(--dim);text-decoration:line-through;font-weight:600">₺2.999</span>
+          <span style="font-size:11px;font-weight:800;color:var(--acc);background:var(--acc-dim,rgba(232,97,58,.1));border:1px solid rgba(232,97,58,.25);border-radius:99px;padding:3px 10px">%37 indirim</span>
+        </div>
+        <div class="pc-price">
+          <span class="pc-cur">₺</span>
+          <span class="pc-num">1.899</span>
+          <span class="pc-per"> / ay</span>
+        </div>
+        <div class="pc-period">Kurucu üye fiyatın <b style="color:var(--acc)">ömür boyu sabit</b> — sonraki zamlar sana yansımaz</div>
+        <div style="font-size:12px;color:var(--mid);margin-bottom:10px">💰 10 aylık peşin: <b style="color:var(--text)">₺11.900</b> <span style="color:var(--dim)">(aylık ₺1.190)</span></div>
+        <div class="pc-sep"></div>
+        <ul class="pc-list">
+          <li><span class="ok">✓</span>Bireysel paketteki her şey</li>
+          <li><span class="ok">✓</span><b>40 öğrenciye</b> kadar öğrenci yönetimi</li>
           <li><span class="ok">✓</span>Öncelikli destek</li>
         </ul>
-        <button class="pc-btn main" onclick="goReg()">7 Gün Ücretsiz Başla →</button>
-        <div style="background:rgba(255,255,255,0.03); border: 1px dashed var(--bd); border-radius:10px; padding:12px; margin-top:14px; text-align:left; font-size:11.5px; line-height:1.5; color:var(--mid)">
-          💡 <strong>Sınırsız Öğrenci Avantajı:</strong> 25-30 öğrenci yöneten bir koç için öğrenci başı maliyet ayda sadece 15-20 TL'ye denk gelir. Kağıt-kalem parasına tüm operasyonunuzu dijitalleştirin!
-        </div>
-        <div style="text-align:center; font-size:11px; color:var(--dim); margin-top:10px; line-height:1.4">
-          🎨 Markalı PDF raporları (kendi logonuz ve renginiz) bu plana dahildir. Tüm sistemin kurumsal markalanması (White Label - Özel Logo ve Giriş Ekranı) ise yalnızca kurumsal üyelik kapsamındadır.
-        </div>
+        <button class="pc-btn main" onclick="goReg()">Profesyonel Paketi Seç →</button>
         <div style="text-align:center;font-size:12px;color:var(--dim);margin-top:12px">7 gün ücretsiz · kart gerekmez · anında iptal</div>
       </div>
     </div>
 
-    
     <!-- Student Banner in Pricing -->
     <div class="reveal" style="margin-top:40px;text-align:center">
       <div style="display:inline-block;background:rgba(77,166,255,.07);border:1px solid rgba(77,166,255,.2);border-radius:16px;padding:20px 32px;max-width:800px">
@@ -1590,7 +1641,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </div>
   <div class="faq-item reveal">
     <div class="faq-q" onclick="toggleFaq(this)">Ücretsiz deneme süresi nasıl çalışır?<span class="faq-arr">↓</span></div>
-    <div class="faq-a">Kaydolduktan sonra 7 gün boyunca tüm özelliklere sınırsız erişirsiniz. Kredi kartı bilgisi gerekmez. Süre dolduğunda Kurucu Üye fiyatıyla (₺499/ay) aboneliğinizi başlatabilir ya da dilediğiniz zaman iptal edebilirsiniz.</div>
+    <div class="faq-a">Kaydolduktan sonra 7 gün boyunca tüm özelliklere sınırsız erişirsiniz. Kredi kartı bilgisi gerekmez. Süre dolduğunda size uygun paketi (Bireysel veya Profesyonel) seçerek lansman fiyatıyla aboneliğinizi başlatabilir ya da dilediğiniz zaman vazgeçebilirsiniz.</div>
   </div>
   <div class="faq-item reveal d1">
     <div class="faq-q" onclick="toggleFaq(this)">Öğrenci verileri güvende mi?<span class="faq-arr">↓</span></div>
@@ -1610,62 +1661,15 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </div>
   <div class="faq-item reveal d1">
     <div class="faq-q" onclick="toggleFaq(this)">Birden fazla koç aynı platformu kullanabilir mi?<span class="faq-arr">↓</span></div>
-    <div class="faq-a">Evet. Dershane ve koçluk merkezleri için her koç kendi hesabıyla katılır ve kendi öğrencilerini bağımsız yönetir. Kurucu Üye planında öğrenci sayısı sınırsızdır. Birden fazla koç için tek faturada özel kurulum isterseniz bizimle iletişime geçin.</div>
+    <div class="faq-a">Evet. Dershane ve koçluk merkezleri için her koç kendi hesabıyla katılır ve kendi öğrencilerini bağımsız yönetir. Birden fazla koç için tek faturada özel kurulum isterseniz bizimle iletişime geçin.</div>
   </div>
-</section>
-
-<!-- TESTIMONIALS (SOCIAL PROOF) -->
-<section class="testi-sec">
-  <div class="testi-inner reveal">
-    <div style="text-align:center; margin-bottom:40px">
-      <div class="sec-chip" style="display:inline-block">Sosyal Kanıt</div>
-      <div class="sec-h" style="text-align:center;margin-top:10px;font-size:clamp(24px,3.5vw,36px)">Rostrum Akademi Kullanan Koçlar Ne Diyor?</div>
-      <div class="sec-p" style="margin:0 auto;text-align:center">Yüzlerce bireysel koç ve butik kurum, Rostrum Akademi ile zamandan tasarruf ediyor.</div>
-    </div>
-    <div class="testi-grid">
-      <div class="tc reveal">
-        <div class="tc-stars">
-          <span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span>
-        </div>
-        <p class="tc-text">"Rostrum sayesinde pazar günlerimi alan haftalık program hazırlama sürem 5 saate yakın sürüyorken artık sadece 20 dakikamı alıyor. Öğrencilerim de AI asistanını çok sevdi, velilerle olan iletişimim inanılmaz profesyonelleşti."</p>
-        <div class="tc-author">
-          <div class="tc-av" style="background:#E8613A">AY</div>
-          <div>
-            <div class="tc-name">Koç Ahmet Y.</div>
-            <div class="tc-role">YKS Eğitim Koçu</div>
-            <div class="tc-verified">✓ Doğrulanmış Kullanıcı</div>
-          </div>
-        </div>
-      </div>
-      <div class="tc reveal d1">
-        <div class="tc-stars">
-          <span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span>
-        </div>
-        <p class="tc-text">"Butik kurs merkezimizdeki 45 öğrenci/veli sürecini Excel üzerinden takip etmeye çalışıyorduk, tam bir kabustu. Rostrum'a geçtikten sonra hem koçlarımızın iş yükü hafifledi hem de velilere gönderdiğimiz PDF raporlar sayesinde veli memnuniyeti ve prestijimiz arttı."</p>
-        <div class="tc-author">
-          <div class="tc-av" style="background:#3ecf8e">EK</div>
-          <div>
-            <div class="tc-name">Elif K.</div>
-            <div class="tc-role">Başarı Butik Akademi Kurucusu</div>
-            <div class="tc-verified">✓ Doğrulanmış Kullanıcı</div>
-          </div>
-        </div>
-      </div>
-      <div class="tc reveal d2">
-        <div class="tc-stars">
-          <span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span>
-        </div>
-        <p class="tc-text">"Öğrenci portalındaki akıllı kronometre ve YouTube entegrasyonu harika çalışıyor. Öğrencilerin çalışma sürelerini ve video izleme durumlarını saniyesi saniyesine görebiliyorum. Rostrum koçluk kalitemi bambaşka bir seviyeye taşıdı."</p>
-        <div class="tc-author">
-          <div class="tc-av" style="background:#4da6ff">MS</div>
-          <div>
-            <div class="tc-name">Murat S.</div>
-            <div class="tc-role">Rehber Öğretmen &amp; Özel Ders Eğitmeni</div>
-            <div class="tc-verified">✓ Doğrulanmış Kullanıcı</div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="toggleFaq(this)">Neden otomatik kartla ödeme yerine havale/EFT kullanıyorsunuz?<span class="faq-arr">↓</span></div>
+    <div class="faq-a">Aracı ödeme kuruluşlarının işlem başına aldığı yüksek komisyonları (%5'e varan) sistemden tamamen çıkardık ve bu tasarrufu doğrudan size indirim olarak yansıttık. Böylece premium yapay zeka özelliklerimizi rakiplerimizin genellikle yarı fiyatına, üstelik ömür boyu sabit kalan bir lansman fiyatıyla sunabiliyoruz. Ödemenizi havale/EFT ile yaparsınız, dekontunuzu panelden yüklersiniz — onayımız kısa sürede tamamlanır.</div>
+  </div>
+  <div class="faq-item reveal d1">
+    <div class="faq-q" onclick="toggleFaq(this)">Lansman fiyatından üye olursam fiyatlar sonradan artar mı?<span class="faq-arr">↓</span></div>
+    <div class="faq-a">Hayır. Kurucu üyelerimize özel lansman fiyatı, üyeliğiniz devam ettiği sürece ömür boyu sabit kalır. İlerleyen dönemlerde liste fiyatlarını ne kadar artırırsak artıralım, siz üyeliğinizi iptal etmediğiniz sürece ilk kaydolduğunuz fiyattan ödemeye devam edersiniz.</div>
   </div>
 </section>
 
@@ -1722,9 +1726,13 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
           <div class="ff" id="fieldPlan" style="display:none">
             <label>Plan seçin</label>
             <div class="plan-pills">
-              <div class="plan-pill sel" onclick="selPlan(this,'kurucu')" style="flex:1">
-                <div class="pp-name">Kurucu Üye ✦</div>
-                <div class="pp-price">7 gün ücretsiz · sonra ₺499/ay · sınırsız öğrenci</div>
+              <div class="plan-pill sel" onclick="selPlan(this,'bireysel')" style="flex:1">
+                <div class="pp-name">Bireysel ✦</div>
+                <div class="pp-price">7 gün ücretsiz · sonra ₺999/ay · 15 öğrenciye kadar</div>
+              </div>
+              <div class="plan-pill" onclick="selPlan(this,'profesyonel')" style="flex:1">
+                <div class="pp-name">Profesyonel 🌟</div>
+                <div class="pp-price">7 gün ücretsiz · sonra ₺1.899/ay · 40 öğrenciye kadar</div>
               </div>
             </div>
           </div>
@@ -1787,10 +1795,10 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     <div>
       <div class="footer-col-h">Platform</div>
       <div class="footer-links">
-        <a href="#features">Özellikler</a>
-        <a href="#pricing" style="display:none">Fiyatlar</a>
-        <a href="#how">Nasıl Çalışır</a>
-        <a href="#faq">SSS</a>
+        <a href="index.html#features">Özellikler</a>
+        <a href="pricing.html">Fiyatlar</a>
+        <a href="index.html#how">Nasıl Çalışır</a>
+        <a href="index.html#faq">SSS</a>
       </div>
     </div>
     <div>
@@ -1952,22 +1960,6 @@ const cObs=new IntersectionObserver(entries=>{
 },{threshold:.3});
 const nb=document.querySelector('.numbers');if(nb)cObs.observe(nb);
 
-// BILLING TOGGLE
-let yearly=false;
-let prices=[[0,0],[299,249],[699,579]]; // Supabase'den güncellenir
-function toggleBill(){
-  yearly=!yearly;
-  const t=document.getElementById('btTrack');
-  t.classList.toggle('on',yearly);
-  [0,1,2].forEach(i=>{
-    const el=document.getElementById('pr'+i);
-    if(el)el.textContent=prices[i][yearly?1:0];
-  });
-  const _pd1=document.getElementById('pd1'); if(_pd1)_pd1.textContent=yearly?'Yıllık · 2 ay hediye':'Aylık faturalandırma';
-  const _pd2=document.getElementById('pd2'); if(_pd2)_pd2.textContent=yearly?'Yıllık faturalandırma':'Dershane veya merkez';
-}
-
-
 // FAQ
 function toggleFaq(el){
   const item=el.parentElement;
@@ -1977,7 +1969,7 @@ function toggleFaq(el){
 }
 
 // PLAN PILLS
-let selectedPlan='kurucu';
+let selectedPlan='bireysel';
 function selPlan(el,plan){
   document.querySelectorAll('.plan-pill').forEach(p=>p.classList.remove('sel'));
   el.classList.add('sel');selectedPlan=plan;
@@ -2029,7 +2021,8 @@ async function submitReg(){
           full_name: fn + (ln ? ' ' + ln : ''),
           email: email.toLowerCase(),
           password: password,
-          brand_name: brand
+          brand_name: brand,
+          plan_tier: selectedPlan
         })
       });
       const data = await res.json();
@@ -2391,22 +2384,6 @@ async function loadSiteContent(){
     const {data,error}=await _SB.from('site_content').select('*');
     if(error||!data){ console.warn('site_content load error:',error); return; }
     data.forEach(r=>{ _siteContent[r.key]=r.value; });
-
-    // Fiyatlar — hem array'i güncelle hem direkt HTML'e yaz
-    const pPro = parseInt(_siteContent.price_pro)||299;
-    const pEnt = parseInt(_siteContent.price_enterprise)||699;
-    const pProY = Math.round(pPro*10/12);
-    const pEntY = Math.round(pEnt*10/12);
-
-    // Global prices array güncelle (billing toggle için)
-    prices[1][0]=pPro; prices[1][1]=pProY;
-    prices[2][0]=pEnt; prices[2][1]=pEntY;
-
-    // Direkt HTML'e yaz (yearly durumuna göre)
-    const prEl1=document.getElementById('pr1');
-    const prEl2=document.getElementById('pr2');
-    if(prEl1) prEl1.textContent = yearly ? pProY : pPro;
-    if(prEl2) prEl2.textContent = yearly ? pEntY : pEnt;
 
     // İstatistikler
     const countMap={

@@ -5184,8 +5184,8 @@ const RSP_TH = Object.fromEntries(Object.values(RSP_THEMES).map(t=>[t.key,t.name
 
 function rspCfg(){
   return {
-    url: (localStorage.getItem('rsp_url')||'').trim().replace(/\/+$/,''),
-    key: (localStorage.getItem('rsp_key')||'').trim()
+    url: (localStorage.getItem('rsp_url')||'https://rostrum-story-panel.vercel.app').trim().replace(/\/+$/,''),
+    key: (localStorage.getItem('rsp_key')||'emin').trim()
   };
 }
 

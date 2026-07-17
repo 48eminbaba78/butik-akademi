@@ -7613,10 +7613,34 @@ window._swNext = function() {
   _renderSWStep(modal, stu?.name?.split(' ')[0] || '', stu?.color || 'var(--accent)', stu);
 };
 
+// student_profiles RLS'i auth.uid() gerektirir; kullanıcı adı/hash ile giriş yapan
+// (gerçek Supabase JWT'si olmayan) öğrenci oturumları bunu doğrudan REST ile
+// yazamaz — bu yüzden kimlik doğrulamasını sunucuda yapan api/student-self.js'e
+// yönlendiriyoruz (JWT varsa Bearer, yoksa X-Student-Id/X-Student-Hash fallback).
+async function _studentAuthHeaders() {
+  const { data: { session: authSess } } = await db.auth.getSession();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${authSess?.access_token || ''}`,
+    'X-Student-Id': session.studentId || '',
+    'X-Student-Hash': session.dbUser?.password_hash || ''
+  };
+}
+async function _saveStudentSelf(action, body) {
+  const resp = await fetch(`/api/student-self?action=${action}`, {
+    method: 'POST',
+    headers: await _studentAuthHeaders(),
+    body: JSON.stringify(body)
+  });
+  const result = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(result.error || 'Kaydedilemedi');
+  return result;
+}
+
 window._swSkip = function() {
   document.getElementById('stuWelcomeModal')?.remove();
   // Geçici olarak kaydet, ama onboarding_done=false kalır (sonra tekrar sorulabilir veya koç doldurur)
-  db.from('student_profiles').upsert({ id: session.studentId }).then(() => {});
+  _saveStudentSelf('profile', {}).catch(() => {});
 };
 
 window._swSave = async function() {
@@ -7639,14 +7663,11 @@ window._swSave = async function() {
 
   showLoading(true, 'Kaydediliyor...');
   try {
-    // 1) users tablosunda yks_area güncelle
-    await db.from('users').update({ yks_area: _swData.yks_area }).eq('id', session.studentId);
     const stu = S.students.find(s => s.id === session.studentId);
     if (stu) stu.yksArea = _swData.yks_area;
 
-    // 2) student_profiles tablosunu güncelle
-    const payload = {
-      id: session.studentId,
+    await _saveStudentSelf('profile', {
+      yks_area: _swData.yks_area,
       target_rank: _swData.target_rank,
       target_university: _swData.target_university || '',
       target_department: _swData.target_department || '',
@@ -7655,23 +7676,7 @@ window._swSave = async function() {
       parent_phone: pphone,
       daily_capacity: daily_capacity,
       onboarding_done: true
-    };
-    let { error } = await db.from('student_profiles').upsert(payload);
-    if (error && /column/i.test(error.message || '')) {
-      // migration_v23 henüz çalıştırılmamış — veri kaybetmeden eski kolonlara yaz
-      ({ error } = await db.from('student_profiles').upsert({
-        id: payload.id,
-        target_university: payload.target_university,
-        target_department: payload.target_department,
-        struggling_subjects: payload.struggling_subjects,
-        daily_capacity: payload.daily_capacity,
-        bio: `Hedef sıralama: ${payload.target_rank} · Veli: ${pmail} / ${pphone}`
-      }));
-    }
-    if (error) {
-      showLoading(false);
-      return _swErr('Kaydedilemedi: ' + error.message);
-    }
+    });
   } catch(e) {
     showLoading(false);
     return _swErr('Kaydedilemedi: ' + (e.message || e));
@@ -8017,7 +8022,6 @@ async function renderSProfil() {
 }
 
 async function saveStudentProfile() {
-  const userId = session.dbUser.id;
   const bio = document.getElementById('spBio').value.trim();
   const school = document.getElementById('spSchool').value.trim();
   const grade = document.getElementById('spGrade').value.trim();
@@ -8026,23 +8030,14 @@ async function saveStudentProfile() {
   const struggling_subjects = document.getElementById('spStruggling').value.trim();
   const daily_capacity = parseInt(document.getElementById('spCapacity').value) || null;
 
-  const payload = {
-    id: userId,
-    bio,
-    school,
-    grade,
-    target_university,
-    target_department,
-    struggling_subjects,
-    daily_capacity,
-    updated_at: new Date().toISOString()
-  };
-
-  const { error } = await db.from('student_profiles').upsert(payload);
-  if (error) {
-    showToast('Profil kaydedilemedi: ' + error.message, false);
-  } else {
+  try {
+    await _saveStudentSelf('profile', {
+      bio, school, grade, target_university, target_department,
+      struggling_subjects, daily_capacity
+    });
     showToast('Profil başarıyla güncellendi ✓', true);
+  } catch (e) {
+    showToast('Profil kaydedilemedi: ' + e.message, false);
   }
 }
 
@@ -8052,11 +8047,15 @@ async function changePassword() {
   if(!p1) return showToast('Şifre girin!');
   if(p1!==p2) return showToast('Şifreler uyuşmuyor!');
   if(p1.length<4) return showToast('En az 4 karakter olmalı');
-  const {error}=await db.from('users').update({password_hash:p1}).eq('id',session.studentId);
-  if(error) return showToast('Hata: '+error.message);
-  showToast('Şifre güncellendi ✓');
-  document.getElementById('newPass1').value='';
-  document.getElementById('newPass2').value='';
+  try {
+    const result = await _saveStudentSelf('password', { new_password: p1 });
+    if (session.dbUser) session.dbUser.password_hash = result.password_hash;
+    showToast('Şifre güncellendi ✓');
+    document.getElementById('newPass1').value='';
+    document.getElementById('newPass2').value='';
+  } catch (e) {
+    showToast('Hata: '+e.message);
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -8295,7 +8294,10 @@ async function openCoachPaymentModal() {
     db.rpc('ensure_payment_ref_code')
   ]);
   const settings = settingsRow?.value || {};
-  const priceMonthly = +settings.price_monthly || 0;
+  const tier = session.dbUser?.plan_tier === 'profesyonel' ? 'profesyonel' : 'bireysel';
+  const tierLabel = tier === 'profesyonel' ? 'Profesyonel' : 'Bireysel';
+  const priceMonthly = +settings[`price_${tier}`] || 0;
+  const price10mo = +settings[`price_${tier}_10mo`] || (priceMonthly * 10);
   const hasBankInfo = !!(settings.bank_name && settings.iban);
   _cpmState = { iban: settings.iban || '', refCode: refCode || '' };
 
@@ -8313,12 +8315,13 @@ async function openCoachPaymentModal() {
   }
 
   body.innerHTML = `
-    <h2>Rostrum Akademi Aboneliği</h2>
+    <h2>Rostrum Akademi Aboneliği <span style="color:var(--accent)">— ${tierLabel} Paket</span></h2>
     <div class="field"><label>Dönem</label>
-      <select id="cpmMonths" onchange="updateCpmPrice(${priceMonthly})">
+      <select id="cpmMonths" onchange="updateCpmPrice(${priceMonthly},${price10mo})">
         <option value="1">1 Ay</option>
         <option value="3">3 Ay</option>
         <option value="6">6 Ay</option>
+        <option value="10">10 Ay (Peşin — İndirimli)</option>
         <option value="12">12 Ay</option>
       </select>
     </div>
@@ -8345,10 +8348,11 @@ async function openCoachPaymentModal() {
 }
 window.openCoachPaymentModal = openCoachPaymentModal;
 
-function updateCpmPrice(priceMonthly) {
+function updateCpmPrice(priceMonthly, price10mo) {
   const months = +document.getElementById('cpmMonths')?.value || 1;
   const line = document.getElementById('cpmPriceLine');
-  if (line) line.textContent = `Tutar: ${(priceMonthly * months).toLocaleString('tr-TR')} ₺`;
+  const total = months === 10 ? (price10mo || priceMonthly * 10) : priceMonthly * months;
+  if (line) line.textContent = `Tutar: ${total.toLocaleString('tr-TR')} ₺`;
 }
 window.updateCpmPrice = updateCpmPrice;
 

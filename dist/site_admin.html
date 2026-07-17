@@ -67,7 +67,7 @@ button{font-family:inherit;}
 .sb-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--acc),#c47f00);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#0a090e;}
 
 /* MAIN */
-.main{margin-left:232px;flex:1;min-height:100vh;}
+.main{margin-left:232px;flex:1;min-width:0;min-height:100vh;}
 .topbar{height:52px;background:rgba(17,16,23,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:10;}
 .topbar-title{font-size:14px;font-weight:700;letter-spacing:-.1px;}
 .topbar-right{display:flex;align-items:center;gap:8px;}
@@ -223,13 +223,22 @@ tbody tr:hover td{background:rgba(255,255,255,.015);}
   .topbar-title{font-size:13px;}
   .page-h{font-size:17px;}
 
-  /* Instagram panel — sekmeler yatay kayar */
-  #view-instagram > div:nth-child(2){overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  /* Instagram panel — flex item'lar içerik genişliğine göre büyümesin diye
+     min-width:0 şart (flex'in "min-width:auto" varsayılanı ekranı taşırır) */
+  #view-instagram{min-width:0;}
+  #view-instagram > div{min-width:0;}
+  #ig-posts-section{min-width:0;}
+  #ig-posts-section > div{min-width:0;}
+
+  /* Üst bar ve sekmeler ekran genişliğini aşmasın, taşan kısım kaysın */
+  #view-instagram > div:nth-child(1),
+  #view-instagram > div:nth-child(2){max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
   #view-instagram > div:nth-child(2) button{white-space:nowrap;flex-shrink:0;}
+  #ig-posts-section .banner{max-width:100%;box-sizing:border-box;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 
   /* Tablo satırları yatay kaydırılabilir */
-  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .table-wrap table{min-width:560px;}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tbl-wrap table{min-width:560px;}
 
   /* Kart padding küçült */
   .card{padding:14px;}
@@ -237,10 +246,24 @@ tbody tr:hover td{background:rgba(255,255,255,.015);}
   /* Modal — ekranın altından */
   .modal-bg{align-items:flex-end;padding:0;}
   .modal-box{border-radius:20px 20px 0 0;max-width:100%;width:100%;padding:22px 18px calc(22px + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto;}
+
+  /* Manuel Post — sol form / sağ önizleme yan yana sığmaz, alt alta in */
+  #ig-manual-section{flex-direction:column;overflow-y:auto!important;}
 }
 @media(max-width:480px){
   .stats-grid{grid-template-columns:1fr;}
   .content{padding:12px 10px 60px;}
+
+  /* Inline stat/özet kart grid'leri (2-3 sütun) — tek sütuna in.
+     Bunlar satır içi style="grid-template-columns:..." ile yazıldığı için
+     class tabanlı kurallar bunları geçemiyor, !important şart. */
+  [style*="grid-template-columns:1fr 1fr"],
+  [style*="grid-template-columns:1.4fr 1fr"],
+  [style*="grid-template-columns:1.5fr 1fr"],
+  [style*="grid-template-columns:2fr 1fr"],
+  [style*="grid-template-columns:150px 1fr"]{
+    grid-template-columns:1fr!important;
+  }
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;}
@@ -1466,12 +1489,31 @@ async function toggleUserActive(id,makeActive){
 }
 async function adminDeleteUser(id, name) {
   if (!(await customConfirm(`"${name}" kullanıcısını kalıcı olarak silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`, 'Sil'))) return;
-  const { data: sessionData } = await db.auth.getSession();
-  const token = sessionData?.session?.access_token;
+
+  // Token'ı güvenilir biçimde al: getSession() zaman zaman null döner,
+  // doğrudan localStorage'dan okumak her zaman çalışır.
+  let token = null;
+  try {
+    const { data: sessionData } = await db.auth.getSession();
+    token = sessionData?.session?.access_token || null;
+  } catch(e) {}
+
+  // Fallback: localStorage'daki Supabase oturumundan oku
   if (!token) {
-    showToast('Oturum süresi dolmuş. Lütfen sayfayı yenileyip tekrar giriş yapın.', false);
+    try {
+      const lsKey = Object.keys(localStorage).find(k => k.includes('supabase') && k.includes('auth-token'));
+      if (lsKey) {
+        const parsed = JSON.parse(localStorage.getItem(lsKey) || '{}');
+        token = parsed?.access_token || parsed?.current_session?.access_token || null;
+      }
+    } catch(e) {}
+  }
+
+  if (!token) {
+    showToast('Oturum bulunamadı. Lütfen önce app.html üzerinden developer hesabıyla giriş yapın, ardından bu sayfaya gelin.', false);
     return;
   }
+
   try {
     const resp = await fetch('/api/delete-user', {
       method: 'POST',
@@ -2995,7 +3037,7 @@ function switchIgPanelTab(tab) {
       btn.style.fontWeight = t === 'manual' ? '600' : '500';
     }
   });
-  document.getElementById('ig-posts-section').style.display = tab === 'posts' ? 'flex' : 'none';
+  document.getElementById('ig-posts-section').style.display = tab === 'posts' ? 'block' : 'none';
   document.getElementById('ig-rules-section').style.display = tab === 'rules' ? 'block' : 'none';
   document.getElementById('ig-config-section').style.display = tab === 'config' ? 'block' : 'none';
   document.getElementById('ig-manual-section').style.display = tab === 'manual' ? 'flex' : 'none';
@@ -5142,8 +5184,8 @@ const RSP_TH = Object.fromEntries(Object.values(RSP_THEMES).map(t=>[t.key,t.name
 
 function rspCfg(){
   return {
-    url: (localStorage.getItem('rsp_url')||'').trim().replace(/\/+$/,''),
-    key: (localStorage.getItem('rsp_key')||'').trim()
+    url: (localStorage.getItem('rsp_url')||'https://rostrum-story-panel.vercel.app').trim().replace(/\/+$/,''),
+    key: (localStorage.getItem('rsp_key')||'emin').trim()
   };
 }
 

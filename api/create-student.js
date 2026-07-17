@@ -13,6 +13,7 @@ export default async function handler(req, res) {
   // ── PUBLIC: Koç kayıt (type === 'coach', kimlik doğrulama gerekmez) ──
   if (req.body.type === 'coach') {
     const { full_name, email, password, brand_name } = req.body;
+    const plan_tier = ['bireysel', 'profesyonel'].includes(req.body.plan_tier) ? req.body.plan_tier : 'bireysel';
     if (!full_name || !email || !password) {
       return res.status(400).json({ error: 'Ad, e-posta ve şifre zorunludur.' });
     }
@@ -45,6 +46,7 @@ export default async function handler(req, res) {
       role: 'coach',
       email,
       plan: 'trial',
+      plan_tier,
       trial_ends_at: trialEndsAt,
       color: '#E8613A',
       progress: 0
@@ -95,7 +97,7 @@ export default async function handler(req, res) {
 
     const { data: coach, error: coachErr } = await supabaseAdmin
       .from('users')
-      .select('id, full_name, username, email, role, payment_reference_code')
+      .select('id, full_name, username, email, role, payment_reference_code, plan_tier')
       .eq('id', user.id)
       .single();
     if (coachErr || !coach) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
@@ -104,7 +106,7 @@ export default async function handler(req, res) {
     }
 
     const { months, receipt_path } = req.body;
-    const periodMonths = [1, 3, 6, 12].includes(+months) ? +months : 1;
+    const periodMonths = [1, 3, 6, 10, 12].includes(+months) ? +months : 1;
     if (!receipt_path) return res.status(400).json({ error: 'Dekont dosyası gerekli' });
 
     // Referans kodu yoksa üret
@@ -116,14 +118,18 @@ export default async function handler(req, res) {
       await supabaseAdmin.from('users').update({ payment_reference_code: refCode }).eq('id', coach.id);
     }
 
-    // Fiyatı platform_settings'ten oku (hardcode yok)
+    // Fiyatı platform_settings'ten oku (hardcode yok) — koçun kendi paketine (plan_tier) göre
     const { data: settingsRow } = await supabaseAdmin
       .from('platform_settings')
       .select('value')
       .eq('key', 'payment_settings')
       .maybeSingle();
-    const priceMonthly = +(settingsRow?.value?.price_monthly) || 0;
-    const amount = priceMonthly * periodMonths;
+    const sv = settingsRow?.value || {};
+    const tier = coach.plan_tier === 'profesyonel' ? 'profesyonel' : 'bireysel';
+    const priceMonthly = +sv[`price_${tier}`] || 0;
+    const amount = periodMonths === 10
+      ? (+sv[`price_${tier}_10mo`] || priceMonthly * 10)
+      : priceMonthly * periodMonths;
 
     const { error: insertErr } = await supabaseAdmin.from('payments').insert({
       coach_id: coach.id,
