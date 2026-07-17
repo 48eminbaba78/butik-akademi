@@ -41,8 +41,31 @@ p{font-size:15px;color:var(--mid);line-height:1.8;margin-bottom:16px;}
 .val-icon{font-size:24px;margin-bottom:10px;}
 .val-title{font-family:'Geist',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px;}
 .val-desc{font-size:13px;color:var(--mid);}
-footer{border-top:1px solid var(--bd);padding:28px 40px;text-align:center;font-size:12px;color:var(--dim);}
-footer a{color:var(--acc);text-decoration:none;}
+/* FOOTER */
+footer{padding:60px 40px 28px;border-top:1px solid var(--bd);margin-top:60px;}
+.footer-grid{max-width:780px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:30px;margin-bottom:48px;}
+.fl-logo{font-family:'Geist',sans-serif;font-size:17px;font-weight:800;margin-bottom:12px;color:var(--text);text-decoration:none;}
+.fl-logo b{color:var(--acc);}
+.fl-tagline{font-size:12.5px;color:var(--mid);max-width:220px;line-height:1.65;margin-bottom:20px;}
+.footer-col-h{font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;}
+.footer-links{display:flex;flex-direction:column;gap:10px;}
+.footer-links a{font-size:12.5px;color:var(--mid);text-decoration:none;transition:color .15s;}
+.footer-links a:hover{color:var(--acc);}
+.footer-bottom{max-width:780px;margin:0 auto;border-top:1px solid var(--bd);padding-top:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+.footer-copy{font-size:12px;color:var(--mid);}
+.footer-made{background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.12);color:var(--acc);font-size:11px;font-weight:700;padding:4px 14px;border-radius:99px;}
+.footer-socials{display:flex;gap:10px;margin-top:16px;}
+.footer-socials a{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--s2);border:1px solid var(--bd);color:var(--mid);text-decoration:none;transition:all .2s;font-size:16px;}
+.footer-socials a:hover{background:rgba(240,165,0,.12);border-color:rgba(240,165,0,.3);color:var(--acc);}
+
+@media(max-width:768px){
+  .footer-grid{grid-template-columns:1fr 1fr;gap:24px;}
+}
+@media(max-width:480px){
+  footer{padding:44px 20px 20px;}
+  .footer-grid{grid-template-columns:1fr;}
+}
+
 @media(max-width:600px){nav{padding:0 20px;} main{padding:90px 20px 60px;} .team-grid{grid-template-columns:1fr;} .values{grid-template-columns:1fr;}}
 </style>
 </head>
@@ -79,6 +102,50 @@ footer a{color:var(--acc);text-decoration:none;}
   <h2>İletişim</h2>
   <p>Sorularınız için <a href="contact.html" style="color:var(--acc);text-decoration:none">iletişim sayfamızı</a> ziyaret edebilir ya da doğrudan <a href="mailto:merhaba@rostrumakademi.app" style="color:var(--acc);text-decoration:none">merhaba@rostrumakademi.app</a> adresine yazabilirsiniz.</p>
 </main>
-<footer>© 2026 Rostrum Akademi · <a href="privacy.html">Gizlilik</a> · <a href="terms.html">Koşullar</a></footer>
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="fl-logo" style="display:flex;align-items:center;gap:8px"><img src="/logo.png" alt="Rostrum Akademi Logo" style="height:32px;width:auto;border-radius:6px">ROSTRUM<b>AKADEMİ</b></div>
+      <div class="fl-tagline">Türkiye'nin zaman kazandıran eğitim yönetim sistemi. Her öğrenciye kişisel, her koça profesyonel.</div>
+      <div class="footer-socials">
+        <a href="https://www.instagram.com/rostrumakademi" target="_blank" rel="noopener" title="Instagram">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-h">Platform</div>
+      <div class="footer-links">
+        <a href="index.html#features">Özellikler</a>
+        <a href="pricing.html">Fiyatlar</a>
+        <a href="index.html#how">Nasıl Çalışır</a>
+        <a href="index.html#faq">SSS</a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-h">Şirket</div>
+      <div class="footer-links">
+        <a href="about.html">Hakkımızda</a>
+        <a href="blog.html">Blog</a>
+        <a href="contact.html">İletişim</a>
+        <a href="contact.html">Kariyer</a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-h">Hukuki</div>
+      <div class="footer-links">
+        <a href="privacy.html">Gizlilik Politikası</a>
+        <a href="terms.html">Kullanım Koşulları</a>
+        <a href="kvkk.html">KVKK</a>
+        <a href="cookies.html">Çerezler</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">© 2026 Rostrum Akademi. Tüm hakları saklıdır. <a href="site_admin.html" style="color:transparent;font-size:8px;text-decoration:none;opacity:.15" title="">⚙</a></div>
+    <div class="footer-made">🇹🇷 Türkiye'de üretildi</div>
+  </div>
+</footer>
 </body>
 </html>
