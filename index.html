@@ -1969,7 +1969,7 @@ function toggleFaq(el){
 }
 
 // PLAN PILLS
-let selectedPlan='kurucu';
+let selectedPlan='bireysel';
 function selPlan(el,plan){
   document.querySelectorAll('.plan-pill').forEach(p=>p.classList.remove('sel'));
   el.classList.add('sel');selectedPlan=plan;
@@ -2021,7 +2021,8 @@ async function submitReg(){
           full_name: fn + (ln ? ' ' + ln : ''),
           email: email.toLowerCase(),
           password: password,
-          brand_name: brand
+          brand_name: brand,
+          plan_tier: selectedPlan
         })
       });
       const data = await res.json();

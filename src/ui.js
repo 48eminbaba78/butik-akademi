@@ -342,9 +342,16 @@ function setupShell(){
   document.getElementById('sbRole').textContent = roleLabels[session.role]||session.role;
 
   // Workspace logo
-  if((session.role==='coach' || session.role==='developer') && S.workspace?.brand_name) {
+  if(S.workspace?.brand_name) {
     const _lt=document.querySelector('.sb-logo-text'); if(_lt) _lt.textContent=S.workspace.brand_name;
-    const tnLogo=document.querySelector('.tn-logo .sb-logo-icon'); if(tnLogo && tnLogo.tagName !== 'IMG') tnLogo.textContent=S.workspace.brand_name.slice(0,1).toUpperCase();
+    const tnLogo=document.querySelector('.tn-logo .sb-logo-icon');
+    if(tnLogo) {
+      if (S.workspace.logo_url) {
+        tnLogo.src = S.workspace.logo_url;
+      } else {
+        tnLogo.src = '/logo.png';
+      }
+    }
   }
 
   // Site Yönetimi — sadece developer
@@ -9811,7 +9818,7 @@ async function openInviteCodeModal(){
   }
   if(!code){box.textContent='—';showToast('Kod alınamadı — sayfayı yenileyip tekrar dene');return;}
   box.textContent=code;
-  const link=`https://rostrumakademi.com/app.html?davet=${code}`;
+  const link=`${window.location.origin}/app.html?davet=${code}`;
   const brand=S.workspace?.brand_name||'koçun';
   const msg=`Merhaba! ${brand} koçluk platformuna davetlisin. 🎓\n\nKayıt linki: ${link}\n(Davet kodun: ${code})\n\nLinke tıkla, hesabını oluştur — otomatik olarak bana bağlanacaksın.`;
   const wa=document.getElementById('invWaBtn');
@@ -9823,7 +9830,7 @@ function copyInviteCode(){
 }
 function copyInviteLink(){
   const code=document.getElementById('invCodeBox')?.textContent?.trim();
-  if(code&&code.length===6)copyToClipboard(`https://rostrumakademi.com/app.html?davet=${code}`);
+  if(code&&code.length===6)copyToClipboard(`${window.location.origin}/app.html?davet=${code}`);
 }
 
 function copyToClipboard(text){

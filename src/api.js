@@ -66,8 +66,8 @@ async function _fetchAll() {
   const coachId = session.coachId;
   const role    = session.role;
 
-  const wsP = (role === 'coach' || role === 'developer')
-    ? db.from('workspaces').select('*').eq('coach_id', coachId).single()
+  const wsP = (role === 'coach' || role === 'developer' || role === 'student' || role === 'parent') && coachId
+    ? db.from('workspaces').select('*').eq('coach_id', coachId).maybeSingle()
     : Promise.resolve({ data: null });
 
   let stuQ = db.from('users').select('*').eq('role', 'student');
@@ -132,7 +132,7 @@ async function _fetchAll() {
   const [wsRes, stuRes, taskRes, apptRes, examRes, msgRes, todoRes, speedRes, masteryRes, tekrarLogRes] =
     await Promise.all([wsP, stuP, taskP, apptP, examP, msgP, todoP, speedP, masteryP, tekrarLogP]);
 
-  if (role === 'coach' || role === 'developer') S.workspace = wsRes.data || null;
+  S.workspace = wsRes?.data || null;
 
   S.students = (stuRes.data || []).map(s => ({
     id:       s.id,
