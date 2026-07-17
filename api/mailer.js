@@ -131,7 +131,7 @@ function coachWelcomeEmail({ coach_name, email, brand_name }) {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(232,97,58,.08) 0%,rgba(232,97,58,.04) 100%);border:1px solid rgba(232,97,58,.2);border-radius:12px;margin-bottom:32px">
     <tr><td style="padding:20px 24px">
       <div style="font-size:11px;font-weight:700;color:#E8613A;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">🎁 7 Günlük Ücretsiz Deneme</div>
-      <p style="margin:0;font-size:14px;color:#334155;line-height:1.6">Kredi kartı gerekmeden, tüm özelliklere erişimle <strong>${trialEnd}</strong> tarihine kadar ücretsiz kullanabilirsiniz. Deneme süresinde sınırsız öğrenci ekleyebilir, PDF raporlar oluşturabilirsiniz.</p>
+      <p style="margin:0;font-size:14px;color:#334155;line-height:1.6">Kredi kartı gerekmeden, tüm özelliklere erişimle <strong>${trialEnd}</strong> tarihine kadar ücretsiz kullanabilirsiniz. Deneme süresince öğrenci ekleyebilir, PDF raporlar oluşturabilirsiniz.</p>
     </td></tr>
   </table>
 
@@ -283,14 +283,14 @@ function onboardingDay6Email({ coach_name, student_count }) {
 <tr><td style="padding:40px">
   <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
   <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.75">
-    Rostrum Akademi deneme sürenizin bitmesine son 24 saat kaldı. İlk 100 koçumuza özel <strong>₺499/ay</strong> Kurucu Üye fiyat avantajı ve ömür boyu sabit fiyat garantisi yarın sona eriyor.
+    Rostrum Akademi deneme sürenizin bitmesine son 24 saat kaldı. İlk 100 koçumuza özel <strong>Kurucu Üye lansman fiyatı</strong> ve ömür boyu sabit fiyat garantisi yarın sona eriyor.
   </p>
   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin-bottom:28px">
     <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Aktif Durumunuz</div>
     <div style="font-size:14px;color:#334155">Mevcut öğrenci sayınız: <strong>${student_count || 0} öğrenci</strong>. Aboneliğinizi başlattığınızda tüm verileriniz kesintisiz olarak korunacaktır.</div>
   </div>
   <div style="text-align:center;margin-bottom:28px">
-    <a href="${url}" style="display:inline-block;background:#E8613A;color:#ffffff;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 20px rgba(232,97,58,.35)">Kurucu Üye Ol (₺499/Ay) →</a>
+    <a href="${url}" style="display:inline-block;background:#E8613A;color:#ffffff;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 20px rgba(232,97,58,.35)">Kurucu Üye Ol →</a>
   </div>
 </td></tr>`);
 }
