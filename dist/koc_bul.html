@@ -341,7 +341,20 @@
       opacity: 1;
       transform: translateX(-50%) translateY(0);
     }
+
+    /* Derin link (/koc/<slug>) ile gelindiğinde "Koç Bul" listesi bir an
+       görünüp sonra profile geçmesin diye ilk boyamadan önce gizleniyor. */
+    html.deep-link-boot .container { display: none; }
+    html.deep-link-boot #showcaseContainer { display: flex !important; align-items: center; justify-content: center; min-height: 60vh; }
   </style>
+  <script>
+    // Sayfa daha boyanmadan (senkron) çalışır — .container'ın bir an görünmesini engeller.
+    (function(){
+      var qs = new URLSearchParams(location.search);
+      var hasSlug = qs.get('koc') || qs.get('coach') || location.pathname.split('/').filter(Boolean).includes('koc');
+      if (hasSlug) document.documentElement.classList.add('deep-link-boot');
+    })();
+  </script>
 </head>
 <body>
 
@@ -377,7 +390,9 @@
 </div>
 
 <!-- TEK-KOÇ VİTRİN (slug modu — aydınlık premium) -->
-<div id="showcaseContainer" style="display:none"></div>
+<div id="showcaseContainer" style="display:none">
+  <div style="text-align:center;color:var(--text-mid);font-size:14px">Yükleniyor…</div>
+</div>
 
 <!-- PROFILE MODAL -->
 <div id="profileModal" class="modal-bg" onclick="closeModal(event, 'profileModal')">
@@ -730,6 +745,9 @@
       if (slugParam) renderCoachShowcase(target);
       else viewCoachDetails(target.id);
     } else if (slugParam) {
+      // Profil bulunamadı — spinner'da asılı kalmasın, normal listeye dön
+      document.documentElement.classList.remove('deep-link-boot');
+      document.getElementById('showcaseContainer').style.display = 'none';
       showToast('Bu linkte bir koç profili bulunamadı.');
     }
   }
@@ -764,6 +782,7 @@
     if (p.instagram) social.push(`<a href="https://instagram.com/${esc(p.instagram)}" target="_blank" class="sc-social">📸 @${esc(p.instagram)}</a>`);
     if (p.linkedin)  social.push(`<a href="${esc(p.linkedin)}" target="_blank" class="sc-social">💼 LinkedIn</a>`);
 
+    document.documentElement.classList.remove('deep-link-boot');
     const sc = document.getElementById('showcaseContainer');
     sc.style.display = 'block';
     sc.innerHTML = `
@@ -998,7 +1017,11 @@
     }catch(e){ showToast('Gönderilemedi: '+e.message); }
   }
 
-  window.onload = async () => { await loadCoaches(); openDeepLink(); };
+  // Derin link varsa profil sorgusu koç listesini beklemeden hemen başlasın
+  // (openDeepLink zaten allCoaches boşsa doğrudan RPC'ye düşüyor) — liste
+  // tüm sayfa kaynakları yüklenene kadar (window.onload) beklemeye devam eder.
+  openDeepLink();
+  window.onload = async () => { await loadCoaches(); };
 </script>
 </body>
 </html>
