@@ -9098,111 +9098,130 @@ function updateProfilePreview() {
   const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   const avatar = photoUrl
-    ? `<div style="width:72px;height:72px;border-radius:50%;background:url('${esc(photoUrl)}') center/cover;flex-shrink:0;border:2.5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.1);position:relative;"><span style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:#34C759;border:2px solid #fff;"></span></div>`
-    : `<div style="width:72px;height:72px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;flex-shrink:0;border:2.5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.1);position:relative;">${esc(initials)}<span style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:#34C759;border:2px solid #fff;"></span></div>`;
+    ? `<div style="width:68px;height:68px;border-radius:50%;background:url('${esc(photoUrl)}') center/cover;flex-shrink:0;border:2px solid rgba(255,255,255,0.2);position:relative;"><span style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:#10B981;border:2px solid #09090B;"></span></div>`
+    : `<div style="width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#F06236,#FF7547);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0;border:2px solid rgba(255,255,255,0.2);position:relative;">${esc(initials)}<span style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:#10B981;border:2px solid #09090B;"></span></div>`;
 
-  const headText = headline || (subjects ? subjects.split(',').slice(0, 2).join(' · ') + ' Koçu' : 'YKS Koçu');
+  const headText = headline || (subjects ? subjects.split(',').slice(0, 2).join(' · ') : 'Profesyonel Danışmanlık & Koçluk 🚀');
 
-  // Stats
+  // Stat Rozetleri
   const stats = [];
   if (pricing_text) stats.push({ ico: '🏷️', t: pricing_text, hl: true });
-  if (experience) stats.push({ ico: '🏅', t: experience.split('\n')[0].slice(0, 30) });
-  if (education) stats.push({ ico: '🎓', t: education.split('\n')[0].slice(0, 30) });
+  if (experience) stats.push({ ico: '🏅', t: experience.split('\n')[0].slice(0, 26) });
+  if (education) stats.push({ ico: '🎓', t: education.split('\n')[0].slice(0, 26) });
   if (capacity_left !== '') stats.push({ ico: '⚡', t: `Son ${capacity_left} Kontenjan`, scarce: true });
 
   const statsHtml = stats.map(s => `
-    <div style="flex-shrink:0; display:inline-flex; align-items:center; gap:4px; background:${s.hl ? 'rgba(232,97,58,0.1)' : s.scarce ? 'rgba(220,38,38,0.06)' : '#fff'}; border:1px solid ${s.hl ? 'rgba(232,97,58,0.3)' : s.scarce ? 'rgba(220,38,38,0.3)' : '#E5E5EA'}; border-radius:10px; padding:5px 9px; font-size:10.5px; font-weight:700; color:${s.scarce ? '#DC2626' : s.hl ? 'var(--accent)' : '#1A1714'};">
+    <div style="flex-shrink:0; display:inline-flex; align-items:center; gap:4px; background:${s.hl ? 'rgba(240,98,54,0.12)' : s.scarce ? 'rgba(239,68,68,0.1)' : '#121215'}; border:1px solid ${s.hl ? 'rgba(240,98,54,0.35)' : s.scarce ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.08)'}; border-radius:10px; padding:5px 9px; font-size:10px; font-weight:700; color:${s.scarce ? '#EF4444' : s.hl ? '#F06236' : '#FAFAFA'};">
       <span>${s.ico}</span>
       <span>${esc(s.t)}</span>
     </div>
   `).join('');
 
-  // Collect live reviews
+  // Live reviews
   const reviews = Array.from(document.querySelectorAll('#cpReviewsContainer .cp-review-item')).map(el => ({
     name: el.querySelector('.cpr-name')?.value.trim() || '',
     role: el.querySelector('.cpr-role')?.value.trim() || '',
     text: el.querySelector('.cpr-text')?.value.trim() || ''
   })).filter(r => r.name || r.text);
 
-  // Collect live faqs
+  // Live faqs
   const faqs = Array.from(document.querySelectorAll('#cpFaqContainer .cp-faq-item')).map(el => ({
     q: el.querySelector('.cpf-q')?.value.trim() || '',
     a: el.querySelector('.cpf-a')?.value.trim() || ''
   })).filter(f => f.q && f.a);
 
+  // Live Block Order
+  const activeBlockElements = Array.from(document.querySelectorAll('#cpBlocksContainer .cp-block-row'));
+  const activeBlocks = activeBlockElements.length ? activeBlockElements.map(el => ({
+    id: el.dataset.id,
+    enabled: el.querySelector('.cp-block-toggle')?.checked ?? true
+  })) : [
+    { id: 'hero', enabled: true },
+    { id: 'stats', enabled: true },
+    { id: 'value_props', enabled: true },
+    { id: 'tabs_about', enabled: true },
+    { id: 'reviews', enabled: true },
+    { id: 'faq', enabled: true },
+    { id: 'sticky_cta', enabled: true }
+  ];
+
+  const blockRenderers = {
+    hero: () => `
+      <div style="display:flex; gap:10px; align-items:flex-start; background:#121215; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; margin-bottom:10px;">
+        ${avatar}
+        <div style="min-width:0; flex:1;">
+          <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+            <b style="font-size:14px; font-weight:800; color:#FAFAFA;">${esc(name)}</b>
+            <span style="font-size:8.5px; background:#10B981; color:#fff; font-weight:800; padding:1px 5px; border-radius:99px;">✓ Onaylı</span>
+          </div>
+          <div style="font-size:10.5px; color:#A1A1AA; margin-top:2px; line-height:1.3;">${esc(headText)}</div>
+          <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
+            ${instagram ? `<span style="font-size:9px; color:#F06236; background:rgba(240,98,54,0.12); padding:2px 6px; border-radius:99px; font-weight:700;">📸 @${esc(instagram)}</span>` : ''}
+            ${whatsapp_number ? `<span style="font-size:9px; color:#10B981; background:rgba(16,185,129,0.12); padding:2px 6px; border-radius:99px; font-weight:700;">💬 WhatsApp Aktif</span>` : ''}
+          </div>
+        </div>
+      </div>`,
+
+    stats: () => statsHtml ? `<div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; padding-bottom:2px;">${statsHtml}</div>` : '',
+
+    value_props: () => `
+      <div style="background:#121215; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; margin-bottom:10px;">
+        <b style="font-size:10.5px; font-weight:800; color:#FAFAFA; display:block; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.3px;">Neden ${esc(name.split(' ')[0])}?</b>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">🎯 <b>Kişiye Özel Plan</b></div>
+          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">📊 <b>Gelişim Takibi</b></div>
+          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">🤖 <b>7/24 AI Asistanı</b></div>
+          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">💬 <b>Birebir Görüşme</b></div>
+        </div>
+      </div>`,
+
+    tabs_about: () => `
+      <div style="background:#121215; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; margin-bottom:10px; font-size:11px; line-height:1.5;">
+        <b style="font-size:9.5px; text-transform:uppercase; color:#F06236; letter-spacing:0.3px; display:block; margin-bottom:4px;">Biyografi &amp; Uzmanlık</b>
+        <div style="color:#FAFAFA;">${esc(bio || 'Biyografi henüz girilmedi.').replace(/\n/g, '<br>')}</div>
+      </div>`,
+
+    reviews: () => reviews.length ? `
+      <div style="background:#121215; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; margin-bottom:10px;">
+        <b style="font-size:10.5px; font-weight:800; color:#FAFAFA; display:block; margin-bottom:8px;">Danışan Görüşleri</b>
+        ${reviews.map(r => `
+          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px; margin-bottom:6px; font-size:10px;">
+            <div style="color:#f0a500; font-size:8.5px;">★★★★★</div>
+            <div style="font-style:italic; margin:2px 0; color:#FAFAFA;">"${esc(r.text)}"</div>
+            <div style="font-weight:800; color:#F06236; font-size:9px;">🎓 ${esc(r.name)} ${r.role ? `· ${esc(r.role)}` : ''}</div>
+          </div>
+        `).join('')}
+      </div>` : '',
+
+    faq: () => faqs.length ? `
+      <div style="background:#121215; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; margin-bottom:10px;">
+        <b style="font-size:10.5px; font-weight:800; color:#FAFAFA; display:block; margin-bottom:8px;">Sıkça Sorulan Sorular</b>
+        ${faqs.map(f => `
+          <div style="border-bottom:1px solid rgba(255,255,255,0.05); padding:4px 0; font-size:10px;">
+            <b style="color:#FAFAFA; display:block;">📌 ${esc(f.q)}</b>
+            <div style="color:#A1A1AA; font-size:9.5px; margin-top:2px;">${esc(f.a)}</div>
+          </div>
+        `).join('')}
+      </div>` : '',
+
+    sticky_cta: () => `
+      <div style="background:linear-gradient(135deg, #F06236, #FF7547); color:#fff; font-weight:800; font-size:11.5px; text-align:center; padding:10px; border-radius:12px; box-shadow:0 4px 16px rgba(240,98,54,0.45);">
+        🔥 Ücretsiz Tanışma &amp; Başvuru Yap →
+      </div>`
+  };
+
+  const bodyHtml = activeBlocks
+    .filter(b => b.enabled !== false && blockRenderers[b.id])
+    .map(b => blockRenderers[b.id]())
+    .join('');
+
   container.innerHTML = `
     <!-- Top Header -->
-    <div style="font-size:9px; font-weight:700; color:var(--accent); text-align:center; padding:6px 0; background:rgba(232,97,58,0.06); border-radius:0 0 10px 10px; margin-bottom:12px; text-transform:uppercase;">
-      🎓 Rostrum Akademi · Doğrulanmış Koç
+    <div style="font-size:8.5px; font-weight:800; color:#F06236; text-align:center; padding:5px 0; background:rgba(240,98,54,0.08); border-radius:0 0 8px 8px; margin-bottom:10px; text-transform:uppercase; letter-spacing:0.4px;">
+      🎓 Rostrum · Doğrulanmış Uzman
     </div>
 
-    <!-- Hero Card -->
-    <div style="display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid #E5E5EA; border-radius:14px; padding:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.03);">
-      ${avatar}
-      <div style="min-width:0; flex:1;">
-        <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
-          <b style="font-size:15px; font-weight:800; color:#1A1714;">${esc(name)}</b>
-          <span style="font-size:9px; background:#34C759; color:#fff; font-weight:700; padding:1px 5px; border-radius:99px;">✓ Onaylı</span>
-        </div>
-        <div style="font-size:11px; color:#6B6560; margin-top:2px; line-height:1.3;">${esc(headText)}</div>
-        <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
-          ${instagram ? `<span style="font-size:9.5px; color:var(--accent); background:rgba(232,97,58,0.08); padding:2px 6px; border-radius:99px; font-weight:700;">📸 @${esc(instagram)}</span>` : ''}
-          ${whatsapp_number ? `<span style="font-size:9.5px; color:#059669; background:rgba(5,150,105,0.08); padding:2px 6px; border-radius:99px; font-weight:700;">💬 WhatsApp Aktif</span>` : ''}
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats -->
-    ${statsHtml ? `<div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:12px; padding-bottom:2px;">${statsHtml}</div>` : ''}
-
-    <!-- Tab Section -->
-    <div style="background:#fff; border:1px solid #E5E5EA; border-radius:12px; padding:12px; margin-bottom:12px; font-size:11.5px; line-height:1.5;">
-      <b style="font-size:10px; text-transform:uppercase; color:var(--accent); letter-spacing:0.3px; display:block; margin-bottom:4px;">Biyografi & Vizyon</b>
-      <div style="color:#1A1714;">${esc(bio || 'Biyografi henüz girilmedi.').replace(/\n/g, '<br>')}</div>
-    </div>
-
-    <!-- Features Section -->
-    <div style="background:#fff; border:1px solid #E5E5EA; border-radius:12px; padding:12px; margin-bottom:12px;">
-      <b style="font-size:11px; font-weight:800; display:block; margin-bottom:8px;">Neden ${esc(name.split(' ')[0])}?</b>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-        <div style="background:#F2F2F7; border-radius:8px; padding:6px; font-size:10px;">📋 <b>Kişiye Özel YKS Planı</b></div>
-        <div style="background:#F2F2F7; border-radius:8px; padding:6px; font-size:10px;">📊 <b>Net & Konu Takibi</b></div>
-        <div style="background:#F2F2F7; border-radius:8px; padding:6px; font-size:10px;">🤖 <b>7/24 AI Asistanı</b></div>
-        <div style="background:#F2F2F7; border-radius:8px; padding:6px; font-size:10px;">💬 <b>1-on-1 Görüşme</b></div>
-      </div>
-    </div>
-
-    <!-- Live Reviews -->
-    ${reviews.length ? `
-      <div style="background:#fff; border:1px solid #E5E5EA; border-radius:12px; padding:12px; margin-bottom:12px;">
-        <b style="font-size:11px; font-weight:800; display:block; margin-bottom:8px;">Öğrenci Görüşleri</b>
-        ${reviews.map(r => `
-          <div style="background:#F2F2F7; border-radius:8px; padding:8px; margin-bottom:6px; font-size:10.5px;">
-            <div style="color:#f0a500; font-size:9px;">★★★★★</div>
-            <div style="font-style:italic; margin:2px 0;">"${esc(r.text)}"</div>
-            <div style="font-weight:700; color:var(--accent); font-size:9.5px;">🎓 ${esc(r.name)} ${r.role ? `· ${esc(r.role)}` : ''}</div>
-          </div>
-        `).join('')}
-      </div>
-    ` : ''}
-
-    <!-- Live FAQs -->
-    ${faqs.length ? `
-      <div style="background:#fff; border:1px solid #E5E5EA; border-radius:12px; padding:12px; margin-bottom:12px;">
-        <b style="font-size:11px; font-weight:800; display:block; margin-bottom:8px;">Sıkça Sorulan Sorular</b>
-        ${faqs.map(f => `
-          <div style="border-bottom:1px solid #E5E5EA; padding:4px 0; font-size:10.5px;">
-            <b style="color:#1A1714; display:block;">📌 ${esc(f.q)}</b>
-            <div style="color:#6B6560; font-size:10px; margin-top:2px;">${esc(f.a)}</div>
-          </div>
-        `).join('')}
-      </div>
-    ` : ''}
-
-    <!-- CTA Button -->
-    <div style="background:linear-gradient(135deg, var(--accent), #ff7547); color:#fff; font-weight:800; font-size:12px; text-align:center; padding:10px; border-radius:10px; box-shadow:0 4px 12px rgba(232,97,58,0.3);">
-      🔥 Ücretsiz Tanışma & Ön Başvuru Yap →
-    </div>
+    ${bodyHtml}
   `;
 }
 
