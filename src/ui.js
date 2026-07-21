@@ -8563,6 +8563,7 @@ async function renderCoachProfile() {
   const whatsapp_number = profile?.whatsapp_number || '';
   const reviews = Array.isArray(profile?.reviews) ? profile.reviews : [];
   const faq = Array.isArray(profile?.faq) ? profile.faq : [];
+  const blocks = profile?.blocks || [];
   _cpSavedSlug = slug;
 
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -8736,7 +8737,7 @@ async function renderCoachProfile() {
             </div>
 
             <!-- Özel SSS -->
-            <div>
+            <div style="margin-bottom:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <label style="font-size:11px; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.5px;">Özel Sıkça Sorulan Sorular (SSS)</label>
                 <div style="display:flex; gap:6px;">
@@ -8745,6 +8746,12 @@ async function renderCoachProfile() {
                 </div>
               </div>
               <div id="cpFaqContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+            </div>
+
+            <!-- Modüler Sayfa Blokları & Sıralama -->
+            <div>
+              <div style="font-size:11px; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">Sayfa Blokları Yönetimi &amp; Sıralama</div>
+              <div id="cpBlocksContainer" style="display:flex; flex-direction:column; gap:6px;"></div>
             </div>
           </div>
 
@@ -8797,6 +8804,9 @@ async function renderCoachProfile() {
   } else {
     addCoachFaqItem();
   }
+
+  // Initialize block manager UI
+  renderCoachBlocksManager(blocks);
 }
 
 // ── Uzmanlık etiketleri (Multi-select Dropdown) ─────────────────────────
@@ -9247,6 +9257,62 @@ window.addCoachFaqItem = function(q = '', a = '') {
   updateProfilePreview();
 };
 
+window.renderCoachBlocksManager = function(blocks) {
+  const container = document.getElementById('cpBlocksContainer');
+  if (!container) return;
+
+  const defaultList = [
+    { id: 'hero', name: 'Profil & Slogan', enabled: true },
+    { id: 'stats', name: 'Özellik & Stat Rozetleri', enabled: true },
+    { id: 'value_props', name: 'Neden Benimle Çalışmalısın?', enabled: true },
+    { id: 'tabs_about', name: 'Biyografi, Eğitim & Deneyim', enabled: true },
+    { id: 'reviews', name: 'Danışan / Öğrenci Görüşleri', enabled: true },
+    { id: 'faq', name: 'Sıkça Sorulan Sorular (SSS)', enabled: true },
+    { id: 'sticky_cta', name: 'Başvuru & WhatsApp Barı', enabled: true }
+  ];
+
+  const current = Array.isArray(blocks) && blocks.length ? blocks : defaultList;
+  container.innerHTML = '';
+
+  current.forEach((b, idx) => {
+    const div = document.createElement('div');
+    div.className = 'cp-block-row';
+    div.dataset.id = b.id;
+    div.dataset.name = b.name || defaultList.find(d => d.id === b.id)?.name || b.id;
+    div.style.cssText = 'background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; font-size:12.5px;';
+    div.innerHTML = `
+      <div style="display:flex; align-items:center; gap:10px;">
+        <label style="display:inline-flex; align-items:center; gap:6px; font-weight:700; cursor:pointer; color:var(--text);">
+          <input type="checkbox" class="cp-block-toggle" ${b.enabled !== false ? 'checked' : ''} onchange="updateProfilePreview()">
+          ${esc(div.dataset.name)}
+        </label>
+      </div>
+      <div style="display:flex; gap:4px;">
+        <button type="button" class="btn btn-ghost btn-xs" onclick="moveCoachBlock('${b.id}', -1)" ${idx === 0 ? 'disabled' : ''} style="padding:2px 6px;">▲</button>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="moveCoachBlock('${b.id}', 1)" ${idx === current.length - 1 ? 'disabled' : ''} style="padding:2px 6px;">▼</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+};
+
+window.moveCoachBlock = function(id, dir) {
+  const container = document.getElementById('cpBlocksContainer');
+  if (!container) return;
+  const rows = Array.from(container.querySelectorAll('.cp-block-row'));
+  const idx = rows.findIndex(r => r.dataset.id === id);
+  if (idx < 0) return;
+  const targetIdx = idx + dir;
+  if (targetIdx < 0 || targetIdx >= rows.length) return;
+
+  if (dir === -1) {
+    container.insertBefore(rows[idx], rows[targetIdx]);
+  } else {
+    container.insertBefore(rows[targetIdx], rows[idx]);
+  }
+  updateProfilePreview();
+};
+
 async function saveCoachProfile() {
   const userId = session.dbUser.id;
   const bio = document.getElementById('cpBio').value.trim();
@@ -9275,6 +9341,13 @@ async function saveCoachProfile() {
     a: el.querySelector('.cpf-a')?.value.trim() || ''
   })).filter(f => f.q && f.a);
 
+  const blocks = Array.from(document.querySelectorAll('#cpBlocksContainer .cp-block-row')).map((el, idx) => ({
+    id: el.dataset.id,
+    name: el.dataset.name,
+    enabled: el.querySelector('.cp-block-toggle')?.checked ?? true,
+    order: idx + 1
+  }));
+
   // Zorunlu alan doğrulamaları — kamu profili yarım bilgiyle yayınlanmasın
   if (!photo_url) return _cpShowErr('Profil fotoğrafı zorunlu — velilerin en çok baktığı güven sinyali.');
   if (!subjects) return _cpShowErr('En az bir uzmanlık etiketi seç.');
@@ -9295,6 +9368,7 @@ async function saveCoachProfile() {
     pricing_text,
     reviews,
     faq,
+    blocks,
     updated_at: new Date().toISOString()
   };
 
@@ -9303,8 +9377,8 @@ async function saveCoachProfile() {
 
   let { error } = await db.from('coach_profiles').upsert(payload);
   if (error && /column/i.test(error.message||'')) {
-    // migration_v26/v27/v33 çalıştırılmamış — yeni opsiyonel alanları çıkarıp kaydet
-    const { slug: _s, headline: _h, capacity_left: _c, whatsapp_number: _w, pricing_text: _p, reviews: _r, faq: _f, ...legacy } = payload;
+    // migration_v26/v27/v33/v34 çalıştırılmamış — yeni opsiyonel alanları çıkarıp kaydet
+    const { slug: _s, headline: _h, capacity_left: _c, whatsapp_number: _w, pricing_text: _p, reviews: _r, faq: _f, blocks: _b, ...legacy } = payload;
     ({ error } = await db.from('coach_profiles').upsert(legacy));
     if (!error) showToast('Profil kaydedildi (Vitrin alanları yerel olarak güncellendi)', true);
   }

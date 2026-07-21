@@ -758,303 +758,127 @@
   // ─────────────────────────────────────────────────────────────
   // TEK-KOÇ KAMU VİTRİNİ — Instagram bio linki satış hunisi & Reklam Sayfası
   // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // TEK-KOÇ KAMU VİTRİNİ — Modüler, Dönüşüm Odaklı Satış Hunisi
+  // Apple & Linear Seviyesi Tasarım Mimarisi
+  // ─────────────────────────────────────────────────────────────
   function renderCoachShowcase(c) {
-    // Dizini gizle, sayfayı aydınlık premium'a çevir
     document.querySelector('.container').style.display = 'none';
-    document.title = `${c.name} — Rostrum Akademi Uzman Koç`;
+    document.title = `${c.name} — Rostrum Uzman Profil`;
     const p = c.profile || {};
     const initials = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    const avatar = p.photo_url
-      ? `<div class="sc-av" style="background-image:url('${esc(p.photo_url)}')"><span class="sc-online-dot" title="Öğrenci alımı açık"></span></div>`
-      : `<div class="sc-av sc-av-txt" style="background:${c.color || '#E8613A'}">${esc(initials)}<span class="sc-online-dot"></span></div>`;
-    const headline = p.headline || (p.subjects ? p.subjects.split(',').slice(0,2).join(' · ') + ' Koçu' : 'YKS Derece & Başarı Koçu 🚀');
 
-    // Stat rozetleri — dinamik ve dolu olanlar
+    // Sektör Bağımsız Ünvan / Slogan
+    const headline = p.headline || (p.subjects ? p.subjects.split(',').slice(0, 2).join(' · ') : 'Profesyonel Danışmanlık & Koçluk 🚀');
+
+    // Standart / Özelleştirilmiş Modüler Bloklar
+    const defaultBlocks = [
+      { id: 'hero', enabled: true },
+      { id: 'stats', enabled: true },
+      { id: 'value_props', enabled: true },
+      { id: 'tabs_about', enabled: true },
+      { id: 'reviews', enabled: true },
+      { id: 'faq', enabled: true },
+      { id: 'sticky_cta', enabled: true }
+    ];
+    const activeBlocks = Array.isArray(p.blocks) && p.blocks.length ? p.blocks : defaultBlocks;
+
+    // Stat Rozetleri (Dinamik & Dolu Olanlar)
     const stats = [];
-    if (p.pricing_text) stats.push({ ico:'🏷️', t: p.pricing_text, highlight:true });
-    if (p.experience) stats.push({ ico:'🏅', t: firstLine(p.experience) });
-    if (p.education)  stats.push({ ico:'🎓', t: firstLine(p.education) });
+    if (p.pricing_text) stats.push({ ico: '🏷️', t: p.pricing_text, highlight: true });
+    if (p.experience) stats.push({ ico: '🏅', t: firstLine(p.experience) });
+    if (p.education) stats.push({ ico: '🎓', t: firstLine(p.education) });
     if (p.capacity_left != null && p.capacity_left >= 0)
-      stats.push({ ico:'', t:`Son ${p.capacity_left} Öğrenci Kontenjanı`, scarce:true });
+      stats.push({ ico: '', t: `Son ${p.capacity_left} Danışan Kontenjanı`, scarce: true });
     else
-      stats.push({ ico:'⚡', t:'Kısıtlı Kontenjan', scarce:true });
+      stats.push({ ico: '⚡', t: 'Kontenjan Kısıtlı', scarce: true });
 
-    const statsHtml = stats.length ? `<div class="sc-stats-wrap" id="scStatsWrap"><div class="sc-stats" id="scStats">${stats.map(s=>`
-      <div class="sc-stat${s.scarce?' sc-scarce':''}${s.highlight?' sc-highlight':''}">
-        ${s.scarce?'<span class="sc-dot"></span>':`<span class="sc-stat-ico">${s.ico}</span>`}
-        <span>${esc(s.t)}</span>
-      </div>`).join('')}</div></div>` : '';
+    // Dinamik Yorumlar & SSS
+    const customReviews = Array.isArray(p.reviews) ? p.reviews.filter(r => r && (r.name || r.text)) : [];
+    const customFaqs = Array.isArray(p.faq) ? p.faq.filter(f => f && f.q && f.a) : [];
 
+    // Sosyal medya butonları
     const social = [];
     if (p.instagram) social.push(`<a href="https://instagram.com/${esc(p.instagram)}" target="_blank" class="sc-social">📸 @${esc(p.instagram)}</a>`);
-    if (p.linkedin)  social.push(`<a href="${esc(p.linkedin)}" target="_blank" class="sc-social">💼 LinkedIn</a>`);
-    social.push(`<span class="sc-reply-badge">⚡ Ort. 15 Dk Dönüş</span>`);
+    if (p.linkedin) social.push(`<a href="${esc(p.linkedin)}" target="_blank" class="sc-social">💼 LinkedIn</a>`);
+    social.push(`<span class="sc-reply-badge">⚡ Anında İletişim</span>`);
 
-    // Dynamic Reviews (No dummy fallback)
-    const customReviews = Array.isArray(p.reviews) ? p.reviews.filter(r => r && (r.name || r.text)) : [];
-
-    // Dynamic FAQ (No dummy fallback)
-    const customFaqs = Array.isArray(p.faq) ? p.faq.filter(f => f && f.q && f.a) : [];
+    // Avatar
+    const avatar = p.photo_url
+      ? `<div class="sc-av" style="background-image:url('${esc(p.photo_url)}')"><span class="sc-online-dot"></span></div>`
+      : `<div class="sc-av sc-av-txt" style="background:${c.color || 'linear-gradient(135deg,#E8613A,#FF7547)'}">${esc(initials)}<span class="sc-online-dot"></span></div>`;
 
     document.documentElement.classList.remove('deep-link-boot');
     const sc = document.getElementById('showcaseContainer');
     sc.style.display = 'block';
-    sc.innerHTML = `
-      <style>
-        body{background:#F7F7FA;min-height:100vh;margin:0;padding:0}
-        #showcaseContainer{
-          --b:#E8613A;--b-glow:rgba(232,97,58,0.22);--ink:#1A1714;--mid:#6B6560;--dim:#9B958E;
-          --surf:#ffffff;--surf2:#F2F2F7;--bd:#E5E5EA;--green:#34C759;
-          max-width:440px;margin:0 auto;padding:0 16px 140px;color:var(--ink);
-          font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Segoe UI',Roboto,sans-serif;
-          position:relative;
-        }
 
-        .sc-top-bar{
-          display:flex;align-items:center;justify-content:center;gap:6px;
-          padding:12px 14px;background:rgba(232,97,58,0.06);
-          border-bottom:1px solid rgba(232,97,58,0.12);
-          border-radius:0 0 16px 16px;margin:0 -16px 20px -16px;
-          font-size:11.5px;font-weight:700;color:var(--b);letter-spacing:0.3px;text-transform:uppercase;
-        }
+    // HTML Blok Oluşturucuları
+    const blockRenderers = {
+      hero: () => `
+        <div class="sc-hero">
+          ${avatar}
+          <div style="min-width:0;padding-top:2px">
+            <div class="sc-name-row">
+              <div class="sc-name">${esc(c.name)}</div>
+              <div class="sc-verified">
+                <svg viewBox="0 0 12 12"><path d="M5 8.5L2.5 6l.7-.7L5 7.1l3.8-3.8.7.7z"/></svg>
+                Doğrulanmış
+              </div>
+            </div>
+            <div class="sc-headline">${esc(headline)}</div>
+            <div class="sc-socials">${social.join('')}</div>
+          </div>
+        </div>`,
 
-        .sc-hero{
-          display:flex;gap:16px;align-items:flex-start;margin-bottom:18px;
-          background:var(--surf);border:1.5px solid var(--bd);border-radius:20px;
-          padding:18px;box-shadow:0 4px 20px rgba(0,0,0,0.04);position:relative;overflow:hidden;
-        }
-        .sc-hero::before{
-          content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;
-          border-radius:50%;background:radial-gradient(circle, var(--b-glow) 0%, transparent 70%);
-          pointer-events:none;
-        }
-        .sc-av{
-          width:84px;height:84px;border-radius:50%;
-          background-size:cover;background-position:center;flex-shrink:0;
-          box-shadow:0 6px 18px rgba(0,0,0,.12);
-          border:3px solid #fff;position:relative;
-        }
-        .sc-av-txt{display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:#fff}
-        .sc-online-dot{
-          position:absolute;bottom:2px;right:2px;width:14px;height:14px;
-          border-radius:50%;background:var(--green);border:2.5px solid #fff;
-          box-shadow:0 0 0 2px rgba(52,199,89,0.25);
-        }
-        .sc-name-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px}
-        .sc-name{font-size:21px;font-weight:800;letter-spacing:-.4px;line-height:1.15;color:var(--ink)}
-        .sc-verified{
-          display:inline-flex;align-items:center;gap:3px;background:var(--green);color:#fff;
-          font-size:10px;font-weight:700;padding:2px 7px 2px 5px;border-radius:99px;white-space:nowrap;flex-shrink:0
-        }
-        .sc-verified svg{width:11px;height:11px;fill:#fff}
-        .sc-headline{font-size:12.5px;color:var(--mid);font-weight:600;line-height:1.4;margin-bottom:8px}
-        .sc-socials{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-        .sc-social{
-          font-size:11px;font-weight:700;color:var(--b);text-decoration:none;
-          background:rgba(232,97,58,0.08);padding:3px 9px;border-radius:99px;transition:background 0.15s;
-        }
-        .sc-social:hover{background:rgba(232,97,58,0.15)}
-        .sc-reply-badge{
-          font-size:10.5px;font-weight:700;color:#059669;background:rgba(5,150,105,0.08);
-          padding:3px 8px;border-radius:99px;
-        }
+      stats: () => stats.length ? `
+        <div class="sc-stats-wrap" id="scStatsWrap">
+          <div class="sc-stats" id="scStats">
+            ${stats.map(s => `
+              <div class="sc-stat${s.scarce ? ' sc-scarce' : ''}${s.highlight ? ' sc-highlight' : ''}">
+                ${s.scarce ? '<span class="sc-dot"></span>' : `<span class="sc-stat-ico">${s.ico}</span>`}
+                <span>${esc(s.t)}</span>
+              </div>`).join('')}
+          </div>
+        </div>` : '',
 
-        .sc-stats-wrap{position:relative;margin-bottom:18px}
-        .sc-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;
-          -webkit-overflow-scrolling:touch;scrollbar-width:none}
-        .sc-stats::-webkit-scrollbar{display:none}
-        .sc-stats-wrap::after{
-          content:'';position:absolute;top:0;right:0;bottom:4px;width:28px;
-          background:linear-gradient(to right,transparent,var(--surf2) 70%);
-          pointer-events:none;
-        }
-        .sc-stats-wrap.sc-no-overflow::after{display:none}
-        .sc-stat{
-          flex-shrink:0;display:flex;align-items:center;gap:6px;
-          background:var(--surf);border:1.5px solid var(--bd);
-          border-radius:14px;padding:9px 13px;
-          font-size:12px;font-weight:700;color:var(--ink);
-          box-shadow:0 2px 6px rgba(0,0,0,.03);
-        }
-        .sc-highlight{background:rgba(232,97,58,0.08);border-color:rgba(232,97,58,0.3);color:var(--b)}
-        .sc-stat-ico{font-size:14px;line-height:1}
-        .sc-scarce{border-color:rgba(220,38,38,.35);color:#DC2626;background:rgba(220,38,38,0.03)}
-        .sc-dot{width:8px;height:8px;border-radius:50%;background:#DC2626;
-          box-shadow:0 0 0 3px rgba(220,38,38,.18);flex-shrink:0;animation:scPulse 2s infinite}
-        @keyframes scPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
-
-        .sc-features{
-          margin-bottom:20px;background:var(--surf);border:1.5px solid var(--bd);
-          border-radius:20px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.03);
-        }
-        .sc-sec-title{
-          font-size:14px;font-weight:800;color:var(--ink);margin-bottom:14px;
-          display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:0.3px;
-        }
-        .sc-sec-title span{color:var(--b)}
-        .sc-feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-        .sc-feat-card{
-          background:var(--surf2);border:1px solid var(--bd);border-radius:14px;
-          padding:12px;display:flex;flex-direction:column;gap:6px;
-        }
-        .sc-feat-ico{
-          width:34px;height:34px;border-radius:10px;background:rgba(232,97,58,0.12);
-          color:var(--b);display:flex;align-items:center;justify-content:center;font-size:18px;
-        }
-        .sc-feat-head{font-size:12.5px;font-weight:800;color:var(--ink);line-height:1.25}
-        .sc-feat-desc{font-size:11px;color:var(--mid);line-height:1.35}
-
-        .sc-tabs{display:flex;gap:0;background:var(--surf);border:1.5px solid var(--bd);
-          border-radius:14px;padding:3px;margin-bottom:12px;
-          box-shadow:0 1px 4px rgba(0,0,0,.04)}
-        .sc-tab{
-          flex:1;padding:9px 4px;border:none;background:none;border-radius:11px;
-          font-family:inherit;font-size:12.5px;font-weight:700;color:var(--mid);
-          cursor:pointer;transition:.18s;position:relative;
-        }
-        .sc-tab.on{
-          background:var(--b);color:#fff;
-          box-shadow:0 3px 10px rgba(232,97,58,.35);
-        }
-        .sc-panel{
-          background:var(--surf);border:1.5px solid var(--bd);border-radius:16px;
-          padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--ink);
-          min-height:90px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px;
-        }
-
-        .sc-reviews{
-          margin-bottom:20px;background:var(--surf);border:1.5px solid var(--bd);
-          border-radius:20px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.03);
-        }
-        .sc-rev-card{
-          background:var(--surf2);border:1px solid var(--bd);border-radius:14px;
-          padding:14px;margin-bottom:10px;
-        }
-        .sc-rev-card:last-child{margin-bottom:0}
-        .sc-rev-stars{color:#f0a500;font-size:12px;margin-bottom:4px}
-        .sc-rev-text{font-size:12.5px;color:var(--ink);line-height:1.5;font-style:italic;margin-bottom:8px}
-        .sc-rev-user{font-size:11px;font-weight:800;color:var(--b);display:flex;align-items:center;gap:6px}
-
-        .sc-faq{
-          background:var(--surf);border:1.5px solid var(--bd);border-radius:20px;
-          padding:18px;margin-bottom:20px;
-        }
-        .sc-faq-item{border-bottom:1px solid var(--bd);padding:10px 0}
-        .sc-faq-item:last-child{border-bottom:none;padding-bottom:0}
-        .sc-faq-q{font-size:13px;font-weight:800;color:var(--ink);cursor:pointer;display:flex;justify-content:space-between;align-items:center}
-        .sc-faq-a{font-size:12px;color:var(--mid);line-height:1.5;margin-top:6px;display:none}
-        .sc-faq-item.open .sc-faq-a{display:block}
-
-        .sc-brand-foot{text-align:center;font-size:11px;color:var(--dim);margin-top:20px;padding-bottom:6px}
-        .sc-brand-foot b{color:var(--b)}
-
-        .sc-cta-wrap{
-          position:fixed;bottom:0;left:0;right:0;
-          padding:12px 16px calc(14px + env(safe-area-inset-bottom));
-          background:linear-gradient(180deg,rgba(247,247,250,0) 0%,rgba(247,247,250,.98) 35%);
-          z-index:50;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-        }
-        .sc-cta{
-          display:block;max-width:440px;margin:0 auto;text-align:center;
-          background:linear-gradient(135deg, var(--b), #ff7547);color:#fff;border:none;border-radius:16px;
-          padding:16px 20px;font-family:inherit;font-size:15.5px;font-weight:800;
-          cursor:pointer;box-shadow:0 6px 22px rgba(232,97,58,.42);text-decoration:none;
-          letter-spacing:.2px;transition:transform 0.15s, box-shadow 0.15s;
-        }
-        .sc-cta:active{transform:scale(.985)}
-
-        #scApplySheet{
-          position:fixed;inset:0;background:rgba(0,0,0,.5);
-          backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:100;display:none;
-          align-items:flex-end;justify-content:center;
-        }
-        #scApplySheet.on{display:flex}
-        .sc-sheet{
-          background:var(--surf);width:100%;max-width:440px;
-          border-radius:24px 24px 0 0;
-          padding:24px 20px calc(28px + env(safe-area-inset-bottom));
-          animation:scUp .28s cubic-bezier(.32,1,.35,1);
-        }
-        @keyframes scUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
-        .sc-sheet-handle{width:36px;height:4px;border-radius:99px;background:var(--bd);margin:0 auto 16px}
-        .sc-sheet h3{font-size:19px;font-weight:800;margin-bottom:4px;color:var(--ink)}
-        .sc-sheet p{font-size:12.5px;color:var(--mid);margin-bottom:18px;line-height:1.5}
-        .sc-f{margin-bottom:12px}
-        .sc-f label{display:block;font-size:11px;font-weight:700;color:var(--mid);
-          text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-        .sc-f input,.sc-f textarea{
-          width:100%;background:var(--surf2);border:1.5px solid var(--bd);
-          border-radius:11px;padding:12px 14px;font-size:14.5px;
-          font-family:inherit;color:var(--ink);outline:none;box-sizing:border-box;
-          -webkit-appearance:none;
-        }
-        .sc-f input:focus,.sc-f textarea:focus{border-color:var(--b)}
-        .sc-opt{font-weight:400;text-transform:none;color:var(--dim)}
-      </style>
-
-      <!-- Brand Header -->
-      <div class="sc-top-bar">
-        <span>🎓 Rostrum Akademi</span> · Doğrulanmış Koçluk Profili
-      </div>
-
-      <!-- Hero Card -->
-      <div class="sc-hero">
-        ${avatar}
-        <div style="min-width:0;padding-top:2px">
-          <div class="sc-name-row">
-            <div class="sc-name">${esc(c.name)}</div>
-            <div class="sc-verified">
-              <svg viewBox="0 0 12 12"><path d="M5 8.5L2.5 6l.7-.7L5 7.1l3.8-3.8.7.7z"/></svg>
-              Doğrulanmış
+      value_props: () => `
+        <div class="sc-features">
+          <div class="sc-sec-title">Neden <span>${esc(c.name.split(' ')[0])}</span> İle Çalışmalısın?</div>
+          <div class="sc-feat-grid">
+            <div class="sc-feat-card">
+              <div class="sc-feat-ico">🎯</div>
+              <div class="sc-feat-head">%100 Kişiye Özel Yol Haritası</div>
+              <div class="sc-feat-desc">Hedeflerine ve ihtiyaçlarına özel gün gün yapılandırılmış strateji.</div>
+            </div>
+            <div class="sc-feat-card">
+              <div class="sc-feat-ico">📊</div>
+              <div class="sc-feat-head">Düzenli Gelişim Takibi</div>
+              <div class="sc-feat-desc">Performans analizi ve zayıf alanların anlık tespiti.</div>
+            </div>
+            <div class="sc-feat-card">
+              <div class="sc-feat-ico">🤖</div>
+              <div class="sc-feat-head">7/24 AI Dijital Asistan</div>
+              <div class="sc-feat-desc">Dijital panelde kesintisiz rehberlik ve anlık yanıt desteği.</div>
+            </div>
+            <div class="sc-feat-card">
+              <div class="sc-feat-ico">💬</div>
+              <div class="sc-feat-head">Birebir Görüşme & Takip</div>
+              <div class="sc-feat-desc">Haftalık görüntülü seanslar ve kesintisiz WhatsApp takibi.</div>
             </div>
           </div>
-          <div class="sc-headline">${esc(headline)}</div>
-          <div class="sc-socials">${social.join('')}</div>
+        </div>`,
+
+      tabs_about: () => `
+        <div class="sc-tabs">
+          <button class="sc-tab on" data-t="bio" onclick="scTab('bio')">Biyografi</button>
+          <button class="sc-tab" data-t="edu" onclick="scTab('edu')">Eğitim</button>
+          <button class="sc-tab" data-t="exp" onclick="scTab('exp')">Deneyim</button>
         </div>
-      </div>
+        <div class="sc-panel" id="scPanel">${esc(p.bio || 'Biyografi henüz eklenmedi.').replace(/\n/g, '<br>')}</div>`,
 
-      <!-- Stat chips -->
-      ${statsHtml}
-
-      <!-- Offer / Advantages Section -->
-      <div class="sc-features">
-        <div class="sc-sec-title">Neden <span>${esc(c.name.split(' ')[0])}</span> İle Çalışmalısın?</div>
-        <div class="sc-feat-grid">
-          <div class="sc-feat-card">
-            <div class="sc-feat-ico">📋</div>
-            <div class="sc-feat-head">Kişiye Özel YKS Planı</div>
-            <div class="sc-feat-desc">Haftalık hedeflerine ve eksiklerine göre gün gün çizelge.</div>
-          </div>
-          <div class="sc-feat-card">
-            <div class="sc-feat-ico">📊</div>
-            <div class="sc-feat-head">Deneme & Net Takibi</div>
-            <div class="sc-feat-desc">TYT / AYT net analizi ve zayıf konuların tespiti.</div>
-          </div>
-          <div class="sc-feat-card">
-            <div class="sc-feat-ico">🤖</div>
-            <div class="sc-feat-head">7/24 AI Asistanı</div>
-            <div class="sc-feat-desc">Dijital panelde anlık Sokratik rehberlik ve soru desteği.</div>
-          </div>
-          <div class="sc-feat-card">
-            <div class="sc-feat-ico">💬</div>
-            <div class="sc-feat-head">1-on-1 Takip & Rapor</div>
-            <div class="sc-feat-desc">Haftalık görüntülü görüşme ve veliye özel PDF raporu.</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div class="sc-tabs">
-        <button class="sc-tab on" data-t="bio" onclick="scTab('bio')">Biyografi</button>
-        <button class="sc-tab" data-t="edu" onclick="scTab('edu')">Eğitim</button>
-        <button class="sc-tab" data-t="exp" onclick="scTab('exp')">Deneyim</button>
-      </div>
-      <div class="sc-panel" id="scPanel">${esc(p.bio || 'Biyografi henüz eklenmedi.').replace(/\n/g,'<br>')}</div>
-
-      <!-- Student Testimonials (Only if coach added reviews) -->
-      ${customReviews.length ? `
+      reviews: () => customReviews.length ? `
         <div class="sc-reviews">
-          <div class="sc-sec-title">Öğrenci <span>Görüşleri</span></div>
+          <div class="sc-sec-title">Danışan &amp; Öğrenci <span>Görüşleri</span></div>
           ${customReviews.map(r => `
             <div class="sc-rev-card">
               <div class="sc-rev-stars">${'★'.repeat(r.stars || 5)}</div>
@@ -1062,11 +886,9 @@
               <div class="sc-rev-user">🎓 ${esc(r.name)}${r.role ? ` · ${esc(r.role)}` : ''}</div>
             </div>
           `).join('')}
-        </div>
-      ` : ''}
+        </div>` : '',
 
-      <!-- FAQ Section (Only if coach added FAQs) -->
-      ${customFaqs.length ? `
+      faq: () => customFaqs.length ? `
         <div class="sc-faq">
           <div class="sc-sec-title">Sıkça Sorulan <span>Sorular</span></div>
           ${customFaqs.map(f => `
@@ -1075,35 +897,232 @@
               <div class="sc-faq-a">${esc(f.a)}</div>
             </div>
           `).join('')}
-        </div>
-      ` : ''}
+        </div>` : '',
+
+      sticky_cta: () => `
+        <div class="sc-cta-wrap">
+          <button class="sc-cta" onclick="openScApply()">🔥 Ücretsiz Tanışma &amp; Başvuru Yap →</button>
+        </div>`
+    };
+
+    // Modüler İçerik Derleme
+    const bodyHtml = activeBlocks
+      .filter(b => b.enabled !== false && blockRenderers[b.id])
+      .map(b => blockRenderers[b.id]())
+      .join('');
+
+    sc.innerHTML = `
+      <style>
+        body{background:#09090B;color:#FAFAFA;min-height:100vh;margin:0;padding:0}
+        #showcaseContainer{
+          --b:#F06236;--b-glow:rgba(240,98,54,0.18);--ink:#FAFAFA;--mid:#A1A1AA;--dim:#71717A;
+          --surf:#121215;--surf2:#18181B;--bd:rgba(255,255,255,0.08);--green:#10B981;
+          max-width:430px;margin:0 auto;padding:0 16px 140px;color:var(--ink);
+          font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter',sans-serif;
+          position:relative;
+        }
+
+        .sc-top-bar{
+          display:flex;align-items:center;justify-content:center;gap:6px;
+          padding:12px 14px;background:rgba(240,98,54,0.08);
+          border-bottom:1px solid rgba(240,98,54,0.15);
+          border-radius:0 0 16px 16px;margin:0 -16px 20px -16px;
+          font-size:11px;font-weight:800;color:var(--b);letter-spacing:0.4px;text-transform:uppercase;
+        }
+
+        .sc-hero{
+          display:flex;gap:16px;align-items:flex-start;margin-bottom:18px;
+          background:var(--surf);border:1px solid var(--bd);border-radius:20px;
+          padding:18px;box-shadow:0 8px 32px rgba(0,0,0,0.4);position:relative;overflow:hidden;
+        }
+        .sc-hero::before{
+          content:'';position:absolute;top:-40px;right:-40px;width:130px;height:130px;
+          border-radius:50%;background:radial-gradient(circle, var(--b-glow) 0%, transparent 70%);
+          pointer-events:none;
+        }
+        .sc-av{
+          width:80px;height:80px;border-radius:50%;
+          background-size:cover;background-position:center;flex-shrink:0;
+          box-shadow:0 6px 20px rgba(0,0,0,.4);
+          border:2px solid rgba(255,255,255,0.15);position:relative;
+        }
+        .sc-av-txt{display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff}
+        .sc-online-dot{
+          position:absolute;bottom:2px;right:2px;width:13px;height:13px;
+          border-radius:50%;background:var(--green);border:2px solid #09090B;
+          box-shadow:0 0 0 2px rgba(16,185,129,0.3);
+        }
+        .sc-name-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+        .sc-name{font-size:20px;font-weight:800;letter-spacing:-.4px;line-height:1.15;color:var(--ink)}
+        .sc-verified{
+          display:inline-flex;align-items:center;gap:3px;background:var(--green);color:#fff;
+          font-size:9.5px;font-weight:800;padding:2px 7px 2px 5px;border-radius:99px;white-space:nowrap;flex-shrink:0
+        }
+        .sc-verified svg{width:10px;height:10px;fill:#fff}
+        .sc-headline{font-size:12px;color:var(--mid);font-weight:600;line-height:1.4;margin-bottom:8px}
+        .sc-socials{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+        .sc-social{
+          font-size:10.5px;font-weight:700;color:var(--b);text-decoration:none;
+          background:rgba(240,98,54,0.12);padding:3px 9px;border-radius:99px;transition:background 0.15s;
+        }
+        .sc-social:hover{background:rgba(240,98,54,0.22)}
+        .sc-reply-badge{
+          font-size:10px;font-weight:700;color:#10B981;background:rgba(16,185,129,0.12);
+          padding:3px 8px;border-radius:99px;
+        }
+
+        .sc-stats-wrap{position:relative;margin-bottom:18px}
+        .sc-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;
+          -webkit-overflow-scrolling:touch;scrollbar-width:none}
+        .sc-stats::-webkit-scrollbar{display:none}
+        .sc-stat{
+          flex-shrink:0;display:flex;align-items:center;gap:6px;
+          background:var(--surf);border:1px solid var(--bd);
+          border-radius:14px;padding:9px 13px;
+          font-size:12px;font-weight:700;color:var(--ink);
+        }
+        .sc-highlight{background:rgba(240,98,54,0.12);border-color:rgba(240,98,54,0.35);color:var(--b)}
+        .sc-stat-ico{font-size:14px;line-height:1}
+        .sc-scarce{border-color:rgba(239,68,68,.35);color:#EF4444;background:rgba(239,68,68,0.08)}
+        .sc-dot{width:8px;height:8px;border-radius:50%;background:#EF4444;
+          box-shadow:0 0 0 3px rgba(239,68,68,.2);flex-shrink:0;animation:scPulse 2s infinite}
+        @keyframes scPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+
+        .sc-features{
+          margin-bottom:20px;background:var(--surf);border:1px solid var(--bd);
+          border-radius:20px;padding:18px;
+        }
+        .sc-sec-title{
+          font-size:13px;font-weight:800;color:var(--ink);margin-bottom:14px;
+          display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:0.4px;
+        }
+        .sc-sec-title span{color:var(--b)}
+        .sc-feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+        .sc-feat-card{
+          background:var(--surf2);border:1px solid var(--bd);border-radius:14px;
+          padding:12px;display:flex;flex-direction:column;gap:6px;
+        }
+        .sc-feat-ico{
+          width:32px;height:32px;border-radius:10px;background:rgba(240,98,54,0.14);
+          color:var(--b);display:flex;align-items:center;justify-content:center;font-size:16px;
+        }
+        .sc-feat-head{font-size:12px;font-weight:800;color:var(--ink);line-height:1.25}
+        .sc-feat-desc{font-size:10.5px;color:var(--mid);line-height:1.35}
+
+        .sc-tabs{display:flex;gap:0;background:var(--surf);border:1px solid var(--bd);
+          border-radius:14px;padding:3px;margin-bottom:12px;}
+        .sc-tab{
+          flex:1;padding:9px 4px;border:none;background:none;border-radius:11px;
+          font-family:inherit;font-size:12px;font-weight:700;color:var(--mid);
+          cursor:pointer;transition:.18s;
+        }
+        .sc-tab.on{
+          background:var(--b);color:#fff;
+          box-shadow:0 3px 12px rgba(240,98,54,.4);
+        }
+        .sc-panel{
+          background:var(--surf);border:1px solid var(--bd);border-radius:16px;
+          padding:16px 18px;font-size:13px;line-height:1.7;color:var(--ink);
+          min-height:90px;margin-bottom:20px;
+        }
+
+        .sc-reviews{
+          margin-bottom:20px;background:var(--surf);border:1px solid var(--bd);
+          border-radius:20px;padding:18px;
+        }
+        .sc-rev-card{
+          background:var(--surf2);border:1px solid var(--bd);border-radius:14px;
+          padding:14px;margin-bottom:10px;
+        }
+        .sc-rev-card:last-child{margin-bottom:0}
+        .sc-rev-stars{color:#f0a500;font-size:11px;margin-bottom:4px}
+        .sc-rev-text{font-size:12px;color:var(--ink);line-height:1.5;font-style:italic;margin-bottom:8px}
+        .sc-rev-user{font-size:10.5px;font-weight:800;color:var(--b);display:flex;align-items:center;gap:6px}
+
+        .sc-faq{
+          background:var(--surf);border:1px solid var(--bd);border-radius:20px;
+          padding:18px;margin-bottom:20px;
+        }
+        .sc-faq-item{border-bottom:1px solid var(--bd);padding:10px 0}
+        .sc-faq-item:last-child{border-bottom:none;padding-bottom:0}
+        .sc-faq-q{font-size:12.5px;font-weight:800;color:var(--ink);cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+        .sc-faq-a{font-size:11.5px;color:var(--mid);line-height:1.5;margin-top:6px;display:none}
+        .sc-faq-item.open .sc-faq-a{display:block}
+
+        .sc-brand-foot{text-align:center;font-size:11px;color:var(--dim);margin-top:20px;padding-bottom:6px}
+        .sc-brand-foot b{color:var(--b)}
+
+        .sc-cta-wrap{
+          position:fixed;bottom:0;left:0;right:0;
+          padding:12px 16px calc(14px + env(safe-area-inset-bottom));
+          background:linear-gradient(180deg,rgba(9,9,11,0) 0%,rgba(9,9,11,.98) 40%);
+          z-index:50;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+        }
+        .sc-cta{
+          display:block;max-width:430px;margin:0 auto;text-align:center;
+          background:linear-gradient(135deg, var(--b), #FF7547);color:#fff;border:none;border-radius:16px;
+          padding:16px 20px;font-family:inherit;font-size:15px;font-weight:800;
+          cursor:pointer;box-shadow:0 6px 24px rgba(240,98,54,.45);text-decoration:none;
+          letter-spacing:.2px;transition:transform 0.15s;
+        }
+        .sc-cta:active{transform:scale(.985)}
+
+        #scApplySheet{
+          position:fixed;inset:0;background:rgba(0,0,0,.7);
+          backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:100;display:none;
+          align-items:flex-end;justify-content:center;
+        }
+        #scApplySheet.on{display:flex}
+        .sc-sheet{
+          background:var(--surf);width:100%;max-width:430px;
+          border-radius:24px 24px 0 0;border:1px solid var(--bd);
+          padding:24px 20px calc(28px + env(safe-area-inset-bottom));
+          animation:scUp .28s cubic-bezier(.32,1,.35,1);
+        }
+        @keyframes scUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+        .sc-sheet-handle{width:36px;height:4px;border-radius:99px;background:var(--bd);margin:0 auto 16px}
+        .sc-sheet h3{font-size:18px;font-weight:800;margin-bottom:4px;color:var(--ink)}
+        .sc-sheet p{font-size:12px;color:var(--mid);margin-bottom:18px;line-height:1.5}
+        .sc-f{margin-bottom:12px}
+        .sc-f label{display:block;font-size:10.5px;font-weight:700;color:var(--mid);
+          text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+        .sc-f input,.sc-f textarea{
+          width:100%;background:var(--surf2);border:1px solid var(--bd);
+          border-radius:11px;padding:12px 14px;font-size:14px;
+          font-family:inherit;color:var(--ink);outline:none;box-sizing:border-box;
+          -webkit-appearance:none;
+        }
+        .sc-f input:focus,.sc-f textarea:focus{border-color:var(--b)}
+        .sc-opt{font-weight:400;text-transform:none;color:var(--dim)}
+      </style>
+
+      <!-- Top Brand Bar -->
+      <div class="sc-top-bar">
+        <span>🎓 Rostrum Akademi</span> · Doğrulanmış Uzman Profil
+      </div>
+
+      ${bodyHtml}
 
       <!-- Brand Footer -->
-      <div class="sc-brand-foot">🎓 <b>Rostrum Akademi</b> dijital altyapısıyla güçlendirilmiştir</div>
-
-      <!-- Sticky CTA Bar -->
-      <div class="sc-cta-wrap">
-        <button class="sc-cta" onclick="openScApply()">🔥 Ücretsiz Tanışma & Ön Başvuru Yap →</button>
-      </div>
+      <div class="sc-brand-foot">🎓 <b>Rostrum</b> dijital altyapısıyla güçlendirilmiştir</div>
 
       <!-- Apply sheet -->
       <div id="scApplySheet" onclick="if(event.target===this)this.classList.remove('on')">
         <div class="sc-sheet">
           <div class="sc-sheet-handle"></div>
           <h3>Ön Başvuru Yap</h3>
-          <p><b>${esc(c.name)}</b> ile koçluk için bilgilerini bırak — en kısa sürede seninle iletişime geçecek.</p>
+          <p><b>${esc(c.name)}</b> ile çalışmak için bilgilerini bırak — en kısa sürede seninle iletişime geçilecek.</p>
           <input type="hidden" id="scApplyCoach" value="${esc(c.id)}">
           <div class="sc-f"><label>Adın Soyadın</label><input type="text" id="scName" placeholder="Ad Soyad"></div>
           <div class="sc-f"><label>WhatsApp Numaran</label><input type="tel" id="scPhone" placeholder="0 (5__) ___ __ __" oninput="scMaskPhone(this)"></div>
           <div class="sc-f"><label>E-posta <span class="sc-opt">(opsiyonel)</span></label><input type="email" id="scEmail" placeholder="ornek@gmail.com"></div>
-          <div class="sc-f"><label>YKS Hedefin &amp; Sınıfın</label><textarea id="scGoal" rows="2" placeholder="Örn: Tıp Fakültesi, 12. Sınıf Sayısal"></textarea></div>
+          <div class="sc-f"><label>Hedefin &amp; İhtiyacın</label><textarea id="scGoal" rows="2" placeholder="Örn: YKS Hazırlık, Yazılım Mentörlüğü, Kariyer Danışmanlığı"></textarea></div>
           <button class="sc-cta" style="position:static;box-shadow:none;margin-top:6px;width:100%" onclick="submitScApply()">Başvuruyu Gönder →</button>
         </div>
       </div>
     `;
     window._scCoach = c;
 
-    // Rozet çipleri ekrana sığıyorsa kaydırma ipucu gösterme
     const statsWrap = document.getElementById('scStatsWrap');
     const statsEl = document.getElementById('scStats');
     if (statsWrap && statsEl) {
