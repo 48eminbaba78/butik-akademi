@@ -1117,15 +1117,6 @@
       if (statsEl.scrollWidth <= statsEl.clientWidth + 1) statsWrap.classList.add('sc-no-overflow');
     }
   }
-    window._scCoach = c;
-
-    // Rozet çipleri ekrana sığıyorsa kaydırma ipucu (kenar solması) gösterme
-    const statsWrap = document.getElementById('scStatsWrap');
-    const statsEl = document.getElementById('scStats');
-    if (statsWrap && statsEl) {
-      if (statsEl.scrollWidth <= statsEl.clientWidth + 1) statsWrap.classList.add('sc-no-overflow');
-    }
-  }
 
   function firstLine(s){
     const line = String(s||'').split('\n')[0].trim();
