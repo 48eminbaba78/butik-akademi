@@ -7703,28 +7703,127 @@ window._swSave = async function() {
 };
 
 // ═══════════════════════════════════════════════
-// PWA — Telefona Yükle
+// PWA — ANA EKRANA EKLE / TELEFONA YÜKLE SISTEMI
 // ═══════════════════════════════════════════════
 let _pwaPrompt = null;
+
+function isIOSDevice() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isPWAStandalone() {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true ||
+    (document.referrer && document.referrer.includes('android-app://'))
+  );
+}
+
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   _pwaPrompt = e;
-  // Topbar'a "Uygulamayı Yükle" butonu ekle
-  const btn = document.createElement('button');
-  btn.id = 'pwaInstallBtn';
-  btn.className = 'btn btn-ghost btn-sm';
-  btn.innerHTML = '📲 Yükle';
-  btn.style.cssText = 'font-size:11px;padding:5px 10px';
-  btn.onclick = async () => {
-    _pwaPrompt.prompt();
-    const {outcome} = await _pwaPrompt.userChoice;
-    if(outcome==='accepted') { btn.remove(); showToast('Uygulama yüklendi ✓'); }
-  };
-  const tbar = document.querySelector('.tbar-right');
-  if (tbar) {
-    tbar.insertBefore(btn, document.querySelector('.user-pill'));
-  }
+  console.log('[PWA] beforeinstallprompt olayı yakalandı ✓');
+  setTimeout(checkAndShowPWABanner, 1200);
 });
+
+window.addEventListener('appinstalled', () => {
+  _pwaPrompt = null;
+  dismissPWABanner(true);
+  showToast('Rostrum Akademi ana ekranınıza başarıyla eklendi! 🎉');
+});
+
+function checkAndShowPWABanner() {
+  if (isPWAStandalone()) return;
+  
+  const dismissedTs = localStorage.getItem('ra_pwa_dismissed_ts');
+  if (dismissedTs && (Date.now() - parseInt(dismissedTs, 10)) < 3 * 24 * 60 * 60 * 1000) {
+    return;
+  }
+
+  showPWABanner();
+}
+
+function showPWABanner() {
+  if (isPWAStandalone()) return;
+  
+  let banner = document.getElementById('pwaInstallBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'pwaInstallBanner';
+    banner.className = 'pwa-banner';
+    banner.innerHTML = `
+      <div class="pwa-banner-icon">
+        <img src="/logo.png" alt="Rostrum Akademi Logo">
+      </div>
+      <div class="pwa-banner-info">
+        <div class="pwa-banner-title">Ana Ekrana Ekle 📲</div>
+        <div class="pwa-banner-sub">Uygulamayı telefonunuza ekleyip hızlıca erişin.</div>
+      </div>
+      <div class="pwa-banner-actions">
+        <button class="pwa-banner-btn" onclick="triggerPWAInstall()">Yükle / Ekle</button>
+        <button class="pwa-banner-close" onclick="dismissPWABanner()" title="Kapat">✕</button>
+      </div>
+    `;
+    document.body.appendChild(banner);
+  }
+  
+  setTimeout(() => {
+    banner.classList.add('show');
+  }, 100);
+}
+
+function dismissPWABanner(silent = false) {
+  const banner = document.getElementById('pwaInstallBanner');
+  if (banner) {
+    banner.classList.remove('show');
+  }
+  if (!silent) {
+    localStorage.setItem('ra_pwa_dismissed_ts', Date.now().toString());
+  }
+}
+
+async function triggerPWAInstall() {
+  if (isPWAStandalone()) {
+    showToast('Rostrum Akademi zaten ana ekranınızda yüklü! 📲');
+    return;
+  }
+
+  // 1. Android / Chrome / Edge Native Prompt
+  if (_pwaPrompt) {
+    try {
+      _pwaPrompt.prompt();
+      const { outcome } = await _pwaPrompt.userChoice;
+      if (outcome === 'accepted') {
+        dismissPWABanner(true);
+        showToast('Uygulama ana ekrana ekleniyor... 🎉');
+      }
+      _pwaPrompt = null;
+    } catch (err) {
+      console.error('[PWA Install Error]', err);
+    }
+    return;
+  }
+
+  // 2. iOS Safari rehber modalı
+  if (isIOSDevice()) {
+    dismissPWABanner(true);
+    om('iosPwaModal');
+    return;
+  }
+
+  // 3. Genel tarayıcı yükleme rehberi
+  dismissPWABanner(true);
+  om('genericPwaModal');
+}
+
+window.triggerPWAInstall = triggerPWAInstall;
+window.showPWABanner = showPWABanner;
+window.dismissPWABanner = dismissPWABanner;
+window.checkAndShowPWABanner = checkAndShowPWABanner;
+
+setTimeout(() => {
+  checkAndShowPWABanner();
+}, 2000);
 
 // ═══════════════════════════════════════════════
 // STUDENT PROFILE PAGE

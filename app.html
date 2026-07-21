@@ -327,6 +327,10 @@
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             Destek Al (AI / Canlı)
           </div>
+          <div class="tn-user-menu-item" onclick="triggerPWAInstall();closeUserMenu()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v13m0 0l-4-4m4 4l4-4"/><rect x="4" y="17" width="16" height="5" rx="1"/></svg>
+            Ana Ekrana Ekle 📲
+          </div>
           <div class="tn-user-menu-divider"></div>
           <div class="tn-user-menu-item danger" onclick="doLogout()">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -663,6 +667,66 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- iOS PWA INSTALL MODAL -->
+<div class="modal-bg" id="iosPwaModal">
+  <div class="modal" style="max-width:440px">
+    <button class="modal-close" onclick="cm('iosPwaModal')">×</button>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <div style="width:42px;height:42px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px">📲</div>
+      <div>
+        <h2 style="font-size:17px;font-weight:800;margin:0">Ana Ekrana Ekle (iOS)</h2>
+        <div style="font-size:12px;color:var(--text-mid)">iPhone / iPad Safari Adımları</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--text-mid);line-height:1.5">
+      Rostrum Akademi'yi bir mobil uygulama gibi ana ekranınızda kullanmak için aşağıdaki 3 adımı uygulayın:
+    </div>
+    <div class="ios-pwa-steps">
+      <div class="ios-pwa-step">
+        <div class="ios-pwa-step-num">1</div>
+        <div class="ios-pwa-step-text">Safari ekranının altındaki <strong>Paylaş (Share ⎋)</strong> simgesine dokunun.</div>
+      </div>
+      <div class="ios-pwa-step">
+        <div class="ios-pwa-step-num">2</div>
+        <div class="ios-pwa-step-text">Açılan menüde aşağı kaydırıp <strong>"Ana Ekrana Ekle ➕"</strong> seçeneğini seçin.</div>
+      </div>
+      <div class="ios-pwa-step">
+        <div class="ios-pwa-step-num">3</div>
+        <div class="ios-pwa-step-text">Sağ üst köşedeki <strong>"Ekle"</strong> butonuna dokunarak tamamlayın.</div>
+      </div>
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="cm('iosPwaModal')">Anladım, Tamam 👍</button>
+  </div>
+</div>
+
+<!-- GENERIC PWA INSTALL MODAL -->
+<div class="modal-bg" id="genericPwaModal">
+  <div class="modal" style="max-width:440px">
+    <button class="modal-close" onclick="cm('genericPwaModal')">×</button>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <div style="width:42px;height:42px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px">📲</div>
+      <div>
+        <h2 style="font-size:17px;font-weight:800;margin:0">Uygulamayı Ana Ekrana Ekle</h2>
+        <div style="font-size:12px;color:var(--text-mid)">Hızlı ve Kolay Kurulum</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:16px">
+      Rostrum Akademi'yi tarayıcınızın menüsünden doğrudan telefon veya bilgisayarınızın ana ekranına ekleyebilirsiniz:
+    </div>
+    <div class="ios-pwa-steps">
+      <div class="ios-pwa-step">
+        <div class="ios-pwa-step-num">1</div>
+        <div class="ios-pwa-step-text">Tarayıcınızın sağ üstündeki <strong>Menü (⋮ veya ⋯)</strong> butonuna tıklayın.</div>
+      </div>
+      <div class="ios-pwa-step">
+        <div class="ios-pwa-step-num">2</div>
+        <div class="ios-pwa-step-text"><strong>"Ana Ekrana Ekle"</strong> veya <strong>"Uygulamayı Yükle"</strong> seçeneğine tıklayın.</div>
+      </div>
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="cm('genericPwaModal')">Tamam 👍</button>
+  </div>
+</div>
 
 <!-- AI CHAT -->
 <div id="aiChatBubble" onclick="toggleAIChat()" title="AI Koç Asistanı" style="display:none">🤖</div>
