@@ -26,8 +26,8 @@ export default defineConfig({
         davet: resolve(__dirname, 'davet.html')
       },
       output: {
-        entryFileNames: `assets/[name]-[hash]-v7.js`,
-        chunkFileNames: `assets/[name]-[hash]-v7.js`,
+        entryFileNames: `assets/[name]-[hash]-v8.js`,
+        chunkFileNames: `assets/[name]-[hash]-v8.js`,
         assetFileNames: `assets/[name]-[hash].[ext]`
       }
     }

@@ -8288,6 +8288,94 @@ async function renderSUyelik() {
       </div>
     </div>`;
 }
+window.renderSUyelik = renderSUyelik;
+
+// ── KOÇ: KENDİ ABONELİK / ÖDEME SAYFASI ──────────
+async function renderCoachUyelik() {
+  const el = document.getElementById('view-suyelik');
+  if (!el) return;
+  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:200px"><div style="width:32px;height:32px;border:3px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite"></div></div>`;
+
+  const uid = session.dbUser?.id;
+  const [{ data: me }, { data: pays }] = await Promise.all([
+    db.from('users').select('plan,trial_ends_at,created_at,payment_reference_code').eq('id', uid).maybeSingle(),
+    db.from('payments').select('*').eq('coach_id', uid).order('created_at', { ascending: false }).limit(10)
+  ]);
+
+  const plan = me?.plan || 'trial';
+  const now = new Date();
+  const trialEnds = me?.trial_ends_at ? new Date(me.trial_ends_at) : (me?.created_at ? new Date(new Date(me.created_at).getTime() + 7 * 24 * 60 * 60 * 1000) : null);
+  const graceEnds = trialEnds ? new Date(trialEnds.getTime() + 3 * 24 * 60 * 60 * 1000) : null;
+
+  const planMeta = {
+    trial: { label: 'Deneme Dönemi', color: '#f0a500', bg: '#fff8e6' },
+    grace: { label: 'Müsamaha Süresi', color: '#ea580c', bg: '#fff1e6' },
+    inactive: { label: 'Erişim Askıda', color: '#ef4444', bg: '#fee2e2' },
+    pro: { label: 'Aktif Abonelik', color: '#3ecf8e', bg: '#e6faf3' }
+  }[plan] || { label: plan, color: '#3ecf8e', bg: '#e6faf3' };
+
+  const fmtDate2 = d => d ? d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+  const endLabel = plan === 'grace' ? 'Müsamaha Bitişi' : plan === 'trial' ? 'Deneme Bitişi' : 'Erişim Bitişi';
+  const endDate = plan === 'grace' ? graceEnds : plan === 'pro' ? trialEnds : trialEnds;
+  const hasPending = (pays || []).some(p => p.status === 'pending');
+
+  const statusLbl = { pending: ['📨 Onay Bekliyor', '#f0a500'], completed: ['✓ Onaylandı', '#3ecf8e'], rejected: ['✕ Reddedildi', '#ef4444'] };
+
+  el.innerHTML = `
+    <div style="max-width:480px;margin:0 auto;padding:16px">
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:120px;height:120px;background:${planMeta.color};opacity:.06;border-radius:50%;transform:translate(30%,-30%)"></div>
+        <div style="display:flex;align-items:flex-start;gap:16px">
+          <div style="width:52px;height:52px;border-radius:14px;background:${planMeta.bg};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">💳</div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Abonelik Durumu</div>
+            <div style="font-size:20px;font-weight:700;color:var(--text)">${planMeta.label}</div>
+            ${me?.payment_reference_code ? `<div style="font-size:11px;color:var(--text-dim);margin-top:6px">Referans Kodu: <b style="color:var(--text)">${esc(me.payment_reference_code)}</b></div>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px">
+        ${[
+          { icon: '📅', label: 'Kayıt Tarihi', value: fmtDate2(me?.created_at ? new Date(me.created_at) : null) },
+          { icon: '⌛', label: endLabel, value: fmtDate2(endDate) }
+        ].map(({ icon, label, value }, i, arr) => `
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;${i < arr.length - 1 ? 'border-bottom:1px solid var(--border)' : ''}">
+            <span style="font-size:18px;width:24px;text-align:center">${icon}</span>
+            <div style="flex:1">
+              <div style="font-size:11px;color:var(--text-dim)">${label}</div>
+              <div style="font-size:14px;font-weight:600;color:var(--text);margin-top:1px">${value}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px">
+        ${plan === 'pro'
+          ? `<div style="font-size:12px;color:var(--text-dim);line-height:1.6">Aboneliğiniz aktif. Süreniz dolmadan önce yenileme hatırlatması gönderilecek.</div>
+             <button onclick="openCoachPaymentModal()" style="width:100%;margin-top:12px;padding:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">Erken Yenile</button>`
+          : hasPending
+            ? `<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#f0a500">📨 Ödeme bildiriminiz alındı, onay bekleniyor</div>`
+            : `<button onclick="openCoachPaymentModal()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">💳 Ödeme Bildir</button>`}
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+        <div style="font-size:12px;font-weight:700;color:var(--text);padding:14px 18px 8px">Ödeme Geçmişi</div>
+        ${(pays && pays.length) ? pays.map(p => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-top:1px solid var(--border)">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${p.amount ? Number(p.amount).toLocaleString('tr-TR') + ' ₺' : '—'} · ${p.period_months || 1} ay</div>
+              <div style="font-size:11px;color:var(--text-dim)">${new Date(p.created_at).toLocaleDateString('tr-TR')}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              ${p.status === 'completed' ? `<a href="/api/generate-pdf-report?paymentId=${p.id}" target="_blank" style="font-size:11px;font-weight:700;color:var(--accent);text-decoration:none">📄 Makbuz</a>` : ''}
+              <span style="font-size:11px;font-weight:700;color:${(statusLbl[p.status] || ['—', 'var(--text-dim)'])[1]}">${(statusLbl[p.status] || [p.status || '—'])[0]}</span>
+            </div>
+          </div>
+        `).join('') : '<div style="padding:16px 18px;font-size:12px;color:var(--text-dim)">Henüz ödeme kaydı yok</div>'}
+      </div>
+    </div>`;
+}
 window.renderCoachUyelik = renderCoachUyelik;
 
 // ── KOÇ: ÖDEME BİLDİRİM MODALI (dinamik banka bilgisi + dekont yükleme) ──
