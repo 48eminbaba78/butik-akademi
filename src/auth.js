@@ -48,10 +48,6 @@ export function setRegRole(role) {
 }
 
 export async function loginWithGoogle() {
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') {
-    showGoogleSimulator();
-    return;
-  }
   await triggerRealGoogleLogin();
 }
 
@@ -59,21 +55,35 @@ export async function triggerRealGoogleLogin() {
   closeGoogleSimulator();
   showLoading(true);
   try {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+    const redirectUrl = window.location.origin + window.location.pathname;
+
     const { error } = await db.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/app.html',
+        redirectTo: redirectUrl,
         queryParams: { access_type: 'offline', prompt: 'select_account' }
       }
     });
+
     if (error) {
-      showLoading(true);
+      showLoading(false);
       console.warn('Google Auth failed:', error);
-      loginErr('Google Girişi Başlatılamadı: ' + error.message);
+      if (isLocal) {
+        showGoogleSimulator();
+      } else {
+        loginErr('Google Girişi Başlatılamadı: ' + error.message);
+      }
     }
   } catch (e) {
     showLoading(false);
-    loginErr('Google Girişi Başlatılamadı: ' + e.message);
+    console.error('Google Auth exception:', e);
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+    if (isLocal) {
+      showGoogleSimulator();
+    } else {
+      loginErr('Google Girişi Başlatılamadı: ' + (e.message || e));
+    }
   }
 }
 
