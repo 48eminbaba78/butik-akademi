@@ -993,12 +993,12 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </div>
 
   <h1>
-    <span class="h1-plain">Excel karmaşasını geride bırakın —</span>
-    <span class="h1-grad">Zaman kazandıran eğitim yönetim sistemi</span>
+    <span class="h1-plain">12 öğrencinin programını</span>
+    <span class="h1-grad">tek tek yazmayı bırak</span>
   </h1>
 
   <p class="hero-desc">
-    Dağınık WhatsApp gruplarını da geride bırakın. Üç ayrı yapay zeka ajanı, gelişmiş deneme takibi ve markanızla özelleştirilmiş PDF raporlamayla koçluğunuzu kurumsal bir seviyeye taşıyoruz.
+    Haftalık programını bir kez kur, her öğrenciye otomatik işlesin. Deneme sonuçları, ödev takibi ve veli raporu tek panelde — WhatsApp'ta arama yapmana gerek kalmaz.
   </p>
 
   <div class="hero-cta">
@@ -1587,7 +1587,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
           <li><span class="ok">✓</span>YouTube · Meet · Zoom entegrasyonu</li>
           <li><span class="ok">✓</span>Anlık mesajlaşma</li>
         </ul>
-        <button class="pc-btn out" onclick="goReg()">Bireysel Paketi Seç →</button>
+        <button class="pc-btn out" onclick="goReg('bireysel')">Bireysel Paketi Seç →</button>
         <div style="text-align:center;font-size:12px;color:var(--dim);margin-top:12px">7 gün ücretsiz · kart gerekmez · anında iptal</div>
       </div>
 
@@ -1612,7 +1612,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
           <li><span class="ok">✓</span><b>40 öğrenciye</b> kadar öğrenci yönetimi</li>
           <li><span class="ok">✓</span>Öncelikli destek</li>
         </ul>
-        <button class="pc-btn main" onclick="goReg()">Profesyonel Paketi Seç →</button>
+        <button class="pc-btn main" onclick="goReg('profesyonel')">Profesyonel Paketi Seç →</button>
         <div style="text-align:center;font-size:12px;color:var(--dim);margin-top:12px">7 gün ücretsiz · kart gerekmez · anında iptal</div>
       </div>
     </div>
@@ -1913,8 +1913,8 @@ function selectRole(role) {
       if (regSub) regSub.innerHTML = 'Kurumsal başvurunuz 1 iş günü içinde onaylanır — beklemeden denemek için <a href="app.html?sandbox=true" style="color:var(--acc);font-weight:700">canlı demoya gir →</a>';
       document.getElementById('fieldPlan').style.display = 'none';
     } else {
-      labelBrand.textContent = 'Akademi / Koçluk Adı *';
-      inputBrand.placeholder = 'Örn: Emin Koçluk, Başarı Akademi';
+      labelBrand.textContent = 'Akademi / Koçluk Adı (opsiyonel)';
+      inputBrand.placeholder = 'Boş bırakırsan adından türetilir — sonra değiştirebilirsin';
       labelCount.textContent = 'Kaç öğrenciniz var?';
       btn.textContent = 'Ücretsiz Hesap Oluştur →';
       if (fieldPass) fieldPass.style.display = 'block';
@@ -1975,8 +1975,24 @@ function selPlan(el,plan){
   el.classList.add('sel');selectedPlan=plan;
 }
 
-// SCROLL TO REGISTER
-function goReg(){window.location.href='/app.html';}
+// SCROLL TO REGISTER — seçilen paketi kayıt formuna taşır (önceden /app.html'e
+// (giriş ekranı) yönlendirip seçimi kaybediyordu)
+function goReg(plan){
+  selectRole('coach');
+  if(plan==='bireysel'||plan==='profesyonel'){
+    const pill=document.querySelector(`.plan-pill[onclick*="'${plan}'"]`);
+    if(pill) selPlan(pill,plan);
+  }
+  document.getElementById('register')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// pricing.html'den ?plan=bireysel|profesyonel ile gelindiyse formu aç
+(function(){
+  const p=new URLSearchParams(window.location.search).get('plan');
+  if(p==='bireysel'||p==='profesyonel'){
+    window.addEventListener('DOMContentLoaded',()=>goReg(p));
+  }
+})();
 
 // FORM SUBMIT
 async function submitReg(){
@@ -1990,7 +2006,7 @@ async function submitReg(){
   
   if(selectedRole === 'student') return;
   
-  if(!fn||!brand||!email){
+  if(!fn||!email||(selectedRole==='institution'&&!brand)){
     btn.style.background='#ff5c7a';btn.textContent='Zorunlu alanları doldurun!';
     setTimeout(()=>{btn.style.background='';btn.textContent=selectedRole==='institution'?'Kurumsal Başvuru Yap →':'Ücretsiz Hesap Oluştur →';},2500);
     return;

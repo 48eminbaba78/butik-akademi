@@ -153,8 +153,23 @@ async function checkCoachSubscription() {
 
 // plan durumuna göre blok ekranı / banner gösterir (trial → grace → inactive → pro)
 async function applySubscriptionState(plan, trialEndsAt, createdAt, coachId) {
+  // Ödeme bildirimi (dekont) zaten yüklenmiş mi? — hesap 'inactive' olsa bile
+  // koç parasını göndermişse tam kilit yerine yumuşak bir "inceleniyor" banner'ı
+  // göstermeliyiz; aksi halde koç ödeme yaptıktan SONRA da "askıya alındınız"
+  // görüp güven kaybediyor.
+  let hasPending = false;
+  if (coachId) {
+    const { data: pending } = await db.from('payments').select('id').eq('coach_id', coachId).eq('status', 'pending').limit(1).maybeSingle();
+    hasPending = !!pending;
+  }
+
   if (plan === 'inactive') {
-    showTrialExpiredScreen();
+    if (hasPending) {
+      document.getElementById('trialExpiredModal')?.classList.remove('open');
+      showSubscriptionBanner('grace', 0, true);
+    } else {
+      showTrialExpiredScreen();
+    }
     return;
   }
   // Engelleme gerektirmeyen bir duruma geçildiyse açık kalmış blok ekranını kapat
@@ -170,12 +185,6 @@ async function applySubscriptionState(plan, trialEndsAt, createdAt, coachId) {
     : (createdAt ? new Date(new Date(createdAt).getTime() + 7 * 24 * 60 * 60 * 1000) : null);
   if (!trialEnds) return;
   const now = new Date();
-
-  let hasPending = false;
-  if (coachId) {
-    const { data: pending } = await db.from('payments').select('id').eq('coach_id', coachId).eq('status', 'pending').limit(1).maybeSingle();
-    hasPending = !!pending;
-  }
 
   if (plan === 'grace') {
     const graceEnd = new Date(trialEnds.getTime() + 3 * 24 * 60 * 60 * 1000);
@@ -3554,6 +3563,11 @@ function showInviteInfo(name, email, inviteUrl, inviteToken){
     </div>
 
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="copyStudentInviteLink('${inviteUrl}')">📋 Bağlantıyı Kopyala</button>
+
+    <div style="background:var(--focus-purple-dim);border:1px solid var(--focus-purple);border-radius:12px;padding:14px 16px;margin-top:14px;text-align:center">
+      <div style="font-size:12px;color:var(--focus-purple);font-weight:700">💡 Sırada ne var?</div>
+      <div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5">${esc(name)} daveti kabul edip ilk giriş yaptığında Öğrencilerim listende görünecek — o an haftalık programını hazırlayıp panelde hazır bulmasını sağlayabilirsin.</div>
+    </div>
   </div>`;
   window._pendingInvite = { name, email, inviteUrl };
   om('inviteModal');
