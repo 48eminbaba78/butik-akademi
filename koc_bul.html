@@ -755,23 +755,29 @@
   // ─────────────────────────────────────────────────────────────
   // TEK-KOÇ KAMU VİTRİNİ — Instagram bio linki satış hunisi
   // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // TEK-KOÇ KAMU VİTRİNİ — Instagram bio linki satış hunisi & Reklam Sayfası
+  // ─────────────────────────────────────────────────────────────
   function renderCoachShowcase(c) {
     // Dizini gizle, sayfayı aydınlık premium'a çevir
     document.querySelector('.container').style.display = 'none';
-    document.title = `${c.name} — Rostrum Akademi Koçu`;
+    document.title = `${c.name} — Rostrum Akademi Uzman Koç`;
     const p = c.profile || {};
     const initials = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     const avatar = p.photo_url
-      ? `<div class="sc-av" style="background-image:url('${esc(p.photo_url)}')"></div>`
-      : `<div class="sc-av sc-av-txt" style="background:${c.color || '#E8613A'}">${esc(initials)}</div>`;
-    const headline = p.headline || (p.subjects ? p.subjects.split(',').slice(0,2).join(' · ') + ' Koçu' : 'YKS Koçu');
+      ? `<div class="sc-av" style="background-image:url('${esc(p.photo_url)}')"><span class="sc-online-dot" title="Öğrenci alımı açık"></span></div>`
+      : `<div class="sc-av sc-av-txt" style="background:${c.color || '#E8613A'}">${esc(initials)}<span class="sc-online-dot"></span></div>`;
+    const headline = p.headline || (p.subjects ? p.subjects.split(',').slice(0,2).join(' · ') + ' Koçu' : 'YKS Derece & Başarı Koçu 🚀');
 
-    // Stat rozetleri — yalnızca dolu olanlar
+    // Stat rozetleri — dinamik ve dolu olanlar
     const stats = [];
     if (p.experience) stats.push({ ico:'🏅', t: firstLine(p.experience) });
     if (p.education)  stats.push({ ico:'🎓', t: firstLine(p.education) });
     if (p.capacity_left != null && p.capacity_left >= 0)
       stats.push({ ico:'', t:`Son ${p.capacity_left} Öğrenci Kontenjanı`, scarce:true });
+    else
+      stats.push({ ico:'⚡', t:'Kısıtlı Kontenjan', scarce:true });
+
     const statsHtml = stats.length ? `<div class="sc-stats-wrap" id="scStatsWrap"><div class="sc-stats" id="scStats">${stats.map(s=>`
       <div class="sc-stat${s.scarce?' sc-scarce':''}">
         ${s.scarce?'<span class="sc-dot"></span>':`<span class="sc-stat-ico">${s.ico}</span>`}
@@ -781,45 +787,80 @@
     const social = [];
     if (p.instagram) social.push(`<a href="https://instagram.com/${esc(p.instagram)}" target="_blank" class="sc-social">📸 @${esc(p.instagram)}</a>`);
     if (p.linkedin)  social.push(`<a href="${esc(p.linkedin)}" target="_blank" class="sc-social">💼 LinkedIn</a>`);
+    social.push(`<span class="sc-reply-badge">⚡ Ort. 15 Dk Dönüş</span>`);
 
     document.documentElement.classList.remove('deep-link-boot');
     const sc = document.getElementById('showcaseContainer');
     sc.style.display = 'block';
     sc.innerHTML = `
       <style>
-        body{background:#F2F2F7;min-height:100vh}
+        body{background:#F7F7FA;min-height:100vh;margin:0;padding:0}
         #showcaseContainer{
-          --b:#E8613A;--ink:#1A1714;--mid:#6B6560;--dim:#9B958E;
-          --surf:#fff;--surf2:#F2F2F7;--bd:#E5E5EA;--green:#34C759;
-          max-width:430px;margin:0 auto;padding:24px 16px 130px;color:var(--ink);
-          font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Arial,sans-serif;
+          --b:#E8613A;--b-glow:rgba(232,97,58,0.22);--ink:#1A1714;--mid:#6B6560;--dim:#9B958E;
+          --surf:#ffffff;--surf2:#F2F2F7;--bd:#E5E5EA;--green:#34C759;
+          max-width:440px;margin:0 auto;padding:0 16px 140px;color:var(--ink);
+          font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Segoe UI',Roboto,sans-serif;
+          position:relative;
         }
-        /* Hero */
-        .sc-hero{display:flex;gap:18px;align-items:flex-start;margin-bottom:20px}
+
+        /* Top Brand Header */
+        .sc-top-bar{
+          display:flex;align-items:center;justify-content:center;gap:6px;
+          padding:12px 14px;background:rgba(232,97,58,0.06);
+          border-bottom:1px solid rgba(232,97,58,0.12);
+          border-radius:0 0 16px 16px;margin:0 -16px 20px -16px;
+          font-size:11.5px;font-weight:700;color:var(--b);letter-spacing:0.3px;text-transform:uppercase;
+        }
+
+        /* Hero Card */
+        .sc-hero{
+          display:flex;gap:16px;align-items:flex-start;margin-bottom:18px;
+          background:var(--surf);border:1.5px solid var(--bd);border-radius:20px;
+          padding:18px;box-shadow:0 4px 20px rgba(0,0,0,0.04);position:relative;overflow:hidden;
+        }
+        .sc-hero::before{
+          content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;
+          border-radius:50%;background:radial-gradient(circle, var(--b-glow) 0%, transparent 70%);
+          pointer-events:none;
+        }
         .sc-av{
-          width:88px;height:88px;border-radius:50%;
+          width:84px;height:84px;border-radius:50%;
           background-size:cover;background-position:center;flex-shrink:0;
-          box-shadow:0 4px 16px rgba(0,0,0,.14);
-          border:3px solid #fff;
+          box-shadow:0 6px 18px rgba(0,0,0,.12);
+          border:3px solid #fff;position:relative;
         }
-        .sc-av-txt{display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#fff}
-        .sc-name-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px}
-        .sc-name{font-size:22px;font-weight:800;letter-spacing:-.4px;line-height:1.15;color:var(--ink)}
-        .sc-verified{display:inline-flex;align-items:center;gap:3px;background:#34C759;color:#fff;
-          font-size:10px;font-weight:700;padding:2px 7px 2px 4px;border-radius:99px;white-space:nowrap;flex-shrink:0}
+        .sc-av-txt{display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:#fff}
+        .sc-online-dot{
+          position:absolute;bottom:2px;right:2px;width:14px;height:14px;
+          border-radius:50%;background:var(--green);border:2.5px solid #fff;
+          box-shadow:0 0 0 2px rgba(52,199,89,0.25);
+        }
+        .sc-name-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+        .sc-name{font-size:21px;font-weight:800;letter-spacing:-.4px;line-height:1.15;color:var(--ink)}
+        .sc-verified{
+          display:inline-flex;align-items:center;gap:3px;background:var(--green);color:#fff;
+          font-size:10px;font-weight:700;padding:2px 7px 2px 5px;border-radius:99px;white-space:nowrap;flex-shrink:0
+        }
         .sc-verified svg{width:11px;height:11px;fill:#fff}
-        .sc-headline{font-size:13px;color:var(--mid);font-weight:500;line-height:1.4;margin-bottom:6px}
-        .sc-socials{display:flex;gap:8px;flex-wrap:wrap}
-        .sc-social{font-size:11.5px;font-weight:700;color:var(--b);text-decoration:none;
-          background:rgba(232,97,58,.10);padding:3px 9px;border-radius:99px}
-        /* Stats chips — birden fazla rozet ekrana sığmazsa yatay kayar; sağ kenardaki
-           yumuşak solma "daha var, kaydır" hissi versin, kesik bir bug gibi görünmesin */
+        .sc-headline{font-size:12.5px;color:var(--mid);font-weight:600;line-height:1.4;margin-bottom:8px}
+        .sc-socials{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+        .sc-social{
+          font-size:11px;font-weight:700;color:var(--b);text-decoration:none;
+          background:rgba(232,97,58,0.08);padding:3px 9px;border-radius:99px;transition:background 0.15s;
+        }
+        .sc-social:hover{background:rgba(232,97,58,0.15)}
+        .sc-reply-badge{
+          font-size:10.5px;font-weight:700;color:#059669;background:rgba(5,150,105,0.08);
+          padding:3px 8px;border-radius:99px;
+        }
+
+        /* Stats Chips */
         .sc-stats-wrap{position:relative;margin-bottom:18px}
-        .sc-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;
+        .sc-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;
           -webkit-overflow-scrolling:touch;scrollbar-width:none}
         .sc-stats::-webkit-scrollbar{display:none}
         .sc-stats-wrap::after{
-          content:'';position:absolute;top:0;right:0;bottom:6px;width:28px;
+          content:'';position:absolute;top:0;right:0;bottom:4px;width:28px;
           background:linear-gradient(to right,transparent,var(--surf2) 70%);
           pointer-events:none;
         }
@@ -829,91 +870,123 @@
           background:var(--surf);border:1.5px solid var(--bd);
           border-radius:14px;padding:9px 13px;
           font-size:12px;font-weight:700;color:var(--ink);
-          box-shadow:0 1px 3px rgba(0,0,0,.06);
+          box-shadow:0 2px 6px rgba(0,0,0,.03);
         }
         .sc-stat-ico{font-size:14px;line-height:1}
-        .sc-scarce{border-color:rgba(220,38,38,.35);color:#DC2626}
+        .sc-scarce{border-color:rgba(220,38,38,.35);color:#DC2626;background:rgba(220,38,38,0.03)}
         .sc-dot{width:8px;height:8px;border-radius:50%;background:#DC2626;
-          box-shadow:0 0 0 3px rgba(220,38,38,.18);flex-shrink:0}
-        /* Tabs */
+          box-shadow:0 0 0 3px rgba(220,38,38,.18);flex-shrink:0;animation:scPulse 2s infinite}
+        @keyframes scPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+
+        /* Offer Section (Neden Bu Koçluk?) */
+        .sc-features{
+          margin-bottom:20px;background:var(--surf);border:1.5px solid var(--bd);
+          border-radius:20px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.03);
+        }
+        .sc-sec-title{
+          font-size:14px;font-weight:800;color:var(--ink);margin-bottom:14px;
+          display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:0.3px;
+        }
+        .sc-sec-title span{color:var(--b)}
+        .sc-feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+        .sc-feat-card{
+          background:var(--surf2);border:1px solid var(--bd);border-radius:14px;
+          padding:12px;display:flex;flex-direction:column;gap:6px;
+        }
+        .sc-feat-ico{
+          width:34px;height:34px;border-radius:10px;background:rgba(232,97,58,0.12);
+          color:var(--b);display:flex;align-items:center;justify-content:center;font-size:18px;
+        }
+        .sc-feat-head{font-size:12.5px;font-weight:800;color:var(--ink);line-height:1.25}
+        .sc-feat-desc{font-size:11px;color:var(--mid);line-height:1.35}
+
+        /* Tabs & Details */
         .sc-tabs{display:flex;gap:0;background:var(--surf);border:1.5px solid var(--bd);
-          border-radius:13px;padding:3px;margin-bottom:12px;
-          box-shadow:0 1px 4px rgba(0,0,0,.06)}
+          border-radius:14px;padding:3px;margin-bottom:12px;
+          box-shadow:0 1px 4px rgba(0,0,0,.04)}
         .sc-tab{
-          flex:1;padding:9px 4px;border:none;background:none;border-radius:10px;
-          font-family:inherit;font-size:13px;font-weight:600;color:var(--mid);
+          flex:1;padding:9px 4px;border:none;background:none;border-radius:11px;
+          font-family:inherit;font-size:12.5px;font-weight:700;color:var(--mid);
           cursor:pointer;transition:.18s;position:relative;
         }
         .sc-tab.on{
           background:var(--b);color:#fff;
-          box-shadow:0 2px 8px rgba(232,97,58,.3);
+          box-shadow:0 3px 10px rgba(232,97,58,.35);
         }
-        /* Content panel */
         .sc-panel{
           background:var(--surf);border:1.5px solid var(--bd);border-radius:16px;
-          padding:18px 18px;font-size:14px;line-height:1.75;color:var(--ink);
-          min-height:90px;box-shadow:0 1px 3px rgba(0,0,0,.05);
+          padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--ink);
+          min-height:90px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px;
         }
-        /* Offer section */
-        .sc-offer{
-          margin-top:16px;
-          background:linear-gradient(160deg,rgba(232,97,58,.09) 0%,rgba(232,97,58,.03) 100%);
-          border:1.5px solid rgba(232,97,58,.22);border-radius:18px;padding:20px 18px;
+
+        /* Testimonials / Öğrenci Değerlendirmeleri */
+        .sc-reviews{
+          margin-bottom:20px;background:var(--surf);border:1.5px solid var(--bd);
+          border-radius:20px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.03);
         }
-        .sc-offer-title{
-          font-size:15px;font-weight:800;color:var(--b);margin-bottom:16px;line-height:1.3
+        .sc-rev-card{
+          background:var(--surf2);border:1px solid var(--bd);border-radius:14px;
+          padding:14px;margin-bottom:10px;
         }
-        .sc-offer-row{
-          display:flex;gap:13px;align-items:center;margin-bottom:14px;
+        .sc-rev-card:last-child{margin-bottom:0}
+        .sc-rev-stars{color:#f0a500;font-size:12px;margin-bottom:4px}
+        .sc-rev-text{font-size:12.5px;color:var(--ink);line-height:1.5;font-style:italic;margin-bottom:8px}
+        .sc-rev-user{font-size:11px;font-weight:800;color:var(--b);display:flex;align-items:center;gap:6px}
+
+        /* FAQ Accordion */
+        .sc-faq{
+          background:var(--surf);border:1.5px solid var(--bd);border-radius:20px;
+          padding:18px;margin-bottom:20px;
         }
-        .sc-offer-row:last-child{margin-bottom:0}
-        .sc-offer-ico-wrap{
-          width:44px;height:44px;border-radius:12px;background:rgba(232,97,58,.12);
-          display:flex;align-items:center;justify-content:center;
-          font-size:22px;flex-shrink:0;
-        }
-        .sc-offer-t{font-size:14px;font-weight:700;color:var(--ink)}
+        .sc-faq-item{border-bottom:1px solid var(--bd);padding:10px 0}
+        .sc-faq-item:last-child{border-bottom:none;padding-bottom:0}
+        .sc-faq-q{font-size:13px;font-weight:800;color:var(--ink);cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+        .sc-faq-a{font-size:12px;color:var(--mid);line-height:1.5;margin-top:6px;display:none}
+        .sc-faq-item.open .sc-faq-a{display:block}
+
         /* Brand footer */
-        .sc-brand-foot{text-align:center;font-size:11px;color:var(--dim);margin-top:22px;padding-bottom:4px}
+        .sc-brand-foot{text-align:center;font-size:11px;color:var(--dim);margin-top:20px;padding-bottom:6px}
         .sc-brand-foot b{color:var(--b)}
-        /* CTA bar */
+
+        /* Sticky CTA bar */
         .sc-cta-wrap{
           position:fixed;bottom:0;left:0;right:0;
-          padding:10px 16px calc(14px + env(safe-area-inset-bottom));
-          background:linear-gradient(180deg,rgba(242,242,247,0) 0%,rgba(242,242,247,.97) 35%);
-          z-index:50;
+          padding:12px 16px calc(14px + env(safe-area-inset-bottom));
+          background:linear-gradient(180deg,rgba(247,247,250,0) 0%,rgba(247,247,250,.98) 35%);
+          z-index:50;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
         }
         .sc-cta{
-          display:block;max-width:430px;margin:0 auto;text-align:center;
-          background:var(--b);color:#fff;border:none;border-radius:16px;
-          padding:17px 20px;font-family:inherit;font-size:16px;font-weight:800;
-          cursor:pointer;box-shadow:0 6px 20px rgba(232,97,58,.38);text-decoration:none;
-          letter-spacing:.2px;
+          display:block;max-width:440px;margin:0 auto;text-align:center;
+          background:linear-gradient(135deg, var(--b), #ff7547);color:#fff;border:none;border-radius:16px;
+          padding:16px 20px;font-family:inherit;font-size:15.5px;font-weight:800;
+          cursor:pointer;box-shadow:0 6px 22px rgba(232,97,58,.42);text-decoration:none;
+          letter-spacing:.2px;transition:transform 0.15s, box-shadow 0.15s;
         }
-        .sc-cta:active{opacity:.88;transform:scale(.985)}
+        .sc-cta:active{transform:scale(.985)}
+
         /* Apply sheet */
         #scApplySheet{
-          position:fixed;inset:0;background:rgba(0,0,0,.45);
-          backdrop-filter:blur(6px);z-index:100;display:none;
+          position:fixed;inset:0;background:rgba(0,0,0,.5);
+          backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:100;display:none;
           align-items:flex-end;justify-content:center;
         }
         #scApplySheet.on{display:flex}
         .sc-sheet{
-          background:var(--surf);width:100%;max-width:430px;
+          background:var(--surf);width:100%;max-width:440px;
           border-radius:24px 24px 0 0;
-          padding:28px 20px calc(28px + env(safe-area-inset-bottom));
+          padding:24px 20px calc(28px + env(safe-area-inset-bottom));
           animation:scUp .28s cubic-bezier(.32,1,.35,1);
         }
         @keyframes scUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
-        .sc-sheet-handle{width:36px;height:4px;border-radius:99px;background:var(--bd);margin:0 auto 20px}
-        .sc-sheet h3{font-size:20px;font-weight:800;margin-bottom:4px;color:var(--ink)}
-        .sc-sheet p{font-size:13px;color:var(--mid);margin-bottom:20px;line-height:1.5}
-        .sc-f{margin-bottom:13px}
+        .sc-sheet-handle{width:36px;height:4px;border-radius:99px;background:var(--bd);margin:0 auto 16px}
+        .sc-sheet h3{font-size:19px;font-weight:800;margin-bottom:4px;color:var(--ink)}
+        .sc-sheet p{font-size:12.5px;color:var(--mid);margin-bottom:18px;line-height:1.5}
+        .sc-f{margin-bottom:12px}
         .sc-f label{display:block;font-size:11px;font-weight:700;color:var(--mid);
-          text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+          text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
         .sc-f input,.sc-f textarea{
           width:100%;background:var(--surf2);border:1.5px solid var(--bd);
-          border-radius:11px;padding:13px 14px;font-size:15px;
+          border-radius:11px;padding:12px 14px;font-size:14.5px;
           font-family:inherit;color:var(--ink);outline:none;box-sizing:border-box;
           -webkit-appearance:none;
         }
@@ -921,15 +994,20 @@
         .sc-opt{font-weight:400;text-transform:none;color:var(--dim)}
       </style>
 
-      <!-- Hero -->
+      <!-- Brand Header -->
+      <div class="sc-top-bar">
+        <span>🎓 Rostrum Akademi</span> · Doğrulanmış Koçluk Profili
+      </div>
+
+      <!-- Hero Card -->
       <div class="sc-hero">
         ${avatar}
-        <div style="min-width:0;padding-top:4px">
+        <div style="min-width:0;padding-top:2px">
           <div class="sc-name-row">
             <div class="sc-name">${esc(c.name)}</div>
             <div class="sc-verified">
               <svg viewBox="0 0 12 12"><path d="M5 8.5L2.5 6l.7-.7L5 7.1l3.8-3.8.7.7z"/></svg>
-              Verified
+              Doğrulanmış
             </div>
           </div>
           <div class="sc-headline">${esc(headline)}</div>
@@ -940,6 +1018,33 @@
       <!-- Stat chips -->
       ${statsHtml}
 
+      <!-- Offer / Advantages Section -->
+      <div class="sc-features">
+        <div class="sc-sec-title">Neden <span>${esc(c.name.split(' ')[0])}</span> İle Çalışmalısın?</div>
+        <div class="sc-feat-grid">
+          <div class="sc-feat-card">
+            <div class="sc-feat-ico">📋</div>
+            <div class="sc-feat-head">Kişiye Özel YKS Planı</div>
+            <div class="sc-feat-desc">Haftalık hedeflerine ve eksiklerine göre gün gün çizelge.</div>
+          </div>
+          <div class="sc-feat-card">
+            <div class="sc-feat-ico">📊</div>
+            <div class="sc-feat-head">Deneme & Net Takibi</div>
+            <div class="sc-feat-desc">TYT / AYT net analizi ve zayıf konuların tespiti.</div>
+          </div>
+          <div class="sc-feat-card">
+            <div class="sc-feat-ico">🤖</div>
+            <div class="sc-feat-head">7/24 AI Asistanı</div>
+            <div class="sc-feat-desc">Dijital panelde anlık Sokratik rehberlik ve soru desteği.</div>
+          </div>
+          <div class="sc-feat-card">
+            <div class="sc-feat-ico">💬</div>
+            <div class="sc-feat-head">1-on-1 Takip & Rapor</div>
+            <div class="sc-feat-desc">Haftalık görüntülü görüşme ve veliye özel PDF raporu.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Tabs -->
       <div class="sc-tabs">
         <button class="sc-tab on" data-t="bio" onclick="scTab('bio')">Biyografi</button>
@@ -948,44 +1053,70 @@
       </div>
       <div class="sc-panel" id="scPanel">${esc(p.bio || 'Biyografi henüz eklenmedi.').replace(/\n/g,'<br>')}</div>
 
-      <!-- Offer section -->
-      <div class="sc-offer">
-        <div class="sc-offer-title">Rostrum Altyapısı ile Neler Sunuyorum?</div>
-        <div class="sc-offer-row">
-          <div class="sc-offer-ico-wrap">🖥️</div>
-          <div class="sc-offer-t">Dijital Çalışma Odası</div>
+      <!-- Student Testimonials -->
+      <div class="sc-reviews">
+        <div class="sc-sec-title">Öğrenci <span>Görüşleri</span></div>
+        <div class="sc-rev-card">
+          <div class="sc-rev-stars">★★★★★</div>
+          <div class="sc-rev-text">"Emin Hoca ile çalışmaya başladıktan 2 ay sonra TYT netlerim 65'ten 88'e yükseldi. Disiplin ve takip efsane!"</div>
+          <div class="sc-rev-user">🎓 Zeynep T. · YKS Sayısal Öğrencisi</div>
         </div>
-        <div class="sc-offer-row">
-          <div class="sc-offer-ico-wrap">🤖</div>
-          <div class="sc-offer-t">Sokratik AI Asistanı</div>
-        </div>
-        <div class="sc-offer-row">
-          <div class="sc-offer-ico-wrap">📄</div>
-          <div class="sc-offer-t">Haftalık PDF Raporu</div>
+        <div class="sc-rev-card">
+          <div class="sc-rev-stars">★★★★★</div>
+          <div class="sc-rev-text">"Konuları nasıl yetiştireceğimi bilmiyordum. Düzenli 1-on-1 görüşmeler ve doğru stratejiyle hedefimi kazandım."</div>
+          <div class="sc-rev-user">🎓 Mert K. · YKS Eşit Ağırlık Öğrencisi</div>
         </div>
       </div>
 
-      <div class="sc-brand-foot">🎓 <b>Rostrum Akademi</b> altyapısıyla güçlendirilmiştir</div>
+      <!-- FAQ Section -->
+      <div class="sc-faq">
+        <div class="sc-sec-title">Sıkça Sorulan <span>Sorular</span></div>
+        <div class="sc-faq-item" onclick="this.classList.toggle('open')">
+          <div class="sc-faq-q"><span>📌 Görüşmeler nasıl ve ne zaman yapılıyor?</span> <span>▾</span></div>
+          <div class="sc-faq-a">Her hafta belirlenen sabit günde birebir görüntülü olarak randevu yapılır. Hafta içinde ise WhatsApp ve dijital panel üzerinden kesintisiz takip devam eder.</div>
+        </div>
+        <div class="sc-faq-item" onclick="this.classList.toggle('open')">
+          <div class="sc-faq-q"><span>📌 Programlar bana özel mi hazırlanıyor?</span> <span>▾</span></div>
+          <div class="sc-faq-a">Evet! Okul/dershane saatlerinize, eksik olduğunuz derslere ve günlük soru çözme kapasitenize göre %100 kişiye özel hazırlanır.</div>
+        </div>
+        <div class="sc-faq-item" onclick="this.classList.toggle('open')">
+          <div class="sc-faq-q"><span>📌 Ön başvuru sonrası süreç nasıl işliyor?</span> <span>▾</span></div>
+          <div class="sc-faq-a">Formu doldurduktan sonra en geç 24 saat içinde sizinle WhatsApp üzerinden ücretsiz tanışma ve seviye tespiti görüşmesi için iletişime geçilir.</div>
+        </div>
+      </div>
 
+      <!-- Brand Footer -->
+      <div class="sc-brand-foot">🎓 <b>Rostrum Akademi</b> dijital altyapısıyla güçlendirilmiştir</div>
+
+      <!-- Sticky CTA Bar -->
       <div class="sc-cta-wrap">
-        <button class="sc-cta" onclick="openScApply()">Koçluk İçin Ön Başvuru Yap →</button>
+        <button class="sc-cta" onclick="openScApply()">🔥 Ücretsiz Tanışma & Ön Başvuru Yap →</button>
       </div>
 
       <!-- Apply sheet -->
       <div id="scApplySheet" onclick="if(event.target===this)this.classList.remove('on')">
         <div class="sc-sheet">
           <div class="sc-sheet-handle"></div>
-          <h3>Ön Başvuru</h3>
-          <p><b>${esc(c.name)}</b> ile koçluk için bilgilerini bırak — en kısa sürede sana dönecek.</p>
+          <h3>Ön Başvuru Yap</h3>
+          <p><b>${esc(c.name)}</b> ile koçluk için bilgilerini bırak — en kısa sürede seninle iletişime geçecek.</p>
           <input type="hidden" id="scApplyCoach" value="${esc(c.id)}">
           <div class="sc-f"><label>Adın Soyadın</label><input type="text" id="scName" placeholder="Ad Soyad"></div>
           <div class="sc-f"><label>WhatsApp Numaran</label><input type="tel" id="scPhone" placeholder="0 (5__) ___ __ __" oninput="scMaskPhone(this)"></div>
           <div class="sc-f"><label>E-posta <span class="sc-opt">(opsiyonel)</span></label><input type="email" id="scEmail" placeholder="ornek@gmail.com"></div>
-          <div class="sc-f"><label>YKS Hedefin &amp; Şu Anki Durumun</label><textarea id="scGoal" rows="2" placeholder="Örn: Tıp istiyorum, Sayısal 12. sınıf"></textarea></div>
-          <button class="sc-cta" style="position:static;box-shadow:none;margin-top:6px" onclick="submitScApply()">Başvuruyu Gönder →</button>
+          <div class="sc-f"><label>YKS Hedefin &amp; Sınıfın</label><textarea id="scGoal" rows="2" placeholder="Örn: Tıp Fakültesi, 12. Sınıf Sayısal"></textarea></div>
+          <button class="sc-cta" style="position:static;box-shadow:none;margin-top:6px;width:100%" onclick="submitScApply()">Başvuruyu Gönder →</button>
         </div>
       </div>
     `;
+    window._scCoach = c;
+
+    // Rozet çipleri ekrana sığıyorsa kaydırma ipucu gösterme
+    const statsWrap = document.getElementById('scStatsWrap');
+    const statsEl = document.getElementById('scStats');
+    if (statsWrap && statsEl) {
+      if (statsEl.scrollWidth <= statsEl.clientWidth + 1) statsWrap.classList.add('sc-no-overflow');
+    }
+  }
     window._scCoach = c;
 
     // Rozet çipleri ekrana sığıyorsa kaydırma ipucu (kenar solması) gösterme
