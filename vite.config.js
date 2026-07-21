@@ -24,6 +24,11 @@ export default defineConfig({
         nasil_yapilir: resolve(__dirname, 'nasil-yapilir.html'),
         kayit: resolve(__dirname, 'kayit.html'),
         davet: resolve(__dirname, 'davet.html')
+      },
+      output: {
+        entryFileNames: `assets/[name]-[hash]-v7.js`,
+        chunkFileNames: `assets/[name]-[hash]-v7.js`,
+        assetFileNames: `assets/[name]-[hash].[ext]`
       }
     }
   }
