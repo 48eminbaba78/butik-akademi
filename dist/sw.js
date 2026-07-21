@@ -3,7 +3,7 @@
 // Push bildirimleri + Offline cache desteği
 // ═══════════════════════════════════════════════
 
-const CACHE_NAME = 'rostrum-v9';
+const CACHE_NAME = 'rostrum-v10';
 const OFFLINE_URL = '/app.html';
 
 // Uygulama kabuğu — bu dosyalar her zaman cache'lenir
@@ -18,7 +18,7 @@ const SHELL_FILES = [
 
 // ── INSTALL: Temel dosyaları cache'le ──
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install — cache oluşturuluyor v9');
+  console.log('[SW] Install — cache oluşturuluyor v10');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(SHELL_FILES).catch(err => {
@@ -31,7 +31,7 @@ self.addEventListener('install', (event) => {
 
 // ── ACTIVATE: Eski cache'leri temizle ──
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate — eski cache temizleniyor v9');
+  console.log('[SW] Activate — eski cache temizleniyor v10');
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(

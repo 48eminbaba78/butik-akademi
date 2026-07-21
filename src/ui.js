@@ -8968,6 +8968,7 @@ window.selectStudioBlock = function(blockId) {
       }
     }
   }
+  updateProfilePreview();
 };
 
 
@@ -9421,6 +9422,7 @@ function updateProfilePreview() {
     ${bodyHtml}
   `;
 }
+window.updateProfilePreview = updateProfilePreview;
 
 function switchPreviewTab(tab) {
   _activePreviewTab = tab;
