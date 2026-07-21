@@ -8796,14 +8796,14 @@ async function renderCoachProfile() {
           </div>
 
           <!-- Mini Telefon Çerçevesi -->
-          <div id="phoneMockupFrame" style="width: 100%; max-width: 360px; height: 680px; border-radius: 36px; border: 8px solid #1c1c1e; background: #F7F7FA; overflow-y: auto; overflow-x: hidden; position: relative; box-shadow: 0 16px 48px rgba(0,0,0,0.22); -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+          <div id="phoneMockupFrame" style="width: 100%; max-width: 360px; height: 680px; border-radius: 36px; border: 8px solid #1c1c1e; background: #09090B; overflow-y: auto; overflow-x: hidden; position: relative; box-shadow: 0 16px 48px rgba(0,0,0,0.4); -webkit-overflow-scrolling: touch; scrollbar-width: none;">
             <!-- Çentik (Dynamic Island) -->
-            <div style="position:sticky; top:0; left:0; right:0; z-index:30; background:#F7F7FA; padding:8px 0 4px; display:flex; justify-content:center; align-items:center;">
+            <div style="position:sticky; top:0; left:0; right:0; z-index:30; background:#09090B; padding:8px 0 4px; display:flex; justify-content:center; align-items:center;">
               <div style="width:70px; height:18px; background:#1c1c1e; border-radius:12px;"></div>
             </div>
 
             <!-- Canlı Yükleme Alanı -->
-            <div id="liveShowcasePreview" style="padding: 0 12px 60px 12px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1A1714;">
+            <div id="liveShowcasePreview" style="padding: 0 12px 60px 12px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #FAFAFA;">
               <!-- updateProfilePreview burayı canlı günceller -->
             </div>
           </div>
@@ -9199,9 +9199,9 @@ function updateProfilePreview() {
         <div style="min-width:0; flex:1;">
           <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
             <b style="font-size:14px; font-weight:800; color:#FAFAFA;">${esc(name)}</b>
-            <span style="font-size:8.5px; background:#10B981; color:#fff; font-weight:800; padding:1px 5px; border-radius:99px;">✓ Onaylı</span>
+            <span style="font-size:8.5px; background:#10B981; color:#fff; font-weight:800; padding:1px 5px; border-radius:99px;">${esc(archetypeBadge || '✓ Onaylı')}</span>
           </div>
-          <div style="font-size:10.5px; color:#A1A1AA; margin-top:2px; line-height:1.3;">${esc(headText)}</div>
+          <div style="font-size:10.5px; color:#A1A1AA; margin-top:2px; line-height:1.3;">${esc(subHeadline)}</div>
           <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
             ${instagram ? `<span style="font-size:9px; color:#F06236; background:rgba(240,98,54,0.12); padding:2px 6px; border-radius:99px; font-weight:700;">📸 @${esc(instagram)}</span>` : ''}
             ${whatsapp_number ? `<span style="font-size:9px; color:#10B981; background:rgba(16,185,129,0.12); padding:2px 6px; border-radius:99px; font-weight:700;">💬 WhatsApp Aktif</span>` : ''}
