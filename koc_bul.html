@@ -772,11 +772,11 @@
     if (p.education)  stats.push({ ico:'🎓', t: firstLine(p.education) });
     if (p.capacity_left != null && p.capacity_left >= 0)
       stats.push({ ico:'', t:`Son ${p.capacity_left} Öğrenci Kontenjanı`, scarce:true });
-    const statsHtml = stats.length ? `<div class="sc-stats">${stats.map(s=>`
+    const statsHtml = stats.length ? `<div class="sc-stats-wrap" id="scStatsWrap"><div class="sc-stats" id="scStats">${stats.map(s=>`
       <div class="sc-stat${s.scarce?' sc-scarce':''}">
         ${s.scarce?'<span class="sc-dot"></span>':`<span class="sc-stat-ico">${s.ico}</span>`}
         <span>${esc(s.t)}</span>
-      </div>`).join('')}</div>` : '';
+      </div>`).join('')}</div></div>` : '';
 
     const social = [];
     if (p.instagram) social.push(`<a href="https://instagram.com/${esc(p.instagram)}" target="_blank" class="sc-social">📸 @${esc(p.instagram)}</a>`);
@@ -812,10 +812,18 @@
         .sc-socials{display:flex;gap:8px;flex-wrap:wrap}
         .sc-social{font-size:11.5px;font-weight:700;color:var(--b);text-decoration:none;
           background:rgba(232,97,58,.10);padding:3px 9px;border-radius:99px}
-        /* Stats chips */
-        .sc-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:18px;
+        /* Stats chips — birden fazla rozet ekrana sığmazsa yatay kayar; sağ kenardaki
+           yumuşak solma "daha var, kaydır" hissi versin, kesik bir bug gibi görünmesin */
+        .sc-stats-wrap{position:relative;margin-bottom:18px}
+        .sc-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;
           -webkit-overflow-scrolling:touch;scrollbar-width:none}
         .sc-stats::-webkit-scrollbar{display:none}
+        .sc-stats-wrap::after{
+          content:'';position:absolute;top:0;right:0;bottom:6px;width:28px;
+          background:linear-gradient(to right,transparent,var(--surf2) 70%);
+          pointer-events:none;
+        }
+        .sc-stats-wrap.sc-no-overflow::after{display:none}
         .sc-stat{
           flex-shrink:0;display:flex;align-items:center;gap:6px;
           background:var(--surf);border:1.5px solid var(--bd);
@@ -979,9 +987,19 @@
       </div>
     `;
     window._scCoach = c;
+
+    // Rozet çipleri ekrana sığıyorsa kaydırma ipucu (kenar solması) gösterme
+    const statsWrap = document.getElementById('scStatsWrap');
+    const statsEl = document.getElementById('scStats');
+    if (statsWrap && statsEl) {
+      if (statsEl.scrollWidth <= statsEl.clientWidth + 1) statsWrap.classList.add('sc-no-overflow');
+    }
   }
 
-  function firstLine(s){ return String(s||'').split('\n')[0].trim().slice(0,42); }
+  function firstLine(s){
+    const line = String(s||'').split('\n')[0].trim();
+    return line.length > 42 ? line.slice(0,41).trim() + '…' : line;
+  }
   function scTab(t){
     const p = window._scCoach?.profile || {};
     const map = { bio: p.bio||'Biyografi henüz eklenmedi.', edu: p.education||'Eğitim bilgisi eklenmedi.', exp: p.experience||'Deneyim bilgisi eklenmedi.' };
