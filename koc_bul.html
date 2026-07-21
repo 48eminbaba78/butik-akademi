@@ -768,8 +768,32 @@
     const p = c.profile || {};
     const initials = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-    // Sektör Bağımsız Ünvan / Slogan
-    const headline = p.headline || (p.subjects ? p.subjects.split(',').slice(0, 2).join(' · ') : 'Profesyonel Danışmanlık & Koçluk 🚀');
+    // YKS Özel Alanları & Otomatik Adaptif Hiyerarşi Engine
+    const yksRank = p.yks_rank || '';
+    const university = p.university || '';
+    const department = p.department || '';
+    const profession = p.profession || '';
+    const expYears = p.experience_years || '';
+    const institution = p.institution || '';
+
+    // Otomatik Koç Tipi Tespiti ve Üst Rozet Önceliklendirme
+    let archetypeBadge = '';
+    let subHeadline = '';
+
+    if (yksRank || university || department) {
+      // Öğrenci Koçu Hiyerarşisi
+      archetypeBadge = yksRank ? `🏆 YKS ${yksRank}` : (university ? `🎓 ${university}` : '🎓 YKS Derece Koçu');
+      const uniText = [university, department].filter(Boolean).join(' · ');
+      subHeadline = uniText || p.headline || (p.subjects ? p.subjects.split(',').slice(0, 2).join(' · ') + ' Koçu' : 'YKS Derece & Başarı Koçu 🚀');
+    } else if (profession || expYears || institution) {
+      // Profesyonel Eğitim Koçu Hiyerarşisi
+      archetypeBadge = profession ? `💼 ${profession}` : (expYears ? `🏅 ${expYears} Deneyim` : '💼 Uzman Eğitim Koçu');
+      const proText = [institution, expYears ? `${expYears} Deneyim` : ''].filter(Boolean).join(' · ');
+      subHeadline = proText || p.headline || (p.subjects ? p.subjects.split(',').slice(0, 2).join(' · ') + ' Rehberlik' : 'Eğitim & PDR Danışmanı 🚀');
+    } else {
+      archetypeBadge = '🎓 YKS Uzman Koç';
+      subHeadline = p.headline || (p.subjects ? p.subjects.split(',').slice(0, 2).join(' · ') + ' Koçu' : 'YKS Başarı & Rehberlik Koçu 🚀');
+    }
 
     // Standart / Özelleştirilmiş Modüler Bloklar
     const defaultBlocks = [
@@ -785,11 +809,13 @@
 
     // Stat Rozetleri (Dinamik & Dolu Olanlar)
     const stats = [];
-    if (p.pricing_text) stats.push({ ico: '🏷️', t: p.pricing_text, highlight: true });
-    if (p.experience) stats.push({ ico: '🏅', t: firstLine(p.experience) });
-    if (p.education) stats.push({ ico: '🎓', t: firstLine(p.education) });
+    if (yksRank) stats.push({ ico: '🏆', t: `YKS Derecesi: ${yksRank}`, highlight: true });
+    if (profession) stats.push({ ico: '💼', t: profession, highlight: true });
+    if (university) stats.push({ ico: '🎓', t: university });
+    if (expYears) stats.push({ ico: '🏅', t: `${expYears} Deneyim` });
+    if (p.pricing_text) stats.push({ ico: '🏷️', t: p.pricing_text });
     if (p.capacity_left != null && p.capacity_left >= 0)
-      stats.push({ ico: '', t: `Son ${p.capacity_left} Danışan Kontenjanı`, scarce: true });
+      stats.push({ ico: '', t: `Son ${p.capacity_left} Kontenjan`, scarce: true });
     else
       stats.push({ ico: '⚡', t: 'Kontenjan Kısıtlı', scarce: true });
 
@@ -822,10 +848,10 @@
               <div class="sc-name">${esc(c.name)}</div>
               <div class="sc-verified">
                 <svg viewBox="0 0 12 12"><path d="M5 8.5L2.5 6l.7-.7L5 7.1l3.8-3.8.7.7z"/></svg>
-                Doğrulanmış
+                ${esc(archetypeBadge)}
               </div>
             </div>
-            <div class="sc-headline">${esc(headline)}</div>
+            <div class="sc-headline">${esc(subHeadline)}</div>
             <div class="sc-socials">${social.join('')}</div>
           </div>
         </div>`,

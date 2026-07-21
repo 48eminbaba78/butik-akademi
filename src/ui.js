@@ -8564,6 +8564,12 @@ async function renderCoachProfile() {
   const reviews = Array.isArray(profile?.reviews) ? profile.reviews : [];
   const faq = Array.isArray(profile?.faq) ? profile.faq : [];
   const blocks = profile?.blocks || [];
+  const yks_rank = profile?.yks_rank || '';
+  const university = profile?.university || '';
+  const department = profile?.department || '';
+  const profession = profile?.profession || '';
+  const experience_years = profile?.experience_years || '';
+  const institution = profile?.institution || '';
   _cpSavedSlug = slug;
 
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -8669,15 +8675,38 @@ async function renderCoachProfile() {
               </div>
             </div>
 
-            <!-- Eğitim ve Deneyim -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <!-- YKS Özel Başarı & Profesyonel Alanlar -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
               <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Eğitim Bilgisi</label>
-                <textarea id="cpEducation" oninput="updateProfilePreview()" placeholder="Örn: Boğaziçi Üniversitesi - Rehberlik ve Psikolojik Danışmanlık" style="width:100%; min-height:90px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(education)}</textarea>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">YKS Derecesi <span style="font-weight:400; color:var(--text-dim)">(Öğrenci Koçları için)</span></label>
+                <input type="text" id="cpYksRank" value="${esc(yks_rank)}" placeholder="Örn: Sayısal 412.si, EA 850.si" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
               </div>
               <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Deneyim / Başarılar</label>
-                <textarea id="cpExperience" oninput="updateProfilePreview()" placeholder="Örn: 5+ Yıl YKS Koçluk Deneyimi, Derece Öğrencileri" style="width:100%; min-height:90px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(experience)}</textarea>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Üniversite &amp; Bölüm</label>
+                <input type="text" id="cpUniversity" value="${esc(university)}" placeholder="Örn: Hacettepe Üniversitesi - Tıp Fakültesi" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Meslek / Unvan <span style="font-weight:400; color:var(--text-dim)">(Profesyonel Koçlar)</span></label>
+                <input type="text" id="cpProfession" value="${esc(profession)}" placeholder="Örn: PDR Uzmanı, Rehber Öğretmen" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Deneyim Yılı &amp; Kurum</label>
+                <input type="text" id="cpExpYears" value="${esc(experience_years)}" placeholder="Örn: 8 Yıl Okul &amp; Kurs Rehberliği" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+              </div>
+            </div>
+
+            <!-- Eğitim ve Deneyim Detayları -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Eğitim Detayları</label>
+                <textarea id="cpEducation" oninput="updateProfilePreview()" placeholder="Eğitim geçmişin ve akademik bilgilerin..." style="width:100%; min-height:80px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(education)}</textarea>
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Deneyim &amp; Sertifikalar</label>
+                <textarea id="cpExperience" oninput="updateProfilePreview()" placeholder="Koçluk deneyimlerin, başarıların ve sertifikaların..." style="width:100%; min-height:80px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(experience)}</textarea>
               </div>
             </div>
           </div>
@@ -9101,13 +9130,31 @@ function updateProfilePreview() {
     ? `<div style="width:68px;height:68px;border-radius:50%;background:url('${esc(photoUrl)}') center/cover;flex-shrink:0;border:2px solid rgba(255,255,255,0.2);position:relative;"><span style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:#10B981;border:2px solid #09090B;"></span></div>`
     : `<div style="width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#F06236,#FF7547);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0;border:2px solid rgba(255,255,255,0.2);position:relative;">${esc(initials)}<span style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:#10B981;border:2px solid #09090B;"></span></div>`;
 
-  const headText = headline || (subjects ? subjects.split(',').slice(0, 2).join(' · ') : 'Profesyonel Danışmanlık & Koçluk 🚀');
+  const yksRank = document.getElementById('cpYksRank')?.value.trim() || '';
+  const university = document.getElementById('cpUniversity')?.value.trim() || '';
+  const profession = document.getElementById('cpProfession')?.value.trim() || '';
+  const expYears = document.getElementById('cpExpYears')?.value.trim() || '';
+
+  let archetypeBadge = '';
+  let subHeadline = '';
+
+  if (yksRank || university) {
+    archetypeBadge = yksRank ? `🏆 YKS ${yksRank}` : `🎓 ${university || 'YKS Derece Koçu'}`;
+    subHeadline = university || headline || 'YKS Derece & Başarı Koçu 🚀';
+  } else if (profession || expYears) {
+    archetypeBadge = profession ? `💼 ${profession}` : `🏅 ${expYears} Deneyim`;
+    subHeadline = expYears || headline || 'Eğitim & PDR Danışmanı 🚀';
+  } else {
+    archetypeBadge = '🎓 YKS Uzman Koç';
+    subHeadline = headline || 'YKS Başarı & Rehberlik Koçu 🚀';
+  }
 
   // Stat Rozetleri
   const stats = [];
-  if (pricing_text) stats.push({ ico: '🏷️', t: pricing_text, hl: true });
-  if (experience) stats.push({ ico: '🏅', t: experience.split('\n')[0].slice(0, 26) });
-  if (education) stats.push({ ico: '🎓', t: education.split('\n')[0].slice(0, 26) });
+  if (yksRank) stats.push({ ico: '🏆', t: `YKS: ${yksRank}`, hl: true });
+  if (profession) stats.push({ ico: '💼', t: profession, hl: true });
+  if (university) stats.push({ ico: '🎓', t: university.slice(0, 24) });
+  if (pricing_text) stats.push({ ico: '🏷️', t: pricing_text });
   if (capacity_left !== '') stats.push({ ico: '⚡', t: `Son ${capacity_left} Kontenjan`, scarce: true });
 
   const statsHtml = stats.map(s => `
@@ -9281,13 +9328,13 @@ window.renderCoachBlocksManager = function(blocks) {
   if (!container) return;
 
   const defaultList = [
-    { id: 'hero', name: 'Profil & Slogan', enabled: true },
-    { id: 'stats', name: 'Özellik & Stat Rozetleri', enabled: true },
+    { id: 'hero', name: 'Profil & YKS Ünvan (Hero)', enabled: true },
+    { id: 'stats', name: 'YKS Başarı & Stat Çipleri', enabled: true },
     { id: 'value_props', name: 'Neden Benimle Çalışmalısın?', enabled: true },
-    { id: 'tabs_about', name: 'Biyografi, Eğitim & Deneyim', enabled: true },
-    { id: 'reviews', name: 'Danışan / Öğrenci Görüşleri', enabled: true },
+    { id: 'tabs_about', name: 'Biyografi, Eğitim & Derece', enabled: true },
+    { id: 'reviews', name: 'Öğrenci & Veli Yorumları', enabled: true },
     { id: 'faq', name: 'Sıkça Sorulan Sorular (SSS)', enabled: true },
-    { id: 'sticky_cta', name: 'Başvuru & WhatsApp Barı', enabled: true }
+    { id: 'sticky_cta', name: 'Sabit Başvuru & WhatsApp Barı', enabled: true }
   ];
 
   const current = Array.isArray(blocks) && blocks.length ? blocks : defaultList;
@@ -9298,17 +9345,20 @@ window.renderCoachBlocksManager = function(blocks) {
     div.className = 'cp-block-row';
     div.dataset.id = b.id;
     div.dataset.name = b.name || defaultList.find(d => d.id === b.id)?.name || b.id;
-    div.style.cssText = 'background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; font-size:12.5px;';
+    div.style.cssText = 'background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between; font-size:13px; transition:all 0.15s;';
     div.innerHTML = `
-      <div style="display:flex; align-items:center; gap:10px;">
-        <label style="display:inline-flex; align-items:center; gap:6px; font-weight:700; cursor:pointer; color:var(--text);">
-          <input type="checkbox" class="cp-block-toggle" ${b.enabled !== false ? 'checked' : ''} onchange="updateProfilePreview()">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="color:var(--text-dim); cursor:grab; font-size:15px;" title="Sıralama Tutamağı">☰</span>
+        <label style="display:inline-flex; align-items:center; gap:8px; font-weight:700; cursor:pointer; color:var(--text);">
+          <input type="checkbox" class="cp-block-toggle" ${b.enabled !== false ? 'checked' : ''} onchange="updateProfilePreview()" style="accent-color:var(--accent);">
           ${esc(div.dataset.name)}
         </label>
       </div>
-      <div style="display:flex; gap:4px;">
-        <button type="button" class="btn btn-ghost btn-xs" onclick="moveCoachBlock('${b.id}', -1)" ${idx === 0 ? 'disabled' : ''} style="padding:2px 6px;">▲</button>
-        <button type="button" class="btn btn-ghost btn-xs" onclick="moveCoachBlock('${b.id}', 1)" ${idx === current.length - 1 ? 'disabled' : ''} style="padding:2px 6px;">▼</button>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <button type="button" class="btn btn-ghost btn-xs" onclick="moveCoachBlock('${b.id}', -1)" ${idx === 0 ? 'disabled' : ''} style="padding:4px 8px; font-size:11px;" title="Yukarı Taşı">▲</button>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="moveCoachBlock('${b.id}', 1)" ${idx === current.length - 1 ? 'disabled' : ''} style="padding:4px 8px; font-size:11px;" title="Aşağı Taşı">▼</button>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="duplicateCoachBlock('${b.id}')" style="padding:4px 8px; font-size:11px;" title="Kopyala">📋</button>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="deleteCoachBlock('${b.id}')" style="padding:4px 8px; font-size:11px; color:var(--red);" title="Kaldır">🗑️</button>
       </div>
     `;
     container.appendChild(div);
@@ -9332,6 +9382,28 @@ window.moveCoachBlock = function(id, dir) {
   updateProfilePreview();
 };
 
+window.duplicateCoachBlock = function(id) {
+  const container = document.getElementById('cpBlocksContainer');
+  if (!container) return;
+  const target = container.querySelector(`.cp-block-row[data-id="${id}"]`);
+  if (!target) return;
+  const clone = target.cloneNode(true);
+  const newId = id + '_copy_' + Date.now().toString().slice(-4);
+  clone.dataset.id = newId;
+  target.after(clone);
+  updateProfilePreview();
+};
+
+window.deleteCoachBlock = function(id) {
+  const container = document.getElementById('cpBlocksContainer');
+  if (!container) return;
+  const target = container.querySelector(`.cp-block-row[data-id="${id}"]`);
+  if (target) {
+    target.remove();
+    updateProfilePreview();
+  }
+};
+
 async function saveCoachProfile() {
   const userId = session.dbUser.id;
   const bio = document.getElementById('cpBio').value.trim();
@@ -9347,6 +9419,10 @@ async function saveCoachProfile() {
   const capacity_left = capRaw === '' ? null : Math.max(0, Math.min(999, parseInt(capRaw) || 0));
   const whatsapp_number = (document.getElementById('cpWhatsapp')?.value || '').trim();
   const pricing_text = (document.getElementById('cpPricingText')?.value || '').trim();
+  const yks_rank = (document.getElementById('cpYksRank')?.value || '').trim();
+  const university = (document.getElementById('cpUniversity')?.value || '').trim();
+  const profession = (document.getElementById('cpProfession')?.value || '').trim();
+  const experience_years = (document.getElementById('cpExpYears')?.value || '').trim();
 
   const reviews = Array.from(document.querySelectorAll('#cpReviewsContainer .cp-review-item')).map(el => ({
     name: el.querySelector('.cpr-name')?.value.trim() || '',
@@ -9371,8 +9447,8 @@ async function saveCoachProfile() {
   if (!photo_url) return _cpShowErr('Profil fotoğrafı zorunlu — velilerin en çok baktığı güven sinyali.');
   if (!subjects) return _cpShowErr('En az bir uzmanlık etiketi seç.');
   if (bio.length < 30) return _cpShowErr('Biyografi en az 30 karakter olmalı — "AI ile Oluştur" butonunu kullanabilirsin.');
-  if (!education) return _cpShowErr('Eğitim bilgini gir (örn: Muğla Sıtkı Koçman Üniversitesi - Tıp Fakültesi).');
-  if (!experience) return _cpShowErr('Deneyim/başarı bilgini gir (örn: YKS 2025 Sayısal 9.805.lik).');
+  if (!education) return _cpShowErr('Eğitim bilgini gir (örn: Boğaziçi Üniversitesi - Psikolojik Danışmanlık veya Hacettepe Tıp).');
+  if (!experience) return _cpShowErr('Deneyim/başarı bilgini gir (örn: YKS 2025 Sayısal 412.si veya 8 Yıl PDR Uzmanı).');
   if (slug && slug.length < 3) return _cpShowErr('Profil linki en az 3 karakter olmalı.');
   if (slug && !_cpSlugOk) return _cpShowErr('Bu profil linki alınmış — başka bir tane dene.');
 
@@ -9388,6 +9464,10 @@ async function saveCoachProfile() {
     reviews,
     faq,
     blocks,
+    yks_rank: yks_rank || null,
+    university: university || null,
+    profession: profession || null,
+    experience_years: experience_years || null,
     updated_at: new Date().toISOString()
   };
 
@@ -9396,8 +9476,8 @@ async function saveCoachProfile() {
 
   let { error } = await db.from('coach_profiles').upsert(payload);
   if (error && /column/i.test(error.message||'')) {
-    // migration_v26/v27/v33/v34 çalıştırılmamış — yeni opsiyonel alanları çıkarıp kaydet
-    const { slug: _s, headline: _h, capacity_left: _c, whatsapp_number: _w, pricing_text: _p, reviews: _r, faq: _f, blocks: _b, ...legacy } = payload;
+    // migration çalıştırılmamış — yeni opsiyonel alanları çıkarıp kaydet
+    const { slug: _s, headline: _h, capacity_left: _c, whatsapp_number: _w, pricing_text: _p, reviews: _r, faq: _f, blocks: _b, yks_rank: _yr, university: _u, profession: _pr, experience_years: _ey, ...legacy } = payload;
     ({ error } = await db.from('coach_profiles').upsert(legacy));
     if (!error) showToast('Profil kaydedildi (Vitrin alanları yerel olarak güncellendi)', true);
   }
