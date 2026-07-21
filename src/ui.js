@@ -9279,6 +9279,7 @@ function updateProfilePreview() {
   const yksRank = p.yks_rank || '';
   const university = p.university || '';
   const profession = p.profession || '';
+  const expYears = p.experience_years || '';
   const name = session.dbUser?.full_name || 'Koç İsmi';
   const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
