@@ -790,18 +790,11 @@
     if (p.linkedin)  social.push(`<a href="${esc(p.linkedin)}" target="_blank" class="sc-social">💼 LinkedIn</a>`);
     social.push(`<span class="sc-reply-badge">⚡ Ort. 15 Dk Dönüş</span>`);
 
-    // Dynamic Reviews vs Fallback
-    const customReviews = Array.isArray(p.reviews) && p.reviews.length ? p.reviews : [
-      { name: 'Zeynep T.', role: 'YKS Sayısal Öğrencisi', text: 'Emin Hoca ile çalışmaya başladıktan 2 ay sonra TYT netlerim 65\'ten 88\'e yükseldi. Disiplin ve takip efsane!', stars: 5 },
-      { name: 'Mert K.', role: 'YKS Eşit Ağırlık Öğrencisi', text: 'Konuları nasıl yetiştireceğimi bilmiyordum. Düzenli 1-on-1 görüşmeler ve doğru stratejiyle hedefimi kazandım.', stars: 5 }
-    ];
+    // Dynamic Reviews (No dummy fallback)
+    const customReviews = Array.isArray(p.reviews) ? p.reviews.filter(r => r && (r.name || r.text)) : [];
 
-    // Dynamic FAQ vs Fallback
-    const customFaqs = Array.isArray(p.faq) && p.faq.length ? p.faq : [
-      { q: '📌 Görüşmeler nasıl ve ne zaman yapılıyor?', a: 'Her hafta belirlenen sabit günde birebir görüntülü olarak randevu yapılır. Hafta içinde ise WhatsApp ve dijital panel üzerinden kesintisiz takip devam eder.' },
-      { q: '📌 Programlar bana özel mi hazırlanıyor?', a: 'Evet! Okul/dershane saatlerinize, eksik olduğunuz derslere ve günlük soru çözme kapasitenize göre %100 kişiye özel hazırlanır.' },
-      { q: '📌 Ön başvuru sonrası süreç nasıl işliyor?', a: 'Formu doldurduktan sonra en geç 24 saat içinde sizinle WhatsApp üzerinden ücretsiz tanışma ve seviye tespiti görüşmesi için iletişime geçilir.' }
-    ];
+    // Dynamic FAQ (No dummy fallback)
+    const customFaqs = Array.isArray(p.faq) ? p.faq.filter(f => f && f.q && f.a) : [];
 
     document.documentElement.classList.remove('deep-link-boot');
     const sc = document.getElementById('showcaseContainer');
@@ -1058,28 +1051,32 @@
       </div>
       <div class="sc-panel" id="scPanel">${esc(p.bio || 'Biyografi henüz eklenmedi.').replace(/\n/g,'<br>')}</div>
 
-      <!-- Student Testimonials -->
-      <div class="sc-reviews">
-        <div class="sc-sec-title">Öğrenci <span>Görüşleri</span></div>
-        ${customReviews.map(r => `
-          <div class="sc-rev-card">
-            <div class="sc-rev-stars">${'★'.repeat(r.stars || 5)}</div>
-            <div class="sc-rev-text">"${esc(r.text)}"</div>
-            <div class="sc-rev-user">🎓 ${esc(r.name)}${r.role ? ` · ${esc(r.role)}` : ''}</div>
-          </div>
-        `).join('')}
-      </div>
+      <!-- Student Testimonials (Only if coach added reviews) -->
+      ${customReviews.length ? `
+        <div class="sc-reviews">
+          <div class="sc-sec-title">Öğrenci <span>Görüşleri</span></div>
+          ${customReviews.map(r => `
+            <div class="sc-rev-card">
+              <div class="sc-rev-stars">${'★'.repeat(r.stars || 5)}</div>
+              <div class="sc-rev-text">"${esc(r.text)}"</div>
+              <div class="sc-rev-user">🎓 ${esc(r.name)}${r.role ? ` · ${esc(r.role)}` : ''}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
 
-      <!-- FAQ Section -->
-      <div class="sc-faq">
-        <div class="sc-sec-title">Sıkça Sorulan <span>Sorular</span></div>
-        ${customFaqs.map(f => `
-          <div class="sc-faq-item" onclick="this.classList.toggle('open')">
-            <div class="sc-faq-q"><span>${esc(f.q)}</span> <span>▾</span></div>
-            <div class="sc-faq-a">${esc(f.a)}</div>
-          </div>
-        `).join('')}
-      </div>
+      <!-- FAQ Section (Only if coach added FAQs) -->
+      ${customFaqs.length ? `
+        <div class="sc-faq">
+          <div class="sc-sec-title">Sıkça Sorulan <span>Sorular</span></div>
+          ${customFaqs.map(f => `
+            <div class="sc-faq-item" onclick="this.classList.toggle('open')">
+              <div class="sc-faq-q"><span>${esc(f.q)}</span> <span>▾</span></div>
+              <div class="sc-faq-a">${esc(f.a)}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
 
       <!-- Brand Footer -->
       <div class="sc-brand-foot">🎓 <b>Rostrum Akademi</b> dijital altyapısıyla güçlendirilmiştir</div>

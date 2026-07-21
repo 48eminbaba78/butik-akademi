@@ -8718,11 +8718,11 @@ async function renderCoachProfile() {
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
               <div>
                 <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">WhatsApp Numarası <span style="font-weight:400; color:var(--text-dim)">(Anında mesaj için)</span></label>
-                <input type="tel" id="cpWhatsapp" value="${esc(whatsapp_number)}" placeholder="0 (5__) ___ __ __" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+                <input type="tel" id="cpWhatsapp" value="${esc(whatsapp_number)}" placeholder="0 (5__) ___ __ __" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
               </div>
               <div>
                 <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Paket / Fiyat Bilgisi <span style="font-weight:400; color:var(--text-dim)">(Opsiyonel)</span></label>
-                <input type="text" id="cpPricingText" value="${esc(pricing_text)}" placeholder="Örn: 1.500 ₺ / Ay (Boşsa gizlenir)" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+                <input type="text" id="cpPricingText" value="${esc(pricing_text)}" placeholder="Örn: 1.500 ₺ / Ay (Boşsa gizlenir)" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
               </div>
             </div>
 
@@ -8739,7 +8739,10 @@ async function renderCoachProfile() {
             <div>
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <label style="font-size:11px; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.5px;">Özel Sıkça Sorulan Sorular (SSS)</label>
-                <button type="button" class="btn btn-ghost btn-xs" onclick="addCoachFaqItem()" style="padding:4px 8px; font-size:11.5px;">+ Soru Ekle</button>
+                <div style="display:flex; gap:6px;">
+                  <button type="button" id="cpAiFaqBtn" class="btn btn-ghost btn-xs" onclick="generateCoachFaq()" style="gap:5px; padding:4px 8px; font-size:11.5px;">🤖 AI ile SSS Üret</button>
+                  <button type="button" class="btn btn-ghost btn-xs" onclick="addCoachFaqItem()" style="padding:4px 8px; font-size:11.5px;">+ Soru Ekle</button>
+                </div>
               </div>
               <div id="cpFaqContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
             </div>
@@ -8749,28 +8752,24 @@ async function renderCoachProfile() {
           <button class="btn btn-accent" style="width:100%; padding:14px; font-size:14.5px; font-weight:800; justify-content:center; border-radius:10px;" onclick="saveCoachProfile()">Profili Kaydet ✓</button>
         </div>
         
-        <!-- Sağ Sütun: Ekrana Sabitlenmiş Canlı Önizleme -->
+        <!-- Sağ Sütun: Ekrana Sabitlenmiş Canlı Önizleme (Birebir Reklam Sayfası) -->
         <div class="coach-preview-column" style="position: sticky; top: 24px; z-index: 10;">
-          <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; text-align: center;">CANLI ÖNİZLEME</div>
-          <div class="profile-preview-card" style="box-shadow: 0 10px 30px rgba(0,0,0,0.15); border:1px solid var(--border);">
-            <div class="preview-card-header">
-              <div class="preview-avatar" id="prevAvatar"></div>
-              <div class="preview-header-info">
-                <div class="preview-name" id="prevName">${esc(session.dbUser?.full_name || 'Koç')}</div>
-                <div class="preview-role">Mentör & Koç</div>
-                <div class="preview-socials" id="prevSocials"></div>
-              </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px;">📱 REKLAM SAYFASI BİREBİR ÖNİZLEME</div>
+            <span style="font-size:10px; font-weight:700; color:var(--accent); background:var(--accent-dim); padding:2px 8px; border-radius:99px;">CANLI GÜNCEL</span>
+          </div>
+
+          <!-- Mini Telefon Çerçevesi -->
+          <div id="phoneMockupFrame" style="width: 100%; max-width: 360px; height: 680px; border-radius: 36px; border: 8px solid #1c1c1e; background: #F7F7FA; overflow-y: auto; overflow-x: hidden; position: relative; box-shadow: 0 16px 48px rgba(0,0,0,0.22); -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+            <!-- Çentik (Dynamic Island) -->
+            <div style="position:sticky; top:0; left:0; right:0; z-index:30; background:#F7F7FA; padding:8px 0 4px; display:flex; justify-content:center; align-items:center;">
+              <div style="width:70px; height:18px; background:#1c1c1e; border-radius:12px;"></div>
             </div>
-            
-            <div class="preview-subjects-wrap" id="prevSubjects"></div>
-            
-            <div class="preview-tabs">
-              <button class="prev-tab-btn active" id="btn-prev-bio" onclick="switchPreviewTab('bio')">Biyografi</button>
-              <button class="prev-tab-btn" id="btn-prev-edu" onclick="switchPreviewTab('edu')">Eğitim</button>
-              <button class="prev-tab-btn" id="btn-prev-exp" onclick="switchPreviewTab('exp')">Deneyim</button>
+
+            <!-- Canlı Yükleme Alanı -->
+            <div id="liveShowcasePreview" style="padding: 0 12px 60px 12px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1A1714;">
+              <!-- updateProfilePreview burayı canlı günceller -->
             </div>
-            
-            <div class="preview-tab-content" id="prevTabContent"></div>
           </div>
         </div>
 
@@ -9026,7 +9025,53 @@ function _cpShowErr(msg){
 
 let _activePreviewTab = 'bio';
 
+async function generateCoachFaq() {
+  const btn = document.getElementById('cpAiFaqBtn');
+  const name = session.dbUser?.full_name || 'Koç';
+  const subjects = document.getElementById('cpSubjects')?.value || '';
+  const bio = document.getElementById('cpBio')?.value || '';
+  const education = document.getElementById('cpEducation')?.value || '';
+  const experience = document.getElementById('cpExperience')?.value || '';
+  
+  if (btn) { btn.disabled = true; btn.textContent = '🤖 Üretiliyor…'; }
+  try {
+    const res = await fetch('/api/ai-chat', {
+      method: 'POST',
+      headers: await aiAuthHeaders(),
+      body: JSON.stringify({
+        userRole: 'coach',
+        messages: [{ role: 'user', content:
+`Koç Bul sayfamdaki kamuya açık profilim için potansiyel öğrenci ve velilerin sorabileceği 3 adet sıkça sorulan soru (SSS) ve cevabını oluştur.
+Bilgilerim — İsim: ${name}. Uzmanlık: ${subjects || 'YKS Koçluğu'}. Eğitim: ${education || '-'}. Deneyim: ${experience || '-'}.
+Kurallar: Yalnızca geçerli bir JSON array döndür: [{"q": "Soru...", "a": "Cevap..."}, {"q": "Soru...", "a": "Cevap..."}, {"q": "Soru...", "a": "Cevap..."}]. Başka hiçbir metin veya markdown tırnağı yazma.` }]
+      })
+    });
+    const d = await res.json();
+    if (!res.ok || !d.reply) throw new Error(d.error || 'Yanıt alınamadı');
+    let raw = d.reply.trim().replace(/```json|```/g, '').trim();
+    let faqs = [];
+    try { faqs = JSON.parse(raw); } catch(e) {}
+    if (Array.isArray(faqs) && faqs.length) {
+      const container = document.getElementById('cpFaqContainer');
+      if (container) container.innerHTML = '';
+      faqs.forEach(f => {
+        if (f && f.q && f.a) addCoachFaqItem(f.q, f.a);
+      });
+      updateProfilePreview();
+      showToast('3 Adet SSS başarıyla oluşturuldu ✓');
+    } else {
+      throw new Error('Geçerli SSS yanıtı alınamadı.');
+    }
+  } catch(e) {
+    _cpShowErr('AI SSS üretilemedi: ' + (e.message||e));
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '🤖 AI ile SSS Üret'; }
+}
+
 function updateProfilePreview() {
+  const container = document.getElementById('liveShowcasePreview');
+  if (!container) return;
+
   const photoUrl = document.getElementById('cpPhotoUrl')?.value.trim() || '';
   const subjects = document.getElementById('cpSubjects')?.value.trim() || '';
   const bio = document.getElementById('cpBio')?.value.trim() || '';
@@ -9034,65 +9079,121 @@ function updateProfilePreview() {
   const experience = document.getElementById('cpExperience')?.value.trim() || '';
   const instagram = document.getElementById('cpInstagram')?.value.trim() || '';
   const linkedin = document.getElementById('cpLinkedin')?.value.trim() || '';
-  const name = session.dbUser?.full_name || 'Koç';
+  const headline = document.getElementById('cpHeadline')?.value.trim() || '';
+  const capacity_left = document.getElementById('cpCapacity')?.value.trim() || '';
+  const pricing_text = document.getElementById('cpPricingText')?.value.trim() || '';
+  const whatsapp_number = document.getElementById('cpWhatsapp')?.value.trim() || '';
 
-  // Avatar
-  const prevAv = document.getElementById('prevAvatar');
-  if (prevAv) {
-    if (photoUrl) {
-      prevAv.style.backgroundImage = `url('${photoUrl}')`;
-      prevAv.style.backgroundColor = 'transparent';
-      prevAv.innerHTML = '';
-    } else {
-      prevAv.style.backgroundImage = '';
-      prevAv.style.backgroundColor = 'var(--accent-dim)';
-      const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-      prevAv.innerHTML = initials || '?';
-    }
-  }
+  const name = session.dbUser?.full_name || 'Koç İsmi';
+  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-  // Socials
-  const prevSocials = document.getElementById('prevSocials');
-  if (prevSocials) {
-    let socialHtml = '';
-    if (instagram) {
-      socialHtml += `<a href="https://instagram.com/${instagram}" target="_blank" class="preview-social-link" title="Instagram">📸 @${instagram}</a>`;
-    }
-    if (linkedin) {
-      let displayLnk = 'LinkedIn';
-      if (linkedin.includes('/in/')) {
-        const parts = linkedin.split('/in/');
-        displayLnk = 'in/' + parts[1].split('/')[0];
-      }
-      socialHtml += `<a href="${linkedin}" target="_blank" class="preview-social-link" title="LinkedIn">💼 ${displayLnk}</a>`;
-    }
-    prevSocials.innerHTML = socialHtml;
-  }
+  const avatar = photoUrl
+    ? `<div style="width:72px;height:72px;border-radius:50%;background:url('${esc(photoUrl)}') center/cover;flex-shrink:0;border:2.5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.1);position:relative;"><span style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:#34C759;border:2px solid #fff;"></span></div>`
+    : `<div style="width:72px;height:72px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;flex-shrink:0;border:2.5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.1);position:relative;">${esc(initials)}<span style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:#34C759;border:2px solid #fff;"></span></div>`;
 
-  // Subjects
-  const prevSub = document.getElementById('prevSubjects');
-  if (prevSub) {
-    if (subjects) {
-      const list = subjects.split(',').map(s => s.trim()).filter(Boolean);
-      prevSub.innerHTML = list.map(s => `<span class="preview-tag">${esc(s)}</span>`).join('');
-    } else {
-      prevSub.innerHTML = `<span class="preview-tag" style="background:none; border:1px dashed var(--border); color:var(--text-dim)">Ders / Uzmanlık Belirtilmedi</span>`;
-    }
-  }
+  const headText = headline || (subjects ? subjects.split(',').slice(0, 2).join(' · ') + ' Koçu' : 'YKS Koçu');
 
-  // Tab content
-  const tabContent = document.getElementById('prevTabContent');
-  if (tabContent) {
-    let text = '';
-    if (_activePreviewTab === 'bio') {
-      text = bio || 'Biyografi bilgisi henüz girilmedi.';
-    } else if (_activePreviewTab === 'edu') {
-      text = education || 'Eğitim bilgisi henüz girilmedi.';
-    } else if (_activePreviewTab === 'exp') {
-      text = experience || 'Deneyim/başarılar henüz girilmedi.';
-    }
-    tabContent.innerHTML = nl2br(esc(text));
-  }
+  // Stats
+  const stats = [];
+  if (pricing_text) stats.push({ ico: '🏷️', t: pricing_text, hl: true });
+  if (experience) stats.push({ ico: '🏅', t: experience.split('\n')[0].slice(0, 30) });
+  if (education) stats.push({ ico: '🎓', t: education.split('\n')[0].slice(0, 30) });
+  if (capacity_left !== '') stats.push({ ico: '⚡', t: `Son ${capacity_left} Kontenjan`, scarce: true });
+
+  const statsHtml = stats.map(s => `
+    <div style="flex-shrink:0; display:inline-flex; align-items:center; gap:4px; background:${s.hl ? 'rgba(232,97,58,0.1)' : s.scarce ? 'rgba(220,38,38,0.06)' : '#fff'}; border:1px solid ${s.hl ? 'rgba(232,97,58,0.3)' : s.scarce ? 'rgba(220,38,38,0.3)' : '#E5E5EA'}; border-radius:10px; padding:5px 9px; font-size:10.5px; font-weight:700; color:${s.scarce ? '#DC2626' : s.hl ? 'var(--accent)' : '#1A1714'};">
+      <span>${s.ico}</span>
+      <span>${esc(s.t)}</span>
+    </div>
+  `).join('');
+
+  // Collect live reviews
+  const reviews = Array.from(document.querySelectorAll('#cpReviewsContainer .cp-review-item')).map(el => ({
+    name: el.querySelector('.cpr-name')?.value.trim() || '',
+    role: el.querySelector('.cpr-role')?.value.trim() || '',
+    text: el.querySelector('.cpr-text')?.value.trim() || ''
+  })).filter(r => r.name || r.text);
+
+  // Collect live faqs
+  const faqs = Array.from(document.querySelectorAll('#cpFaqContainer .cp-faq-item')).map(el => ({
+    q: el.querySelector('.cpf-q')?.value.trim() || '',
+    a: el.querySelector('.cpf-a')?.value.trim() || ''
+  })).filter(f => f.q && f.a);
+
+  container.innerHTML = `
+    <!-- Top Header -->
+    <div style="font-size:9px; font-weight:700; color:var(--accent); text-align:center; padding:6px 0; background:rgba(232,97,58,0.06); border-radius:0 0 10px 10px; margin-bottom:12px; text-transform:uppercase;">
+      🎓 Rostrum Akademi · Doğrulanmış Koç
+    </div>
+
+    <!-- Hero Card -->
+    <div style="display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid #E5E5EA; border-radius:14px; padding:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+      ${avatar}
+      <div style="min-width:0; flex:1;">
+        <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+          <b style="font-size:15px; font-weight:800; color:#1A1714;">${esc(name)}</b>
+          <span style="font-size:9px; background:#34C759; color:#fff; font-weight:700; padding:1px 5px; border-radius:99px;">✓ Onaylı</span>
+        </div>
+        <div style="font-size:11px; color:#6B6560; margin-top:2px; line-height:1.3;">${esc(headText)}</div>
+        <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
+          ${instagram ? `<span style="font-size:9.5px; color:var(--accent); background:rgba(232,97,58,0.08); padding:2px 6px; border-radius:99px; font-weight:700;">📸 @${esc(instagram)}</span>` : ''}
+          ${whatsapp_number ? `<span style="font-size:9.5px; color:#059669; background:rgba(5,150,105,0.08); padding:2px 6px; border-radius:99px; font-weight:700;">💬 WhatsApp Aktif</span>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    ${statsHtml ? `<div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:12px; padding-bottom:2px;">${statsHtml}</div>` : ''}
+
+    <!-- Tab Section -->
+    <div style="background:#fff; border:1px solid #E5E5EA; border-radius:12px; padding:12px; margin-bottom:12px; font-size:11.5px; line-height:1.5;">
+      <b style="font-size:10px; text-transform:uppercase; color:var(--accent); letter-spacing:0.3px; display:block; margin-bottom:4px;">Biyografi & Vizyon</b>
+      <div style="color:#1A1714;">${esc(bio || 'Biyografi henüz girilmedi.').replace(/\n/g, '<br>')}</div>
+    </div>
+
+    <!-- Features Section -->
+    <div style="background:#fff; border:1px solid #E5E5EA; border-radius:12px; padding:12px; margin-bottom:12px;">
+      <b style="font-size:11px; font-weight:800; display:block; margin-bottom:8px;">Neden ${esc(name.split(' ')[0])}?</b>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+        <div style="background:#F2F2F7; border-radius:8px; padding:6px; font-size:10px;">📋 <b>Kişiye Özel YKS Planı</b></div>
+        <div style="background:#F2F2F7; border-radius:8px; padding:6px; font-size:10px;">📊 <b>Net & Konu Takibi</b></div>
+        <div style="background:#F2F2F7; border-radius:8px; padding:6px; font-size:10px;">🤖 <b>7/24 AI Asistanı</b></div>
+        <div style="background:#F2F2F7; border-radius:8px; padding:6px; font-size:10px;">💬 <b>1-on-1 Görüşme</b></div>
+      </div>
+    </div>
+
+    <!-- Live Reviews -->
+    ${reviews.length ? `
+      <div style="background:#fff; border:1px solid #E5E5EA; border-radius:12px; padding:12px; margin-bottom:12px;">
+        <b style="font-size:11px; font-weight:800; display:block; margin-bottom:8px;">Öğrenci Görüşleri</b>
+        ${reviews.map(r => `
+          <div style="background:#F2F2F7; border-radius:8px; padding:8px; margin-bottom:6px; font-size:10.5px;">
+            <div style="color:#f0a500; font-size:9px;">★★★★★</div>
+            <div style="font-style:italic; margin:2px 0;">"${esc(r.text)}"</div>
+            <div style="font-weight:700; color:var(--accent); font-size:9.5px;">🎓 ${esc(r.name)} ${r.role ? `· ${esc(r.role)}` : ''}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+
+    <!-- Live FAQs -->
+    ${faqs.length ? `
+      <div style="background:#fff; border:1px solid #E5E5EA; border-radius:12px; padding:12px; margin-bottom:12px;">
+        <b style="font-size:11px; font-weight:800; display:block; margin-bottom:8px;">Sıkça Sorulan Sorular</b>
+        ${faqs.map(f => `
+          <div style="border-bottom:1px solid #E5E5EA; padding:4px 0; font-size:10.5px;">
+            <b style="color:#1A1714; display:block;">📌 ${esc(f.q)}</b>
+            <div style="color:#6B6560; font-size:10px; margin-top:2px;">${esc(f.a)}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+
+    <!-- CTA Button -->
+    <div style="background:linear-gradient(135deg, var(--accent), #ff7547); color:#fff; font-weight:800; font-size:12px; text-align:center; padding:10px; border-radius:10px; box-shadow:0 4px 12px rgba(232,97,58,0.3);">
+      🔥 Ücretsiz Tanışma & Ön Başvuru Yap →
+    </div>
+  `;
 }
 
 function switchPreviewTab(tab) {
@@ -9120,14 +9221,15 @@ window.addCoachReviewItem = function(name = '', role = '', text = '', stars = 5)
   div.className = 'cp-review-item';
   div.style.cssText = 'background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px; position:relative;';
   div.innerHTML = `
-    <button type="button" onclick="this.parentElement.remove()" style="position:absolute; top:8px; right:8px; background:none; border:none; color:var(--red); font-size:14px; cursor:pointer;" title="Sil">✕</button>
+    <button type="button" onclick="this.parentElement.remove(); updateProfilePreview();" style="position:absolute; top:8px; right:8px; background:none; border:none; color:var(--red); font-size:14px; cursor:pointer;" title="Sil">✕</button>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-      <input type="text" class="cpr-name" placeholder="Öğrenci Adı (Örn: Zeynep T.)" value="${esc(name)}" style="background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text);">
-      <input type="text" class="cpr-role" placeholder="Profil (Örn: YKS Sayısal)" value="${esc(role)}" style="background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text);">
+      <input type="text" class="cpr-name" placeholder="Öğrenci Adı (Örn: Zeynep T.)" value="${esc(name)}" oninput="updateProfilePreview()" style="background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text);">
+      <input type="text" class="cpr-role" placeholder="Profil (Örn: YKS Sayısal)" value="${esc(role)}" oninput="updateProfilePreview()" style="background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text);">
     </div>
-    <textarea class="cpr-text" placeholder="Öğrencinin yorumu ve başarı hikayesi..." style="width:100%; min-height:48px; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text); resize:vertical;">${esc(text)}</textarea>
+    <textarea class="cpr-text" placeholder="Öğrencinin yorumu ve başarı hikayesi..." oninput="updateProfilePreview()" style="width:100%; min-height:48px; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text); resize:vertical;">${esc(text)}</textarea>
   `;
   container.appendChild(div);
+  updateProfilePreview();
 };
 
 window.addCoachFaqItem = function(q = '', a = '') {
@@ -9137,11 +9239,12 @@ window.addCoachFaqItem = function(q = '', a = '') {
   div.className = 'cp-faq-item';
   div.style.cssText = 'background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:6px; position:relative;';
   div.innerHTML = `
-    <button type="button" onclick="this.parentElement.remove()" style="position:absolute; top:8px; right:8px; background:none; border:none; color:var(--red); font-size:14px; cursor:pointer;" title="Sil">✕</button>
-    <input type="text" class="cpf-q" placeholder="Soru (Örn: Görüşmeler nasıl yapılıyor?)" value="${esc(q)}" style="background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text); font-weight:700;">
-    <textarea class="cpf-a" placeholder="Cevap açıklaması..." style="width:100%; min-height:48px; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text); resize:vertical;">${esc(a)}</textarea>
+    <button type="button" onclick="this.parentElement.remove(); updateProfilePreview();" style="position:absolute; top:8px; right:8px; background:none; border:none; color:var(--red); font-size:14px; cursor:pointer;" title="Sil">✕</button>
+    <input type="text" class="cpf-q" placeholder="Soru (Örn: Görüşmeler nasıl yapılıyor?)" value="${esc(q)}" oninput="updateProfilePreview()" style="background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text); font-weight:700;">
+    <textarea class="cpf-a" placeholder="Cevap açıklaması..." oninput="updateProfilePreview()" style="width:100%; min-height:48px; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text); resize:vertical;">${esc(a)}</textarea>
   `;
   container.appendChild(div);
+  updateProfilePreview();
 };
 
 async function saveCoachProfile() {
