@@ -3,7 +3,7 @@
 // Push bildirimleri + Offline cache desteği
 // ═══════════════════════════════════════════════
 
-const CACHE_NAME = 'rostrum-v6';
+const CACHE_NAME = 'rostrum-v7';
 const OFFLINE_URL = '/app.html';
 
 // Uygulama kabuğu — bu dosyalar her zaman cache'lenir
@@ -18,7 +18,7 @@ const SHELL_FILES = [
 
 // ── INSTALL: Temel dosyaları cache'le ──
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install — cache oluşturuluyor v6');
+  console.log('[SW] Install — cache oluşturuluyor v7');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(SHELL_FILES).catch(err => {
@@ -31,7 +31,7 @@ self.addEventListener('install', (event) => {
 
 // ── ACTIVATE: Eski cache'leri temizle ──
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate — eski cache temizleniyor v5');
+  console.log('[SW] Activate — eski cache temizleniyor v7');
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
@@ -44,6 +44,8 @@ self.addEventListener('activate', (event) => {
 
 // ── FETCH: Network-first stratejisi ──
 self.addEventListener('fetch', (event) => {
+  // Chrome extensions & non-http/https isteklerini filtrele
+  if (!event.request.url.startsWith('http://') && !event.request.url.startsWith('https://')) return;
   // API isteklerini cache'leme
   if (event.request.url.includes('/api/')) return;
   // POST isteklerini cache'leme
@@ -56,7 +58,7 @@ self.addEventListener('fetch', (event) => {
         if (response.status === 200) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
+            cache.put(event.request, responseClone).catch(() => {});
           });
         }
         return response;
