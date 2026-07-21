@@ -6,8 +6,8 @@ import './state.js';
 import './config.js';
 import './helpers.js';
 import './api.js';
-import './auth.js';
 import './ui.js';
+import './auth.js';
 
 // Başlangıç mantığı (Oturum öncesi yüklemeler)
 if (window.loadTheme) window.loadTheme();

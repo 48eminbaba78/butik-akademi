@@ -556,7 +556,11 @@ export async function finishLogin(rows) {
         session.childName = child.full_name || child.username;
       }
     }
-    window.setupShell();
+    if (typeof window.setupShell === 'function') {
+      window.setupShell();
+    } else {
+      setTimeout(() => { if (typeof window.setupShell === 'function') window.setupShell(); }, 50);
+    }
 
     // Google Calendar OAuth callback — detect ?code=...&state=google_calendar after consent redirect
     const _urlParams = new URLSearchParams(window.location.search);
