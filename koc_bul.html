@@ -771,6 +771,7 @@
 
     // Stat rozetleri — dinamik ve dolu olanlar
     const stats = [];
+    if (p.pricing_text) stats.push({ ico:'🏷️', t: p.pricing_text, highlight:true });
     if (p.experience) stats.push({ ico:'🏅', t: firstLine(p.experience) });
     if (p.education)  stats.push({ ico:'🎓', t: firstLine(p.education) });
     if (p.capacity_left != null && p.capacity_left >= 0)
@@ -779,7 +780,7 @@
       stats.push({ ico:'⚡', t:'Kısıtlı Kontenjan', scarce:true });
 
     const statsHtml = stats.length ? `<div class="sc-stats-wrap" id="scStatsWrap"><div class="sc-stats" id="scStats">${stats.map(s=>`
-      <div class="sc-stat${s.scarce?' sc-scarce':''}">
+      <div class="sc-stat${s.scarce?' sc-scarce':''}${s.highlight?' sc-highlight':''}">
         ${s.scarce?'<span class="sc-dot"></span>':`<span class="sc-stat-ico">${s.ico}</span>`}
         <span>${esc(s.t)}</span>
       </div>`).join('')}</div></div>` : '';
@@ -788,6 +789,19 @@
     if (p.instagram) social.push(`<a href="https://instagram.com/${esc(p.instagram)}" target="_blank" class="sc-social">📸 @${esc(p.instagram)}</a>`);
     if (p.linkedin)  social.push(`<a href="${esc(p.linkedin)}" target="_blank" class="sc-social">💼 LinkedIn</a>`);
     social.push(`<span class="sc-reply-badge">⚡ Ort. 15 Dk Dönüş</span>`);
+
+    // Dynamic Reviews vs Fallback
+    const customReviews = Array.isArray(p.reviews) && p.reviews.length ? p.reviews : [
+      { name: 'Zeynep T.', role: 'YKS Sayısal Öğrencisi', text: 'Emin Hoca ile çalışmaya başladıktan 2 ay sonra TYT netlerim 65\'ten 88\'e yükseldi. Disiplin ve takip efsane!', stars: 5 },
+      { name: 'Mert K.', role: 'YKS Eşit Ağırlık Öğrencisi', text: 'Konuları nasıl yetiştireceğimi bilmiyordum. Düzenli 1-on-1 görüşmeler ve doğru stratejiyle hedefimi kazandım.', stars: 5 }
+    ];
+
+    // Dynamic FAQ vs Fallback
+    const customFaqs = Array.isArray(p.faq) && p.faq.length ? p.faq : [
+      { q: '📌 Görüşmeler nasıl ve ne zaman yapılıyor?', a: 'Her hafta belirlenen sabit günde birebir görüntülü olarak randevu yapılır. Hafta içinde ise WhatsApp ve dijital panel üzerinden kesintisiz takip devam eder.' },
+      { q: '📌 Programlar bana özel mi hazırlanıyor?', a: 'Evet! Okul/dershane saatlerinize, eksik olduğunuz derslere ve günlük soru çözme kapasitenize göre %100 kişiye özel hazırlanır.' },
+      { q: '📌 Ön başvuru sonrası süreç nasıl işliyor?', a: 'Formu doldurduktan sonra en geç 24 saat içinde sizinle WhatsApp üzerinden ücretsiz tanışma ve seviye tespiti görüşmesi için iletişime geçilir.' }
+    ];
 
     document.documentElement.classList.remove('deep-link-boot');
     const sc = document.getElementById('showcaseContainer');
@@ -803,7 +817,6 @@
           position:relative;
         }
 
-        /* Top Brand Header */
         .sc-top-bar{
           display:flex;align-items:center;justify-content:center;gap:6px;
           padding:12px 14px;background:rgba(232,97,58,0.06);
@@ -812,7 +825,6 @@
           font-size:11.5px;font-weight:700;color:var(--b);letter-spacing:0.3px;text-transform:uppercase;
         }
 
-        /* Hero Card */
         .sc-hero{
           display:flex;gap:16px;align-items:flex-start;margin-bottom:18px;
           background:var(--surf);border:1.5px solid var(--bd);border-radius:20px;
@@ -854,7 +866,6 @@
           padding:3px 8px;border-radius:99px;
         }
 
-        /* Stats Chips */
         .sc-stats-wrap{position:relative;margin-bottom:18px}
         .sc-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;
           -webkit-overflow-scrolling:touch;scrollbar-width:none}
@@ -872,13 +883,13 @@
           font-size:12px;font-weight:700;color:var(--ink);
           box-shadow:0 2px 6px rgba(0,0,0,.03);
         }
+        .sc-highlight{background:rgba(232,97,58,0.08);border-color:rgba(232,97,58,0.3);color:var(--b)}
         .sc-stat-ico{font-size:14px;line-height:1}
         .sc-scarce{border-color:rgba(220,38,38,.35);color:#DC2626;background:rgba(220,38,38,0.03)}
         .sc-dot{width:8px;height:8px;border-radius:50%;background:#DC2626;
           box-shadow:0 0 0 3px rgba(220,38,38,.18);flex-shrink:0;animation:scPulse 2s infinite}
         @keyframes scPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
 
-        /* Offer Section (Neden Bu Koçluk?) */
         .sc-features{
           margin-bottom:20px;background:var(--surf);border:1.5px solid var(--bd);
           border-radius:20px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.03);
@@ -900,7 +911,6 @@
         .sc-feat-head{font-size:12.5px;font-weight:800;color:var(--ink);line-height:1.25}
         .sc-feat-desc{font-size:11px;color:var(--mid);line-height:1.35}
 
-        /* Tabs & Details */
         .sc-tabs{display:flex;gap:0;background:var(--surf);border:1.5px solid var(--bd);
           border-radius:14px;padding:3px;margin-bottom:12px;
           box-shadow:0 1px 4px rgba(0,0,0,.04)}
@@ -919,7 +929,6 @@
           min-height:90px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px;
         }
 
-        /* Testimonials / Öğrenci Değerlendirmeleri */
         .sc-reviews{
           margin-bottom:20px;background:var(--surf);border:1.5px solid var(--bd);
           border-radius:20px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.03);
@@ -933,7 +942,6 @@
         .sc-rev-text{font-size:12.5px;color:var(--ink);line-height:1.5;font-style:italic;margin-bottom:8px}
         .sc-rev-user{font-size:11px;font-weight:800;color:var(--b);display:flex;align-items:center;gap:6px}
 
-        /* FAQ Accordion */
         .sc-faq{
           background:var(--surf);border:1.5px solid var(--bd);border-radius:20px;
           padding:18px;margin-bottom:20px;
@@ -944,11 +952,9 @@
         .sc-faq-a{font-size:12px;color:var(--mid);line-height:1.5;margin-top:6px;display:none}
         .sc-faq-item.open .sc-faq-a{display:block}
 
-        /* Brand footer */
         .sc-brand-foot{text-align:center;font-size:11px;color:var(--dim);margin-top:20px;padding-bottom:6px}
         .sc-brand-foot b{color:var(--b)}
 
-        /* Sticky CTA bar */
         .sc-cta-wrap{
           position:fixed;bottom:0;left:0;right:0;
           padding:12px 16px calc(14px + env(safe-area-inset-bottom));
@@ -964,7 +970,6 @@
         }
         .sc-cta:active{transform:scale(.985)}
 
-        /* Apply sheet */
         #scApplySheet{
           position:fixed;inset:0;background:rgba(0,0,0,.5);
           backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:100;display:none;
@@ -1056,33 +1061,24 @@
       <!-- Student Testimonials -->
       <div class="sc-reviews">
         <div class="sc-sec-title">Öğrenci <span>Görüşleri</span></div>
-        <div class="sc-rev-card">
-          <div class="sc-rev-stars">★★★★★</div>
-          <div class="sc-rev-text">"Emin Hoca ile çalışmaya başladıktan 2 ay sonra TYT netlerim 65'ten 88'e yükseldi. Disiplin ve takip efsane!"</div>
-          <div class="sc-rev-user">🎓 Zeynep T. · YKS Sayısal Öğrencisi</div>
-        </div>
-        <div class="sc-rev-card">
-          <div class="sc-rev-stars">★★★★★</div>
-          <div class="sc-rev-text">"Konuları nasıl yetiştireceğimi bilmiyordum. Düzenli 1-on-1 görüşmeler ve doğru stratejiyle hedefimi kazandım."</div>
-          <div class="sc-rev-user">🎓 Mert K. · YKS Eşit Ağırlık Öğrencisi</div>
-        </div>
+        ${customReviews.map(r => `
+          <div class="sc-rev-card">
+            <div class="sc-rev-stars">${'★'.repeat(r.stars || 5)}</div>
+            <div class="sc-rev-text">"${esc(r.text)}"</div>
+            <div class="sc-rev-user">🎓 ${esc(r.name)}${r.role ? ` · ${esc(r.role)}` : ''}</div>
+          </div>
+        `).join('')}
       </div>
 
       <!-- FAQ Section -->
       <div class="sc-faq">
         <div class="sc-sec-title">Sıkça Sorulan <span>Sorular</span></div>
-        <div class="sc-faq-item" onclick="this.classList.toggle('open')">
-          <div class="sc-faq-q"><span>📌 Görüşmeler nasıl ve ne zaman yapılıyor?</span> <span>▾</span></div>
-          <div class="sc-faq-a">Her hafta belirlenen sabit günde birebir görüntülü olarak randevu yapılır. Hafta içinde ise WhatsApp ve dijital panel üzerinden kesintisiz takip devam eder.</div>
-        </div>
-        <div class="sc-faq-item" onclick="this.classList.toggle('open')">
-          <div class="sc-faq-q"><span>📌 Programlar bana özel mi hazırlanıyor?</span> <span>▾</span></div>
-          <div class="sc-faq-a">Evet! Okul/dershane saatlerinize, eksik olduğunuz derslere ve günlük soru çözme kapasitenize göre %100 kişiye özel hazırlanır.</div>
-        </div>
-        <div class="sc-faq-item" onclick="this.classList.toggle('open')">
-          <div class="sc-faq-q"><span>📌 Ön başvuru sonrası süreç nasıl işliyor?</span> <span>▾</span></div>
-          <div class="sc-faq-a">Formu doldurduktan sonra en geç 24 saat içinde sizinle WhatsApp üzerinden ücretsiz tanışma ve seviye tespiti görüşmesi için iletişime geçilir.</div>
-        </div>
+        ${customFaqs.map(f => `
+          <div class="sc-faq-item" onclick="this.classList.toggle('open')">
+            <div class="sc-faq-q"><span>${esc(f.q)}</span> <span>▾</span></div>
+            <div class="sc-faq-a">${esc(f.a)}</div>
+          </div>
+        `).join('')}
       </div>
 
       <!-- Brand Footer -->
@@ -1148,11 +1144,24 @@
       });
       if(error) throw error;
       document.getElementById('scApplySheet').classList.remove('on');
+
+      const c = window._scCoach || {};
+      const p = c.profile || {};
+      const waNum = (p.whatsapp_number || '').replace(/\D/g, '');
+      const waLink = waNum
+        ? `https://wa.me/90${waNum.slice(-10)}?text=${encodeURIComponent(`Merhaba ${c.name || 'Hocam'}, Rostrum Akademi tanıtım sayfanız üzerinden ön başvuru yaptım: ${name}`)}`
+        : null;
+
       document.getElementById('showcaseContainer').innerHTML = `
         <div style="max-width:460px;margin:60px auto;text-align:center;padding:32px 24px;font-family:-apple-system,sans-serif;color:#1A1714">
           <div style="font-size:56px;margin-bottom:14px">🎉</div>
           <div style="font-size:22px;font-weight:800;margin-bottom:8px">Başvurun Alındı!</div>
-          <div style="font-size:14px;color:#6B6560;line-height:1.6">${esc(name)}, <b>${esc(window._scCoach?.name||'Koçun')}</b> başvurunu gördüğünde WhatsApp üzerinden seninle iletişime geçecek. Başarılar! 🚀</div>
+          <div style="font-size:14px;color:#6B6560;line-height:1.6;margin-bottom:24px">${esc(name)}, <b>${esc(c.name||'Koçun')}</b> başvurunu gördüğünde seninle iletişime geçecek. Başarılar! 🚀</div>
+          ${waLink ? `
+            <a href="${waLink}" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#25D366;color:#fff;font-weight:800;font-size:15px;padding:14px 22px;border-radius:14px;text-decoration:none;box-shadow:0 4px 16px rgba(37,211,102,0.35);">
+              💬 Koçunla WhatsApp'tan Anında Mesajlaş →
+            </a>
+          ` : ''}
         </div>`;
     }catch(e){ showToast('Gönderilemedi: '+e.message); }
   }

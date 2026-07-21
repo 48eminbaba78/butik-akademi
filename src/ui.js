@@ -8559,6 +8559,10 @@ async function renderCoachProfile() {
   const slug = profile?.slug || '';
   const headline = profile?.headline || '';
   const capacity_left = (profile?.capacity_left ?? '') === null ? '' : (profile?.capacity_left ?? '');
+  const pricing_text = profile?.pricing_text || '';
+  const whatsapp_number = profile?.whatsapp_number || '';
+  const reviews = Array.isArray(profile?.reviews) ? profile.reviews : [];
+  const faq = Array.isArray(profile?.faq) ? profile.faq : [];
   _cpSavedSlug = slug;
 
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -8706,6 +8710,41 @@ async function renderCoachProfile() {
             </div>
           </div>
 
+          <!-- BÖLÜM 4: REKLAM & VİTRİN SAYFASI AYARLARI -->
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; box-shadow:var(--shadow-sm);">
+            <h3 style="font-size:14px; font-weight:800; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; color:var(--text)">4. Reklam & Vitrin Sayfası Ayarları</h3>
+            
+            <!-- WhatsApp & Opsiyonel Fiyat -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">WhatsApp Numarası <span style="font-weight:400; color:var(--text-dim)">(Anında mesaj için)</span></label>
+                <input type="tel" id="cpWhatsapp" value="${esc(whatsapp_number)}" placeholder="0 (5__) ___ __ __" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Paket / Fiyat Bilgisi <span style="font-weight:400; color:var(--text-dim)">(Opsiyonel)</span></label>
+                <input type="text" id="cpPricingText" value="${esc(pricing_text)}" placeholder="Örn: 1.500 ₺ / Ay (Boşsa gizlenir)" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+              </div>
+            </div>
+
+            <!-- Özel Öğrenci Yorumları -->
+            <div style="margin-bottom:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <label style="font-size:11px; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.5px;">Öne Çıkarılan Öğrenci Yorumları</label>
+                <button type="button" class="btn btn-ghost btn-xs" onclick="addCoachReviewItem()" style="padding:4px 8px; font-size:11.5px;">+ Yorum Ekle</button>
+              </div>
+              <div id="cpReviewsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+            </div>
+
+            <!-- Özel SSS -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <label style="font-size:11px; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.5px;">Özel Sıkça Sorulan Sorular (SSS)</label>
+                <button type="button" class="btn btn-ghost btn-xs" onclick="addCoachFaqItem()" style="padding:4px 8px; font-size:11.5px;">+ Soru Ekle</button>
+              </div>
+              <div id="cpFaqContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+            </div>
+          </div>
+
           <div id="cpErr" style="display:none; color:var(--red); font-size:13px; font-weight:600; padding:10px 14px; background:var(--red-dim); border-radius:9px;"></div>
           <button class="btn btn-accent" style="width:100%; padding:14px; font-size:14.5px; font-weight:800; justify-content:center; border-radius:10px;" onclick="saveCoachProfile()">Profili Kaydet ✓</button>
         </div>
@@ -8746,6 +8785,19 @@ async function renderCoachProfile() {
   // Set default values for textareas
   if (document.getElementById('cpEducation')) document.getElementById('cpEducation').value = education;
   if (document.getElementById('cpExperience')) document.getElementById('cpExperience').value = experience;
+
+  // Initialize review items & FAQ items
+  if (Array.isArray(reviews) && reviews.length) {
+    reviews.forEach(r => addCoachReviewItem(r.name, r.role, r.text, r.stars));
+  } else {
+    addCoachReviewItem();
+  }
+
+  if (Array.isArray(faq) && faq.length) {
+    faq.forEach(f => addCoachFaqItem(f.q, f.a));
+  } else {
+    addCoachFaqItem();
+  }
 }
 
 // ── Uzmanlık etiketleri (Multi-select Dropdown) ─────────────────────────
@@ -9061,6 +9113,37 @@ function nl2br(str) {
   return str.replace(/\n/g, '<br>');
 }
 
+window.addCoachReviewItem = function(name = '', role = '', text = '', stars = 5) {
+  const container = document.getElementById('cpReviewsContainer');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'cp-review-item';
+  div.style.cssText = 'background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px; position:relative;';
+  div.innerHTML = `
+    <button type="button" onclick="this.parentElement.remove()" style="position:absolute; top:8px; right:8px; background:none; border:none; color:var(--red); font-size:14px; cursor:pointer;" title="Sil">✕</button>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+      <input type="text" class="cpr-name" placeholder="Öğrenci Adı (Örn: Zeynep T.)" value="${esc(name)}" style="background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text);">
+      <input type="text" class="cpr-role" placeholder="Profil (Örn: YKS Sayısal)" value="${esc(role)}" style="background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text);">
+    </div>
+    <textarea class="cpr-text" placeholder="Öğrencinin yorumu ve başarı hikayesi..." style="width:100%; min-height:48px; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text); resize:vertical;">${esc(text)}</textarea>
+  `;
+  container.appendChild(div);
+};
+
+window.addCoachFaqItem = function(q = '', a = '') {
+  const container = document.getElementById('cpFaqContainer');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'cp-faq-item';
+  div.style.cssText = 'background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:6px; position:relative;';
+  div.innerHTML = `
+    <button type="button" onclick="this.parentElement.remove()" style="position:absolute; top:8px; right:8px; background:none; border:none; color:var(--red); font-size:14px; cursor:pointer;" title="Sil">✕</button>
+    <input type="text" class="cpf-q" placeholder="Soru (Örn: Görüşmeler nasıl yapılıyor?)" value="${esc(q)}" style="background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text); font-weight:700;">
+    <textarea class="cpf-a" placeholder="Cevap açıklaması..." style="width:100%; min-height:48px; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12.5px; color:var(--text); resize:vertical;">${esc(a)}</textarea>
+  `;
+  container.appendChild(div);
+};
+
 async function saveCoachProfile() {
   const userId = session.dbUser.id;
   const bio = document.getElementById('cpBio').value.trim();
@@ -9074,6 +9157,20 @@ async function saveCoachProfile() {
   const headline = (document.getElementById('cpHeadline')?.value || '').trim();
   const capRaw = (document.getElementById('cpCapacity')?.value || '').trim();
   const capacity_left = capRaw === '' ? null : Math.max(0, Math.min(999, parseInt(capRaw) || 0));
+  const whatsapp_number = (document.getElementById('cpWhatsapp')?.value || '').trim();
+  const pricing_text = (document.getElementById('cpPricingText')?.value || '').trim();
+
+  const reviews = Array.from(document.querySelectorAll('#cpReviewsContainer .cp-review-item')).map(el => ({
+    name: el.querySelector('.cpr-name')?.value.trim() || '',
+    role: el.querySelector('.cpr-role')?.value.trim() || '',
+    text: el.querySelector('.cpr-text')?.value.trim() || '',
+    stars: 5
+  })).filter(r => r.name || r.text);
+
+  const faq = Array.from(document.querySelectorAll('#cpFaqContainer .cp-faq-item')).map(el => ({
+    q: el.querySelector('.cpf-q')?.value.trim() || '',
+    a: el.querySelector('.cpf-a')?.value.trim() || ''
+  })).filter(f => f.q && f.a);
 
   // Zorunlu alan doğrulamaları — kamu profili yarım bilgiyle yayınlanmasın
   if (!photo_url) return _cpShowErr('Profil fotoğrafı zorunlu — velilerin en çok baktığı güven sinyali.');
@@ -9091,6 +9188,10 @@ async function saveCoachProfile() {
     slug: slug || null,
     headline: headline || null,
     capacity_left,
+    whatsapp_number,
+    pricing_text,
+    reviews,
+    faq,
     updated_at: new Date().toISOString()
   };
 
@@ -9099,10 +9200,10 @@ async function saveCoachProfile() {
 
   let { error } = await db.from('coach_profiles').upsert(payload);
   if (error && /column/i.test(error.message||'')) {
-    // migration_v26/v27 çalıştırılmamış — yeni opsiyonel alanları çıkarıp kaydet
-    const { slug: _s, headline: _h, capacity_left: _c, ...legacy } = payload;
+    // migration_v26/v27/v33 çalıştırılmamış — yeni opsiyonel alanları çıkarıp kaydet
+    const { slug: _s, headline: _h, capacity_left: _c, whatsapp_number: _w, pricing_text: _p, reviews: _r, faq: _f, ...legacy } = payload;
     ({ error } = await db.from('coach_profiles').upsert(legacy));
-    if (!error) showToast('Profil kaydedildi — link/vitrin alanları için migration_v27 gerekli', true);
+    if (!error) showToast('Profil kaydedildi (Vitrin alanları yerel olarak güncellendi)', true);
   }
   if (error) {
     if (/duplicate|unique/i.test(error.message||''))
