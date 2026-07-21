@@ -8288,93 +8288,6 @@ async function renderSUyelik() {
       </div>
     </div>`;
 }
-
-// ── KOÇ: KENDİ ABONELİK / ÖDEME SAYFASI ──────────
-async function renderCoachUyelik() {
-  const el = document.getElementById('view-suyelik');
-  if (!el) return;
-  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:200px"><div style="width:32px;height:32px;border:3px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite"></div></div>`;
-
-  const uid = session.dbUser?.id;
-  const [{ data: me }, { data: pays }] = await Promise.all([
-    db.from('users').select('plan,trial_ends_at,created_at,payment_reference_code').eq('id', uid).maybeSingle(),
-    db.from('payments').select('*').eq('coach_id', uid).order('created_at', { ascending: false }).limit(10)
-  ]);
-
-  const plan = me?.plan || 'trial';
-  const now = new Date();
-  const trialEnds = me?.trial_ends_at ? new Date(me.trial_ends_at) : (me?.created_at ? new Date(new Date(me.created_at).getTime() + 7 * 24 * 60 * 60 * 1000) : null);
-  const graceEnds = trialEnds ? new Date(trialEnds.getTime() + 3 * 24 * 60 * 60 * 1000) : null;
-
-  const planMeta = {
-    trial: { label: 'Deneme Dönemi', color: '#f0a500', bg: '#fff8e6' },
-    grace: { label: 'Müsamaha Süresi', color: '#ea580c', bg: '#fff1e6' },
-    inactive: { label: 'Erişim Askıda', color: '#ef4444', bg: '#fee2e2' },
-    pro: { label: 'Aktif Abonelik', color: '#3ecf8e', bg: '#e6faf3' }
-  }[plan] || { label: plan, color: '#3ecf8e', bg: '#e6faf3' };
-
-  const fmtDate2 = d => d ? d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
-  const endLabel = plan === 'grace' ? 'Müsamaha Bitişi' : plan === 'trial' ? 'Deneme Bitişi' : 'Erişim Bitişi';
-  const endDate = plan === 'grace' ? graceEnds : plan === 'pro' ? trialEnds : trialEnds;
-  const hasPending = (pays || []).some(p => p.status === 'pending');
-
-  const statusLbl = { pending: ['📨 Onay Bekliyor', '#f0a500'], completed: ['✓ Onaylandı', '#3ecf8e'], rejected: ['✕ Reddedildi', '#ef4444'] };
-
-  el.innerHTML = `
-    <div style="max-width:480px;margin:0 auto;padding:16px">
-      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;right:0;width:120px;height:120px;background:${planMeta.color};opacity:.06;border-radius:50%;transform:translate(30%,-30%)"></div>
-        <div style="display:flex;align-items:flex-start;gap:16px">
-          <div style="width:52px;height:52px;border-radius:14px;background:${planMeta.bg};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">💳</div>
-          <div style="flex:1">
-            <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Abonelik Durumu</div>
-            <div style="font-size:20px;font-weight:700;color:var(--text)">${planMeta.label}</div>
-            ${me?.payment_reference_code ? `<div style="font-size:11px;color:var(--text-dim);margin-top:6px">Referans Kodu: <b style="color:var(--text)">${esc(me.payment_reference_code)}</b></div>` : ''}
-          </div>
-        </div>
-      </div>
-
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px">
-        ${[
-          { icon: '📅', label: 'Kayıt Tarihi', value: fmtDate2(me?.created_at ? new Date(me.created_at) : null) },
-          { icon: '⌛', label: endLabel, value: fmtDate2(endDate) }
-        ].map(({ icon, label, value }, i, arr) => `
-          <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;${i < arr.length - 1 ? 'border-bottom:1px solid var(--border)' : ''}">
-            <span style="font-size:18px;width:24px;text-align:center">${icon}</span>
-            <div style="flex:1">
-              <div style="font-size:11px;color:var(--text-dim)">${label}</div>
-              <div style="font-size:14px;font-weight:600;color:var(--text);margin-top:1px">${value}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px">
-        ${plan === 'pro'
-          ? `<div style="font-size:12px;color:var(--text-dim);line-height:1.6">Aboneliğiniz aktif. Süreniz dolmadan önce yenileme hatırlatması gönderilecek.</div>
-             <button onclick="openCoachPaymentModal()" style="width:100%;margin-top:12px;padding:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">Erken Yenile</button>`
-          : hasPending
-            ? `<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#f0a500">📨 Ödeme bildiriminiz alındı, onay bekleniyor</div>`
-            : `<button onclick="openCoachPaymentModal()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">💳 Ödeme Bildir</button>`}
-      </div>
-
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
-        <div style="font-size:12px;font-weight:700;color:var(--text);padding:14px 18px 8px">Ödeme Geçmişi</div>
-        ${(pays && pays.length) ? pays.map(p => `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-top:1px solid var(--border)">
-            <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)">${p.amount ? Number(p.amount).toLocaleString('tr-TR') + ' ₺' : '—'} · ${p.period_months || 1} ay</div>
-              <div style="font-size:11px;color:var(--text-dim)">${new Date(p.created_at).toLocaleDateString('tr-TR')}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              ${p.status === 'completed' ? `<a href="/api/generate-pdf-report?paymentId=${p.id}" target="_blank" style="font-size:11px;font-weight:700;color:var(--accent);text-decoration:none">📄 Makbuz</a>` : ''}
-              <span style="font-size:11px;font-weight:700;color:${(statusLbl[p.status] || ['—', 'var(--text-dim)'])[1]}">${(statusLbl[p.status] || [p.status || '—'])[0]}</span>
-            </div>
-          </div>
-        `).join('') : '<div style="padding:16px 18px;font-size:12px;color:var(--text-dim)">Henüz ödeme kaydı yok</div>'}
-      </div>
-    </div>`;
-}
 window.renderCoachUyelik = renderCoachUyelik;
 
 // ── KOÇ: ÖDEME BİLDİRİM MODALI (dinamik banka bilgisi + dekont yükleme) ──
@@ -8549,6 +8462,8 @@ async function renderCoachProfile() {
     }
   }
   
+  window._coachProfileData = profile || {};
+
   const bio = profile?.bio || '';
   const subjects = profile?.subjects || '';
   const education = profile?.education || '';
@@ -8578,228 +8493,56 @@ async function renderCoachProfile() {
     : window.location.origin + window.location.pathname.replace('app.html', 'koc_bul.html') + `?coach=${userId}`;
   
   el.innerHTML = `
-    <div style="max-width:900px;margin:0 auto">
-      <div style="margin-bottom: 24px;">
-        <h2 style="font-family:'Inter',sans-serif; margin-bottom: 6px; font-weight:800; letter-spacing:-.5px;">👤 Koç Profilim</h2>
-        <p style="font-size: 13.5px; color: var(--text-dim);">
-          Kamuya açık "Koç Bul" profilinizi buradan yönetebilir, bilgilerinizi düzenleyebilirsiniz.
-        </p>
+    <div style="max-width:1440px; margin:0 auto; padding: 0 12px;">
+      <!-- Header Bar -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap:wrap; gap:12px;">
+        <div>
+          <h2 style="font-family:'Inter',sans-serif; font-size:22px; font-weight:800; letter-spacing:-.5px; margin:0; display:flex; align-items:center; gap:8px; color:var(--text);">
+            <span>🎨 Rostrum Studio</span>
+            <span style="font-size:10px; background:var(--accent-dim); color:var(--accent); font-weight:800; padding:3px 9px; border-radius:99px; letter-spacing:0.5px;">LANDING PAGE BUILDER</span>
+          </h2>
+          <p style="font-size: 13px; color: var(--text-dim); margin-top:3px; margin-bottom:0;">
+            Instagram biyografinize ekleyeceğiniz yüksek dönüşümlü kişisel YKS reklam sayfanızı stüdyo ortamında tasarlayın.
+          </p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="btn btn-ghost" style="padding: 8px 12px; height: 38px;" onclick="copyCoachLink()">🔗 Linki Kopyala</button>
+          <a href="${coachBulUrl}" id="cpSlugBrowseBtn" target="_blank" class="btn btn-ghost" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 14px; border-radius:9px; font-size:13px; font-weight:700;" onclick="return browseCoachLink(event)">👁 Canlı Gör</a>
+          <button class="btn btn-accent" style="height:38px; padding:0 18px; font-size:13.5px; font-weight:800; border-radius:9px; box-shadow:0 4px 16px rgba(240,98,54,0.35);" onclick="saveCoachProfile()">Profili Kaydet ✓</button>
+        </div>
       </div>
 
-      <div class="coach-profile-container" style="display:grid; grid-template-columns: 1.4fr 1fr; gap:28px; align-items: start;">
+      <!-- 3-COLUMN STUDIO LAYOUT GRID -->
+      <div class="rostrum-studio-grid" style="display:grid; grid-template-columns: 270px 1fr 380px; gap:20px; align-items: start;">
         
-        <!-- Sol Sütun: Form Bölümleri -->
-        <div style="display:flex; flex-direction:column; gap:20px;">
-          
-          <!-- BÖLÜM 1: KİMLİK & LİNK -->
-          <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; box-shadow:var(--shadow-sm);">
-            <h3 style="font-size:14px; font-weight:800; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; color:var(--text)">1. Kimlik & Profil Linki</h3>
-            
-            <!-- Profil Fotoğrafı -->
-            <div style="margin-bottom:20px;">
-              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Profil Fotoğrafı <span style="color:var(--red)">*</span></label>
-              <input type="hidden" id="cpPhotoUrl" value="${esc(photo_url)}">
-              <input type="file" id="cpPhotoFile" accept="image/*" style="display:none" onchange="uploadCoachPhoto(this.files[0])">
-              <div id="cpPhotoDrop" onclick="document.getElementById('cpPhotoFile').click()"
-                ondragover="event.preventDefault(); this.style.borderColor='var(--accent)'; this.style.background='var(--accent-dim)'"
-                ondragleave="this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'"
-                ondrop="event.preventDefault(); this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'; uploadCoachPhoto(event.dataTransfer.files[0])"
-                style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--surface2); border:2px dashed var(--border); border-radius:12px; cursor:pointer; transition:all .15s;">
-                <div id="cpPhotoThumb" style="width:60px; height:60px; border-radius:50%; flex-shrink:0; background:${photo_url ? `url('${esc(photo_url)}') center/cover` : 'var(--accent-dim)'}; display:flex; align-items:center; justify-content:center; font-size:22px;">${photo_url ? '' : '📷'}</div>
-                <div style="min-width:0;">
-                  <div id="cpPhotoDropText" style="font-size:13px; font-weight:700; color:var(--text);">${photo_url ? 'Fotoğraf yüklendi ✓' : 'Sürükleyin veya Dosya Seçin'}</div>
-                  <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">JPG/PNG · Maks. 3 MB</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Kişisel Link (Slug) -->
-            <div>
-              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Kamuya Açık Profil Linkiniz</label>
-              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <span style="font-size:13px; color:var(--text-dim); font-weight:600;">rostrumakademi.com/koc/</span>
-                <input type="text" id="cpSlug" value="${esc(slug)}" placeholder="ad-soyad" maxlength="40" autocomplete="off"
-                  oninput="onCoachSlugInput()"
-                  style="flex:1; min-width:130px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:8px 12px; font-size:13.5px; font-weight:700; letter-spacing:.3px; color:var(--text); outline:none; transition: border-color .15s;"
-                  onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-                <button class="btn btn-ghost" style="padding: 8px 12px; height: 37px;" onclick="copyCoachLink()">🔗 Kopyala</button>
-                <a href="${coachBulUrl}" id="cpSlugBrowseBtn" target="_blank" class="btn btn-accent" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center; height:37px; padding:0 14px; border-radius:9px; font-size:13px; font-weight:700;" onclick="return browseCoachLink(event)">👁 Gözat</a>
-              </div>
-              <span id="cpSlugStatus" style="font-size:12px; font-weight:700; display:block; margin-top:4px;"></span>
-              <div style="font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.4;">Instagram biyografinize ekleyebileceğiniz akılda kalıcı kısa link. Küçük harf, rakam ve tire (-) kullanabilirsiniz.</div>
-            </div>
-
-            <!-- Vitrin alt-başlığı + opsiyonel kontenjan -->
-            <div style="margin-top:18px; display:grid; grid-template-columns:1fr 130px; gap:12px;">
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Vitrin Alt-Başlığı</label>
-                <input type="text" id="cpHeadline" value="${esc(headline)}" placeholder="Örn: YKS Dereceli Sayısal Mentörü & Koçu" maxlength="60"
-                  style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13.5px; color:var(--text); outline:none;">
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;" title="Boş bırakırsanız vitrinde gösterilmez">Boş Kontenjan</label>
-                <input type="number" id="cpCapacity" value="${capacity_left}" placeholder="—" min="0" max="999"
-                  style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13.5px; color:var(--text); outline:none;">
-              </div>
-            </div>
-            <div style="font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.4;">Alt-başlık isminizin altında görünür. Kontenjan girerseniz vitrinde "● Son X Öğrenci Kontenjanı" rozeti çıkar (boşsa gizli).</div>
+        <!-- SOL PANEL: SAYFA YAPISI & BLOK KATMANLARI -->
+        <div class="studio-left-panel" style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px; position:sticky; top:20px; box-shadow:var(--shadow-sm);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+            <div style="font-size:11px; font-weight:800; color:var(--text-mid); text-transform:uppercase; letter-spacing:0.5px;">📑 SAYFA BLOKLARI</div>
+            <button type="button" class="btn btn-ghost btn-xs" onclick="addCustomStudioBlock()" style="padding:3px 8px; font-size:11px;">+ Blok</button>
           </div>
-
-          <!-- BÖLÜM 2: UZMANLIK & EĞİTİM -->
-          <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; box-shadow:var(--shadow-sm);">
-            <h3 style="font-size:14px; font-weight:800; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; color:var(--text)">2. Uzmanlık & Eğitim Bilgileri</h3>
-            
-            <!-- Çoklu Seçim Dropdown Etiket Kutusu -->
-            <div style="position:relative; margin-bottom:16px;">
-              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Uzmanlık Alanlarınız <span style="color:var(--red)">*</span></label>
-              <input type="hidden" id="cpSubjects" value="${esc(subjects)}">
-              
-              <!-- Seçilen Etiketler Box -->
-              <div id="cpTagSelectBox" onclick="toggleTagDropdown(event)"
-                style="display:flex; flex-wrap:wrap; gap:6px; min-height:42px; padding:8px 12px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; cursor:pointer; align-items:center; box-sizing:border-box;">
-                <div id="cpSelectedTags" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;"></div>
-                <span style="font-size:12.5px; color:var(--text-dim); margin-left:auto; pointer-events:none;">🔽 Seçin...</span>
-              </div>
-
-              <!-- Dropdown Menü -->
-              <div id="cpTagDropdownMenu" style="display:none; position:absolute; left:0; right:0; top:100%; margin-top:6px; z-index:1000; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; box-shadow:var(--shadow-lg); max-height:260px; overflow-y:auto; padding:12px; box-sizing:border-box;">
-                <div style="font-size:10px; font-weight:700; color:var(--text-dim); margin-bottom:8px; text-transform:uppercase; letter-spacing:.5px;">Hazır Etiketler</div>
-                <div id="cpDropdownPresets" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
-                
-                <div style="border-top:1px solid var(--border); padding-top:10px; display:flex; gap:6px;">
-                  <input type="text" id="cpTagCustom" placeholder="Özel etiket yazın..." maxlength="25"
-                    onkeydown="if(event.key==='Enter'){event.preventDefault(); addCustomCoachTag();}"
-                    style="flex:1; background:var(--surface); border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12.5px; color:var(--text); outline:none;">
-                  <button type="button" class="btn btn-accent btn-sm" onclick="addCustomCoachTag()">+ Ekle</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- YKS Özel Başarı & Profesyonel Alanlar -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">YKS Derecesi <span style="font-weight:400; color:var(--text-dim)">(Öğrenci Koçları için)</span></label>
-                <input type="text" id="cpYksRank" value="${esc(yks_rank)}" placeholder="Örn: Sayısal 412.si, EA 850.si" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Üniversite &amp; Bölüm</label>
-                <input type="text" id="cpUniversity" value="${esc(university)}" placeholder="Örn: Hacettepe Üniversitesi - Tıp Fakültesi" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
-              </div>
-            </div>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Meslek / Unvan <span style="font-weight:400; color:var(--text-dim)">(Profesyonel Koçlar)</span></label>
-                <input type="text" id="cpProfession" value="${esc(profession)}" placeholder="Örn: PDR Uzmanı, Rehber Öğretmen" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Deneyim Yılı &amp; Kurum</label>
-                <input type="text" id="cpExpYears" value="${esc(experience_years)}" placeholder="Örn: 8 Yıl Okul &amp; Kurs Rehberliği" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
-              </div>
-            </div>
-
-            <!-- Eğitim ve Deneyim Detayları -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Eğitim Detayları</label>
-                <textarea id="cpEducation" oninput="updateProfilePreview()" placeholder="Eğitim geçmişin ve akademik bilgilerin..." style="width:100%; min-height:80px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(education)}</textarea>
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Deneyim &amp; Sertifikalar</label>
-                <textarea id="cpExperience" oninput="updateProfilePreview()" placeholder="Koçluk deneyimlerin, başarıların ve sertifikaların..." style="width:100%; min-height:80px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(experience)}</textarea>
-              </div>
-            </div>
-          </div>
-
-          <!-- BÖLÜM 3: TANITIM & SOSYAL MEDYA -->
-          <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; box-shadow:var(--shadow-sm);">
-            <h3 style="font-size:14px; font-weight:800; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; color:var(--text)">3. Hakkımda & Sosyal Medya</h3>
-            
-            <!-- Biyografi / Hakkımda -->
-            <div style="margin-bottom: 16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <label style="font-size:11px; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.5px;">Hakkımda / Biyografi <span style="color:var(--red)">*</span></label>
-                <button type="button" id="cpAiBioBtn" class="btn btn-ghost btn-xs" onclick="generateCoachBio()" style="gap:5px; padding:4px 8px; font-size:11.5px;">🤖 AI ile Biyografi Yaz</button>
-              </div>
-              <textarea id="cpBio" oninput="updateProfilePreview()" placeholder="Eğitim felsefeniz, öğrenciye yaklaşımınız ve kendinizden kısaca bahsedin..." style="width:100%; min-height:110px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(bio)}</textarea>
-            </div>
-
-            <!-- Sosyal Medya Linkleri -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Instagram</label>
-                <div style="display:flex; align-items:center; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:0 12px;">
-                  <span style="color:var(--text-dim); margin-right:4px; font-weight:700;">@</span>
-                  <input type="text" id="cpInstagram" value="${esc(instagram)}" placeholder="kullaniciadi" oninput="updateProfilePreview()" style="flex:1; background:none; border:none; padding:10px 0; font-size:13.5px; color:var(--text); outline:none;">
-                </div>
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">LinkedIn</label>
-                <input type="text" id="cpLinkedin" value="${esc(linkedin)}" placeholder="https://linkedin.com/in/..." oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
-              </div>
-            </div>
-          </div>
-
-          <!-- BÖLÜM 4: REKLAM & VİTRİN SAYFASI AYARLARI -->
-          <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; box-shadow:var(--shadow-sm);">
-            <h3 style="font-size:14px; font-weight:800; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; color:var(--text)">4. Reklam & Vitrin Sayfası Ayarları</h3>
-            
-            <!-- WhatsApp & Opsiyonel Fiyat -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">WhatsApp Numarası <span style="font-weight:400; color:var(--text-dim)">(Anında mesaj için)</span></label>
-                <input type="tel" id="cpWhatsapp" value="${esc(whatsapp_number)}" placeholder="0 (5__) ___ __ __" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
-              </div>
-              <div>
-                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Paket / Fiyat Bilgisi <span style="font-weight:400; color:var(--text-dim)">(Opsiyonel)</span></label>
-                <input type="text" id="cpPricingText" value="${esc(pricing_text)}" placeholder="Örn: 1.500 ₺ / Ay (Boşsa gizlenir)" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
-              </div>
-            </div>
-
-            <!-- Özel Öğrenci Yorumları -->
-            <div style="margin-bottom:16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <label style="font-size:11px; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.5px;">Öne Çıkarılan Öğrenci Yorumları</label>
-                <button type="button" class="btn btn-ghost btn-xs" onclick="addCoachReviewItem()" style="padding:4px 8px; font-size:11.5px;">+ Yorum Ekle</button>
-              </div>
-              <div id="cpReviewsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
-            </div>
-
-            <!-- Özel SSS -->
-            <div style="margin-bottom:16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <label style="font-size:11px; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.5px;">Özel Sıkça Sorulan Sorular (SSS)</label>
-                <div style="display:flex; gap:6px;">
-                  <button type="button" id="cpAiFaqBtn" class="btn btn-ghost btn-xs" onclick="generateCoachFaq()" style="gap:5px; padding:4px 8px; font-size:11.5px;">🤖 AI ile SSS Üret</button>
-                  <button type="button" class="btn btn-ghost btn-xs" onclick="addCoachFaqItem()" style="padding:4px 8px; font-size:11.5px;">+ Soru Ekle</button>
-                </div>
-              </div>
-              <div id="cpFaqContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
-            </div>
-
-            <!-- Modüler Sayfa Blokları & Sıralama -->
-            <div>
-              <div style="font-size:11px; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">Sayfa Blokları Yönetimi &amp; Sıralama</div>
-              <div id="cpBlocksContainer" style="display:flex; flex-direction:column; gap:6px;"></div>
-            </div>
-          </div>
-
-          <div id="cpErr" style="display:none; color:var(--red); font-size:13px; font-weight:600; padding:10px 14px; background:var(--red-dim); border-radius:9px;"></div>
-          <button class="btn btn-accent" style="width:100%; padding:14px; font-size:14.5px; font-weight:800; justify-content:center; border-radius:10px;" onclick="saveCoachProfile()">Profili Kaydet ✓</button>
+          <div id="cpBlocksContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
-        
-        <!-- Sağ Sütun: Ekrana Sabitlenmiş Canlı Önizleme (Birebir Reklam Sayfası) -->
-        <div class="coach-preview-column" style="position: sticky; top: 24px; z-index: 10;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px;">📱 REKLAM SAYFASI BİREBİR ÖNİZLEME</div>
+
+        <!-- ORTA PANEL: DİNAMİK SEÇİLİ BLOK AYARLARI (INSPECTOR) -->
+        <div class="studio-middle-panel" style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:24px; min-height:680px; box-shadow:var(--shadow-sm);">
+          <div id="studioBlockInspector">
+            <!-- Dynamic Inspector HTML rendered by selectStudioBlock(blockId) -->
+          </div>
+        </div>
+
+        <!-- SAĞ PANEL: CANLI TELEFON ÖNİZLEME STÜDYOSU -->
+        <div class="studio-right-panel" style="position: sticky; top: 20px; z-index: 10;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px;">📱 CANLI SİTE ÖNİZLEMESİ</div>
             <span style="font-size:10px; font-weight:700; color:var(--accent); background:var(--accent-dim); padding:2px 8px; border-radius:99px;">CANLI GÜNCEL</span>
           </div>
 
           <!-- Mini Telefon Çerçevesi -->
-          <div id="phoneMockupFrame" style="width: 100%; max-width: 360px; height: 680px; border-radius: 36px; border: 8px solid #1c1c1e; background: #09090B; overflow-y: auto; overflow-x: hidden; position: relative; box-shadow: 0 16px 48px rgba(0,0,0,0.4); -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+          <div id="phoneMockupFrame" style="width: 100%; max-width: 380px; height: 710px; border-radius: 40px; border: 9px solid #1c1c1e; background: #09090B; overflow-y: auto; overflow-x: hidden; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.45); -webkit-overflow-scrolling: touch; scrollbar-width: none;">
             <!-- Çentik (Dynamic Island) -->
             <div style="position:sticky; top:0; left:0; right:0; z-index:30; background:#09090B; padding:8px 0 4px; display:flex; justify-content:center; align-items:center;">
-              <div style="width:70px; height:18px; background:#1c1c1e; border-radius:12px;"></div>
+              <div style="width:74px; height:18px; background:#1c1c1e; border-radius:12px;"></div>
             </div>
 
             <!-- Canlı Yükleme Alanı -->
@@ -8813,30 +8556,250 @@ async function renderCoachProfile() {
     </div>
   `;
 
-  // Initialize preview card fields
-  renderCoachTags();
-  updateProfilePreview();
-  
-  // Set default values for textareas
-  if (document.getElementById('cpEducation')) document.getElementById('cpEducation').value = education;
-  if (document.getElementById('cpExperience')) document.getElementById('cpExperience').value = experience;
-
-  // Initialize review items & FAQ items
-  if (Array.isArray(reviews) && reviews.length) {
-    reviews.forEach(r => addCoachReviewItem(r.name, r.role, r.text, r.stars));
-  } else {
-    addCoachReviewItem();
-  }
-
-  if (Array.isArray(faq) && faq.length) {
-    faq.forEach(f => addCoachFaqItem(f.q, f.a));
-  } else {
-    addCoachFaqItem();
-  }
-
-  // Initialize block manager UI
+  window._activeStudioBlockId = window._activeStudioBlockId || 'hero';
   renderCoachBlocksManager(blocks);
+  selectStudioBlock(window._activeStudioBlockId);
+  updateProfilePreview();
 }
+
+window.selectStudioBlock = function(blockId) {
+  window._activeStudioBlockId = blockId;
+  const inspector = document.getElementById('studioBlockInspector');
+  if (!inspector) return;
+
+  const rows = document.querySelectorAll('#cpBlocksContainer .cp-block-row');
+  rows.forEach(r => {
+    const isSelected = r.dataset.id === blockId;
+    r.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border)';
+    r.style.background = isSelected ? 'var(--accent-dim)' : 'var(--surface2)';
+  });
+
+  const p = window._coachProfileData || {};
+
+  const inspectors = {
+    hero: () => `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+        <h3 style="font-size:15px; font-weight:800; color:var(--text); margin:0;">🏆 Profil &amp; YKS Ünvan Ayarları (Hero)</h3>
+        <span style="font-size:11px; background:var(--accent-dim); color:var(--accent); font-weight:700; padding:2px 8px; border-radius:99px;">ZORUNLU BLOK</span>
+      </div>
+
+      <!-- Profil Fotoğrafı -->
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Profil Fotoğrafı <span style="color:var(--red)">*</span></label>
+        <input type="hidden" id="cpPhotoUrl" value="${esc(p.photo_url || '')}">
+        <input type="file" id="cpPhotoFile" accept="image/*" style="display:none" onchange="uploadCoachPhoto(this.files[0])">
+        <div id="cpPhotoDrop" onclick="document.getElementById('cpPhotoFile').click()"
+          style="display:flex; align-items:center; gap:16px; padding:14px; background:var(--surface2); border:2px dashed var(--border); border-radius:12px; cursor:pointer;">
+          <div id="cpPhotoThumb" style="width:54px; height:54px; border-radius:50%; flex-shrink:0; background:${p.photo_url ? `url('${esc(p.photo_url)}') center/cover` : 'var(--accent-dim)'}; display:flex; align-items:center; justify-content:center; font-size:20px;">${p.photo_url ? '' : '📷'}</div>
+          <div>
+            <div id="cpPhotoDropText" style="font-size:13px; font-weight:700; color:var(--text);">${p.photo_url ? 'Fotoğraf yüklendi ✓' : 'Sürükleyin veya Dosya Seçin'}</div>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">JPG/PNG · Maks. 3 MB</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kişisel Link (Slug) -->
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Kamuya Açık Profil Linkiniz</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span style="font-size:12.5px; color:var(--text-dim); font-weight:600;">rostrumakademi.com/koc/</span>
+          <input type="text" id="cpSlug" value="${esc(p.slug || '')}" placeholder="ad-soyad" maxlength="40" oninput="onCoachSlugInput()" style="flex:1; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:8px 12px; font-size:13.5px; font-weight:700; color:var(--text); outline:none;">
+        </div>
+        <span id="cpSlugStatus" style="font-size:11.5px; font-weight:700; display:block; margin-top:4px;"></span>
+      </div>
+
+      <!-- YKS Derecesi & Üniversite (Öğrenci Koçu) -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;">
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">YKS Derecesi <span style="font-weight:400; color:var(--text-dim)">(Örn: Sayısal 412.si)</span></label>
+          <input type="text" id="cpYksRank" value="${esc(p.yks_rank || '')}" placeholder="Örn: Sayısal 412.si" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--text); outline:none;">
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Üniversite &amp; Bölüm</label>
+          <input type="text" id="cpUniversity" value="${esc(p.university || '')}" placeholder="Örn: Hacettepe Tıp" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--text); outline:none;">
+        </div>
+      </div>
+
+      <!-- Meslek & Deneyim (Profesyonel Koç) -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;">
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Meslek / Unvan <span style="font-weight:400; color:var(--text-dim)">(Örn: PDR Uzmanı)</span></label>
+          <input type="text" id="cpProfession" value="${esc(p.profession || '')}" placeholder="Örn: Rehber Öğretmen" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--text); outline:none;">
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Deneyim Yılı</label>
+          <input type="text" id="cpExpYears" value="${esc(p.experience_years || '')}" placeholder="Örn: 8 Yıl Deneyim" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--text); outline:none;">
+        </div>
+      </div>
+
+      <!-- Vitrin Alt-Başlığı -->
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Vitrin Alt-Başlığı (Slogan)</label>
+        <input type="text" id="cpHeadline" value="${esc(p.headline || '')}" placeholder="Örn: YKS Dereceli Sayısal Mentörü & Koçu" maxlength="60" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--text); outline:none;">
+      </div>
+
+      <!-- Sosyal Medya -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Instagram @kullaniciadi</label>
+          <input type="text" id="cpInstagram" value="${esc(p.instagram || '')}" placeholder="kullaniciadi" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--text); outline:none;">
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">LinkedIn URL</label>
+          <input type="text" id="cpLinkedin" value="${esc(p.linkedin || '')}" placeholder="https://linkedin.com/in/..." oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--text); outline:none;">
+        </div>
+      </div>
+    `,
+
+    stats: () => `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+        <h3 style="font-size:15px; font-weight:800; color:var(--text); margin:0;">⚡ YKS Başarı &amp; Stat Çipleri Ayarları</h3>
+        <span style="font-size:11px; background:var(--surface2); color:var(--text-dim); font-weight:700; padding:2px 8px; border-radius:99px;">ÇİP ROZETLERİ</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Paket / Fiyat Bilgisi <span style="font-weight:400; color:var(--text-dim)">(Örn: 1.500 ₺ / Ay)</span></label>
+          <input type="text" id="cpPricingText" value="${esc(p.pricing_text || '')}" placeholder="Örn: 1.500 ₺ / Ay" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Boş Kontenjan <span style="font-weight:400; color:var(--text-dim)">(Örn: 3)</span></label>
+          <input type="number" id="cpCapacity" value="${(p.capacity_left ?? '') === null ? '' : (p.capacity_left ?? '')}" placeholder="—" min="0" max="999" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+        </div>
+      </div>
+
+      <!-- Uzmanlık Alanları -->
+      <div style="position:relative;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Uzmanlık Alanlarınız <span style="color:var(--red)">*</span></label>
+        <input type="hidden" id="cpSubjects" value="${esc(p.subjects || '')}">
+        <div id="cpTagSelectBox" onclick="toggleTagDropdown(event)" style="display:flex; flex-wrap:wrap; gap:6px; min-height:42px; padding:8px 12px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; cursor:pointer; align-items:center;">
+          <div id="cpSelectedTags" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;"></div>
+          <span style="font-size:12.5px; color:var(--text-dim); margin-left:auto;">🔽 Seçin...</span>
+        </div>
+        <div id="cpTagDropdownMenu" style="display:none; position:absolute; left:0; right:0; top:100%; margin-top:6px; z-index:1000; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; box-shadow:var(--shadow-lg); max-height:240px; overflow-y:auto; padding:12px;">
+          <div style="font-size:10px; font-weight:700; color:var(--text-dim); margin-bottom:8px; text-transform:uppercase;">Hazır Etiketler</div>
+          <div id="cpDropdownPresets" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
+          <div style="border-top:1px solid var(--border); padding-top:10px; display:flex; gap:6px;">
+            <input type="text" id="cpTagCustom" placeholder="Özel etiket yazın..." maxlength="25" onkeydown="if(event.key==='Enter'){event.preventDefault(); addCustomCoachTag();}" style="flex:1; background:var(--surface); border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12.5px; color:var(--text); outline:none;">
+            <button type="button" class="btn btn-accent btn-sm" onclick="addCustomCoachTag()">+ Ekle</button>
+          </div>
+        </div>
+      </div>
+    `,
+
+    value_props: () => `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+        <h3 style="font-size:15px; font-weight:800; color:var(--text); margin:0;">🎯 Neden Benimle Çalışmalısın? (Dönüşüm Kartları)</h3>
+        <span style="font-size:11px; background:var(--surface2); color:var(--text-dim); font-weight:700; padding:2px 8px; border-radius:99px;">YKS DÖNÜŞÜM DİREKLERİ</span>
+      </div>
+      <p style="font-size:13px; color:var(--text-dim); line-height:1.5; margin-bottom:16px;">
+        Bu bölüm vitrin sayfanızda potansiyel öğrenci ve velileri ikna eden 4 temel avantaj sütununu otomatik oluşturur:
+      </p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:12px;">🎯 <b>Kişiye Özel YKS Planı</b><br><span style="color:var(--text-dim); font-size:11px;">Hedefine özel günlük ders stratejisi</span></div>
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:12px;">📊 <b>Net &amp; Gelişim Takibi</b><br><span style="color:var(--text-dim); font-size:11px;">Deneme analizi ve eksik tespiti</span></div>
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:12px;">🤖 <b>7/24 AI Dijital Asistan</b><br><span style="color:var(--text-dim); font-size:11px;">Kesintisiz rehberlik &amp; soru desteği</span></div>
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:12px;">💬 <b>Birebir Görüşme</b><br><span style="color:var(--text-dim); font-size:11px;">Haftalık görüntülü koçluk seansı</span></div>
+      </div>
+    `,
+
+    tabs_about: () => `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+        <h3 style="font-size:15px; font-weight:800; color:var(--text); margin:0;">📖 Biyografi, Eğitim &amp; Derece</h3>
+        <button type="button" id="cpAiBioBtn" class="btn btn-ghost btn-xs" onclick="generateCoachBio()" style="gap:5px; padding:4px 10px; font-size:11.5px;">🤖 AI ile Biyografi Yaz</button>
+      </div>
+
+      <!-- Biyografi -->
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Biyografi / Hakkımda <span style="color:var(--red)">*</span></label>
+        <textarea id="cpBio" oninput="updateProfilePreview()" placeholder="Eğitim felsefeniz, YKS derece hikayeniz ve çalışma disiplininiz..." style="width:100%; min-height:120px; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; padding:12px; font-size:13.5px; color:var(--text); outline:none; resize:vertical; line-height:1.5;">${esc(p.bio || '')}</textarea>
+      </div>
+
+      <!-- Eğitim ve Deneyim Detayları -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Eğitim Detayları</label>
+          <textarea id="cpEducation" oninput="updateProfilePreview()" placeholder="Eğitim geçmişiniz..." style="width:100%; min-height:90px; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; padding:10px; font-size:13px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(p.education || '')}</textarea>
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Deneyim &amp; Sertifikalar</label>
+          <textarea id="cpExperience" oninput="updateProfilePreview()" placeholder="Derece koçluk deneyimleriniz..." style="width:100%; min-height:90px; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; padding:10px; font-size:13px; color:var(--text); outline:none; resize:vertical; line-height:1.4;">${esc(p.experience || '')}</textarea>
+        </div>
+      </div>
+    `,
+
+    reviews: () => `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+        <h3 style="font-size:15px; font-weight:800; color:var(--text); margin:0;">💬 Öğrenci &amp; Veli Yorumları (Sosyal Kanıt)</h3>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="addCoachReviewItem()" style="padding:4px 10px; font-size:11.5px;">+ Yorum Ekle</button>
+      </div>
+      <p style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;">
+        Dereceye giren öğrencilerinizin veya velilerinizin gerçek dönüşüm yorumlarını ekleyin.
+      </p>
+      <div id="cpReviewsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+    `,
+
+    faq: () => `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+        <h3 style="font-size:15px; font-weight:800; color:var(--text); margin:0;">❓ Sıkça Sorulan Sorular (SSS)</h3>
+        <div style="display:flex; gap:6px;">
+          <button type="button" id="cpAiFaqBtn" class="btn btn-ghost btn-xs" onclick="generateCoachFaq()" style="gap:5px; padding:4px 10px; font-size:11.5px;">🤖 AI ile SSS Üret</button>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="addCoachFaqItem()" style="padding:4px 10px; font-size:11.5px;">+ Soru Ekle</button>
+        </div>
+      </div>
+      <p style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;">
+        Öğrencilerin aklındaki soruları yanıtlayarak başvuru oranını artırın.
+      </p>
+      <div id="cpFaqContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+    `,
+
+    sticky_cta: () => `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+        <h3 style="font-size:15px; font-weight:800; color:var(--text); margin:0;">🚀 Sabit Başvuru &amp; WhatsApp Barı</h3>
+        <span style="font-size:11px; background:var(--accent-dim); color:var(--accent); font-weight:700; padding:2px 8px; border-radius:99px;">DÖNÜŞÜM BUTONU</span>
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">WhatsApp Numarası <span style="font-weight:400; color:var(--text-dim)">(Anında iletişim ikonu için)</span></label>
+        <input type="tel" id="cpWhatsapp" value="${esc(p.whatsapp_number || '')}" placeholder="0 (5__) ___ __ __" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:10px 13px; font-size:13.5px; color:var(--text); outline:none;">
+      </div>
+      <div style="background:var(--accent-dim); border:1px solid rgba(240,98,54,0.3); border-radius:12px; padding:14px; font-size:12.5px; color:var(--text); line-height:1.5;">
+        🔥 Bu buton vitrin sayfanızın en altında ekranın başparmak erişim alanında sabit kalır. Tıklandığında öğrenciye özel YKS ön başvuru modali açılır.
+      </div>
+    `
+  };
+
+  const html = (inspectors[blockId] || inspectors.hero)();
+  inspector.innerHTML = html;
+
+  if (blockId === 'stats') {
+    renderCoachTags();
+  } else if (blockId === 'reviews') {
+    const reviews = Array.isArray(p.reviews) ? p.reviews : [];
+    const container = document.getElementById('cpReviewsContainer');
+    if (container) {
+      container.innerHTML = '';
+      if (reviews.length) {
+        reviews.forEach(r => addCoachReviewItem(r.name, r.role, r.text, r.stars));
+      } else {
+        addCoachReviewItem();
+      }
+    }
+  } else if (blockId === 'faq') {
+    const faq = Array.isArray(p.faq) ? p.faq : [];
+    const container = document.getElementById('cpFaqContainer');
+    if (container) {
+      container.innerHTML = '';
+      if (faq.length) {
+        faq.forEach(f => addCoachFaqItem(f.q, f.a));
+      } else {
+        addCoachFaqItem();
+      }
+    }
+  }
+};
+
+
 
 // ── Uzmanlık etiketleri (Multi-select Dropdown) ─────────────────────────
 const COACH_TAG_PRESETS = ['YKS','TYT','AYT','LGS','Sayısal','Eşit Ağırlık','Sözel','Dil',
@@ -9111,29 +9074,45 @@ function updateProfilePreview() {
   const container = document.getElementById('liveShowcasePreview');
   if (!container) return;
 
-  const photoUrl = document.getElementById('cpPhotoUrl')?.value.trim() || '';
-  const subjects = document.getElementById('cpSubjects')?.value.trim() || '';
-  const bio = document.getElementById('cpBio')?.value.trim() || '';
-  const education = document.getElementById('cpEducation')?.value.trim() || '';
-  const experience = document.getElementById('cpExperience')?.value.trim() || '';
-  const instagram = document.getElementById('cpInstagram')?.value.trim() || '';
-  const linkedin = document.getElementById('cpLinkedin')?.value.trim() || '';
-  const headline = document.getElementById('cpHeadline')?.value.trim() || '';
-  const capacity_left = document.getElementById('cpCapacity')?.value.trim() || '';
-  const pricing_text = document.getElementById('cpPricingText')?.value.trim() || '';
-  const whatsapp_number = document.getElementById('cpWhatsapp')?.value.trim() || '';
+  const p = window._coachProfileData = window._coachProfileData || {};
 
+  // Sync current DOM inputs to window._coachProfileData if available
+  if (document.getElementById('cpPhotoUrl')) p.photo_url = document.getElementById('cpPhotoUrl').value.trim();
+  if (document.getElementById('cpSubjects')) p.subjects = document.getElementById('cpSubjects').value.trim();
+  if (document.getElementById('cpBio')) p.bio = document.getElementById('cpBio').value.trim();
+  if (document.getElementById('cpEducation')) p.education = document.getElementById('cpEducation').value.trim();
+  if (document.getElementById('cpExperience')) p.experience = document.getElementById('cpExperience').value.trim();
+  if (document.getElementById('cpInstagram')) p.instagram = document.getElementById('cpInstagram').value.trim();
+  if (document.getElementById('cpLinkedin')) p.linkedin = document.getElementById('cpLinkedin').value.trim();
+  if (document.getElementById('cpHeadline')) p.headline = document.getElementById('cpHeadline').value.trim();
+  if (document.getElementById('cpCapacity')) p.capacity_left = document.getElementById('cpCapacity').value.trim();
+  if (document.getElementById('cpPricingText')) p.pricing_text = document.getElementById('cpPricingText').value.trim();
+  if (document.getElementById('cpWhatsapp')) p.whatsapp_number = document.getElementById('cpWhatsapp').value.trim();
+  if (document.getElementById('cpYksRank')) p.yks_rank = document.getElementById('cpYksRank').value.trim();
+  if (document.getElementById('cpUniversity')) p.university = document.getElementById('cpUniversity').value.trim();
+  if (document.getElementById('cpProfession')) p.profession = document.getElementById('cpProfession').value.trim();
+  if (document.getElementById('cpExpYears')) p.experience_years = document.getElementById('cpExpYears').value.trim();
+
+  const photoUrl = p.photo_url || '';
+  const subjects = p.subjects || '';
+  const bio = p.bio || '';
+  const education = p.education || '';
+  const experience = p.experience || '';
+  const instagram = p.instagram || '';
+  const linkedin = p.linkedin || '';
+  const headline = p.headline || '';
+  const capacity_left = p.capacity_left || '';
+  const pricing_text = p.pricing_text || '';
+  const whatsapp_number = p.whatsapp_number || '';
+  const yksRank = p.yks_rank || '';
+  const university = p.university || '';
+  const profession = p.profession || '';
   const name = session.dbUser?.full_name || 'Koç İsmi';
   const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   const avatar = photoUrl
     ? `<div style="width:68px;height:68px;border-radius:50%;background:url('${esc(photoUrl)}') center/cover;flex-shrink:0;border:2px solid rgba(255,255,255,0.2);position:relative;"><span style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:#10B981;border:2px solid #09090B;"></span></div>`
     : `<div style="width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#F06236,#FF7547);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0;border:2px solid rgba(255,255,255,0.2);position:relative;">${esc(initials)}<span style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:#10B981;border:2px solid #09090B;"></span></div>`;
-
-  const yksRank = document.getElementById('cpYksRank')?.value.trim() || '';
-  const university = document.getElementById('cpUniversity')?.value.trim() || '';
-  const profession = document.getElementById('cpProfession')?.value.trim() || '';
-  const expYears = document.getElementById('cpExpYears')?.value.trim() || '';
 
   let archetypeBadge = '';
   let subHeadline = '';
@@ -9341,24 +9320,30 @@ window.renderCoachBlocksManager = function(blocks) {
   container.innerHTML = '';
 
   current.forEach((b, idx) => {
+    const isSelected = (window._activeStudioBlockId || 'hero') === b.id;
     const div = document.createElement('div');
     div.className = 'cp-block-row';
     div.dataset.id = b.id;
     div.dataset.name = b.name || defaultList.find(d => d.id === b.id)?.name || b.id;
-    div.style.cssText = 'background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between; font-size:13px; transition:all 0.15s;';
+    div.style.cssText = `background:${isSelected ? 'var(--accent-dim)' : 'var(--surface2)'}; border:1.5px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}; border-radius:10px; padding:9px 11px; display:flex; align-items:center; justify-content:space-between; font-size:12px; cursor:pointer; transition:all 0.15s;`;
+    div.onclick = (e) => {
+      if (e.target.closest('button') || e.target.closest('input')) return;
+      selectStudioBlock(b.id);
+    };
+
     div.innerHTML = `
-      <div style="display:flex; align-items:center; gap:12px;">
-        <span style="color:var(--text-dim); cursor:grab; font-size:15px;" title="Sıralama Tutamağı">☰</span>
-        <label style="display:inline-flex; align-items:center; gap:8px; font-weight:700; cursor:pointer; color:var(--text);">
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <span style="color:var(--text-dim); cursor:grab; font-size:13px;" title="Sıralama Tutamağı">☰</span>
+        <label style="display:inline-flex; align-items:center; gap:6px; font-weight:700; cursor:pointer; color:var(--text); min-width:0;" onclick="event.stopPropagation()">
           <input type="checkbox" class="cp-block-toggle" ${b.enabled !== false ? 'checked' : ''} onchange="updateProfilePreview()" style="accent-color:var(--accent);">
-          ${esc(div.dataset.name)}
+          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;">${esc(div.dataset.name)}</span>
         </label>
       </div>
-      <div style="display:flex; align-items:center; gap:6px;">
-        <button type="button" class="btn btn-ghost btn-xs" onclick="moveCoachBlock('${b.id}', -1)" ${idx === 0 ? 'disabled' : ''} style="padding:4px 8px; font-size:11px;" title="Yukarı Taşı">▲</button>
-        <button type="button" class="btn btn-ghost btn-xs" onclick="moveCoachBlock('${b.id}', 1)" ${idx === current.length - 1 ? 'disabled' : ''} style="padding:4px 8px; font-size:11px;" title="Aşağı Taşı">▼</button>
-        <button type="button" class="btn btn-ghost btn-xs" onclick="duplicateCoachBlock('${b.id}')" style="padding:4px 8px; font-size:11px;" title="Kopyala">📋</button>
-        <button type="button" class="btn btn-ghost btn-xs" onclick="deleteCoachBlock('${b.id}')" style="padding:4px 8px; font-size:11px; color:var(--red);" title="Kaldır">🗑️</button>
+      <div style="display:flex; align-items:center; gap:3px;">
+        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${b.id}', -1)" ${idx === 0 ? 'disabled' : ''} style="padding:2px 5px; font-size:10px;" title="Yukarı Taşı">▲</button>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${b.id}', 1)" ${idx === current.length - 1 ? 'disabled' : ''} style="padding:2px 5px; font-size:10px;" title="Aşağı Taşı">▼</button>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); duplicateCoachBlock('${b.id}')" style="padding:2px 5px; font-size:10px;" title="Kopyala">📋</button>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); deleteCoachBlock('${b.id}')" style="padding:2px 5px; font-size:10px; color:var(--red);" title="Kaldır">🗑️</button>
       </div>
     `;
     container.appendChild(div);
@@ -9404,37 +9389,76 @@ window.deleteCoachBlock = function(id) {
   }
 };
 
+window.addCustomStudioBlock = function() {
+  const blockName = prompt('Yeni blok başlığını girin:', 'Özel Sertifikalar & Başarılar');
+  if (!blockName || !blockName.trim()) return;
+  const container = document.getElementById('cpBlocksContainer');
+  if (!container) return;
+
+  const newId = 'custom_' + Date.now().toString().slice(-6);
+  const div = document.createElement('div');
+  div.className = 'cp-block-row';
+  div.dataset.id = newId;
+  div.dataset.name = blockName.trim();
+  div.style.cssText = `background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; padding:9px 11px; display:flex; align-items:center; justify-content:space-between; font-size:12px; cursor:pointer; transition:all 0.15s;`;
+  div.onclick = (e) => {
+    if (e.target.closest('button') || e.target.closest('input')) return;
+    selectStudioBlock(newId);
+  };
+  div.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+      <span style="color:var(--text-dim); cursor:grab; font-size:13px;" title="Sıralama Tutamağı">☰</span>
+      <label style="display:inline-flex; align-items:center; gap:6px; font-weight:700; cursor:pointer; color:var(--text); min-width:0;" onclick="event.stopPropagation()">
+        <input type="checkbox" class="cp-block-toggle" checked onchange="updateProfilePreview()" style="accent-color:var(--accent);">
+        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;">${esc(blockName.trim())}</span>
+      </label>
+    </div>
+    <div style="display:flex; align-items:center; gap:3px;">
+      <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${newId}', -1)" style="padding:2px 5px; font-size:10px;" title="Yukarı Taşı">▲</button>
+      <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${newId}', 1)" style="padding:2px 5px; font-size:10px;" title="Aşağı Taşı">▼</button>
+      <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); duplicateCoachBlock('${newId}')" style="padding:2px 5px; font-size:10px;" title="Kopyala">📋</button>
+      <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); deleteCoachBlock('${newId}')" style="padding:2px 5px; font-size:10px; color:var(--red);" title="Kaldır">🗑️</button>
+    </div>
+  `;
+  container.appendChild(div);
+  selectStudioBlock(newId);
+  updateProfilePreview();
+};
+
 async function saveCoachProfile() {
   const userId = session.dbUser.id;
-  const bio = document.getElementById('cpBio').value.trim();
-  const subjects = document.getElementById('cpSubjects').value.trim();
-  const education = document.getElementById('cpEducation').value.trim();
-  const experience = document.getElementById('cpExperience').value.trim();
-  const photo_url = document.getElementById('cpPhotoUrl').value.trim();
-  const instagram = document.getElementById('cpInstagram').value.trim();
-  const linkedin = document.getElementById('cpLinkedin').value.trim();
-  const slug = (document.getElementById('cpSlug')?.value || '').trim();
-  const headline = (document.getElementById('cpHeadline')?.value || '').trim();
-  const capRaw = (document.getElementById('cpCapacity')?.value || '').trim();
+  const p = window._coachProfileData || {};
+  const photo_url = (document.getElementById('cpPhotoUrl')?.value ?? p.photo_url ?? '').trim();
+  const bio = (document.getElementById('cpBio')?.value ?? p.bio ?? '').trim();
+  const subjects = (document.getElementById('cpSubjects')?.value ?? p.subjects ?? '').trim();
+  const education = (document.getElementById('cpEducation')?.value ?? p.education ?? '').trim();
+  const experience = (document.getElementById('cpExperience')?.value ?? p.experience ?? '').trim();
+  const instagram = (document.getElementById('cpInstagram')?.value ?? p.instagram ?? '').trim();
+  const linkedin = (document.getElementById('cpLinkedin')?.value ?? p.linkedin ?? '').trim();
+  const slug = (document.getElementById('cpSlug')?.value ?? p.slug ?? '').trim();
+  const headline = (document.getElementById('cpHeadline')?.value ?? p.headline ?? '').trim();
+  const capRaw = (document.getElementById('cpCapacity')?.value ?? p.capacity_left ?? '').toString().trim();
   const capacity_left = capRaw === '' ? null : Math.max(0, Math.min(999, parseInt(capRaw) || 0));
-  const whatsapp_number = (document.getElementById('cpWhatsapp')?.value || '').trim();
-  const pricing_text = (document.getElementById('cpPricingText')?.value || '').trim();
-  const yks_rank = (document.getElementById('cpYksRank')?.value || '').trim();
-  const university = (document.getElementById('cpUniversity')?.value || '').trim();
-  const profession = (document.getElementById('cpProfession')?.value || '').trim();
-  const experience_years = (document.getElementById('cpExpYears')?.value || '').trim();
+  const whatsapp_number = (document.getElementById('cpWhatsapp')?.value ?? p.whatsapp_number ?? '').trim();
+  const pricing_text = (document.getElementById('cpPricingText')?.value ?? p.pricing_text ?? '').trim();
+  const yks_rank = (document.getElementById('cpYksRank')?.value ?? p.yks_rank ?? '').trim();
+  const university = (document.getElementById('cpUniversity')?.value ?? p.university ?? '').trim();
+  const profession = (document.getElementById('cpProfession')?.value ?? p.profession ?? '').trim();
+  const experience_years = (document.getElementById('cpExpYears')?.value ?? p.experience_years ?? '').trim();
 
-  const reviews = Array.from(document.querySelectorAll('#cpReviewsContainer .cp-review-item')).map(el => ({
+  const reviewsContainer = document.getElementById('cpReviewsContainer');
+  const reviews = reviewsContainer ? Array.from(reviewsContainer.querySelectorAll('.cp-review-item')).map(el => ({
     name: el.querySelector('.cpr-name')?.value.trim() || '',
     role: el.querySelector('.cpr-role')?.value.trim() || '',
     text: el.querySelector('.cpr-text')?.value.trim() || '',
     stars: 5
-  })).filter(r => r.name || r.text);
+  })).filter(r => r.name || r.text) : (Array.isArray(p.reviews) ? p.reviews : []);
 
-  const faq = Array.from(document.querySelectorAll('#cpFaqContainer .cp-faq-item')).map(el => ({
+  const faqContainer = document.getElementById('cpFaqContainer');
+  const faq = faqContainer ? Array.from(faqContainer.querySelectorAll('.cp-faq-item')).map(el => ({
     q: el.querySelector('.cpf-q')?.value.trim() || '',
     a: el.querySelector('.cpf-a')?.value.trim() || ''
-  })).filter(f => f.q && f.a);
+  })).filter(f => f.q && f.a) : (Array.isArray(p.faq) ? p.faq : []);
 
   const blocks = Array.from(document.querySelectorAll('#cpBlocksContainer .cp-block-row')).map((el, idx) => ({
     id: el.dataset.id,
