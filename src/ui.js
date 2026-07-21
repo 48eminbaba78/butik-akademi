@@ -8650,6 +8650,89 @@ async function renderCoachProfile() {
   updateProfilePreview();
 }
 
+function renderCoachBlocksManager(savedBlocks) {
+  const container = document.getElementById('cpBlocksContainer');
+  if (!container) return;
+
+  const defaultBlocks = [
+    { id: 'hero', name: 'Profil & YKS Ünvan', icon: '🏆', required: true, enabled: true },
+    { id: 'stats', name: 'YKS Başarı & Uzmanlık', icon: '⚡', required: false, enabled: true },
+    { id: 'value_props', name: 'Neden Ben? (Avantajlar)', icon: '🎯', required: false, enabled: true },
+    { id: 'tabs_about', name: 'Biyografi & Eğitim', icon: '📖', required: true, enabled: true },
+    { id: 'reviews', name: 'Öğrenci Yorumları', icon: '💬', required: false, enabled: true },
+    { id: 'faq', name: 'Sıkça Sorulan Sorular', icon: '❓', required: false, enabled: true },
+    { id: 'sticky_cta', name: 'Sabit Başvuru Butonu', icon: '🔥', required: true, enabled: true }
+  ];
+
+  let list = Array.isArray(savedBlocks) && savedBlocks.length ? savedBlocks : defaultBlocks;
+
+  container.innerHTML = list.map((b) => {
+    const isSelected = (b.id === window._activeStudioBlockId);
+    return `
+      <div class="cp-block-row" data-id="${esc(b.id)}" onclick="selectStudioBlock('${esc(b.id)}')"
+        style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:${isSelected ? 'var(--accent-dim)' : 'var(--surface2)'}; border:1.5px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}; border-radius:10px; cursor:pointer; transition:all .15s ease;">
+        <span style="font-size:14px;">${b.icon || '📑'}</span>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:12px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(b.name || b.id)}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:4px;" onclick="event.stopPropagation()">
+          <button type="button" class="btn btn-ghost btn-xs" onclick="moveStudioBlock('${esc(b.id)}', -1)" style="padding:2px 4px; font-size:10px;">▲</button>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="moveStudioBlock('${esc(b.id)}', 1)" style="padding:2px 4px; font-size:10px;">▼</button>
+          ${b.required ? `<span style="font-size:9px; color:var(--text-dim);">🔒</span>` : `
+            <input type="checkbox" class="cp-block-toggle" ${b.enabled !== false ? 'checked' : ''} onchange="updateProfilePreview()" style="accent-color:var(--accent); cursor:pointer;">
+          `}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+window.renderCoachBlocksManager = renderCoachBlocksManager;
+
+function moveStudioBlock(blockId, dir) {
+  const container = document.getElementById('cpBlocksContainer');
+  if (!container) return;
+  const rows = Array.from(container.querySelectorAll('.cp-block-row'));
+  const idx = rows.findIndex(r => r.dataset.id === blockId);
+  if (idx === -1) return;
+  const targetIdx = idx + dir;
+  if (targetIdx < 0 || targetIdx >= rows.length) return;
+  
+  if (dir < 0) {
+    container.insertBefore(rows[idx], rows[targetIdx]);
+  } else {
+    container.insertBefore(rows[idx], rows[targetIdx].nextSibling);
+  }
+  updateProfilePreview();
+}
+window.moveStudioBlock = moveStudioBlock;
+
+function addCustomStudioBlock() {
+  const name = prompt('Yeni blok başlığı girin:');
+  if (!name || !name.trim()) return;
+  const id = 'custom_' + Date.now();
+  const container = document.getElementById('cpBlocksContainer');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'cp-block-row';
+  div.dataset.id = id;
+  div.onclick = () => selectStudioBlock(id);
+  div.style.cssText = 'display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; cursor:pointer; margin-top:8px;';
+  div.innerHTML = `
+    <span style="font-size:14px;">⚡</span>
+    <div style="flex:1; min-width:0;">
+      <div style="font-size:12px; font-weight:700; color:var(--text);">${esc(name.trim())}</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:4px;" onclick="event.stopPropagation()">
+      <input type="checkbox" class="cp-block-toggle" checked onchange="updateProfilePreview()" style="accent-color:var(--accent); cursor:pointer;">
+      <button type="button" class="btn btn-ghost btn-xs" onclick="this.closest('.cp-block-row').remove(); updateProfilePreview();" style="padding:2px 4px; font-size:10px; color:var(--red);">🗑️</button>
+    </div>
+  `;
+  container.appendChild(div);
+  selectStudioBlock(id);
+  updateProfilePreview();
+}
+window.addCustomStudioBlock = addCustomStudioBlock;
+
 window.selectStudioBlock = function(blockId) {
   window._activeStudioBlockId = blockId;
   const inspector = document.getElementById('studioBlockInspector');
