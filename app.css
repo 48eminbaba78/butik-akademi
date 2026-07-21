@@ -1336,7 +1336,7 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
     border-radius: 0 !important;
     max-height: none !important;
   }
-  #aiChatBubble { bottom: 76px !important; right: 14px !important; }
+  #aiChatBubble { bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important; right: 16px !important; z-index: 500 !important; }
 
   /* Deneme sonuç tabloları — yatay kaydırma */
   .exam-table-wrap, .net-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
@@ -1607,11 +1607,11 @@ img, svg, video, canvas { max-width: 100%; }
    ══════════════════════════════════════════════════ */
 @media (display-mode: standalone), (display-mode: fullscreen) {
   .topnav {
-    padding-top: max(24px, env(safe-area-inset-top, 0px)) !important;
-    height: calc(56px + max(24px, env(safe-area-inset-top, 0px))) !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    height: calc(52px + env(safe-area-inset-top, 0px)) !important;
   }
   .mobile-nav {
-    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
     background: var(--surface) !important;
   }
 }
@@ -1620,8 +1620,8 @@ img, svg, video, canvas { max-width: 100%; }
 @supports (-webkit-touch-callout: none) {
   @media (display-mode: standalone) {
     .topnav {
-      padding-top: max(28px, env(safe-area-inset-top, 0px)) !important;
-      height: calc(58px + max(28px, env(safe-area-inset-top, 0px))) !important;
+      padding-top: env(safe-area-inset-top, 0px) !important;
+      height: calc(52px + env(safe-area-inset-top, 0px)) !important;
     }
   }
 }
