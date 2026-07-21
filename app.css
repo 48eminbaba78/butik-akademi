@@ -1306,7 +1306,7 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
   /* Topnav: kullanıcı adı metni gizle, butonları küçült */
   .sb-pname, .sb-prole { display: none; }
   .sb-pinfo { display: none; }
-  .topnav { padding: 0 12px; gap: 8px; }
+  .topnav { padding: env(safe-area-inset-top, 0px) 12px 0 12px; gap: 8px; }
 
   /* Mesajlaşma — liste önce, sohbet açıldığında tam ekran */
   .msg-layout {
@@ -1601,5 +1601,30 @@ img, svg, video, canvas { max-width: 100%; }
 .ios-pwa-step-text strong {
   color: var(--accent);
 }
+
+/* ══════════════════════════════════════════════════
+   PWA STANDALONE MODE — iOS & ANDROID NOTCH / STATUS BAR FIX
+   ══════════════════════════════════════════════════ */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  .topnav {
+    padding-top: max(24px, env(safe-area-inset-top, 0px)) !important;
+    height: calc(56px + max(24px, env(safe-area-inset-top, 0px))) !important;
+  }
+  .mobile-nav {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+    background: var(--surface) !important;
+  }
+}
+
+/* iOS Safari PWA Standalone Direct Selector */
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: standalone) {
+    .topnav {
+      padding-top: max(28px, env(safe-area-inset-top, 0px)) !important;
+      height: calc(58px + max(28px, env(safe-area-inset-top, 0px))) !important;
+    }
+  }
+}
+
 
 
