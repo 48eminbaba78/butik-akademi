@@ -11,6 +11,8 @@ ADD COLUMN IF NOT EXISTS faq JSONB DEFAULT '[]'::jsonb,
 ADD COLUMN IF NOT EXISTS custom_features JSONB DEFAULT '[]'::jsonb;
 
 -- Update get_coach_by_slug RPC function to include new fields
+DROP FUNCTION IF EXISTS get_coach_by_slug(text);
+
 CREATE OR REPLACE FUNCTION get_coach_by_slug(p_slug TEXT)
 RETURNS TABLE (
   id UUID,
