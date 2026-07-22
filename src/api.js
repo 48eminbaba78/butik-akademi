@@ -235,7 +235,8 @@ async function _fetchAll() {
 
   try {
     const ui = JSON.parse(localStorage.getItem('ba_ui_' + session.dbUser?.id) || '{}');
-    if (ui.weekOffset !== undefined) S.weekOffset = ui.weekOffset;
+    // weekOffset kasıtlı olarak geri yüklenmiyor — her uygulama açılışı her
+    // zaman güncel haftadan (offset 0, S'nin varsayılanı) başlamalı.
     if (ui.activeStuId)              S.activeStuId = ui.activeStuId;
     if (ui.calMonth !== undefined) { S.calMonth = ui.calMonth; S.calYear = ui.calYear; }
   } catch(e) {}

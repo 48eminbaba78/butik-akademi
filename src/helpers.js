@@ -7,7 +7,10 @@ import { S, session } from './state.js';
 export function saveUI() {
   try {
     localStorage.setItem('ba_ui_' + (session.dbUser?.id || 'x'), JSON.stringify({
-      weekOffset: S.weekOffset,
+      // weekOffset kasıtlı olarak kaydedilmiyor — bir önceki oturumda geçmiş/
+      // gelecek bir haftaya bakılmışsa bu değer kalıcı olarak "yapışıyor" ve
+      // her yeni girişte bugünün haftası yerine o eski hafta açılıyordu.
+      // Her uygulama açılışı her zaman güncel haftadan (offset 0) başlamalı.
       activeStuId: S.activeStuId,
       calMonth: S.calMonth,
       calYear: S.calYear
