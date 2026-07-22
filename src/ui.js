@@ -8573,6 +8573,7 @@ async function renderCoachProfile() {
   const profession = profile?.profession || '';
   const experience_years = profile?.experience_years || '';
   const institution = profile?.institution || '';
+  const isPublished = profile?.published === true;
   _cpSavedSlug = slug;
 
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -8588,6 +8589,7 @@ async function renderCoachProfile() {
           <h2 style="font-family:'Inter',sans-serif; font-size:22px; font-weight:800; letter-spacing:-.5px; margin:0; display:flex; align-items:center; gap:8px; color:var(--text);">
             <span>🎨 Rostrum Studio</span>
             <span style="font-size:10px; background:var(--accent-dim); color:var(--accent); font-weight:800; padding:3px 9px; border-radius:99px; letter-spacing:0.5px;">LANDING PAGE BUILDER</span>
+            <span id="cpPublishStatus" style="font-size:10px; font-weight:800; padding:3px 9px; border-radius:99px; letter-spacing:0.5px; background:${isPublished ? 'rgba(62,207,142,.15)' : 'var(--surface2)'}; color:${isPublished ? 'var(--green)' : 'var(--text-dim)'}; border:1px solid ${isPublished ? 'rgba(62,207,142,.35)' : 'var(--border)'};">${isPublished ? '● YAYINDA' : '○ TASLAK'}</span>
           </h2>
           <p style="font-size: 13px; color: var(--text-dim); margin-top:3px; margin-bottom:0;">
             Instagram biyografinize ekleyeceğiniz yüksek dönüşümlü kişisel YKS reklam sayfanızı stüdyo ortamında tasarlayın.
@@ -8595,21 +8597,22 @@ async function renderCoachProfile() {
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
           <button class="btn btn-ghost" style="padding: 8px 12px; height: 38px;" onclick="copyCoachLink()">🔗 Linki Kopyala</button>
-          <a href="${coachBulUrl}" id="cpSlugBrowseBtn" target="_blank" class="btn btn-ghost" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 14px; border-radius:9px; font-size:13px; font-weight:700;" onclick="return browseCoachLink(event)">👁 Canlı Gör</a>
-          <button class="btn btn-accent" style="height:38px; padding:0 18px; font-size:13.5px; font-weight:800; border-radius:9px; box-shadow:0 4px 16px rgba(240,98,54,0.35);" onclick="saveCoachProfile()">Profili Kaydet ✓</button>
+          <a href="${coachBulUrl}" id="cpSlugBrowseBtn" target="_blank" class="btn btn-ghost" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 14px; border-radius:9px; font-size:13px; font-weight:700;" onclick="return browseCoachLink(event)">👁 Önizle</a>
+          <button class="btn btn-ghost" style="height:38px; padding:0 16px; font-size:13px; font-weight:700; border-radius:9px;" onclick="saveCoachProfile(false)">Taslağı Kaydet</button>
+          <button class="btn btn-accent" style="height:38px; padding:0 18px; font-size:13.5px; font-weight:800; border-radius:9px; box-shadow:0 4px 16px rgba(240,98,54,0.35);" onclick="saveCoachProfile(true)">${isPublished ? 'Güncelle & Yayınla' : 'Yayınla 🚀'}</button>
         </div>
       </div>
 
-      <!-- 3-COLUMN STUDIO LAYOUT GRID -->
-      <div class="rostrum-studio-grid" style="display:grid; grid-template-columns: 270px 1fr 380px; gap:20px; align-items: start;">
-        
-        <!-- SOL PANEL: SAYFA YAPISI & BLOK KATMANLARI -->
-        <div class="studio-left-panel" style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px; position:sticky; top:20px; box-shadow:var(--shadow-sm);">
+      <!-- 3-COLUMN STUDIO LAYOUT GRID — ~25% sol / ~40% editör / ~35% önizleme -->
+      <div class="rostrum-studio-grid" style="display:grid; grid-template-columns: 272px 1fr 432px; gap:18px; align-items: start;">
+
+        <!-- SOL PANEL: SAYFA MİMARİSİ & BLOK KATMANLARI -->
+        <div class="studio-left-panel" style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto; box-shadow:var(--shadow-sm);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border);">
-            <div style="font-size:11px; font-weight:800; color:var(--text-mid); text-transform:uppercase; letter-spacing:0.5px;">📑 SAYFA BLOKLARI</div>
+            <div style="font-size:11px; font-weight:800; color:var(--text-mid); text-transform:uppercase; letter-spacing:0.5px;">📐 SAYFA MİMARİSİ</div>
             <button type="button" class="btn btn-ghost btn-xs" onclick="addCustomStudioBlock()" style="padding:3px 8px; font-size:11px;">+ Blok</button>
           </div>
-          <div id="cpBlocksContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
+          <div id="cpBlocksContainer" style="display:flex; flex-direction:column; gap:14px;"></div>
         </div>
 
         <!-- ORTA PANEL: DİNAMİK SEÇİLİ BLOK AYARLARI (INSPECTOR) -->
@@ -8626,15 +8629,15 @@ async function renderCoachProfile() {
             <span style="font-size:10px; font-weight:700; color:var(--accent); background:var(--accent-dim); padding:2px 8px; border-radius:99px;">CANLI GÜNCEL</span>
           </div>
 
-          <!-- Mini Telefon Çerçevesi -->
-          <div id="phoneMockupFrame" style="width: 100%; max-width: 380px; height: 710px; border-radius: 40px; border: 9px solid #1c1c1e; background: #09090B; overflow-y: auto; overflow-x: hidden; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.45); -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+          <!-- Telefon Çerçevesi -->
+          <div id="phoneMockupFrame" style="width: 100%; max-width: 412px; height: min(800px, calc(100vh - 100px)); margin:0 auto; border-radius: 44px; border: 10px solid #1c1c1e; background: #09090B; overflow-y: auto; overflow-x: hidden; position: relative; box-shadow: 0 24px 70px rgba(0,0,0,0.5); -webkit-overflow-scrolling: touch; scrollbar-width: none;">
             <!-- Çentik (Dynamic Island) -->
-            <div style="position:sticky; top:0; left:0; right:0; z-index:30; background:#09090B; padding:8px 0 4px; display:flex; justify-content:center; align-items:center;">
-              <div style="width:74px; height:18px; background:#1c1c1e; border-radius:12px;"></div>
+            <div style="position:sticky; top:0; left:0; right:0; z-index:30; background:#09090B; padding:10px 0 5px; display:flex; justify-content:center; align-items:center;">
+              <div style="width:80px; height:20px; background:#1c1c1e; border-radius:14px;"></div>
             </div>
 
             <!-- Canlı Yükleme Alanı -->
-            <div id="liveShowcasePreview" style="padding: 0 12px 60px 12px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #FAFAFA;">
+            <div id="liveShowcasePreview" style="padding: 0 14px 64px 14px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #FAFAFA;">
               <!-- updateProfilePreview burayı canlı günceller -->
             </div>
           </div>
@@ -8650,88 +8653,12 @@ async function renderCoachProfile() {
   updateProfilePreview();
 }
 
-function renderCoachBlocksManager(savedBlocks) {
-  const container = document.getElementById('cpBlocksContainer');
-  if (!container) return;
-
-  const defaultBlocks = [
-    { id: 'hero', name: 'Profil & YKS Ünvan', icon: '🏆', required: true, enabled: true },
-    { id: 'stats', name: 'YKS Başarı & Uzmanlık', icon: '⚡', required: false, enabled: true },
-    { id: 'value_props', name: 'Neden Ben? (Avantajlar)', icon: '🎯', required: false, enabled: true },
-    { id: 'tabs_about', name: 'Biyografi & Eğitim', icon: '📖', required: true, enabled: true },
-    { id: 'reviews', name: 'Öğrenci Yorumları', icon: '💬', required: false, enabled: true },
-    { id: 'faq', name: 'Sıkça Sorulan Sorular', icon: '❓', required: false, enabled: true },
-    { id: 'sticky_cta', name: 'Sabit Başvuru Butonu', icon: '🔥', required: true, enabled: true }
-  ];
-
-  let list = Array.isArray(savedBlocks) && savedBlocks.length ? savedBlocks : defaultBlocks;
-
-  container.innerHTML = list.map((b) => {
-    const isSelected = (b.id === window._activeStudioBlockId);
-    return `
-      <div class="cp-block-row" data-id="${esc(b.id)}" onclick="selectStudioBlock('${esc(b.id)}')"
-        style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:${isSelected ? 'var(--accent-dim)' : 'var(--surface2)'}; border:1.5px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}; border-radius:10px; cursor:pointer; transition:all .15s ease;">
-        <span style="font-size:14px;">${b.icon || '📑'}</span>
-        <div style="flex:1; min-width:0;">
-          <div style="font-size:12px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(b.name || b.id)}</div>
-        </div>
-        <div style="display:flex; align-items:center; gap:4px;" onclick="event.stopPropagation()">
-          <button type="button" class="btn btn-ghost btn-xs" onclick="moveStudioBlock('${esc(b.id)}', -1)" style="padding:2px 4px; font-size:10px;">▲</button>
-          <button type="button" class="btn btn-ghost btn-xs" onclick="moveStudioBlock('${esc(b.id)}', 1)" style="padding:2px 4px; font-size:10px;">▼</button>
-          ${b.required ? `<span style="font-size:9px; color:var(--text-dim);">🔒</span>` : `
-            <input type="checkbox" class="cp-block-toggle" ${b.enabled !== false ? 'checked' : ''} onchange="updateProfilePreview()" style="accent-color:var(--accent); cursor:pointer;">
-          `}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-window.renderCoachBlocksManager = renderCoachBlocksManager;
-
-function moveStudioBlock(blockId, dir) {
-  const container = document.getElementById('cpBlocksContainer');
-  if (!container) return;
-  const rows = Array.from(container.querySelectorAll('.cp-block-row'));
-  const idx = rows.findIndex(r => r.dataset.id === blockId);
-  if (idx === -1) return;
-  const targetIdx = idx + dir;
-  if (targetIdx < 0 || targetIdx >= rows.length) return;
-  
-  if (dir < 0) {
-    container.insertBefore(rows[idx], rows[targetIdx]);
-  } else {
-    container.insertBefore(rows[idx], rows[targetIdx].nextSibling);
-  }
-  updateProfilePreview();
-}
-window.moveStudioBlock = moveStudioBlock;
-
-function addCustomStudioBlock() {
-  const name = prompt('Yeni blok başlığı girin:');
-  if (!name || !name.trim()) return;
-  const id = 'custom_' + Date.now();
-  const container = document.getElementById('cpBlocksContainer');
-  if (!container) return;
-  const div = document.createElement('div');
-  div.className = 'cp-block-row';
-  div.dataset.id = id;
-  div.onclick = () => selectStudioBlock(id);
-  div.style.cssText = 'display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; cursor:pointer; margin-top:8px;';
-  div.innerHTML = `
-    <span style="font-size:14px;">⚡</span>
-    <div style="flex:1; min-width:0;">
-      <div style="font-size:12px; font-weight:700; color:var(--text);">${esc(name.trim())}</div>
-    </div>
-    <div style="display:flex; align-items:center; gap:4px;" onclick="event.stopPropagation()">
-      <input type="checkbox" class="cp-block-toggle" checked onchange="updateProfilePreview()" style="accent-color:var(--accent); cursor:pointer;">
-      <button type="button" class="btn btn-ghost btn-xs" onclick="this.closest('.cp-block-row').remove(); updateProfilePreview();" style="padding:2px 4px; font-size:10px; color:var(--red);">🗑️</button>
-    </div>
-  `;
-  container.appendChild(div);
-  selectStudioBlock(id);
-  updateProfilePreview();
-}
-window.addCustomStudioBlock = addCustomStudioBlock;
+// NOT: renderCoachBlocksManager / addCustomStudioBlock'un asıl (aktif) tanımları
+// bu dosyada daha aşağıda `window.X = function(){...}` olarak yapılıyor — burada
+// aynı isimle modül-kapsamlı bir `function` bildirimi bırakmak, renderCoachProfile()
+// içindeki çıplak çağrının (bare identifier — window.X yerine modül kapsamındaki
+// bildirimi bulur) sessizce eski/ölü bir sürümü çalıştırmasına yol açıyordu.
+// Kilitlenen bir bug'du, bu yüzden eski tanımlar tamamen kaldırıldı.
 
 window.selectStudioBlock = function(blockId) {
   window._activeStudioBlockId = blockId;
@@ -8752,6 +8679,15 @@ window.selectStudioBlock = function(blockId) {
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border);">
         <h3 style="font-size:15px; font-weight:800; color:var(--text); margin:0;">🏆 Profil &amp; YKS Ünvan Ayarları (Hero)</h3>
         <span style="font-size:11px; background:var(--accent-dim); color:var(--accent); font-weight:700; padding:2px 8px; border-radius:99px;">ZORUNLU BLOK</span>
+      </div>
+
+      <!-- Profil Tipi — editörde hangi alan grubunun öne çıkacağını belirler -->
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Profil Tipi</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button type="button" id="cpTypeStudentBtn" onclick="setCoachProfileType('student')" style="padding:10px; border-radius:10px; font-size:12.5px; font-weight:700; cursor:pointer; text-align:left; border:1.5px solid ${(p.profile_type || 'student') === 'student' ? 'var(--accent)' : 'var(--border)'}; background:${(p.profile_type || 'student') === 'student' ? 'var(--accent-dim)' : 'var(--surface2)'}; color:${(p.profile_type || 'student') === 'student' ? 'var(--accent)' : 'var(--text)'};">🎓 Öğrenci Koçu<div style="font-weight:400; font-size:10.5px; color:var(--text-dim); margin-top:2px;">Üniversite, bölüm, YKS derecesi</div></button>
+          <button type="button" id="cpTypeProBtn" onclick="setCoachProfileType('professional')" style="padding:10px; border-radius:10px; font-size:12.5px; font-weight:700; cursor:pointer; text-align:left; border:1.5px solid ${p.profile_type === 'professional' ? 'var(--accent)' : 'var(--border)'}; background:${p.profile_type === 'professional' ? 'var(--accent-dim)' : 'var(--surface2)'}; color:${p.profile_type === 'professional' ? 'var(--accent)' : 'var(--text)'};">💼 Profesyonel Eğitim Koçu<div style="font-weight:400; font-size:10.5px; color:var(--text-dim); margin-top:2px;">Meslek, deneyim, kurum</div></button>
+        </div>
       </div>
 
       <!-- Profil Fotoğrafı -->
@@ -8780,7 +8716,7 @@ window.selectStudioBlock = function(blockId) {
       </div>
 
       <!-- YKS Derecesi & Üniversite (Öğrenci Koçu) -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;">
+      <div id="cpStudentFields" style="display:${(p.profile_type || 'student') === 'student' ? 'grid' : 'none'}; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;">
         <div>
           <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">YKS Derecesi <span style="font-weight:400; color:var(--text-dim)">(Örn: Sayısal 412.si)</span></label>
           <input type="text" id="cpYksRank" value="${esc(p.yks_rank || '')}" placeholder="Örn: Sayısal 412.si" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--text); outline:none;">
@@ -8792,7 +8728,7 @@ window.selectStudioBlock = function(blockId) {
       </div>
 
       <!-- Meslek & Deneyim (Profesyonel Koç) -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;">
+      <div id="cpProFields" style="display:${p.profile_type === 'professional' ? 'grid' : 'none'}; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;">
         <div>
           <label style="display:block; font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Meslek / Unvan <span style="font-weight:400; color:var(--text-dim)">(Örn: PDR Uzmanı)</span></label>
           <input type="text" id="cpProfession" value="${esc(p.profession || '')}" placeholder="Örn: Rehber Öğretmen" oninput="updateProfilePreview()" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--text); outline:none;">
@@ -8971,7 +8907,31 @@ window.selectStudioBlock = function(blockId) {
   updateProfilePreview();
 };
 
-
+// Profil Tipi seçimi — editörde hangi alan grubunun (Öğrenci Koçu / Profesyonel
+// Koç) gösterileceğini belirler. Kamu sayfası zaten dolu alana göre kendi kendine
+// adapte olduğu için bu sadece editördeki gereksiz karmaşayı azaltır.
+window.setCoachProfileType = function(type) {
+  const p = window._coachProfileData = window._coachProfileData || {};
+  p.profile_type = type;
+  const studentBtn = document.getElementById('cpTypeStudentBtn');
+  const proBtn = document.getElementById('cpTypeProBtn');
+  const studentFields = document.getElementById('cpStudentFields');
+  const proFields = document.getElementById('cpProFields');
+  const isStudent = type === 'student';
+  if (studentFields) studentFields.style.display = isStudent ? 'grid' : 'none';
+  if (proFields) proFields.style.display = isStudent ? 'none' : 'grid';
+  if (studentBtn) {
+    studentBtn.style.borderColor = isStudent ? 'var(--accent)' : 'var(--border)';
+    studentBtn.style.background = isStudent ? 'var(--accent-dim)' : 'var(--surface2)';
+    studentBtn.style.color = isStudent ? 'var(--accent)' : 'var(--text)';
+  }
+  if (proBtn) {
+    proBtn.style.borderColor = !isStudent ? 'var(--accent)' : 'var(--border)';
+    proBtn.style.background = !isStudent ? 'var(--accent-dim)' : 'var(--surface2)';
+    proBtn.style.color = !isStudent ? 'var(--accent)' : 'var(--text)';
+  }
+  updateProfilePreview();
+};
 
 // ── Uzmanlık etiketleri (Multi-select Dropdown) ─────────────────────────
 const COACH_TAG_PRESETS = ['YKS','TYT','AYT','LGS','Sayısal','Eşit Ağırlık','Sözel','Dil',
@@ -9144,6 +9104,10 @@ function copyCoachLink(){
 function browseCoachLink(e){
   if (e) e.preventDefault();
   if (_cpTypedDiffers()){ showToast('Yeni linki önce Kaydet\'e basarak etkinleştir'); return false; }
+  if (window._coachProfileData?.published !== true) {
+    showToast('Henüz yayınlamadınız — sayfa herkese açık değil. Önce "Yayınla" butonuna basın.', false);
+    return false;
+  }
   window.open(_cpSavedLink(), '_blank');
   return false;
 }
@@ -9476,6 +9440,18 @@ window.addCoachFaqItem = function(q = '', a = '') {
   updateProfilePreview();
 };
 
+// Blokların ait olduğu sayfa mimarisi kategorisi — sol panelde grup başlığı olarak gösterilir
+const STUDIO_BLOCK_CATEGORIES = [
+  { key: 'hero', label: 'HERO', ids: ['hero'] },
+  { key: 'trust', label: 'TRUST', ids: ['stats'] },
+  { key: 'about', label: 'ABOUT', ids: ['value_props', 'tabs_about'] },
+  { key: 'social', label: 'SOCIAL PROOF', ids: ['reviews'] },
+  { key: 'faq', label: 'FAQ', ids: ['faq'] },
+  { key: 'conversion', label: 'CONVERSION', ids: ['sticky_cta'] }
+];
+// Sayfanın iskeleti sayılan, silinemeyen bloklar (kilit ikonu gösterilir)
+const STUDIO_REQUIRED_BLOCK_IDS = ['hero', 'tabs_about', 'sticky_cta'];
+
 window.renderCoachBlocksManager = function(blocks) {
   const container = document.getElementById('cpBlocksContainer');
   if (!container) return;
@@ -9493,35 +9469,95 @@ window.renderCoachBlocksManager = function(blocks) {
   const current = Array.isArray(blocks) && blocks.length ? blocks : defaultList;
   container.innerHTML = '';
 
-  current.forEach((b, idx) => {
+  const makeRow = (b, idx) => {
     const isSelected = (window._activeStudioBlockId || 'hero') === b.id;
+    const isRequired = STUDIO_REQUIRED_BLOCK_IDS.includes(b.id);
     const div = document.createElement('div');
     div.className = 'cp-block-row';
+    div.draggable = true;
     div.dataset.id = b.id;
     div.dataset.name = b.name || defaultList.find(d => d.id === b.id)?.name || b.id;
-    div.style.cssText = `background:${isSelected ? 'var(--accent-dim)' : 'var(--surface2)'}; border:1.5px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}; border-radius:10px; padding:9px 11px; display:flex; align-items:center; justify-content:space-between; font-size:12px; cursor:pointer; transition:all 0.15s;`;
+    div.style.cssText = `background:${isSelected ? 'var(--accent-dim)' : 'var(--surface2)'}; border:1.5px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}; border-radius:10px; padding:9px 10px; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; font-size:12px; cursor:pointer; transition:background .15s,border-color .15s;`;
     div.onclick = (e) => {
       if (e.target.closest('button') || e.target.closest('input')) return;
       selectStudioBlock(b.id);
     };
 
+    // Gerçek sürükle-bırak ile sıralama (▲▼ butonları erişilebilirlik yedeği olarak kalır)
+    div.addEventListener('dragstart', (e) => {
+      window._studioDragId = b.id;
+      div.style.opacity = '.4';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    div.addEventListener('dragend', () => { div.style.opacity = ''; });
+    div.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      div.style.borderColor = 'var(--accent)';
+    });
+    div.addEventListener('dragleave', () => {
+      div.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border)';
+    });
+    div.addEventListener('drop', (e) => {
+      e.preventDefault();
+      div.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border)';
+      const draggedId = window._studioDragId;
+      if (!draggedId || draggedId === b.id) return;
+      const draggedEl = container.querySelector(`.cp-block-row[data-id="${draggedId}"]`);
+      if (!draggedEl) return;
+      const rows = Array.from(container.querySelectorAll('.cp-block-row'));
+      const draggedIdx = rows.indexOf(draggedEl);
+      const targetIdx = rows.indexOf(div);
+      if (draggedIdx < targetIdx) div.after(draggedEl); else div.before(draggedEl);
+      updateProfilePreview();
+    });
+
     div.innerHTML = `
-      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-        <span style="color:var(--text-dim); cursor:grab; font-size:13px;" title="Sıralama Tutamağı">☰</span>
-        <label style="display:inline-flex; align-items:center; gap:6px; font-weight:700; cursor:pointer; color:var(--text); min-width:0;" onclick="event.stopPropagation()">
-          <input type="checkbox" class="cp-block-toggle" ${b.enabled !== false ? 'checked' : ''} onchange="updateProfilePreview()" style="accent-color:var(--accent);">
-          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;">${esc(div.dataset.name)}</span>
+      <span style="color:var(--text-dim); cursor:grab; font-size:13px; padding-top:1px; flex-shrink:0;" title="Sürükleyerek sırala">⠿</span>
+      <div style="flex:1; min-width:0;">
+        <label style="display:flex; align-items:flex-start; gap:7px; font-weight:700; cursor:pointer; color:var(--text);" onclick="event.stopPropagation()">
+          <input type="checkbox" class="cp-block-toggle" ${b.enabled !== false ? 'checked' : ''} ${isRequired ? 'disabled title="Bu blok sayfanın iskeletidir, kapatılamaz"' : 'onchange="updateProfilePreview()"'} style="accent-color:var(--accent); margin-top:2px; flex-shrink:0;">
+          <span style="white-space:normal; word-break:break-word; line-height:1.35;">${esc(div.dataset.name)}</span>
         </label>
       </div>
-      <div style="display:flex; align-items:center; gap:3px;">
-        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${b.id}', -1)" ${idx === 0 ? 'disabled' : ''} style="padding:2px 5px; font-size:10px;" title="Yukarı Taşı">▲</button>
-        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${b.id}', 1)" ${idx === current.length - 1 ? 'disabled' : ''} style="padding:2px 5px; font-size:10px;" title="Aşağı Taşı">▼</button>
-        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); duplicateCoachBlock('${b.id}')" style="padding:2px 5px; font-size:10px;" title="Kopyala">📋</button>
-        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); deleteCoachBlock('${b.id}')" style="padding:2px 5px; font-size:10px; color:var(--red);" title="Kaldır">🗑️</button>
+      <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
+        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${b.id}', -1)" ${idx === 0 ? 'disabled' : ''} style="padding:2px 4px; font-size:10px;" title="Yukarı Taşı">▲</button>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${b.id}', 1)" ${idx === current.length - 1 ? 'disabled' : ''} style="padding:2px 4px; font-size:10px;" title="Aşağı Taşı">▼</button>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); duplicateCoachBlock('${b.id}')" style="padding:2px 4px; font-size:10px;" title="Kopyala">📋</button>
+        ${isRequired
+          ? `<span style="padding:2px 4px; font-size:11px; color:var(--text-dim);" title="Sayfanın iskeletidir, kaldırılamaz">🔒</span>`
+          : `<button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); deleteCoachBlock('${b.id}')" style="padding:2px 4px; font-size:10px; color:var(--red);" title="Kaldır">🗑️</button>`}
       </div>
     `;
-    container.appendChild(div);
+    return div;
+  };
+
+  // Kategori başlıklarıyla grupla — sayfada göründükleri sırayı korur, sadece
+  // hangi bölgeye ait olduklarını görsel olarak netleştirir
+  let idx = 0;
+  const placed = new Set();
+  STUDIO_BLOCK_CATEGORIES.forEach(cat => {
+    const inCat = current.filter(b => cat.ids.includes(b.id));
+    if (!inCat.length) return;
+    const groupEl = document.createElement('div');
+    groupEl.innerHTML = `<div style="font-size:9.5px; font-weight:800; color:var(--text-dim); letter-spacing:.8px; margin-bottom:6px; padding-left:2px;">${cat.label}</div>`;
+    const rowsWrap = document.createElement('div');
+    rowsWrap.style.cssText = 'display:flex; flex-direction:column; gap:6px;';
+    inCat.forEach(b => { rowsWrap.appendChild(makeRow(b, idx)); placed.add(b.id); idx++; });
+    groupEl.appendChild(rowsWrap);
+    container.appendChild(groupEl);
   });
+  // Kategorisi olmayan (özel/custom) bloklar en altta kendi grubunda
+  const rest = current.filter(b => !placed.has(b.id));
+  if (rest.length) {
+    const groupEl = document.createElement('div');
+    groupEl.innerHTML = `<div style="font-size:9.5px; font-weight:800; color:var(--text-dim); letter-spacing:.8px; margin-bottom:6px; padding-left:2px;">ÖZEL BLOKLAR</div>`;
+    const rowsWrap = document.createElement('div');
+    rowsWrap.style.cssText = 'display:flex; flex-direction:column; gap:6px;';
+    rest.forEach(b => { rowsWrap.appendChild(makeRow(b, idx)); idx++; });
+    groupEl.appendChild(rowsWrap);
+    container.appendChild(groupEl);
+  }
 };
 
 window.moveCoachBlock = function(id, dir) {
@@ -9554,6 +9590,10 @@ window.duplicateCoachBlock = function(id) {
 };
 
 window.deleteCoachBlock = function(id) {
+  if (STUDIO_REQUIRED_BLOCK_IDS.includes(id)) {
+    showToast('Bu blok sayfanın iskeletidir, kaldırılamaz — sadece gizleyebilirsiniz.', false);
+    return;
+  }
   const container = document.getElementById('cpBlocksContainer');
   if (!container) return;
   const target = container.querySelector(`.cp-block-row[data-id="${id}"]`);
@@ -9599,7 +9639,7 @@ window.addCustomStudioBlock = function() {
   updateProfilePreview();
 };
 
-async function saveCoachProfile() {
+async function saveCoachProfile(publish) {
   const userId = session.dbUser.id;
   const p = window._coachProfileData || {};
   const photo_url = (document.getElementById('cpPhotoUrl')?.value ?? p.photo_url ?? '').trim();
@@ -9641,14 +9681,20 @@ async function saveCoachProfile() {
     order: idx + 1
   }));
 
-  // Zorunlu alan doğrulamaları — kamu profili yarım bilgiyle yayınlanmasın
-  if (!photo_url) return _cpShowErr('Profil fotoğrafı zorunlu — velilerin en çok baktığı güven sinyali.');
-  if (!subjects) return _cpShowErr('En az bir uzmanlık etiketi seç.');
-  if (bio.length < 30) return _cpShowErr('Biyografi en az 30 karakter olmalı — "AI ile Oluştur" butonunu kullanabilirsin.');
-  if (!education) return _cpShowErr('Eğitim bilgini gir (örn: Boğaziçi Üniversitesi - Psikolojik Danışmanlık veya Hacettepe Tıp).');
-  if (!experience) return _cpShowErr('Deneyim/başarı bilgini gir (örn: YKS 2025 Sayısal 412.si veya 8 Yıl PDR Uzmanı).');
-  if (slug && slug.length < 3) return _cpShowErr('Profil linki en az 3 karakter olmalı.');
-  if (slug && !_cpSlugOk) return _cpShowErr('Bu profil linki alınmış — başka bir tane dene.');
+  // Taslak kaydında sayfa yapısını kaybetmeden serbestçe yazabilsin diye zorunlu
+  // alan kontrolleri sadece gerçekten "Yayınla" dendiğinde çalışır.
+  if (publish) {
+    if (!photo_url) return _cpShowErr('Profil fotoğrafı zorunlu — velilerin en çok baktığı güven sinyali.');
+    if (!subjects) return _cpShowErr('En az bir uzmanlık etiketi seç.');
+    if (bio.length < 30) return _cpShowErr('Biyografi en az 30 karakter olmalı — "AI ile Oluştur" butonunu kullanabilirsin.');
+    if (!education) return _cpShowErr('Eğitim bilgini gir (örn: Boğaziçi Üniversitesi - Psikolojik Danışmanlık veya Hacettepe Tıp).');
+    if (!experience) return _cpShowErr('Deneyim/başarı bilgini gir (örn: YKS 2025 Sayısal 412.si veya 8 Yıl PDR Uzmanı).');
+    if (!slug || slug.length < 3) return _cpShowErr('Yayınlamak için en az 3 karakterlik bir profil linki belirle.');
+    if (!_cpSlugOk) return _cpShowErr('Bu profil linki alınmış — başka bir tane dene.');
+  } else {
+    if (slug && slug.length < 3) return _cpShowErr('Profil linki en az 3 karakter olmalı.');
+    if (slug && !_cpSlugOk) return _cpShowErr('Bu profil linki alınmış — başka bir tane dene.');
+  }
 
   const payload = {
     id: userId,
@@ -9666,8 +9712,16 @@ async function saveCoachProfile() {
     university: university || null,
     profession: profession || null,
     experience_years: experience_years || null,
+    profile_type: p.profile_type === 'professional' ? 'professional' : 'student',
     updated_at: new Date().toISOString()
   };
+  // "Yayınla" her zaman published=true yapar. Taslak kaydı, daha önce hiç
+  // yayınlanmamış bir profili yanlışlıkla yayına almasın diye published'ı
+  // sadece henüz hiç yayınlanmamışsa (false/undefined) açıkça false bırakır;
+  // zaten yayındaki bir profilde taslak kaydı yayın durumunu bozmaz (alan hiç
+  // gönderilmez → mevcut değeri korunur).
+  if (publish) payload.published = true;
+  else if (p.published !== true) payload.published = false;
 
   // Save to local storage as fallback first
   localStorage.setItem(`coach_profile_${userId}`, JSON.stringify(payload));
@@ -9675,9 +9729,12 @@ async function saveCoachProfile() {
   let { error } = await db.from('coach_profiles').upsert(payload);
   if (error && /column/i.test(error.message||'')) {
     // migration çalıştırılmamış — yeni opsiyonel alanları çıkarıp kaydet
-    const { slug: _s, headline: _h, capacity_left: _c, whatsapp_number: _w, pricing_text: _p, reviews: _r, faq: _f, blocks: _b, yks_rank: _yr, university: _u, profession: _pr, experience_years: _ey, ...legacy } = payload;
+    const { slug: _s, headline: _h, capacity_left: _c, whatsapp_number: _w, pricing_text: _p, reviews: _r, faq: _f, blocks: _b, yks_rank: _yr, university: _u, profession: _pr, experience_years: _ey, profile_type: _pt, published: _pub, ...legacy } = payload;
     ({ error } = await db.from('coach_profiles').upsert(legacy));
     if (!error) showToast('Profil kaydedildi (Vitrin alanları yerel olarak güncellendi)', true);
+  }
+  if (!error) {
+    p.published = payload.published !== undefined ? payload.published : p.published;
   }
   if (error) {
     if (/duplicate|unique/i.test(error.message||''))
@@ -9687,7 +9744,7 @@ async function saveCoachProfile() {
   } else {
     _cpSavedSlug = (slug || '').toLowerCase();
     _cpRefreshLinkUI(); // Gözat href + "✓ link aktif" durumu
-    showToast('Profil başarıyla güncellendi ✓', true);
+    showToast(publish ? 'Profilin yayında! 🎉 Instagram bio linkine ekleyebilirsin.' : 'Taslak kaydedildi ✓', true);
   }
 }
 

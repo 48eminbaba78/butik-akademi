@@ -467,7 +467,11 @@
       const { data: users, error: usersErr } = await db.from('users').select('id, full_name, color, target').eq('role', 'coach');
       if (usersErr) throw usersErr;
       
-      const { data: profiles, error: profErr } = await db.from('coach_profiles').select('*');
+      let { data: profiles, error: profErr } = await db.from('coach_profiles').select('*').eq('published', true);
+      if (profErr && /column/i.test(profErr.message || '')) {
+        // migration_v37 henüz çalıştırılmamış — published kolonu yok, filtresiz devam et
+        ({ data: profiles, error: profErr } = await db.from('coach_profiles').select('*'));
+      }
       if (profErr) throw profErr;
       
       const profileMap = {};
@@ -718,7 +722,10 @@
             };
           } else {
             // RPC role filter fallback for developers or hidden coaches (direct fetch)
-            const { data: p } = await db.from('coach_profiles').select('*').eq('slug', slugParam).maybeSingle();
+            let { data: p, error: pErr } = await db.from('coach_profiles').select('*').eq('slug', slugParam).eq('published', true).maybeSingle();
+            if (pErr && /column/i.test(pErr.message || '')) {
+              ({ data: p } = await db.from('coach_profiles').select('*').eq('slug', slugParam).maybeSingle());
+            }
             if (p) {
               const { data: u } = await db.from('users').select('id, full_name, color, target').eq('id', p.id).single();
               if (u) {
@@ -740,7 +747,10 @@
         try {
           const { data: u } = await db.from('users').select('id, full_name, color, target').eq('id', coachParam).single();
           if (u) {
-            const { data: p } = await db.from('coach_profiles').select('*').eq('id', coachParam).maybeSingle();
+            let { data: p, error: pErr2 } = await db.from('coach_profiles').select('*').eq('id', coachParam).eq('published', true).maybeSingle();
+            if (pErr2 && /column/i.test(pErr2.message || '')) {
+              ({ data: p } = await db.from('coach_profiles').select('*').eq('id', coachParam).maybeSingle());
+            }
             target = {
               id: u.id,
               name: u.full_name,
@@ -1084,6 +1094,8 @@
         .sc-faq-item{border-bottom:1px solid var(--bd);padding:10px 0}
         .sc-faq-item:last-child{border-bottom:none;padding-bottom:0}
         .sc-faq-q{font-size:12.5px;font-weight:800;color:var(--ink);cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+        .sc-faq-q span:last-child{transition:transform .2s ease;color:var(--mid);flex-shrink:0;margin-left:8px}
+        .sc-faq-item.open .sc-faq-q span:last-child{transform:rotate(180deg);color:var(--b)}
         .sc-faq-a{font-size:11.5px;color:var(--mid);line-height:1.5;margin-top:6px;display:none}
         .sc-faq-item.open .sc-faq-a{display:block}
 
