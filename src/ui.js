@@ -628,20 +628,61 @@ function renderHome(){
       exams:    { label: '➕ Deneme Ekle',  fn: 'openStudentExams' },
       speed:    { label: '⏱ Hızı Düzenle', fn: 'openStudentModal' },
     };
-    anomaliesHTML = anomalies.map(a => {
-      const st = typeStyle[a.type] || typeStyle.tasks;
+    const qaBtnHTML = a => {
+      const st2 = typeStyle[a.type] || typeStyle.tasks;
       const qa = quickAction[a.type];
-      const qaBtn = qa ? `<button onclick="event.stopPropagation();${qa.fn}('${a.studentId}')" style="flex-shrink:0;font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid ${st.border};background:var(--surface);color:${st.badge};cursor:pointer;font-family:inherit;white-space:nowrap;transition:filter .15s" onmouseover="this.style.filter='brightness(.95)'" onmouseout="this.style.filter='none'">${qa.label}</button>` : '';
-      return `<div style="cursor:pointer;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:${st.badgeBg};border:1px solid ${st.border};display:flex;align-items:center;gap:10px;transition:opacity .15s" onclick="openStudentDetail('${a.studentId}')" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-        <div style="font-size:18px;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0">${a.icon}</div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px">
-            <span style="font-size:13px;font-weight:700">${esc(a.studentName)}</span>
-            <span style="font-size:10px;font-weight:700;color:${st.badge};white-space:nowrap">${a.title}</span>
+      return qa ? `<button onclick="event.stopPropagation();${qa.fn}('${a.studentId}')" style="flex-shrink:0;font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid ${st2.border};background:var(--surface);color:${st2.badge};cursor:pointer;font-family:inherit;white-space:nowrap;transition:filter .15s" onmouseover="this.style.filter='brightness(.95)'" onmouseout="this.style.filter='none'">${qa.label}</button>` : '';
+    };
+
+    // Aynı öğrenci için birden fazla uyarı varsa tek kartta grupla — dağınık,
+    // tekrarlı liste yerine öğrenci başına tek kart gösterilir (mobil inceleme notu).
+    // Tek uyarısı olan öğrenciler eskisi gibi (değişmemiş) görünür.
+    const severityRank = { inactive: 3, tasks: 3, exams: 3, noplan: 2, speed: 2, perfect: 0 };
+    const grouped = [];
+    const idxByStu = {};
+    anomalies.forEach(a => {
+      if (idxByStu[a.studentId] === undefined) {
+        idxByStu[a.studentId] = grouped.length;
+        grouped.push({ studentId: a.studentId, studentName: a.studentName, color: a.color, items: [] });
+      }
+      grouped[idxByStu[a.studentId]].items.push(a);
+    });
+
+    anomaliesHTML = grouped.map(grp => {
+      if (grp.items.length === 1) {
+        const a = grp.items[0];
+        const st = typeStyle[a.type] || typeStyle.tasks;
+        return `<div style="cursor:pointer;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:${st.badgeBg};border:1px solid ${st.border};display:flex;align-items:center;gap:10px;transition:opacity .15s" onclick="openStudentDetail('${a.studentId}')" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          <div style="font-size:18px;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0">${a.icon}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px">
+              <span style="font-size:13px;font-weight:700">${esc(a.studentName)}</span>
+              <span style="font-size:10px;font-weight:700;color:${st.badge};white-space:nowrap">${a.title}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-mid);line-height:1.4">${a.desc}</div>
           </div>
-          <div style="font-size:11px;color:var(--text-mid);line-height:1.4">${a.desc}</div>
+          ${qaBtnHTML(a)}
+        </div>`;
+      }
+      const worst = grp.items.reduce((w, it) => (severityRank[it.type] ?? 1) > (severityRank[w.type] ?? 1) ? it : w, grp.items[0]);
+      const st = typeStyle[worst.type] || typeStyle.tasks;
+      const rowsHTML = grp.items.map((a, i) => {
+        const st2 = typeStyle[a.type] || typeStyle.tasks;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:${i===0?'0 0 8px':'8px 0 0'};${i>0?'border-top:1px solid rgba(255,255,255,.07)':''}">
+          <div style="font-size:16px;width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0">${a.icon}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:700;color:${st2.badge};margin-bottom:1px">${a.title}</div>
+            <div style="font-size:11px;color:var(--text-mid);line-height:1.4">${a.desc}</div>
+          </div>
+          ${qaBtnHTML(a)}
+        </div>`;
+      }).join('');
+      return `<div style="cursor:pointer;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:${st.badgeBg};border:1px solid ${st.border};transition:opacity .15s" onclick="openStudentDetail('${grp.studentId}')" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${grp.color||'var(--accent)'};display:inline-block;flex-shrink:0"></span>${esc(grp.studentName)}</span>
+          <span style="font-size:10px;font-weight:700;color:${st.badge};white-space:nowrap;background:rgba(255,255,255,.07);padding:3px 8px;border-radius:20px">${grp.items.length} uyarı</span>
         </div>
-        ${qaBtn}
+        ${rowsHTML}
       </div>`;
     }).join('');
   }
