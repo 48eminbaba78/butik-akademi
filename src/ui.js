@@ -9451,6 +9451,11 @@ const STUDIO_BLOCK_CATEGORIES = [
 ];
 // Sayfanın iskeleti sayılan, silinemeyen bloklar (kilit ikonu gösterilir)
 const STUDIO_REQUIRED_BLOCK_IDS = ['hero', 'tabs_about', 'sticky_cta'];
+// Yerleşik (built-in) bloklar — bunların özel bir görüntüleme mantığı (blockRenderers)
+// var, o yüzden çoğaltılmaları anlamsız (kopya, eşleşen bir renderer olmadığı için
+// canlı sayfada hiç görünmez). Kopyala butonu sadece koçun kendi eklediği özel
+// bloklarda gösterilir.
+const STUDIO_CORE_BLOCK_IDS = ['hero', 'stats', 'value_props', 'tabs_about', 'reviews', 'faq', 'sticky_cta'];
 
 window.renderCoachBlocksManager = function(blocks) {
   const container = document.getElementById('cpBlocksContainer');
@@ -9523,7 +9528,7 @@ window.renderCoachBlocksManager = function(blocks) {
       <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
         <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${b.id}', -1)" ${idx === 0 ? 'disabled' : ''} style="padding:2px 4px; font-size:10px;" title="Yukarı Taşı">▲</button>
         <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${b.id}', 1)" ${idx === current.length - 1 ? 'disabled' : ''} style="padding:2px 4px; font-size:10px;" title="Aşağı Taşı">▼</button>
-        <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); duplicateCoachBlock('${b.id}')" style="padding:2px 4px; font-size:10px;" title="Kopyala">📋</button>
+        ${STUDIO_CORE_BLOCK_IDS.includes(b.id) ? '' : `<button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); duplicateCoachBlock('${b.id}')" style="padding:2px 4px; font-size:10px;" title="Kopyala">📋</button>`}
         ${isRequired
           ? `<span style="padding:2px 4px; font-size:11px; color:var(--text-dim);" title="Sayfanın iskeletidir, kaldırılamaz">🔒</span>`
           : `<button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); deleteCoachBlock('${b.id}')" style="padding:2px 4px; font-size:10px; color:var(--red);" title="Kaldır">🗑️</button>`}
@@ -9578,15 +9583,29 @@ window.moveCoachBlock = function(id, dir) {
 };
 
 window.duplicateCoachBlock = function(id) {
+  if (STUDIO_CORE_BLOCK_IDS.includes(id)) {
+    showToast('Yerleşik bloklar çoğaltılamaz — bu sadece kendi eklediğiniz özel bloklar için.', false);
+    return;
+  }
   const container = document.getElementById('cpBlocksContainer');
   if (!container) return;
-  const target = container.querySelector(`.cp-block-row[data-id="${id}"]`);
-  if (!target) return;
-  const clone = target.cloneNode(true);
-  const newId = id + '_copy_' + Date.now().toString().slice(-4);
-  clone.dataset.id = newId;
-  target.after(clone);
-  updateProfilePreview();
+  // Satırı doğrudan kopyalamak (cloneNode) yerine listeyi yeniden oluşturuyoruz —
+  // aksi halde kopya, orijinalin kilit ikonunu ve eski id'ye bağlı buton
+  // davranışlarını da (yanlışlıkla) miras alıyordu.
+  const current = Array.from(container.querySelectorAll('.cp-block-row')).map(el => ({
+    id: el.dataset.id,
+    name: el.dataset.name,
+    enabled: el.querySelector('.cp-block-toggle')?.checked ?? true
+  }));
+  const idx = current.findIndex(b => b.id === id);
+  if (idx === -1) return;
+  const original = current[idx];
+  const newId = 'custom_copy_' + Date.now().toString().slice(-6);
+  const dup = { id: newId, name: original.name + ' (Kopya)', enabled: original.enabled };
+  current.splice(idx + 1, 0, dup);
+  window._activeStudioBlockId = newId;
+  renderCoachBlocksManager(current);
+  selectStudioBlock(newId);
 };
 
 window.deleteCoachBlock = function(id) {
