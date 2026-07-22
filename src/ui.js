@@ -5041,7 +5041,57 @@ async function openTaskDetail(ds, idx, role, defaultStatus){
 // ═══════════════════════════════════════════════
 // ODAKLANMA MODU (Focus State)
 // ═══════════════════════════════════════════════
+// Zaman timestamp'e göre tutuluyor (setInterval sayacı değil) — sekme arka
+// plana atılıp interval throttle edilse bile bir sonraki tick'te veya
+// visibilitychange'de gerçek kalan süre doğru hesaplanır.
 let _focusTimer = null;
+let _focusEndAt = null;       // epoch ms — duraklatılmamışken bitiş anı
+let _focusPausedLeftMs = null; // duraklatılmışken kalan süre (ms), değilse null
+let _focusTotalMs = null;
+let _focusCtx = null;         // { ds, idx }
+let _focusWakeLock = null;
+let _focusVisHandler = null;
+const FOCUS_RING_R = 100;
+const FOCUS_RING_C = 2 * Math.PI * FOCUS_RING_R;
+
+function _focusFmt(ms){
+  const s = Math.max(0, Math.round(ms/1000));
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+function _focusSetStatusBar(color){
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
+}
+async function _focusRequestWakeLock(){
+  try{ if('wakeLock' in navigator) _focusWakeLock = await navigator.wakeLock.request('screen'); }catch(e){}
+}
+function _focusReleaseWakeLock(){
+  try{ _focusWakeLock?.release(); }catch(e){}
+  _focusWakeLock = null;
+}
+function _focusCleanup(){
+  if(_focusTimer){ clearInterval(_focusTimer); _focusTimer = null; }
+  if(_focusVisHandler){ document.removeEventListener('visibilitychange', _focusVisHandler); _focusVisHandler = null; }
+  _focusReleaseWakeLock();
+  _focusSetStatusBar('#E8613A');
+  _focusEndAt = null; _focusPausedLeftMs = null; _focusTotalMs = null; _focusCtx = null;
+}
+function _focusTick(){
+  if(_focusPausedLeftMs !== null) return;
+  const msLeft = _focusEndAt - Date.now();
+  const timeEl = document.getElementById('focusTimeEl');
+  if(timeEl) timeEl.textContent = _focusFmt(msLeft);
+  const ringBar = document.getElementById('focusRingBar');
+  if(ringBar && _focusTotalMs){
+    const frac = Math.max(0, Math.min(1, msLeft / _focusTotalMs));
+    ringBar.setAttribute('stroke-dashoffset', String(FOCUS_RING_C * (1 - frac)));
+  }
+  if(msLeft <= 0){
+    if(_focusTimer){ clearInterval(_focusTimer); _focusTimer = null; }
+    const ctx = _focusCtx || {};
+    finishFocusMode(ctx.ds, ctx.idx);
+  }
+}
+
 function startFocusMode(ds, idx){
   const key = `${session.studentId}_${ds}`;
   const t = S.tasks[key]?.[idx];
@@ -5049,35 +5099,78 @@ function startFocusMode(ds, idx){
   cm('taskDetailModal');
   checkEasterEgg();
 
-  let secondsLeft = Math.max(1, (t.duration||25)) * 60;
+  const totalMs = Math.max(1, (t.duration||25)) * 60 * 1000;
+  _focusCtx = { ds, idx };
+  _focusTotalMs = totalMs;
+  _focusEndAt = Date.now() + totalMs;
+  _focusPausedLeftMs = null;
+  _focusSetStatusBar('#0f0e0c');
+  _focusRequestWakeLock();
+
   const overlay = document.createElement('div');
   overlay.id = 'focusOverlay';
   overlay.className = 'focus-overlay';
-  const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   overlay.innerHTML = `
     <div class="focus-title">${esc(t.subject)}</div>
-    <div class="focus-ring"><div class="focus-time" id="focusTimeEl">${fmt(secondsLeft)}</div></div>
-    <button class="focus-cancel" onclick="cancelFocusMode('${ds}',${idx})">Vazgeç</button>`;
+    <div class="focus-ring">
+      <svg class="focus-ring-svg" viewBox="0 0 220 220">
+        <circle class="focus-ring-track" cx="110" cy="110" r="${FOCUS_RING_R}"/>
+        <circle class="focus-ring-bar" id="focusRingBar" cx="110" cy="110" r="${FOCUS_RING_R}" stroke-dasharray="${FOCUS_RING_C}" stroke-dashoffset="0"/>
+      </svg>
+      <div class="focus-time" id="focusTimeEl">${_focusFmt(totalMs)}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+      <button class="focus-cancel" id="focusPauseBtn" onclick="pauseFocusMode()">⏸ Duraklat</button>
+      <button class="focus-cancel" style="border-color:var(--focus-purple);color:var(--focus-purple)" onclick="finishFocusModeEarly()">✓ Şimdi Bitir</button>
+      <button class="focus-cancel" onclick="cancelFocusMode('${ds}',${idx})">Vazgeç</button>
+    </div>`;
   document.body.appendChild(overlay);
 
-  _focusTimer = setInterval(() => {
-    secondsLeft--;
-    const timeEl = document.getElementById('focusTimeEl');
-    if(timeEl) timeEl.textContent = fmt(Math.max(0,secondsLeft));
-    if(secondsLeft <= 0){
-      clearInterval(_focusTimer); _focusTimer = null;
-      finishFocusMode(ds, idx);
-    }
-  }, 1000);
+  _focusVisHandler = () => { if(!document.hidden) _focusTick(); };
+  document.addEventListener('visibilitychange', _focusVisHandler);
+
+  _focusTimer = setInterval(_focusTick, 1000);
+  _focusTick();
 }
 
-function cancelFocusMode(ds, idx){
-  if(!confirm('Odaklanma seansını sonlandırmak istediğine emin misin? Görev tamamlanmış sayılmayacak.')) return;
+window.pauseFocusMode = function(){
+  const btn = document.getElementById('focusPauseBtn');
+  if(_focusPausedLeftMs === null){
+    _focusPausedLeftMs = Math.max(0, _focusEndAt - Date.now());
+    if(btn) btn.textContent = '▶ Devam Et';
+  } else {
+    _focusEndAt = Date.now() + _focusPausedLeftMs;
+    _focusPausedLeftMs = null;
+    if(btn) btn.textContent = '⏸ Duraklat';
+    _focusTick();
+  }
+};
+
+// Erken bitirme — planlanandan önce biten öğrencinin GERÇEK geçen süresi kaydedilir
+window.finishFocusModeEarly = async function(){
+  const ctx = _focusCtx;
+  if(!ctx) return;
+  const { ds, idx } = ctx;
+  const key = `${session.studentId}_${ds}`;
+  const t = S.tasks[key]?.[idx];
+  if(t && _focusTotalMs){
+    const msLeft = _focusPausedLeftMs !== null ? _focusPausedLeftMs : Math.max(0, _focusEndAt - Date.now());
+    const elapsedMin = Math.max(1, Math.round((_focusTotalMs - msLeft) / 60000));
+    t.duration = elapsedMin;
+    if(t._id) db.from('tasks').update({ duration: elapsedMin }).eq('id', t._id).then(()=>{});
+  }
   if(_focusTimer){ clearInterval(_focusTimer); _focusTimer = null; }
+  await finishFocusMode(ds, idx);
+};
+
+async function cancelFocusMode(ds, idx){
+  if(!await customConfirm('Odaklanma seansını sonlandırmak istediğine emin misin? Görev tamamlanmış sayılmayacak.')) return;
+  _focusCleanup();
   document.getElementById('focusOverlay')?.remove();
 }
 
 function playFocusChime(){
+  try{ navigator.vibrate?.([200,100,200]); }catch(e){}
   if(!isFeatureOn('sound')) return;
   try{
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
@@ -5099,6 +5192,7 @@ async function finishFocusMode(ds, idx){
   const t = S.tasks[key]?.[idx];
   const overlay = document.getElementById('focusOverlay');
   playFocusChime();
+  _focusCleanup();
 
   if(overlay){
     overlay.innerHTML = `
@@ -5107,13 +5201,18 @@ async function finishFocusMode(ds, idx){
         <div style="font-size:18px;font-weight:800;color:var(--focus-purple);margin-bottom:4px">Odaklanma Tamamlandı!</div>
         <div style="font-size:13px;color:var(--text-mid)">${esc(t?.subject||'')} görevini bitirdin 💪</div>
       </div>`;
-    setTimeout(() => overlay.remove(), 3200);
+    setTimeout(() => {
+      overlay.remove();
+      // Süre alanı dolu şekilde görev sheet'ine dön — sessizce kapanıp
+      // öğrencinin fark etmemesi yerine D/Y/B girişine devam edebilsin
+      if(ds != null && idx != null) openTaskDetail(ds, idx, 'student');
+    }, 3200);
   }
 
   if(t && !t.done){
     t.done = true;
     if(t.task_items && Array.isArray(t.task_items)) t.task_items.forEach(item => { item.done = true; });
-    if(t._id) await db.from('tasks').update({done:true, task_items: t.task_items||null}).eq('id', t._id);
+    if(t._id) await db.from('tasks').update({done:true, task_items: t.task_items||null, duration: t.duration}).eq('id', t._id);
     renderSPortal();
 
     // Koça bildirim

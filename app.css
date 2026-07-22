@@ -1037,8 +1037,11 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 /* ── Odaklanma Modu: tam ekran overlay ── */
 .focus-overlay{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:22px;background:rgba(10,8,14,.72);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);animation:fadeUp .35s ease}
 .focus-overlay .focus-title{font-size:15px;font-weight:700;color:#f0ece6;opacity:.85;letter-spacing:.02em;text-align:center;padding:0 24px}
-.focus-overlay .focus-ring{width:220px;height:220px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,var(--focus-purple-dim) 0%,transparent 70%);border:2px solid var(--focus-purple);box-shadow:0 0 40px var(--focus-purple-dim),inset 0 0 40px var(--focus-purple-dim);animation:focusPulse 2.4s ease-in-out infinite}
-.focus-overlay .focus-time{font-family:'Syne',sans-serif;font-size:44px;font-weight:800;color:#fff;letter-spacing:-.02em}
+.focus-overlay .focus-ring{position:relative;width:220px;height:220px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,var(--focus-purple-dim) 0%,transparent 70%);box-shadow:0 0 40px var(--focus-purple-dim),inset 0 0 40px var(--focus-purple-dim);animation:focusPulse 2.4s ease-in-out infinite}
+.focus-ring-svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.focus-ring-track{fill:none;stroke:rgba(255,255,255,.12);stroke-width:6}
+.focus-ring-bar{fill:none;stroke:var(--focus-purple);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.focus-overlay .focus-time{position:relative;font-family:'Syne',sans-serif;font-size:44px;font-weight:800;color:#fff;letter-spacing:-.02em}
 .focus-overlay .focus-cancel{background:none;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.65);padding:9px 20px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer}
 @keyframes focusPulse{0%,100%{box-shadow:0 0 40px var(--focus-purple-dim),inset 0 0 40px var(--focus-purple-dim)}50%{box-shadow:0 0 64px var(--focus-purple-dim),inset 0 0 56px var(--focus-purple-dim)}}
 
