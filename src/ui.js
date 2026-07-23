@@ -4534,8 +4534,14 @@ function notifyPush(senderId, recipientId, title, body){
 // Bildirime tıklanınca (ya da hâlihazırda açık pencereye push-open mesajı gelince)
 // doğrudan ilgili sohbeti açar. Koç için otherUserId gönderen öğrencinin id'si;
 // öğrenci için tek bir koç-thread'i olduğundan id'ye gerek yok.
-window.openPushThread = function(otherUserId){
+// Önbellek zorla tazelenir — bildirimin sebebi olan mesaj çoğu zaman son birkaç
+// saniye içinde gelmiştir ve normal 4dk'lık stale-cache penceresine takılabilir.
+window.openPushThread = async function(otherUserId){
   if (!session.role) return;
+  try {
+    window.invalidateCache?.();
+    await window.loadAllData?.();
+  } catch(e) {}
   if (session.role === 'coach' || session.role === 'developer') {
     switchTab('messages');
     if (otherUserId) selectThread(otherUserId);
