@@ -1010,6 +1010,16 @@ function openStudentDetail(stuId){
       </div>
     </div>
 
+    <!-- ÖĞRENCİYE NOT -->
+    <div class="card" style="margin-bottom:16px;padding:18px 24px;border-radius:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">💌 Öğrenciye Notun</div>
+        <span style="font-size:10px;color:var(--text-dim)">Yolculuğum sayfasında görünür</span>
+      </div>
+      <textarea id="coachNoteInput" placeholder="Öğrenciye kişisel bir söz, motivasyon notu ya da hatırlatma yaz..." style="width:100%;min-height:70px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--text);outline:none;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea>
+      <button class="btn btn-accent btn-sm" style="margin-top:8px" onclick="saveCoachNoteForStudent('${s.id}')">Kaydet</button>
+    </div>
+
     <!-- AI COPILOT SECTION -->
     <div class="card" style="margin-top:16px; border: 1px dashed var(--accent); padding: 18px; border-radius: 14px; background: var(--surface)">
       <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px">
@@ -1047,7 +1057,27 @@ function openStudentDetail(stuId){
 
   if(currentTab !== 'student-detail') switchTab('student-detail');
   const _tt1=document.getElementById('tbarTitle'); if(_tt1) _tt1.textContent = s.name;
+  _loadCoachNoteForStudent(stuId);
 }
+
+// Not: bu, öğrencinin Yolculuğum sayfasında göreceği kişisel mesaj — koçun
+// kendi özel not defteri olan openStudentNotes/saveCoachNote(idx) ile karışmasın diye
+// isimlendirmesi bilinçli olarak farklı tutuldu.
+async function _loadCoachNoteForStudent(stuId){
+  try {
+    const { data } = await db.from('student_profiles').select('coach_note').eq('id', stuId).maybeSingle();
+    const ta = document.getElementById('coachNoteInput');
+    if (ta && S.activeStuId === stuId) ta.value = data?.coach_note || '';
+  } catch(e) { /* migration_v38 henüz çalıştırılmamış olabilir — sessizce boş bırak */ }
+}
+
+async function saveCoachNoteForStudent(stuId){
+  const val = document.getElementById('coachNoteInput')?.value.trim() || '';
+  const { error } = await db.from('student_profiles').upsert({ id: stuId, coach_note: val }, { onConflict: 'id' });
+  if (error) return showToast('Not kaydedilemedi: ' + error.message);
+  showToast('Öğrenciye notun kaydedildi ✓', true);
+}
+window.saveCoachNoteForStudent = saveCoachNoteForStudent;
 
 // ── YILDIZ SEVİYE TANIMLARI ─────────────────────
 const MASTERY_LEVELS = [
@@ -1831,6 +1861,15 @@ function renderSettings(){
           <div><div class="setting-item-lbl">Kullanıcı Adı</div><div class="setting-item-sub">${esc(session.dbUser?.username||'')}</div></div>
           <button class="btn btn-ghost btn-sm" onclick="switchTab('profile')">Düzenle</button>
         </div>
+        ${session.role === 'student' ? `
+        <div class="setting-item" style="flex-direction:column;align-items:flex-start;gap:8px">
+          <div class="setting-item-lbl">Şifre Değiştir</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
+            <input type="password" id="newPass1" placeholder="Yeni şifre" style="flex:1;min-width:140px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--text);outline:none">
+            <input type="password" id="newPass2" placeholder="Şifreyi tekrar gir" style="flex:1;min-width:140px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--text);outline:none">
+            <button class="btn btn-accent btn-sm" onclick="changePassword()">Kaydet</button>
+          </div>
+        </div>` : ''}
         <div class="setting-item">
           <div><div class="setting-item-lbl">Oturumu Kapat</div></div>
           <button class="btn btn-danger btn-sm" onclick="doLogout()">Çıkış</button>
@@ -4557,24 +4596,7 @@ function renderPortal(){
   }
 
   // Tekrar gereken konular
-  const stuMastery = S.konuMastery?.[stu.id] || {};
-  const tekrarGereken = [];
-  const now30 = new Date();
-  now30.setDate(now30.getDate() - 30);
-  Object.entries(stuMastery).forEach(([subject, konular]) => {
-    Object.entries(konular).forEach(([konu, m]) => {
-      if (m.status === 'td') return; // TD olanları gösterme
-      if (m.status === 'not_started') return;
-      const lastReview = m.last_review_date ? new Date(m.last_review_date) : null;
-      const daysSince = lastReview ? Math.floor((Date.now() - lastReview.getTime()) / 86400000) : 999;
-      const isUrgent = m.stars <= 2;
-      const isOverdue = daysSince > 20;
-      if (isUrgent || isOverdue) {
-        tekrarGereken.push({ konu, subject, stars: m.stars, daysSince });
-      }
-    });
-  });
-  tekrarGereken.sort((a, b) => a.stars - b.stars || b.daysSince - a.daysSince);
+  const tekrarGereken = computeWeakTopics(stu.id);
 
   const tekrarKartHTML = tekrarGereken.length > 0 ? `
     <div class="card cp" style="border-color:rgba(239,68,68,.3)">
@@ -5335,18 +5357,22 @@ window.checkEasterEgg = checkEasterEgg;
 // ═══════════════════════════════════════════════
 // BOŞLUKTAN EYLEME — konu eksiği kartları
 // ═══════════════════════════════════════════════
-async function sendGapToAI(subject){
-  if(!document.getElementById('aiChatPanel')?.classList.contains('open')) toggleAIChat();
-  let coachName = 'Koçun';
-  if(session.coachId){
-    const { data } = await db.from('users').select('full_name').eq('id', session.coachId).maybeSingle();
-    if(data?.full_name) coachName = data.full_name;
+// Boşluktan Eyleme artık doğrudan yapay zekaya değil, önce koça gidiyor —
+// koç öğrencinin zayıf olduğu konudan haberdar olsun ve yönlendirmeyi kendisi yapsın.
+async function askCoachAboutGap(subject){
+  if(!session.coachId) return showToast('Koç bulunamadı.');
+  try {
+    await db.from('messages').insert({
+      student_id: session.studentId, coach_id: session.coachId, from_role: 'student',
+      text: `🤔 "${subject}" konusunda kendimi zayıf hissediyorum, bu konuda ne önerirsin?`, read: false
+    });
+    showToast('Koçuna iletildi ✓', true);
+    switchTab('smessages');
+  } catch(e) {
+    showToast('Gönderilemedi: ' + e.message);
   }
-  setTimeout(() => {
-    addAIMessage('assistant', `Selam! <b>${esc(subject)}</b> konusundaki boşluğunu fark ettim. ${esc(coachName)}'ın senin için tanımladığı pratik telafi adımlarına başlamaya hazır mısın?`);
-  }, 250);
 }
-window.sendGapToAI = sendGapToAI;
+window.askCoachAboutGap = askCoachAboutGap;
 
 function openGapTaskModal(subject, examType){
   let modal = document.getElementById('gapTaskModal');
@@ -7999,6 +8025,137 @@ setTimeout(() => {
 }, 2000);
 
 // ═══════════════════════════════════════════════
+// YOLCULUĞUM — yardımcı hesaplamalar
+// ═══════════════════════════════════════════════
+
+// Tekrar/mastery'si zayıf konular — hem koç ana sayfasında (Portal) hem
+// Yolculuğum'da aynı kritere göre kullanılıyor.
+function computeWeakTopics(stuId) {
+  const stuMastery = S.konuMastery?.[stuId] || {};
+  const list = [];
+  Object.entries(stuMastery).forEach(([subject, konular]) => {
+    Object.entries(konular).forEach(([konu, m]) => {
+      if (m.status === 'td' || m.status === 'not_started') return;
+      const lastReview = m.last_review_date ? new Date(m.last_review_date) : null;
+      const daysSince = lastReview ? Math.floor((Date.now() - lastReview.getTime()) / 86400000) : 999;
+      if (m.stars <= 2 || daysSince > 20) list.push({ konu, subject, stars: m.stars, daysSince });
+    });
+  });
+  list.sort((a, b) => a.stars - b.stars || b.daysSince - a.daysSince);
+  return list;
+}
+
+// Gün üstüne gün — bugün henüz işaretleme yoksa seriyi bozmadan dünden say
+// (gün henüz bitmedi, öğrenciye "seri kırıldı" hissi yaşatmamak için)
+function calcStudentStreak(stuId) {
+  const hasDoneOn = d => (S.tasks[`${stuId}_${d}`] || []).some(t => t.done);
+  let cursor = new Date();
+  if (!hasDoneOn(fmtDate(cursor))) cursor = addDays(cursor, -1);
+  let streak = 0;
+  while (streak < 60) {
+    const d = fmtDate(cursor);
+    if (!hasDoneOn(d)) break;
+    streak++;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
+// Görev önbelleği 60 günle sınırlı olduğu için geriye dönük tarama da 60 günle sınırlı
+function hasHadPerfectWeek(stuId, stuWeekStart) {
+  for (let w = 0; w >= -8; w--) {
+    const ws = getWeekStart(w, stuWeekStart || 0);
+    let total = 0, done = 0;
+    for (let i = 0; i < 7; i++) {
+      const tasks = S.tasks[`${stuId}_${fmtDate(addDays(ws, i))}`] || [];
+      total += tasks.length; done += tasks.filter(t => t.done).length;
+    }
+    if (total > 0 && done === total) return true;
+  }
+  return false;
+}
+
+function hasHadNetJump(stuId) {
+  const exams = S.exams.filter(e => e.studentId === stuId).sort((a, b) => a.date.localeCompare(b.date));
+  const byType = {};
+  exams.forEach(e => { (byType[e.type] = byType[e.type] || []).push(e); });
+  return Object.values(byType).some(list => {
+    for (let i = 1; i < list.length; i++) {
+      const f = EXAM_DEFS[list[i].type] || [];
+      const cur = f.reduce((s, fn) => s + Number(list[i].nets?.[fn] || 0), 0);
+      const prev = f.reduce((s, fn) => s + Number(list[i - 1].nets?.[fn] || 0), 0);
+      if (cur - prev >= 10) return true;
+    }
+    return false;
+  });
+}
+
+// Rozetler — az sayıda, gerçekten anlamlı kilometre taşları. localStorage'da kalıcı
+// (bir kez kazanılan rozet, kriter artık sağlanmasa da geri alınmaz).
+const JOURNEY_BADGES = [
+  { id: 'first_step',   icon: '🎯', name: 'İlk Adım',       desc: 'İlk görevini tamamladın' },
+  { id: 'streak7',      icon: '🔥', name: 'Ateşli Seri',    desc: '7 gün üst üste görev tamamladın' },
+  { id: 'century',      icon: '💯', name: 'Yüzler Kulübü',  desc: 'Toplamda 100 görev tamamladın' },
+  { id: 'perfect_week', icon: '🏆', name: 'Mükemmel Hafta', desc: 'Bir haftanın tüm görevlerini tamamladın' },
+  { id: 'net_jump',     icon: '🚀', name: 'Net Sıçraması',  desc: 'Bir denemede öncekine göre 10+ net attırdın' },
+  { id: 'early_bird',   icon: '🌅', name: 'Sabah Yıldızı',  desc: 'Sabah 08:00\'den önce görev tamamladın' },
+  { id: 'night_owl',    icon: '🦉', name: 'Gece Kuşu',      desc: 'Gece geç saatte görev tamamladın' },
+];
+const _badgeKey = (stuId, badgeId) => `ra_badge_${stuId}_${badgeId}`;
+function awardBadge(stuId, badgeId) {
+  const key = _badgeKey(stuId, badgeId);
+  if (!localStorage.getItem(key)) localStorage.setItem(key, new Date().toISOString());
+}
+function checkJourneyBadges(stuId, ctx) {
+  if (ctx.totalDone >= 1) awardBadge(stuId, 'first_step');
+  if (ctx.totalDone >= 100) awardBadge(stuId, 'century');
+  if (ctx.streak >= 7) awardBadge(stuId, 'streak7');
+  if (ctx.hadPerfectWeek) awardBadge(stuId, 'perfect_week');
+  if (ctx.hadNetJump) awardBadge(stuId, 'net_jump');
+  for (let i = 0; i <= 60; i++) {
+    const d = fmtDate(addDays(new Date(), -i));
+    if (localStorage.getItem(`ra_egg_${d}_morning`)) awardBadge(stuId, 'early_bird');
+    if (localStorage.getItem(`ra_egg_${d}_night`)) awardBadge(stuId, 'night_owl');
+  }
+}
+function getEarnedBadges(stuId) {
+  return JOURNEY_BADGES.map(b => ({ ...b, earnedAt: localStorage.getItem(_badgeKey(stuId, b.id)) }));
+}
+
+// "3 ay önceki sen" — aynı sınav türünden, en az ~60 gün önceye ait en yakın denemeyle kıyasla
+function findSelfComparison(stuId) {
+  const exams = S.exams.filter(e => e.studentId === stuId).sort((a, b) => a.date.localeCompare(b.date));
+  if (exams.length < 2) return null;
+  const latest = exams[exams.length - 1];
+  const latestDate = new Date(latest.date);
+  let best = null, bestGapDays = Infinity;
+  exams.filter(e => e.type === latest.type && e !== latest).forEach(e => {
+    const gap = Math.round((latestDate - new Date(e.date)) / 86400000);
+    if (gap >= 60 && gap < bestGapDays) { best = e; bestGapDays = gap; }
+  });
+  if (!best) return null;
+  const f = EXAM_DEFS[latest.type] || [];
+  const newTotal = f.reduce((s, fn) => s + Number(latest.nets?.[fn] || 0), 0);
+  const oldTotal = f.reduce((s, fn) => s + Number(best.nets?.[fn] || 0), 0);
+  return { latest, old: best, newTotal, oldTotal, diff: newTotal - oldTotal, gapDays: bestGapDays };
+}
+
+// Çalışma ritmi ısı haritası — son N hafta, Pazartesi hizalı (grid sütun-öncelikli dolsun diye baştan boşluk eklenir)
+function buildRhythmHeatmap(stuId, weeks) {
+  const today = new Date();
+  const cells = [];
+  for (let i = weeks * 7 - 1; i >= 0; i--) {
+    const d = addDays(today, -i);
+    const ds = fmtDate(d);
+    const tasks = S.tasks[`${stuId}_${ds}`] || [];
+    cells.push({ date: ds, doneCount: tasks.filter(t => t.done).length });
+  }
+  const firstDow = cells.length ? new Date(cells[0].date + 'T12:00').getDay() : 1;
+  const pad = firstDow === 0 ? 6 : firstDow - 1;
+  return Array(pad).fill(null).concat(cells);
+}
+
+// ═══════════════════════════════════════════════
 // STUDENT PROFILE PAGE
 // ═══════════════════════════════════════════════
 async function renderSProfil() {
@@ -8053,36 +8210,7 @@ async function renderSProfil() {
     return;
   }
 
-  // Deneme trendi
-  let trendHtml='';
-  if(myExams.length>0){
-    const chartData=myExams.slice(-6);
-    const maxT=Math.max(...chartData.map(e=>{const f=EXAM_DEFS[e.type]||[];return f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);}),1);
-    trendHtml=`
-      <div class="card cp" style="margin-bottom:16px">
-        <div class="portal-sec-title">📈 Net Gelişim Grafiği</div>
-        <div style="display:flex;align-items:flex-end;gap:6px;height:90px;margin-top:12px">
-          ${chartData.map(e=>{
-            const f=EXAM_DEFS[e.type]||[];
-            const total=f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);
-            const h=Math.max(Math.round((total/maxT)*100),4);
-            const prev=chartData[chartData.indexOf(e)-1];
-            const prevT=prev?(EXAM_DEFS[prev.type]||[]).reduce((s,fn)=>s+Number(prev.nets?.[fn]||0),0):total;
-            const arrow=total>prevT?'↑':total<prevT?'↓':'';
-            const arrowColor=total>prevT?'var(--green)':total<prevT?'var(--red)':'var(--text-dim)';
-            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
-              <div style="font-size:10px;font-weight:700;color:var(--text-mid)">${total.toFixed(0)}</div>
-              <div style="font-size:9px;color:${arrowColor};font-weight:800">${arrow}</div>
-              <div style="width:100%;background:${stu.color};border-radius:4px 4px 0 0;height:${h}%;min-height:4px"></div>
-              <div style="font-size:9px;color:var(--text-dim);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%">${esc(e.name.replace('Deneme','').replace('TYT','').replace('AYT','').trim())}</div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`;
-  }
-
-  // Ders bazında net ortalamaları
-  let dersOrtHtml='';
+  // Ders bazında net ortalamaları — sadece "Boşluktan Eyleme" için zayıf dersleri bulmaya yarıyor
   let gapCardsHtml='';
   if(myExams.length>0){
     const lastType=lastExam.type;
@@ -8093,25 +8221,13 @@ async function renderSProfil() {
       const last=Number(lastExam.nets?.[f]||0);
       return {f,avg:avg.toFixed(1),last,color:netColor(last)};
     });
-    dersOrtHtml=`
-      <div class="card cp" style="margin-bottom:16px">
-        <div class="portal-sec-title">📊 Ders Bazında Performans (${lastType})</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:10px">
-          ${avgs.map(a=>`
-            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px;text-align:center">
-              <div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-bottom:4px;text-transform:uppercase">${a.f}</div>
-              <div style="font-family:'Inter',sans-serif;font-size:22px;font-weight:800;color:var(--${a.color==='good'?'green':a.color==='mid'?'accent':'red'})">${a.last}</div>
-              <div style="font-size:10px;color:var(--text-dim);margin-top:2px">ort: ${a.avg}</div>
-            </div>`).join('')}
-        </div>
-      </div>`;
 
     const gaps = avgs.filter(a=>a.color==='low');
     if(gaps.length>0){
       gapCardsHtml=`
-      <div class="card cp" style="margin-bottom:16px;border-color:var(--focus-purple)">
+      <div class="card cp" style="margin-bottom:14px;border-color:var(--blue)">
         <div class="portal-sec-title">💡 Boşluktan Eyleme</div>
-        <div style="font-size:11px;color:var(--text-dim);margin:2px 0 10px">Netin düşük olan derslerde hemen aksiyon al</div>
+        <div style="font-size:11px;color:var(--text-dim);margin:2px 0 10px">Netin düşük olan derslerde koçuna danış</div>
         <div style="display:flex;flex-direction:column;gap:8px">
           ${gaps.map(a=>`
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -8119,7 +8235,7 @@ async function renderSProfil() {
                 <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(a.f)}</div>
                 <div style="font-size:11px;color:var(--red)">Son net: ${a.last}</div>
               </div>
-              <button onclick="sendGapToAI('${esc(a.f).replace(/'/g,"\\'")}')" style="padding:7px 12px;background:var(--focus-purple-dim);border:1px solid var(--focus-purple);color:var(--focus-purple);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">🤖 Yapay Zekaya Gönder</button>
+              <button onclick="askCoachAboutGap('${esc(a.f).replace(/'/g,"\\'")}')" style="padding:7px 12px;background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">💬 Koçuma Sor</button>
               <button onclick="openGapTaskModal('${esc(a.f).replace(/'/g,"\\'")}','${lastType}')" style="padding:7px 12px;background:var(--surface3);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">📅 Programa Ekle</button>
             </div>`).join('')}
         </div>
@@ -8132,22 +8248,70 @@ async function renderSProfil() {
 
   // Hedef banner için renk
   const hasTarget = target_university || target_department;
-  const motivation = profile?.motivation || '';
+  const coach_note = profile?.coach_note || '';
 
-  // Chart verisi
-  const chartData = myExams.slice(-7);
+  // Yolculuk çizgisi — kaçıncı gün, YKS'ye kaç gün, kaç gündür seri
+  const daysSinceJoin = session.dbUser?.created_at ? Math.max(1, Math.floor((Date.now() - new Date(session.dbUser.created_at).getTime()) / 86400000)) : null;
+  const yksInfo = getNextYks();
+  const streak = calcStudentStreak(stu.id);
+
+  // Rozetler — kalıcı kilometre taşları (bkz. yukarıdaki yardımcı fonksiyonlar)
+  checkJourneyBadges(stu.id, {
+    totalDone, streak,
+    hadPerfectWeek: hasHadPerfectWeek(stu.id, stu.weekStart),
+    hadNetJump: hasHadNetJump(stu.id)
+  });
+  const earnedBadges = getEarnedBadges(stu.id);
+
+  // Kendine kıyasla (≥60 gün önceki en yakın aynı türden deneme)
+  const selfComp = findSelfComparison(stu.id);
+
+  // Çalışma ritmi ısı haritası
+  const heatCells = buildRhythmHeatmap(stu.id, 9);
+
+  // Dikkat gereken konular (zayıf/eskimiş mastery)
+  const weakTopics = computeWeakTopics(stu.id);
+
+  // Net gelişim grafiği verisi — artık yatay kaydırmalı olduğu için daha uzun geçmişi gösterebiliyor
+  const chartData = myExams.slice(-10);
   const chartMax = Math.max(...chartData.map(e=>{const f=EXAM_DEFS[e.type]||[];return f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);}), 1);
 
   el.innerHTML=`
-    <!-- HERO -->
-    <div id="spHero" class="${isFeatureOn('badges') && hasEarnedBadgeToday() ? 'badge-halo' : ''}" style="background:linear-gradient(135deg,${stu.color}22 0%,${stu.color}08 100%);border:1px solid ${stu.color}33;border-radius:16px;padding:20px 24px;margin-bottom:14px;display:flex;align-items:center;gap:18px">
-      <div style="width:64px;height:64px;border-radius:16px;background:${stu.color};display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;flex-shrink:0">${stu.name[0]}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:20px;font-weight:800;color:var(--text)">${esc(stu.name)}</div>
-        <div style="font-size:13px;color:var(--text-mid);margin-top:2px">${esc(stu.target)}${grade ? ' · ' + esc(grade) : ''}${school ? ' · ' + esc(school) : ''}</div>
-        ${hasTarget ? `<div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:${stu.color};color:#fff;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700">🎯 ${[target_university,target_department].filter(Boolean).join(' · ')}</div>` : ''}
+    <!-- HERO: yolculuk çizgisi -->
+    <div id="spHero" class="${isFeatureOn('badges') && hasEarnedBadgeToday() ? 'badge-halo' : ''}" style="background:linear-gradient(135deg,${stu.color}22 0%,${stu.color}08 100%);border:1px solid ${stu.color}33;border-radius:16px;padding:20px 24px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+        <div style="width:64px;height:64px;border-radius:16px;background:${stu.color};display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;flex-shrink:0">${stu.name[0]}</div>
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:20px;font-weight:800;color:var(--text)">${esc(stu.name)}</div>
+          <div style="font-size:13px;color:var(--text-mid);margin-top:2px">${esc(stu.target)}${grade ? ' · ' + esc(grade) : ''}${school ? ' · ' + esc(school) : ''}</div>
+          ${hasTarget ? `<div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:${stu.color};color:#fff;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700">🎯 ${[target_university,target_department].filter(Boolean).join(' · ')}</div>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:24px;margin-top:16px;padding-top:14px;border-top:1px solid ${stu.color}22;flex-wrap:wrap">
+        ${daysSinceJoin ? `<div><div style="font-size:19px;font-weight:800;color:var(--text)">${daysSinceJoin}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">gündür yoldasın</div></div>` : ''}
+        <div><div style="font-size:19px;font-weight:800;color:var(--text)">${yksInfo.days}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">gün kaldı · YKS ${yksInfo.year}</div></div>
+        ${streak > 0 ? `<div><div style="font-size:19px;font-weight:800;color:#f0a500">🔥 ${streak}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">gün üst üste</div></div>` : ''}
       </div>
     </div>
+
+    <!-- ROZETLER -->
+    <div class="card cp" style="margin-bottom:14px">
+      <div class="portal-sec-title" style="margin-bottom:10px">🎖️ Rozetlerin <span style="font-size:11px;font-weight:400;color:var(--text-dim)">${earnedBadges.filter(b=>b.earnedAt).length}/${earnedBadges.length}</span></div>
+      <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px">
+        ${earnedBadges.map(b=>`
+          <div title="${esc(b.name)} — ${esc(b.desc)}${b.earnedAt?'':' (henüz kazanılmadı)'}" style="flex-shrink:0;width:76px;text-align:center;opacity:${b.earnedAt?'1':'.35'};filter:${b.earnedAt?'none':'grayscale(1)'}">
+            <div style="width:52px;height:52px;margin:0 auto;border-radius:14px;background:${b.earnedAt?stu.color+'18':'var(--surface2)'};border:1.5px solid ${b.earnedAt?stu.color+'44':'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:24px">${b.icon}</div>
+            <div style="font-size:9.5px;font-weight:700;color:var(--text-mid);margin-top:5px;line-height:1.3">${esc(b.name)}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    ${coach_note ? `
+    <!-- KOÇTAN NOT -->
+    <div class="card cp" style="margin-bottom:14px;background:linear-gradient(135deg,${stu.color}0f 0%,transparent 100%);border-color:${stu.color}33">
+      <div class="portal-sec-title" style="margin-bottom:8px">💌 Koçundan Sana Not</div>
+      <div style="font-size:13.5px;color:var(--text);line-height:1.65;font-style:italic">"${esc(coach_note)}"</div>
+    </div>` : ''}
 
     <!-- STAT CARDS -->
     <div class="stats-row" style="margin-bottom:14px">
@@ -8173,36 +8337,8 @@ async function renderSProfil() {
       </div>
     </div>
 
-    ${chartData.length > 0 ? `
-    <!-- NET GELİŞİM GRAFİĞİ -->
-    <div class="card cp" style="margin-bottom:14px">
-      <div class="portal-sec-title" style="margin-bottom:16px">📈 Net Gelişim Grafiği</div>
-      <div style="position:relative;height:160px;display:flex;align-items:flex-end;gap:6px;padding-bottom:28px">
-        <!-- yatay kılavuz çizgiler -->
-        ${[0.25,0.5,0.75,1].map(r=>`
-          <div style="position:absolute;left:0;right:0;bottom:${28+Math.round(r*132)}px;border-top:1px dashed var(--border);display:flex;align-items:center">
-            <span style="position:absolute;right:0;font-size:9px;color:var(--text-dim);background:var(--surface);padding:0 2px;line-height:1">${Math.round(chartMax*r)}</span>
-          </div>`).join('')}
-        ${chartData.map((e,i)=>{
-          const f=EXAM_DEFS[e.type]||[];
-          const total=f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);
-          const h=Math.max(Math.round((total/chartMax)*132),4);
-          const prev=chartData[i-1];
-          const prevT=prev?(EXAM_DEFS[prev.type]||[]).reduce((s,fn)=>s+Number(prev.nets?.[fn]||0),0):total;
-          const up=total>prevT, down=total<prevT;
-          const barColor=up?'var(--green)':down?'var(--red)':stu.color;
-          const label=esc(e.name.replace(/deneme|tyt|ayt/gi,'').trim()).slice(0,10)||'#'+(i+1);
-          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;position:relative">
-            <div style="font-size:10px;font-weight:800;color:var(--text-mid);margin-bottom:3px">${total.toFixed(0)}</div>
-            <div style="width:100%;background:${barColor};border-radius:5px 5px 0 0;height:${h}px;min-height:4px;transition:height .4s"></div>
-            <div style="position:absolute;bottom:-22px;width:100%;text-align:center;font-size:9px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>` : ''}
-
     ${myExams.length > 0 ? `
-    <!-- DERS BAZINDA PERFORMANS -->
+    <!-- DERS BAZINDA PERFORMANS (yukarıda — en çok merak edilen bilgi) -->
     <div class="card cp" style="margin-bottom:14px">
       <div class="portal-sec-title" style="margin-bottom:14px">📊 Ders Bazında Performans <span style="font-size:11px;font-weight:400;color:var(--text-dim)">${lastExam?.type||''}</span></div>
       <div style="display:flex;flex-direction:column;gap:10px">
@@ -8226,6 +8362,94 @@ async function renderSProfil() {
             </div>`;
           }).join('');
         })()}
+      </div>
+    </div>` : ''}
+
+    ${chartData.length > 0 ? `
+    <!-- NET GELİŞİM GRAFİĞİ (tek renk + trend oku — düşen bir denemeyi "kötü" gibi göstermek yerine sadece farkı belirtir) -->
+    <div class="card cp" style="margin-bottom:14px">
+      <div class="portal-sec-title" style="margin-bottom:16px">📈 Net Gelişim Grafiği</div>
+      <div style="overflow-x:auto;padding-bottom:4px">
+        <div style="position:relative;height:170px;display:flex;align-items:flex-end;gap:14px;padding-bottom:32px;min-width:${Math.max(chartData.length*56,280)}px">
+          ${[0.25,0.5,0.75,1].map(r=>`
+            <div style="position:absolute;left:0;right:0;bottom:${32+Math.round(r*130)}px;border-top:1px dashed var(--border)">
+              <span style="position:absolute;right:0;font-size:9px;color:var(--text-dim);background:var(--surface);padding:0 2px;line-height:1;transform:translateY(-50%)">${Math.round(chartMax*r)}</span>
+            </div>`).join('')}
+          ${chartData.map((e,i)=>{
+            const f=EXAM_DEFS[e.type]||[];
+            const total=f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);
+            const h=Math.max(Math.round((total/chartMax)*130),4);
+            const prev=chartData[i-1];
+            const prevT=prev?(EXAM_DEFS[prev.type]||[]).reduce((s,fn)=>s+Number(prev.nets?.[fn]||0),0):null;
+            const delta = prevT===null ? '' : (total-prevT>0?`<span style="color:var(--green)">▲${(total-prevT).toFixed(1)}</span>`:total-prevT<0?`<span style="color:var(--red)">▼${Math.abs(total-prevT).toFixed(1)}</span>`:`<span style="color:var(--text-dim)">–</span>`);
+            return `<div style="flex-shrink:0;width:42px;display:flex;flex-direction:column;align-items:center;position:relative">
+              <div style="font-size:9px;font-weight:700;margin-bottom:2px;white-space:nowrap">${delta}</div>
+              <div style="font-size:10px;font-weight:800;color:var(--text-mid);margin-bottom:3px">${total.toFixed(0)}</div>
+              <div style="width:100%;background:${stu.color};border-radius:5px 5px 0 0;height:${h}px;min-height:4px;transition:height .4s"></div>
+              <div style="position:absolute;bottom:-32px;width:64px;left:50%;transform:translateX(-50%);text-align:center;font-size:9px;color:var(--text-dim);line-height:1.3;word-break:break-word">${esc(e.name.replace(/deneme/gi,'').trim())}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>` : ''}
+
+    ${selfComp ? `
+    <!-- KENDİNE KIYASLA -->
+    <div class="card cp" style="margin-bottom:14px">
+      <div class="portal-sec-title" style="margin-bottom:10px">🔍 Kendine Kıyasla</div>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px">${selfComp.gapDays} gün önce</div>
+          <div style="font-size:22px;font-weight:800;color:var(--text-dim)">${selfComp.oldTotal.toFixed(1)}</div>
+        </div>
+        <div style="font-size:20px;color:var(--text-dim)">→</div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px">Şimdi</div>
+          <div style="font-size:22px;font-weight:800;color:${stu.color}">${selfComp.newTotal.toFixed(1)}</div>
+        </div>
+        <div style="flex:1;min-width:140px;font-size:13px;color:var(--text-mid);line-height:1.5">
+          ${selfComp.diff > 0
+            ? `${selfComp.gapDays} gün önceki halinden <b style="color:var(--green)">${selfComp.diff.toFixed(1)} net</b> daha iyisin! 👏`
+            : selfComp.diff < 0
+            ? `${selfComp.gapDays} gün önceye göre ${Math.abs(selfComp.diff).toFixed(1)} net geriden geliyorsun — toparlanma vakti.`
+            : `${selfComp.gapDays} gün önceyle aynı seviyedesin.`}
+        </div>
+      </div>
+    </div>` : ''}
+
+    <!-- ÇALIŞMA RİTMİ -->
+    <div class="card cp" style="margin-bottom:14px">
+      <div class="portal-sec-title" style="margin-bottom:10px">🗓️ Çalışma Ritmin <span style="font-size:11px;font-weight:400;color:var(--text-dim)">son 9 hafta</span></div>
+      <div style="overflow-x:auto;padding-bottom:4px">
+        <div style="display:grid;grid-template-rows:repeat(7,12px);grid-auto-flow:column;gap:3px;width:max-content">
+          ${heatCells.map(c=>{
+            if(!c) return `<div style="width:12px;height:12px"></div>`;
+            const lvl = c.doneCount===0?0:c.doneCount===1?1:c.doneCount<=3?2:3;
+            const bg = ['var(--surface3)', stu.color+'40', stu.color+'90', stu.color][lvl];
+            const dLabel = new Date(c.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
+            return `<div title="${dLabel}: ${c.doneCount} görev tamamlandı" style="width:12px;height:12px;border-radius:3px;background:${bg}"></div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;margin-top:8px;font-size:10px;color:var(--text-dim)">
+        Az <div style="width:10px;height:10px;border-radius:2px;background:var(--surface3)"></div><div style="width:10px;height:10px;border-radius:2px;background:${stu.color}40"></div><div style="width:10px;height:10px;border-radius:2px;background:${stu.color}90"></div><div style="width:10px;height:10px;border-radius:2px;background:${stu.color}"></div> Çok
+      </div>
+    </div>
+
+    ${weakTopics.length > 0 ? `
+    <!-- DİKKAT GEREKEN KONULAR -->
+    <div class="card cp" style="margin-bottom:14px;border-color:rgba(239,68,68,.25)">
+      <div class="portal-sec-title">🔄 Dikkat Gereken Konular <span style="font-size:11px;background:rgba(239,68,68,.12);color:#ef4444;padding:2px 8px;border-radius:99px;font-weight:700">${weakTopics.length}</span></div>
+      <div style="margin-top:10px">
+        ${weakTopics.slice(0,5).map(t=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:13px;color:${MASTERY_LEVELS[t.stars]?.color||'var(--text-dim)'};font-weight:800;white-space:nowrap">${'⭐'.repeat(t.stars) || '○'}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.konu)}</div>
+              <div style="font-size:10px;color:var(--text-dim)">${esc(t.subject)} · Son: ${t.daysSince < 999 ? t.daysSince + 'g önce' : 'Hiç'}</div>
+            </div>
+          </div>`).join('')}
+        ${weakTopics.length > 5 ? `<div style="font-size:11px;color:var(--text-dim);margin-top:8px;text-align:center">+${weakTopics.length-5} daha…</div>` : ''}
       </div>
     </div>` : ''}
 
@@ -8294,16 +8518,6 @@ async function renderSProfil() {
         <textarea id="spBio" style="width:100%;min-height:72px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;color:var(--text);outline:none;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(bio)}</textarea>
       </div>
       <button class="btn btn-accent" style="width:100%;padding:10px" onclick="saveStudentProfile()">Kaydet ✓</button>
-    </div>
-
-    <!-- ŞİFRE DEĞİŞTİR -->
-    <div class="card cp">
-      <div class="portal-sec-title">🔒 Şifre Değiştir</div>
-      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
-        <input type="password" id="newPass1" placeholder="Yeni şifre" style="flex:1;min-width:140px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none">
-        <input type="password" id="newPass2" placeholder="Şifreyi tekrar gir" style="flex:1;min-width:140px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none">
-        <button class="btn btn-accent" onclick="changePassword()">Kaydet</button>
-      </div>
     </div>`;
 }
 
