@@ -1509,12 +1509,12 @@ function openStudentProgram(stuId){
   S.activeStuId = stuId;
   const el = document.getElementById('view-program');
   const _sn=S.students.find(s=>s.id===S.activeStuId)?.name||'';
-  el.innerHTML=`<button class="back-link" onclick="switchTab('student-detail')">← ${_sn}</button>`;
-  el.innerHTML += document.createElement('div').innerHTML; // placeholder
+  if (el) el.innerHTML=`<button class="back-link" onclick="switchTab('student-detail')">← ${_sn}</button>`;
   if(currentTab !== 'program') switchTab('program');
   const _tt2=document.getElementById('tbarTitle'); if(_tt2) _tt2.textContent = (S.students.find(s=>s.id===S.activeStuId)?.name||'')+' · Program';
   renderProgram();
 }
+window.openStudentProgram = openStudentProgram;
 
 function openStudentExams(stuId){
   S.activeStuId = stuId;
@@ -1522,13 +1522,14 @@ function openStudentExams(stuId){
   const _tt3=document.getElementById('tbarTitle'); if(_tt3) _tt3.textContent = (S.students.find(s=>s.id===S.activeStuId)?.name||'')+' · Denemeler';
   renderExams();
 }
+window.openStudentExams = openStudentExams;
 
-// Randevular artık Takvim sekmesinde — öğrenci filtresi önceden seçili açılır
 function openStudentAppointments(stuId){
   S.activeStuId = stuId;
   _agendaFilter.studentId = stuId;
   switchTab('todolist');
 }
+window.openStudentAppointments = openStudentAppointments;
 
 // ═══════════════════════════════════════════════
 // STUDENT KAYNAKLAR (Kitap / Test Takibi)
@@ -4533,10 +4534,10 @@ function renderStudentInfoPanel(stuId) {
     <div class="msg-info-card" style="padding:10px 12px">
       <div class="msg-info-card-hd" style="margin-bottom:8px">🚀 HIZLI İŞLEMLER</div>
       <div class="msg-quick-actions">
-        <button type="button" class="msg-qa-btn" onclick="switchTab('student-detail'); selectStu('${stuId}'); switchTab('sportal')">📋 Program</button>
-        <button type="button" class="msg-qa-btn" onclick="switchTab('student-detail'); selectStu('${stuId}'); switchTab('exams')">📊 Denemeler</button>
-        <button type="button" class="msg-qa-btn" onclick="openTaskModal(todayStr(), 'Bugün'); selectStu('${stuId}')">➕ Görev Ver</button>
-        <button type="button" class="msg-qa-btn" onclick="openStudentProfileModal('${stuId}')">👤 Profil</button>
+        <button type="button" class="msg-qa-btn" onclick="openStudentProgram('${stuId}')">📋 Program</button>
+        <button type="button" class="msg-qa-btn" onclick="openStudentExams('${stuId}')">📊 Denemeler</button>
+        <button type="button" class="msg-qa-btn" onclick="S.activeStuId='${stuId}'; openTaskModal(todayStr(), 'Bugün')">➕ Görev Ver</button>
+        <button type="button" class="msg-qa-btn" onclick="openStudentDetail('${stuId}')">👤 Profil</button>
       </div>
     </div>
 
