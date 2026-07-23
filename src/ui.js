@@ -10697,72 +10697,160 @@ async function updateMatchRequestStatus(id, newStatus) {
 // ═══════════════════════════════════════════════
 // ÖĞRENCİ HIZ AYARLARI
 // ═══════════════════════════════════════════════
-async function openSpeedModal(stuId) {
-  const stu=S.students.find(s=>s.id===stuId);
-  if(!stu) return;
+let _currentSpeedFilterArea = null;
+
+async function openSpeedModal(stuId, activeFilter = null) {
+  const stu = S.students.find(s => s.id === stuId);
+  if (!stu) return;
+
+  // Student's YKS area (SAY, EA, SOZ, DIL)
+  const rawArea = (stu.yksArea || stu.yks_area || 'SAY').toUpperCase();
+  const stuArea = (rawArea === 'EŞİT AĞIRLIK' || rawArea === 'ESIT AGIRLIK') ? 'EA' :
+                  (rawArea === 'SÖZEL' || rawArea === 'SOZEL') ? 'SOZ' :
+                  (rawArea === 'DİL' || rawArea === 'DIL') ? 'DIL' : rawArea;
+
+  const currentArea = activeFilter || _currentSpeedFilterArea || stuArea;
+  _currentSpeedFilterArea = currentArea;
 
   // Hızları yükle
-  const {data:speeds}=await db.from('student_speeds').select('*').eq('student_id',stuId);
-  const speedMap={};
-  (speeds||[]).forEach(s=>{ speedMap[`${s.exam_type}_${s.subject}`]=s.secs_per_question; });
+  const { data: speeds } = await db.from('student_speeds').select('*').eq('student_id', stuId);
+  const speedMap = {};
+  (speeds || []).forEach(s => { speedMap[`${s.exam_type}_${s.subject}`] = s.secs_per_question; });
 
-  const subjects=[
-    {exam:'TYT',sub:'Matematik'},{exam:'TYT',sub:'Türkçe'},{exam:'TYT',sub:'Fizik'},
-    {exam:'TYT',sub:'Kimya'},{exam:'TYT',sub:'Biyoloji'},{exam:'TYT',sub:'Geometri'},
-    {exam:'AYT-SAY',sub:'Matematik'},{exam:'AYT-SAY',sub:'Fizik'},
-    {exam:'AYT-SAY',sub:'Kimya'},{exam:'AYT-SAY',sub:'Biyoloji'},
+  const ALL_SUBJECTS = {
+    TYT: [
+      { exam: 'TYT', sub: 'Matematik' },
+      { exam: 'TYT', sub: 'Türkçe' },
+      { exam: 'TYT', sub: 'Fizik' },
+      { exam: 'TYT', sub: 'Kimya' },
+      { exam: 'TYT', sub: 'Biyoloji' },
+      { exam: 'TYT', sub: 'Geometri' },
+      { exam: 'TYT', sub: 'Tarih' },
+      { exam: 'TYT', sub: 'Coğrafya' },
+      { exam: 'TYT', sub: 'Felsefe' },
+      { exam: 'TYT', sub: 'Din Kültürü' }
+    ],
+    SAY: [
+      { exam: 'AYT-SAY', sub: 'Matematik' },
+      { exam: 'AYT-SAY', sub: 'Fizik' },
+      { exam: 'AYT-SAY', sub: 'Kimya' },
+      { exam: 'AYT-SAY', sub: 'Biyoloji' },
+      { exam: 'AYT-SAY', sub: 'Geometri' }
+    ],
+    EA: [
+      { exam: 'AYT-EA', sub: 'Matematik' },
+      { exam: 'AYT-EA', sub: 'Geometri' },
+      { exam: 'AYT-EA', sub: 'Edebiyat' },
+      { exam: 'AYT-EA', sub: 'Tarih-1' },
+      { exam: 'AYT-EA', sub: 'Coğrafya-1' }
+    ],
+    SOZ: [
+      { exam: 'AYT-SOZ', sub: 'Edebiyat' },
+      { exam: 'AYT-SOZ', sub: 'Tarih-1' },
+      { exam: 'AYT-SOZ', sub: 'Coğrafya-1' },
+      { exam: 'AYT-SOZ', sub: 'Tarih-2' },
+      { exam: 'AYT-SOZ', sub: 'Coğrafya-2' },
+      { exam: 'AYT-SOZ', sub: 'Felsefe Grubu' },
+      { exam: 'AYT-SOZ', sub: 'Din Kültürü' }
+    ],
+    DIL: [
+      { exam: 'YDT', sub: 'İngilizce' }
+    ]
+  };
+
+  let displaySubjects = [];
+  if (currentArea === 'ALL') {
+    displaySubjects = [
+      ...ALL_SUBJECTS.TYT,
+      ...ALL_SUBJECTS.SAY,
+      ...ALL_SUBJECTS.EA,
+      ...ALL_SUBJECTS.SOZ,
+      ...ALL_SUBJECTS.DIL
+    ];
+  } else {
+    displaySubjects = [
+      ...ALL_SUBJECTS.TYT,
+      ...(ALL_SUBJECTS[currentArea] || ALL_SUBJECTS.SAY)
+    ];
+  }
+
+  const areaLabels = [
+    { id: 'SAY', label: '🔬 Sayısal (SAY)' },
+    { id: 'EA', label: '⚖️ Eşit Ağırlık (EA)' },
+    { id: 'SOZ', label: '📚 Sözel (SÖZ)' },
+    { id: 'DIL', label: '🌐 Dil (YDT)' },
+    { id: 'ALL', label: '⚡ Tüm Dersler' }
   ];
 
-  let modal=document.getElementById('speedModal');
-  if(!modal){
-    modal=document.createElement('div');modal.id='speedModal';modal.className='modal-bg';
+  let modal = document.getElementById('speedModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'speedModal';
+    modal.className = 'modal-bg';
     document.body.appendChild(modal);
-    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+    modal.addEventListener('click', e => { if (e.target === modal) cm('speedModal'); });
   }
-  modal.innerHTML=`<div class="modal modal-lg">
+
+  const stuAreaLabel = stuArea === 'SAY' ? 'Sayısal (SAY)' : stuArea === 'EA' ? 'Eşit Ağırlık (EA)' : stuArea === 'SOZ' ? 'Sözel (SÖZ)' : 'YDT (Dil)';
+
+  modal.innerHTML = `<div class="modal modal-lg" style="max-width:680px">
     <button class="modal-close" onclick="cm('speedModal')">×</button>
     <h2>⚡ ${esc(stu.name)} — Soru Çözme Hızı</h2>
-    <p style="font-size:13px;color:var(--text-mid);margin-bottom:16px">Her ders için öğrencinin soru başına harcadığı saniyeyi girin. Görev eklerken süre otomatik hesaplanır.</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
-      ${subjects.map(({exam,sub})=>{
-        const key=`${exam}_${sub}`;
-        const val=speedMap[key]||180;
-        const min=Math.floor(val/60);
-        const sec=val%60;
-        return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
-          <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${exam}</div>
-          <div style="font-size:13px;font-weight:700;margin-bottom:8px">${sub}</div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" id="spd_${key}" value="${val}" min="10" max="600" step="5"
-              style="width:70px;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-weight:700;color:var(--text);text-align:center">
-            <span style="font-size:11px;color:var(--text-dim)">sn/soru</span>
+    <div style="font-size:12.5px;color:var(--text-mid);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+      <span>Öğrencinin Alanı: <strong style="color:var(--accent)">${stuAreaLabel}</strong></span>
+    </div>
+
+    <!-- Alan / Filtre Çipleri -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">
+      ${areaLabels.map(a => `
+        <button type="button" class="wday-btn ${currentArea === a.id ? 'sel' : ''}" onclick="openSpeedModal('${stuId}', '${a.id}')">
+          ${a.label}
+        </button>
+      `).join('')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;max-height:55vh;overflow-y:auto;padding-right:4px">
+      ${displaySubjects.map(({exam, sub}) => {
+        const key = `${exam}_${sub}`;
+        const val = speedMap[key] || 180;
+        const min = Math.floor(val / 60);
+        const sec = val % 60;
+        return `
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+            <div style="font-size:10px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${exam}</div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:8px">${sub}</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="number" id="spd_${key}" data-exam="${exam}" data-sub="${sub}" value="${val}" min="10" max="600" step="5"
+                style="width:75px;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-weight:700;color:var(--text);text-align:center">
+              <span style="font-size:11px;color:var(--text-dim)">sn/soru</span>
+            </div>
+            <div style="font-size:10.5px;color:var(--text-dim);margin-top:4px">${min > 0 ? min + ' dk ' : ''}${sec > 0 ? sec + ' sn' : ''}</div>
           </div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${min>0?min+'dk ':''}</div>
-        </div>`;
+        `;
       }).join('')}
     </div>
-    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:16px" onclick="saveAllSpeeds('${stuId}')">Tümünü Kaydet</button>
+
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:16px;border-radius:10px" onclick="saveAllSpeeds('${stuId}')">
+      💾 Tüm Hız Ayarlarını Kaydet
+    </button>
   </div>`;
   om('speedModal');
 }
+window.openSpeedModal = openSpeedModal;
 
-async function saveAllSpeeds(stuId){
-  const subjects=[
-    {exam:'TYT',sub:'Matematik'},{exam:'TYT',sub:'Türkçe'},{exam:'TYT',sub:'Fizik'},
-    {exam:'TYT',sub:'Kimya'},{exam:'TYT',sub:'Biyoloji'},{exam:'TYT',sub:'Geometri'},
-    {exam:'AYT-SAY',sub:'Matematik'},{exam:'AYT-SAY',sub:'Fizik'},
-    {exam:'AYT-SAY',sub:'Kimya'},{exam:'AYT-SAY',sub:'Biyoloji'},
-  ];
-  for(const {exam,sub} of subjects){
-    const key=`${exam}_${sub}`;
-    const el=document.getElementById('spd_'+key);
-    if(!el) continue;
-    const secs=parseInt(el.value)||180;
-    await saveStudentSpeed(stuId,exam,sub,secs);
+async function saveAllSpeeds(stuId) {
+  const inputs = document.querySelectorAll('input[id^="spd_"]');
+  for (const inp of inputs) {
+    const exam = inp.dataset.exam;
+    const sub = inp.dataset.sub;
+    if (!exam || !sub) continue;
+    const secs = parseInt(inp.value) || 180;
+    await saveStudentSpeed(stuId, exam, sub, secs);
   }
   cm('speedModal');
   showToast('Hız ayarları kaydedildi ✓');
 }
+window.saveAllSpeeds = saveAllSpeeds;
 
 // ═══════════════════════════════════════════════
 // ── ÖĞRENCİ NOTLARI ────────────────────────────
