@@ -4371,30 +4371,342 @@ async function saveComment(){
 async function deleteExam(id){if(!await customConfirm('Bu denemeyi silmek istediğinizden emin misiniz?'))return;await db.from('exams').delete().eq('id',id);S.exams=S.exams.filter(e=>e.id!==id);renderExams();showToast('Silindi');}
 
 // ═══════════════════════════════════════════════
-// MESSAGES
+// MESSAGES — ÖĞRENCİ YÖNETİM KOMUTA MERKEZİ (3-Column Workspace)
 // ═══════════════════════════════════════════════
+let _msgInfoPanelOpen = localStorage.getItem('ra_msg_panel_open') !== '0';
+let _msgContactFilter = '';
+
+function toggleMsgInfoPanel() {
+  _msgInfoPanelOpen = !_msgInfoPanelOpen;
+  localStorage.setItem('ra_msg_panel_open', _msgInfoPanelOpen ? '1' : '0');
+  const layout = document.querySelector('.msg-layout');
+  if (layout) layout.classList.toggle('panel-collapsed', !_msgInfoPanelOpen);
+  const btn = document.getElementById('msgPanelToggleBtn');
+  if (btn) {
+    btn.style.background = _msgInfoPanelOpen ? 'var(--accent-dim)' : 'var(--surface2)';
+    btn.style.color = _msgInfoPanelOpen ? 'var(--accent)' : 'var(--text-mid)';
+  }
+}
+window.toggleMsgInfoPanel = toggleMsgInfoPanel;
+
+function filterMsgContacts(q) {
+  _msgContactFilter = (q || '').trim().toLowerCase();
+  renderMessages();
+}
+window.filterMsgContacts = filterMsgContacts;
+
+function applyMsgTemplate(txt) {
+  const inp = document.getElementById('msgInput');
+  if (!inp) return;
+  inp.value = txt;
+  inp.focus();
+  inp.style.height = 'auto';
+  inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
+}
+window.applyMsgTemplate = applyMsgTemplate;
+
+function renderStudentInfoPanel(stuId) {
+  if (!stuId) return `<div class="no-chat-sel" style="padding:40px 20px;text-align:center">Öğrenci Seçin</div>`;
+  const stu = S.students.find(s => s.id === stuId);
+  if (!stu) return `<div class="no-chat-sel" style="padding:40px 20px;text-align:center">Öğrenci Bulunamadı</div>`;
+
+  const color = stu.color || '#E8613A';
+  const name = esc(stu.name || '');
+
+  // 1. Hedef Kartı Bilgileri
+  const uni = esc(stu.target_university || stu.target || 'Hacettepe Üniversitesi');
+  const dept = esc(stu.target_department || 'Tıp Fakültesi');
+  const year = esc(stu.target_year || 'YKS 2026');
+
+  // 2. Deneme Netleri
+  const exams = (S.exams || []).filter(e => e.studentId === stuId);
+  exams.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
+  const tytExams = exams.filter(e => e.type === 'TYT');
+  const aytExams = exams.filter(e => e.type && e.type.startsWith('AYT'));
+  const lastTyt = tytExams[0]?.totalNet ?? tytExams[0]?.net ?? '—';
+  const lastAyt = aytExams[0]?.totalNet ?? aytExams[0]?.net ?? '—';
+
+  let trendHtml = '';
+  if (tytExams.length >= 2) {
+    const curr = Number(tytExams[0].totalNet || 0);
+    const prev = Number(tytExams[1].totalNet || 0);
+    const diff = (curr - prev).toFixed(1);
+    if (diff > 0) trendHtml = `<span style="font-size:10px;font-weight:800;color:var(--green);background:var(--green-dim);padding:2px 6px;border-radius:99px">📈 +${diff} Net</span>`;
+    else if (diff < 0) trendHtml = `<span style="font-size:10px;font-weight:800;color:var(--red);background:var(--red-dim);padding:2px 6px;border-radius:99px">📉 ${diff} Net</span>`;
+  }
+
+  // 3. Haftalık Görevler
+  const ws = stu?.weekStart ?? 0;
+  const wStart = getWeekStart(0, ws);
+  let totalTasks = 0, doneTasks = 0;
+  for (let i = 0; i < 7; i++) {
+    const ds = fmtDate(addDays(wStart, i));
+    const tasks = S.tasks[`${stuId}_${ds}`] || [];
+    totalTasks += tasks.length;
+    doneTasks += tasks.filter(t => t.done).length;
+  }
+  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+
+  // 4. Öğrenci Sağlık Skoru Hesaplama (0-100)
+  let taskPts = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 40) : 25;
+  let examPts = 10;
+  if (exams.length > 0) {
+    const daysSinceExam = Math.round((new Date() - new Date(exams[0].date || 0)) / 86400000);
+    if (daysSinceExam <= 7) examPts = 30;
+    else if (daysSinceExam <= 14) examPts = 20;
+    else if (daysSinceExam <= 30) examPts = 15;
+  }
+  const thread = S.messages[stuId] || [];
+  const lastMsg = thread[thread.length - 1];
+  let msgPts = 15;
+  if (lastMsg) {
+    const daysSinceMsg = Math.round((new Date() - new Date(lastMsg.created_at || new Date())) / 86400000);
+    if (daysSinceMsg <= 1) msgPts = 30;
+    else if (daysSinceMsg <= 3) msgPts = 22;
+    else if (daysSinceMsg <= 7) msgPts = 15;
+  }
+
+  const healthScore = Math.min(100, taskPts + examPts + msgPts);
+  let healthBadge = '';
+  if (healthScore >= 80) {
+    healthBadge = `<span style="font-size:11px;font-weight:800;color:var(--green)">🟢 ${healthScore} / 100<div style="font-size:9.5px;color:var(--text-dim);font-weight:600">Sağlıklı İlerleme</div></span>`;
+  } else if (healthScore >= 50) {
+    healthBadge = `<span style="font-size:11px;font-weight:800;color:var(--accent)">🟡 ${healthScore} / 100<div style="font-size:9.5px;color:var(--text-dim);font-weight:600">Düşüş Eğilimi</div></span>`;
+  } else {
+    healthBadge = `<span style="font-size:11px;font-weight:800;color:var(--red)">🔴 ${healthScore} / 100<div style="font-size:9.5px;color:var(--text-dim);font-weight:600">Kritik Takip Gerekli</div></span>`;
+  }
+
+  // 5. Son Aktiviteler Feed
+  const activities = [];
+  if (lastMsg) {
+    const dayLabel = _msgDayLabel(lastMsg.created_at || new Date());
+    activities.push(`• ${dayLabel.toLowerCase() === 'bugün' ? 'Bugün' : dayLabel} mesaj gönderdi`);
+  } else {
+    activities.push(`• Henüz mesaj atılmadı`);
+  }
+  if (doneTasks > 0) {
+    activities.push(`• Bu hafta ${doneTasks} görev tamamladı`);
+  } else {
+    activities.push(`• Görev takibi bekleniyor`);
+  }
+  if (exams.length > 0) {
+    const lastExamDate = exams[0].date ? _msgDayLabel(exams[0].date) : 'Son zamanlarda';
+    activities.push(`• ${lastExamDate} deneme yükledi (${exams[0].name||exams[0].type})`);
+  } else {
+    activities.push(`• Henüz deneme yüklenmedi`);
+  }
+
+  return `
+    <!-- 🎯 Hedef Kartı (Çok Önemli) -->
+    <div class="msg-target-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:900;color:var(--accent);letter-spacing:.5px;text-transform:uppercase">🎯 YKS HEDEF KARTI</span>
+        <span style="font-size:10px;font-weight:800;background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:99px;color:var(--text-mid)">${year}</span>
+      </div>
+      <div class="msg-target-item">
+        <div class="msg-target-label">Hedef Üniversite</div>
+        <div class="msg-target-val">${uni}</div>
+      </div>
+      <div class="msg-target-item" style="margin-top:6px">
+        <div class="msg-target-label">Hedef Bölüm</div>
+        <div class="msg-target-val" style="color:var(--accent)">${dept}</div>
+      </div>
+    </div>
+
+    <!-- 📈 Öğrenci Sağlık Skoru -->
+    <div class="msg-info-card">
+      <div class="msg-info-card-hd">
+        <span>📈 Öğrenci Sağlık Skoru</span>
+      </div>
+      <div class="msg-health-score-box">
+        <div>
+          <div style="font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase">GENEL UYUM SKORU</div>
+          <div style="font-size:11px;color:var(--text-mid);margin-top:2px">Görev, deneme ve mesaj aktivitesi</div>
+        </div>
+        ${healthBadge}
+      </div>
+    </div>
+
+    <!-- 📌 Koç Notları (Görünür & Üstte) -->
+    <div class="msg-info-card">
+      <div class="msg-info-card-hd">
+        <span>📌 Koç Notu</span>
+        <span style="font-size:9.5px;color:var(--green);font-weight:700">✓ Otomatik Kayıt</span>
+      </div>
+      <textarea id="msgCoachNote_${stuId}" placeholder="Öğrenci hakkında hızlı notlar ekleyin..."
+        style="width:100%;background:var(--surface);border:1.5.px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;resize:none;min-height:56px;box-sizing:border-box;font-family:inherit"
+        oninput="saveMsgCoachNote('${stuId}', this.value)">${esc(localStorage.getItem(`coach_note_${stuId}`)||'')}</textarea>
+    </div>
+
+    <!-- 📅 Son Aktiviteler Kartı -->
+    <div class="msg-info-card">
+      <div class="msg-info-card-hd">
+        <span>📅 Son Aktiviteler</span>
+      </div>
+      <div class="msg-activity-list">
+        ${activities.map(act => `<div class="msg-activity-item">${esc(act)}</div>`).join('')}
+      </div>
+    </div>
+
+    <!-- 📊 Son Deneme Netleri (TYT / AYT) -->
+    <div class="msg-info-card">
+      <div class="msg-info-card-hd">
+        <span>📊 Son Deneme Netleri</span>
+        ${trendHtml}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px">
+          <div style="font-size:9.5px;font-weight:700;color:var(--text-dim);text-transform:uppercase">TYT Net</div>
+          <div style="font-size:18px;font-weight:900;color:var(--accent);margin-top:2px">${lastTyt}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px">
+          <div style="font-size:9.5px;font-weight:700;color:var(--text-dim);text-transform:uppercase">AYT Net</div>
+          <div style="font-size:18px;font-weight:900;color:#3b82f6;margin-top:2px">${lastAyt}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📋 Bu Haftaki Görevler -->
+    <div class="msg-info-card">
+      <div class="msg-info-card-hd">
+        <span>📋 Bu Haftaki Görevler</span>
+        <span style="color:var(--text-mid);font-size:11px">%${pct}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">${doneTasks}/${totalTasks} görev tamamlandı</div>
+      <div style="height:7px;background:var(--surface);border-radius:99px;overflow:hidden;border:1px solid var(--border)">
+        <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:99px;transition:width .3s"></div>
+      </div>
+    </div>
+
+    <!-- 🚀 Hızlı Aksiyonlar -->
+    <div style="margin-top:auto">
+      <div class="msg-info-card-hd" style="margin-bottom:6px">🚀 HIZLI İŞLEMLER</div>
+      <div class="msg-quick-actions">
+        <button type="button" class="msg-qa-btn" onclick="switchTab('student-detail'); selectStu('${stuId}'); switchTab('sportal')">📋 Program</button>
+        <button type="button" class="msg-qa-btn" onclick="switchTab('student-detail'); selectStu('${stuId}'); switchTab('exams')">📊 Denemeler</button>
+        <button type="button" class="msg-qa-btn" onclick="openTaskModal(todayStr(), 'Bugün'); selectStu('${stuId}')">➕ Görev Ver</button>
+        <button type="button" class="msg-qa-btn" onclick="openStudentProfileModal('${stuId}')">👤 Profil</button>
+      </div>
+    </div>
+  `;
+}
+
+function saveMsgCoachNote(stuId, text) {
+  localStorage.setItem(`coach_note_${stuId}`, text);
+  showToast('Koç notu kaydedildi ✓');
+}
+window.saveMsgCoachNote = saveMsgCoachNote;
+
+function openStudentProfileModal(stuId) {
+  const stu = S.students.find(s => s.id === stuId);
+  if (!stu) return;
+  customConfirm(`Öğrenci: ${stu.name}\nHedef: ${stu.target||'—'}\nOkul: ${stu.school||'—'}\nSınıf: ${stu.grade||'—'}`);
+}
+window.openStudentProfileModal = openStudentProfileModal;
+
+function openAiMsgModal(stuId) {
+  const stu = S.students.find(s => s.id === stuId);
+  const name = stu ? esc(stu.name) : 'Öğrenci';
+  
+  let modal = document.getElementById('aiMsgModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'aiMsgModal';
+    modal.className = 'modal-bg';
+    modal.style.zIndex = '99999';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) cm('aiMsgModal'); });
+  }
+
+  modal.innerHTML = `
+    <div class="modal" style="max-width:440px">
+      <button class="modal-close" onclick="cm('aiMsgModal')">×</button>
+      <h2>✨ Mesaj Taslağı Oluştur</h2>
+      <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:16px;line-height:1.5">
+        <b>${name}</b> için öğrenci durumuna uygun mesaj taslağı seçin:
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+        <button class="btn btn-ghost" style="justify-content:flex-start;padding:12px;font-size:13px;border-radius:10px;text-align:left" onclick="generateAiMsg('motivation', '${stuId}')">
+          🚀 Motive Edici Mesaj
+        </button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;padding:12px;font-size:13px;border-radius:10px;text-align:left" onclick="generateAiMsg('checkin', '${stuId}')">
+          📋 Haftalık Kontrol Mesajı
+        </button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;padding:12px;font-size:13px;border-radius:10px;text-align:left" onclick="generateAiMsg('exam', '${stuId}')">
+          📊 Deneme Sonrası Geri Bildirim
+        </button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;padding:12px;font-size:13px;border-radius:10px;text-align:left" onclick="generateAiMsg('warning', '${stuId}')">
+          ⚠️ Takip / Aksama Mesajı
+        </button>
+      </div>
+    </div>
+  `;
+  om('aiMsgModal');
+}
+window.openAiMsgModal = openAiMsgModal;
+
+function generateAiMsg(type, stuId) {
+  const stu = S.students.find(s => s.id === stuId);
+  const firstName = stu ? stu.name.split(' ')[0] : 'Öğrenci';
+  const target = stu?.target_university ? `${stu.target_university} ${stu.target_department||''}` : (stu?.target || 'YKS hedefin');
+  
+  let msg = '';
+  if (type === 'motivation') {
+    msg = `Selam ${firstName}! Bu haftaki çalışma disiplinini takip ediyorum, ${target} yolunda harika bir istikrar yakaladın. Temponu bozmadan aynı kararlılıkla devam edelim 🚀`;
+  } else if (type === 'checkin') {
+    msg = `Selam ${firstName}! Bu haftaki çalışma programını ve çözdüğün ders konularını kontrol ettim. Eksik kalan veya takıldığın yerler var mı?`;
+  } else if (type === 'exam') {
+    msg = `Selam ${firstName}! Son deneme netlerini inceledim. Yanlış yaptığın ve boş bıraktığın soruların analizini sisteme ekleyebilir misin? Beraber üzerinden geçelim 📊`;
+  } else if (type === 'warning') {
+    msg = `Selam ${firstName}. Son programındaki görevlerde ufak bir duraksama fark ettim. ${target} hedefine emin adımlarla ilerlemek için aksayan konuları hemen revize edelim, ne dersin?`;
+  }
+  
+  cm('aiMsgModal');
+  applyMsgTemplate(msg);
+  showToast('Mesaj taslağı eklendi ✨');
+}
+window.generateAiMsg = generateAiMsg;
+
 function renderMessages(){
   const el=document.getElementById('view-messages');
-  el.innerHTML=`<div class="sh" style="margin-bottom:14px"><h2>Mesajlar</h2></div>
-    <div class="msg-layout">
+  const isCollapsed = !_msgInfoPanelOpen;
+  
+  const filteredStudents = S.students.filter(s => {
+    if (!_msgContactFilter) return true;
+    return s.name.toLowerCase().includes(_msgContactFilter) || (s.target && s.target.toLowerCase().includes(_msgContactFilter));
+  });
+
+  el.innerHTML=`
+    <div class="sh" style="margin-bottom:12px">
+      <h2>💬 Mesajlaşma & Öğrenci Yönetim Merkezi</h2>
+    </div>
+    <div class="msg-layout ${isCollapsed ? 'panel-collapsed' : ''}">
       <div class="msg-sidebar">
-        <div class="msg-sidebar-hd">Öğrenciler</div>
-        ${S.students.map(s=>{
+        <div class="msg-sidebar-hd">
+          <input type="text" class="msg-search-box" placeholder="🔍 Öğrenci ara..." value="${esc(_msgContactFilter)}" oninput="filterMsgContacts(this.value)">
+        </div>
+        ${filteredStudents.map(s=>{
           const thread=S.messages[s.id]||[];
           const last=thread[thread.length-1];
           const unread=thread.filter(m=>m.from==='student'&&!m.read).length;
           return `<div class="msg-contact ${S.msgThread===s.id?'active':''}" onclick="selectThread('${s.id}')">
-            <div class="msg-contact-avatar" style="background:${s.color}">${s.name[0]}</div>
+            <div class="msg-contact-avatar" style="background:${s.color}">
+              ${s.name[0]}
+              <span class="online-dot"></span>
+            </div>
             <div style="flex:1;min-width:0">
-              <div class="msg-contact-name">${esc(s.name.split(' ')[0])}</div>
-              <div class="msg-contact-last">${last?esc(last.text.slice(0,35)):'Mesaj yok'}</div>
+              <div class="msg-contact-name">${esc(s.name)}</div>
+              <div class="msg-contact-last">${last?esc(last.text.slice(0,35)):'Henüz mesaj yok'}</div>
             </div>
             ${unread?`<span class="msg-unread">${unread}</span>`:''}
           </div>`;
         }).join('')}
       </div>
       <div class="msg-main" id="msgMain">
-        ${S.msgThread?renderThreadHTML(S.msgThread,'coach'):'<div class="no-chat-sel">Öğrenci seçin</div>'}
+        ${S.msgThread?renderThreadHTML(S.msgThread,'coach'):'<div class="no-chat-sel">Sohbet başlatmak için soldan bir öğrenci seçin</div>'}
+      </div>
+      <div class="msg-info-panel" id="msgInfoPanel">
+        ${S.msgThread?renderStudentInfoPanel(S.msgThread):'<div class="no-chat-sel" style="padding:40px 20px;text-align:center">Öğrenci Seçin</div>'}
       </div>
     </div>`;
   if(S.msgThread) scrollMsgs();
@@ -4406,18 +4718,17 @@ async function selectThread(stuId){
   if(unreadIds.length) await db.from('messages').update({read:true}).in('id',unreadIds);
   (S.messages[stuId]||[]).forEach(m=>{if(m.from==='student')m.read=true;});
   document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'coach');
+  const infoPanel = document.getElementById('msgInfoPanel');
+  if (infoPanel) infoPanel.innerHTML = renderStudentInfoPanel(stuId);
   document.querySelectorAll('.msg-contact').forEach(el=>el.classList.remove('active'));
   S.students.forEach((s,i)=>{if(s.id===stuId)document.querySelectorAll('.msg-contact')[i]?.classList.add('active');});
   scrollMsgs();
-  // Realtime'ı bu thread için yeniden başlat
   initRealtime();
 }
 
 // pending image for message
 let _msgPendingImg = null; // { file, previewUrl }
 
-// Bugün/dün/tarih ayracı — çok günlü konuşmalarda saat-sadece etiketler (ör. "22:10")
-// bağlamsız kalıp kafa karıştırıyordu (bkz. mesaj sıralama düzeltmesi tartışması).
 function _msgDayLabel(d){
   const today = new Date(); today.setHours(0,0,0,0);
   const day = new Date(d); day.setHours(0,0,0,0);
@@ -4433,7 +4744,7 @@ function renderThreadHTML(stuId, role){
   const color = stu?.color || '#E8613A';
 
   let lastDayKey = null;
-  const rows = thread.map(m => {
+  const rows = thread.map((m, idx) => {
     let daySepHtml = '';
     if (m.created_at) {
       const dayKey = m.created_at.slice(0, 10);
@@ -4443,31 +4754,65 @@ function renderThreadHTML(stuId, role){
       }
     }
     const isOut = (role==='coach'&&m.from==='coach')||(role==='student'&&m.from==='student');
+    const prevM = thread[idx - 1];
+    const isConsecutive = prevM && (prevM.from === m.from) && (!m.created_at || !prevM.created_at || m.created_at.slice(0,10) === prevM.created_at.slice(0,10));
+
     const imgHtml = m.image_url
       ? `<img src="${esc(m.image_url)}" loading="lazy" onload="window._msgImgLoaded(this)" onclick="window.open('${esc(m.image_url)}','_blank')" />`
       : '';
     const textHtml = m.text ? esc(m.text) : '';
     const content = imgHtml + (imgHtml && textHtml ? `<div style="margin-top:5px">${textHtml}</div>` : textHtml);
+
     if (isOut) {
       return `${daySepHtml}<div class="msg-row out">
-        <div class="msg-bubble out">${content}<div class="msg-bubble-time">${m.time}</div></div>
+        <div class="msg-bubble out ${isConsecutive?'grouped-out':''}">${content}<div class="msg-bubble-time">${m.time}</div></div>
       </div>`;
     } else {
+      const avatarHtml = isConsecutive
+        ? `<div class="msg-avatar-placeholder"></div>`
+        : `<div class="msg-avatar-sm" style="background:${color}">${stu?.name[0]||'?'}</div>`;
       return `${daySepHtml}<div class="msg-row in">
-        <div class="msg-avatar-sm" style="background:${color}">${stu?.name[0]||'?'}</div>
-        <div class="msg-bubble in">${content}<div class="msg-bubble-time">${m.time}</div></div>
+        ${avatarHtml}
+        <div class="msg-bubble in ${isConsecutive?'grouped-in':''}">${content}<div class="msg-bubble-time">${m.time}</div></div>
       </div>`;
     }
   }).join('');
 
-  return `<div class="msg-main-hd">
-    <div class="msg-main-hd-avatar" style="background:${color}">${stu?.name[0]||'?'}</div>
-    <div>
-      <div class="msg-main-hd-name">${esc(stu?.name||'')}</div>
-      <div class="msg-main-hd-status">● Çevrimiçi</div>
+  // Quick Templates Chips
+  const templates = [
+    { label: '📊 Deneme Sonucu', text: 'Selam! Son yaptığın denemenin sonucunu sisteme yükleyebilir misin?' },
+    { label: '📋 Program Kontrolü', text: 'Merhaba! Bu haftaki çalışma programını ve görevlerini tamamladın mı?' },
+    { label: '📅 Görüşme Hatırlatması', text: 'Selam! Yarın saat 20:00\'deki birebir koçluk görüşmemizi hatırlatmak istedim.' },
+    { label: '🔥 Tebrik & Motivasyon', text: 'Harika ilerliyorsun! YKS hedeflerine ulaşmak için bu temponu koru 🚀' },
+    { label: '⚡ Ders Aksama Kontrolü', text: 'Selam! Takıldığın veya aksayan dersler varsa beraber revize edelim.' }
+  ];
+
+  const tplChipsHtml = templates.map(t => `
+    <div class="msg-tpl-chip" onclick="applyMsgTemplate('${esc(t.text)}')">${t.label}</div>
+  `).join('');
+
+  const targetLabel = stu?.target ? esc(stu.target) : 'YKS Hedefi Belirtilmemiş';
+
+  return `
+  <div class="msg-main-hd">
+    <div class="msg-main-hd-user">
+      <div class="msg-main-hd-avatar" style="background:${color}">${stu?.name[0]||'?'}</div>
+      <div>
+        <div class="msg-main-hd-name">${esc(stu?.name||'')}</div>
+        <div class="msg-main-hd-status">🟢 Çevrimiçi · <span style="color:var(--accent);font-weight:600">${targetLabel}</span></div>
+      </div>
     </div>
+    <button type="button" id="msgPanelToggleBtn" class="btn btn-ghost btn-xs" onclick="toggleMsgInfoPanel()" style="padding:5px 10px;font-size:11.5px;font-weight:700;border-radius:8px;display:flex;align-items:center;gap:4px">
+      <span>ℹ️</span> <span>Bilgi Paneli</span>
+    </button>
   </div>
-  <div class="msg-body" id="msgBody">${rows||'<div class="empty" style="margin-top:40px;text-align:center;color:var(--text-dim)">👋 Henüz mesaj yok</div>'}</div>
+  <div class="msg-body" id="msgBody">${rows||'<div class="empty" style="margin-top:40px;text-align:center;color:var(--text-dim)">👋 Henüz mesaj yok. Aşağıdaki hazır şablonlarla sohbet başlatabilirsiniz!</div>'}</div>
+  
+  <!-- Hızlı Şablonlar Çip Barı -->
+  <div class="msg-templates-bar">
+    ${tplChipsHtml}
+  </div>
+
   <div id="msgImgPreview" style="display:none" class="msg-img-preview">
     <img id="msgImgThumb" src="" /><span id="msgImgName"></span>
     <span class="msg-img-remove" onclick="window._cancelMsgImg()">✕</span>
@@ -4476,10 +4821,13 @@ function renderThreadHTML(stuId, role){
     <label class="msg-attach-btn" title="Fotoğraf gönder">
       📎<input type="file" accept="image/*,application/pdf" style="display:none" onchange="window._pickMsgImg(this,'${stuId}','${role}')">
     </label>
-    <textarea class="msg-input" id="msgInput" placeholder="Mesaj yaz..." rows="1"
+    <textarea class="msg-input" id="msgInput" placeholder="Mesaj yaz veya yukarıdaki şablonlara tıkla..." rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${stuId}','${role}');}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px'"
       onpaste="window._handleMsgPaste(event,'${stuId}','${role}')"></textarea>
+    <button type="button" class="msg-ai-btn" onclick="openAiMsgModal('${stuId}')" title="Yapay zeka koç mesajı oluştur">
+      ✨ AI Asistan
+    </button>
     <button class="msg-send-btn" onclick="sendMsg('${stuId}','${role}')">
       <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
     </button>
