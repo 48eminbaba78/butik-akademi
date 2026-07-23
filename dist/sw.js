@@ -116,17 +116,22 @@ self.addEventListener('notificationclick', function(event) {
 
   if (event.action === 'close') return;
 
+  const targetUrl = event.notification.data || '/app.html';
+
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then(windowClients => {
-      // Eğer uygulama sekmesi zaten açıksa oraya odaklan, yoksa yeni sekme aç
+      // Eğer uygulama sekmesi zaten açıksa, hangi sohbetin açılacağını
+      // postMessage ile bildirip oraya odaklan — sadece focus() ile pencere
+      // öne gelir ama neredeyse kaldıysa orada kalır (ör. Ana Sayfa).
       for (var i = 0; i < windowClients.length; i++) {
         var client = windowClients[i];
         if (client.url.includes('/app.html') && 'focus' in client) {
+          client.postMessage({ type: 'push-open', url: targetUrl });
           return client.focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow(event.notification.data || '/app.html');
+        return clients.openWindow(targetUrl);
       }
     })
   );

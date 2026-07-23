@@ -50,6 +50,17 @@ if ('serviceWorker' in navigator) {
         console.warn('Service Worker kaydı başarısız oldu:', err);
       });
   });
+
+  // Uygulama zaten açıkken bildirime tıklanırsa (sw.js sadece focus() yapıyor,
+  // pencere neredeyse orada kalır) — hangi sohbetin açılacağını buradan öğreniriz
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'push-open' && window.session?.role) {
+      try {
+        const url = new URL(event.data.url, window.location.origin);
+        window.openPushThread && window.openPushThread(url.searchParams.get('thread'));
+      } catch (e) {}
+    }
+  });
 }
 
 // Hash yönlendirme dinleyicisi (Tarayıcı geri tuşuna karşı koruma)

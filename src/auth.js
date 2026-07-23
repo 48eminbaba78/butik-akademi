@@ -604,6 +604,16 @@ export async function finishLogin(rows) {
       return;
     }
 
+    // Push bildirimine tıklanıp yeni pencere açıldıysa (?thread=<gönderenId>)
+    // doğrudan ilgili sohbete git — onboarding/varsayılan sekme mantığını atla
+    const _threadParam = _urlParams.get('thread');
+    if (_threadParam) {
+      window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+      document.getElementById('aiChatBubble').style.display = 'flex';
+      setTimeout(() => window.openPushThread && window.openPushThread(_threadParam), 100);
+      return;
+    }
+
     document.getElementById('aiChatBubble').style.display = 'flex';
     if ((session.role === 'coach' || session.role === 'developer') && (!S.workspace || !S.workspace.onboarding_done)) {
       window.switchTab('home');

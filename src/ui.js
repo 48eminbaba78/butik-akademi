@@ -4520,15 +4520,29 @@ window._handleMsgPaste = function(event, stuId, role) {
 
 // Push bildirimi gönder — alıcının abone olduğu tüm cihazlara. Sunucu tarafı
 // koç↔öğrenci ilişkisini doğruluyor, burada sessizce hata yutulur (bildirim
-// gitmemesi mesajlaşmayı bloklamamalı).
+// gitmemesi mesajlaşmayı bloklamamalı). url'e gönderenin id'si eklenir ki
+// bildirime tıklayınca doğrudan o sohbet açılsın.
 function notifyPush(senderId, recipientId, title, body){
   if (!senderId || !recipientId) return;
   fetch('/api/push?action=send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sender_id: senderId, recipient_id: recipientId, title, body, url: '/app.html' })
+    body: JSON.stringify({ sender_id: senderId, recipient_id: recipientId, title, body, url: '/app.html?thread=' + senderId })
   }).catch(() => {});
 }
+
+// Bildirime tıklanınca (ya da hâlihazırda açık pencereye push-open mesajı gelince)
+// doğrudan ilgili sohbeti açar. Koç için otherUserId gönderen öğrencinin id'si;
+// öğrenci için tek bir koç-thread'i olduğundan id'ye gerek yok.
+window.openPushThread = function(otherUserId){
+  if (!session.role) return;
+  if (session.role === 'coach' || session.role === 'developer') {
+    switchTab('messages');
+    if (otherUserId) selectThread(otherUserId);
+  } else if (session.role === 'student') {
+    switchTab('smessages');
+  }
+};
 
 async function sendMsg(stuId, role){
   const inp = document.getElementById('msgInput');
