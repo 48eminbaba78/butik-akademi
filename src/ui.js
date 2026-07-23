@@ -8801,9 +8801,9 @@ async function renderSProfil() {
         </div>
       </div>
       <div style="display:flex;gap:24px;margin-top:16px;padding-top:14px;border-top:1px solid ${stu.color}22;flex-wrap:wrap">
-        ${daysSinceJoin ? `<div><div style="font-size:19px;font-weight:800;color:var(--text)">${daysSinceJoin}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">gündür yoldasın</div></div>` : ''}
-        <div><div style="font-size:19px;font-weight:800;color:var(--text)">${yksInfo.days}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">gün kaldı · YKS ${yksInfo.year}</div></div>
-        ${streak > 0 ? `<div><div style="font-size:19px;font-weight:800;color:#f0a500">🔥 ${streak}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">gün üst üste</div></div>` : ''}
+        ${daysSinceJoin ? `<div><div style="font-size:19px;font-weight:800;color:var(--text)">${daysSinceJoin}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">gündür yoldasın</div></div>` : ''}
+        <div><div style="font-size:19px;font-weight:800;color:var(--text)">${yksInfo.days}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">gün kaldı · YKS ${yksInfo.year}</div></div>
+        ${streak > 0 ? `<div><div style="font-size:19px;font-weight:800;color:#f0a500">🔥 ${streak}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">gün üst üste</div></div>` : ''}
       </div>
     </div>
 
