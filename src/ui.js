@@ -4518,6 +4518,18 @@ window._handleMsgPaste = function(event, stuId, role) {
   }
 };
 
+// Push bildirimi gönder — alıcının abone olduğu tüm cihazlara. Sunucu tarafı
+// koç↔öğrenci ilişkisini doğruluyor, burada sessizce hata yutulur (bildirim
+// gitmemesi mesajlaşmayı bloklamamalı).
+function notifyPush(senderId, recipientId, title, body){
+  if (!senderId || !recipientId) return;
+  fetch('/api/push?action=send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sender_id: senderId, recipient_id: recipientId, title, body, url: '/app.html' })
+  }).catch(() => {});
+}
+
 async function sendMsg(stuId, role){
   const inp = document.getElementById('msgInput');
   const text = inp.value.trim();
@@ -4555,6 +4567,7 @@ async function sendMsg(stuId, role){
   if (currentTab==='messages')   { document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'coach');   scrollMsgs(); }
   if (currentTab==='smessages')  { document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'student'); scrollMsgs(); }
 
+  const preview = text ? text.slice(0, 200) : '📷 Görsel gönderdi';
   if (role === 'student' && coachId) {
     db.auth.getSession().then(({ data: { session: authSess } }) => {
       const token = authSess?.access_token;
@@ -4566,10 +4579,13 @@ async function sendMsg(stuId, role){
           type: 'new_message',
           coach_id: coachId,
           student_name: session.dbUser?.full_name || 'Öğrenciniz',
-          message_preview: text ? text.slice(0, 200) : '📷 Görsel gönderdi'
+          message_preview: preview
         })
       }).catch(() => {});
     });
+    notifyPush(stuId, coachId, session.dbUser?.full_name || 'Öğrenciniz', preview);
+  } else if (role === 'coach' && coachId) {
+    notifyPush(coachId, stuId, session.dbUser?.full_name || 'Koçun', preview);
   }
 }
 function scrollMsgs(){setTimeout(()=>{const b=document.getElementById('msgBody');if(b)b.scrollTop=b.scrollHeight;},60);}
@@ -5392,10 +5408,12 @@ window.checkEasterEgg = checkEasterEgg;
 async function askCoachAboutGap(subject){
   if(!session.coachId) return showToast('Koç bulunamadı.');
   try {
+    const text = `🤔 "${subject}" konusunda kendimi zayıf hissediyorum, bu konuda ne önerirsin?`;
     await db.from('messages').insert({
       student_id: session.studentId, coach_id: session.coachId, from_role: 'student',
-      text: `🤔 "${subject}" konusunda kendimi zayıf hissediyorum, bu konuda ne önerirsin?`, read: false
+      text, read: false
     });
+    notifyPush(session.studentId, session.coachId, session.dbUser?.full_name || 'Öğrenciniz', text);
     showToast('Koçuna iletildi ✓', true);
     switchTab('smessages');
   } catch(e) {
@@ -11683,8 +11701,9 @@ async function sendCopilotDraft(stuId) {
       read: false
     });
     
+    notifyPush(coachId, stuId, session.dbUser?.full_name || 'Koçun', text);
     showToast('Taslak mesaj başarıyla düzenlendi, öğrenciye gönderildi ve arşive kaydedildi! ✓');
-    
+
     // Clear Copilot Area
     document.getElementById('aiCopilotResultArea').style.display = 'none';
     document.getElementById('aiCopilotTextarea').value = '';

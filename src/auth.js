@@ -5,7 +5,7 @@
 import { db } from './config.js';
 import { S, session } from './state.js';
 import { loadAllData, invalidateCache } from './api.js';
-import { showLoading, sha256, normalizeUsername, showToast } from './helpers.js';
+import { showLoading, sha256, normalizeUsername, showToast, subscribeToPush } from './helpers.js';
 
 // Prevents concurrent or duplicate session initialization calls
 let _sessionHandled = false;
@@ -505,6 +505,12 @@ export async function finishLogin(rows) {
   session.studentId = rows.role === 'student' ? rows.id : null;
   session.dbUser = rows;
   session.coachId = coachId;
+
+  // Daha önce izin verilmişse (ör. önceki oturumda "Etkinleştir"e basılmış),
+  // her girişte sessizce yeniden abone ol — kullanıcı tekrar butona basmasın
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    subscribeToPush();
+  }
 
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appShell').classList.add('visible');

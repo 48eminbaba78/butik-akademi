@@ -233,21 +233,57 @@ export function normalizeUsername(str) {
     .replace(/\u0307/g, '');
 }
 
+// VAPID public key — açık anahtar olduğu için client'ta bulunması güvenlik sorunu değil
+const VAPID_PUBLIC_KEY = 'BHeLqAz_o0BXBAVaKvLwcNDszZSLFkI2iGch88Yhz2Sh5Avd3WwAcNoh_bFaSDTXshhgSohLmsnkN3zY9BJ6RCE';
+
+function _urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+// İzin verildikten sonra push'a abone ol ve sunucuya kaydet (sessizce — kullanıcıya
+// ek bir onay/hata göstermiyoruz, izin isteme akışı zaten showToast ile bilgilendiriyor)
+export async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!session.dbUser?.id) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    await fetch('/api/push?action=subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: session.dbUser.id, subscription: sub.toJSON() })
+    });
+  } catch (e) {
+    console.warn('[push] abone olunamadı:', e.message);
+  }
+}
+
 // Bildirim izin talebi
 export function requestNotificationPermission() {
   if (!("Notification" in window)) {
     console.log("Bu tarayıcı anlık bildirimleri desteklemiyor.");
     return;
   }
-  
+
   if (Notification.permission !== "granted" && Notification.permission !== "denied") {
     Notification.requestPermission().then(permission => {
       if (permission === "granted") {
         showToast("Bildirim izinleri onaylandı ✓");
+        subscribeToPush();
       }
     });
   } else if (Notification.permission === "granted") {
     showToast("Bildirim izinleri zaten açık ✓");
+    subscribeToPush();
   } else {
     showToast("Bildirim izinleri tarayıcı ayarlarından engellenmiş.");
   }
@@ -273,6 +309,7 @@ window.getStudentWeekStart = getStudentWeekStart;
 window.sha256 = sha256;
 window.normalizeUsername = normalizeUsername;
 window.requestNotificationPermission = requestNotificationPermission;
+window.subscribeToPush = subscribeToPush;
 
 export function togglePasswordVisibility(inputId, iconId) {
   const input = document.getElementById(inputId);
