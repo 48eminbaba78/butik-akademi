@@ -1,4 +1,4 @@
-import { sb, isAuthed, generateForDate, trNow, trDateStr } from '../lib/core.js';
+import { sb, isAuthed, generateForDate, publishDue, trNow, trDateStr } from '../lib/core.js';
 import { applyCors } from '../lib/cors.js';
 
 export default async function handler(req, res) {
@@ -48,6 +48,20 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Bilinmeyen action' });
       }
       return res.status(405).json({ error: 'Method desteklenmiyor' });
+    } catch (e) {
+      return res.status(500).json({ error: String(e.message || e) });
+    }
+  }
+
+  // ── Yayınlama (eski /api/publish) — approved & süresi gelmiş story'leri
+  // (ya da ?id= ile tek bir story'yi hemen) Instagram'a gönderir ────────────
+  const isPublish = req.query && req.query._route === 'publish';
+  if (isPublish) {
+    if (!isAuthed(req)) return res.status(401).json({ error: 'Yetkisiz' });
+    try {
+      var results = await publishDue({ id: req.query.id });
+      var processed = results.filter(function (r) { return r.ok; }).length;
+      return res.status(200).json({ results: results, processed: processed });
     } catch (e) {
       return res.status(500).json({ error: String(e.message || e) });
     }

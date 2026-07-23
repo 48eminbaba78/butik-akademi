@@ -5276,7 +5276,7 @@ async function loadStoryPanel(){
   const st = document.getElementById('rspStatus');
   st.textContent = 'Yükleniyor…';
   try{
-    const d = await rspFetch('/api/posts');
+    const d = await rspFetch('/api/generate?_route=posts');
     _rspPosts = d.posts||[];
     st.innerHTML = '<span style="color:var(--acc3)">● Bağlı</span>';
     renderStoryPanel();
@@ -5358,7 +5358,7 @@ function renderStoryPanel(){
 
 async function rspAction(id, action){
   try{
-    await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action,id})});
+    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action,id})});
     showToast(action==='approve'?'Onaylandı — planlı saatte otomatik yayınlanacak':'Arşive kaldırıldı');
     loadStoryPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
@@ -5367,7 +5367,7 @@ async function rspAction(id, action){
 async function rspSave(id){
   const caption = document.getElementById('rspCap-'+id).value;
   try{
-    await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action:'save',id,caption})});
+    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action:'save',id,caption})});
     showToast('Kaydedildi — tekrar onaylamayı unutmayın');
     loadStoryPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
@@ -5376,7 +5376,7 @@ async function rspSave(id){
 async function rspRestore(id){
   const p = _rspPosts.find(x=>x.id===id);
   try{
-    await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action:'save',id,caption:p?.caption||''})});
+    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action:'save',id,caption:p?.caption||''})});
     showToast('Kuyruğa geri alındı (taslak)');
     loadStoryPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
@@ -5415,7 +5415,7 @@ async function rspRegen(dateStr){
 async function rspPublishNow(){
   if(!(await customConfirm('Yayın saati gelmiş onaylı story\'ler hemen Instagram\'a gönderilsin mi?', 'Gönder')))return;
   try{
-    const r = await rspFetch('/api/publish');
+    const r = await rspFetch('/api/generate?_route=publish');
     const res = r.results||[];
     if(res.length && res[0].disabled){ showToast(res[0].note,false); }
     else showToast(r.processed ? r.processed+' içerik işlendi' : 'Yayın saati gelmiş onaylı içerik yok');
@@ -5426,7 +5426,7 @@ async function rspPublishNow(){
 async function rspPublishSingle(id){
   if(!(await customConfirm('Bu story hemen Instagram\'a gönderilsin mi?', 'Gönder')))return;
   try{
-    const r = await rspFetch('/api/publish?id=' + id);
+    const r = await rspFetch('/api/generate?_route=publish&id=' + id);
     const res = r.results||[];
     if(res.length && res[0].disabled){ showToast(res[0].note,false); }
     else if(res.length && res[0].ok){
@@ -5501,7 +5501,7 @@ function setFpArchiveFilter(f, el){
 
 async function loadFeedPostPanel(){
   try{
-    const d = await rspFetch('/api/posts');
+    const d = await rspFetch('/api/generate?_route=posts');
     _fpPosts = (d.posts||[]).filter(p => (p.post_type||'story') === 'feed');
     renderFeedPostPanel();
   }catch(e){
@@ -5575,7 +5575,7 @@ function renderFeedPostPanel(){
 
 async function fpAction(id, action){
   try{
-    await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action,id})});
+    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action,id})});
     showToast(action==='approve'?'Onaylandı — planlı saatte otomatik yayınlanacak':'Arşive kaldırıldı');
     loadFeedPostPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
@@ -5584,7 +5584,7 @@ async function fpAction(id, action){
 async function fpSave(id){
   const caption = document.getElementById('fpCap-'+id).value;
   try{
-    await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action:'save',id,caption})});
+    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action:'save',id,caption})});
     showToast('Kaydedildi — tekrar onaylamayı unutmayın');
     loadFeedPostPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
@@ -5593,7 +5593,7 @@ async function fpSave(id){
 async function fpRestore(id){
   const p = _fpPosts.find(x=>x.id===id);
   try{
-    await rspFetch('/api/posts',{method:'POST',body:JSON.stringify({action:'save',id,caption:p?.caption||''})});
+    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action:'save',id,caption:p?.caption||''})});
     showToast('Kuyruğa geri alındı (taslak)');
     loadFeedPostPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
@@ -5632,7 +5632,7 @@ async function fpRegen(dateStr){
 async function fpPublishNow(){
   if(!(await customConfirm('Yayın saati gelmiş onaylı gönderiler hemen Instagram\'a gönderilsin mi?', 'Gönder')))return;
   try{
-    const r = await rspFetch('/api/publish');
+    const r = await rspFetch('/api/generate?_route=publish');
     const res = r.results||[];
     if(res.length && res[0].disabled){ showToast(res[0].note,false); }
     else showToast(r.processed ? r.processed+' içerik işlendi' : 'Yayın saati gelmiş onaylı içerik yok');
@@ -5643,7 +5643,7 @@ async function fpPublishNow(){
 async function fpPublishSingle(id){
   if(!(await customConfirm('Bu gönderi hemen Instagram\'a paylaşılsın mı?', 'Gönder')))return;
   try{
-    const r = await rspFetch('/api/publish?id=' + id);
+    const r = await rspFetch('/api/generate?_route=publish&id=' + id);
     const res = r.results||[];
     if(res.length && res[0].disabled){ showToast(res[0].note,false); }
     else if(res.length && res[0].ok){
