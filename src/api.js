@@ -201,11 +201,13 @@ async function _fetchAll() {
       text:      m.text || '',
       image_url: m.image_url || null,
       read:      m.read,
+      created_at: m.created_at,
       time: new Date(m.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
     });
   });
+  // _id bir UUID (rastgele) — kronolojik sıralama için gerçek created_at kullanılmalı
   Object.keys(S.messages).forEach(k =>
-    S.messages[k].sort((a, b) => a._id > b._id ? 1 : -1)
+    S.messages[k].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
   );
 
   S.coachTodos = {};
