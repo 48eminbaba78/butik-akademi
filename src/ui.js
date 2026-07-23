@@ -2579,15 +2579,15 @@ function renderTestList(){
       </label>`;
     } else {
       // Soru bankası satırı
-      return `<label class="${statusClass}" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;transition:background .1s"
+      return `<label class="${statusClass}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;cursor:pointer;transition:background .1s;margin-bottom:2px"
         onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background=''">
         <input type="checkbox" id="test_${i}" value="${i}" onchange="updateTestSummary()"
-          style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
+          style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
         <div style="flex:1;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="font-size:12px;font-weight:600">${esc(label)}</span>
+          <span style="font-size:12.5px;font-weight:600;color:var(--text)">${esc(label)}</span>
           ${statusBadge}
         </div>
-        ${soru>0?`<span style="font-size:10px;color:var(--text-dim);background:var(--surface3);padding:2px 7px;border-radius:99px;flex-shrink:0">${soru} soru</span>`:''}
+        ${soru>0?`<span style="font-size:10.5px;font-weight:700;color:var(--text-mid);background:var(--surface3);padding:3px 8px;border-radius:99px;flex-shrink:0">${soru} soru</span>`:''}
       </label>`;
     }
   }).join('');
@@ -2603,6 +2603,9 @@ function clearAllTests(){
   updateTestSummary();
 }
 
+let _suggestedSoruCount = 0;
+let _suggestedDuration = 0;
+
 function updateTestSummary(){
   if(!_selectedBook) return;
   const checked=[...document.querySelectorAll('#tmTestList input[type=checkbox]:checked')];
@@ -2612,7 +2615,12 @@ function updateTestSummary(){
   const speedRow=document.getElementById('tmSpeedRow');
   const isPlaylist=_selectedBook.resource_type==='playlist';
 
-  if(checked.length===0){summaryEl.style.display='none';return;}
+  if(checked.length===0){
+    summaryEl.style.display='none';
+    _suggestedDuration=0;
+    _suggestedSoruCount=0;
+    return;
+  }
 
   let totalSoru=0, totalDakika=0;
   checked.forEach(cb=>{
@@ -2643,9 +2651,12 @@ function updateTestSummary(){
 
   suggestEl.style.display=suggestedMin>0?'':'none';
   _suggestedDuration=suggestedMin;
+  _suggestedSoruCount=totalSoru;
   suggestEl.setAttribute('data-dur',suggestedMin);
   summaryEl.style.display='';
+  
   if(suggestedMin>0) document.getElementById('tmDuration').value=suggestedMin;
+  if(totalSoru>0) document.getElementById('tmQCount').value=totalSoru;
 }
 
 function selectModalSpeed(speed){
@@ -2661,12 +2672,15 @@ function selectModalSpeed(speed){
   updateTestSummary();
 }
 
-let _suggestedDuration = 0;
-
 function applyDuration(){
   if(_suggestedDuration>0){
     document.getElementById('tmDuration').value=_suggestedDuration;
-    showToast('Süre uygulandı: '+_suggestedDuration+' dk');
+  }
+  if(_suggestedSoruCount>0){
+    document.getElementById('tmQCount').value=_suggestedSoruCount;
+  }
+  if(_suggestedDuration>0 || _suggestedSoruCount>0){
+    showToast('Önerilen soru sayısı ('+_suggestedSoruCount+') ve süre ('+_suggestedDuration+' dk) uygulandı ✓');
   }
 }
 
