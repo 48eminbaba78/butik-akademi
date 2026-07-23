@@ -4402,24 +4402,44 @@ async function selectThread(stuId){
 // pending image for message
 let _msgPendingImg = null; // { file, previewUrl }
 
+// Bugün/dün/tarih ayracı — çok günlü konuşmalarda saat-sadece etiketler (ör. "22:10")
+// bağlamsız kalıp kafa karıştırıyordu (bkz. mesaj sıralama düzeltmesi tartışması).
+function _msgDayLabel(d){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const day = new Date(d); day.setHours(0,0,0,0);
+  const diffDays = Math.round((today - day) / 86400000);
+  if (diffDays === 0) return 'Bugün';
+  if (diffDays === 1) return 'Dün';
+  return day.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: day.getFullYear() !== today.getFullYear() ? 'numeric' : undefined });
+}
+
 function renderThreadHTML(stuId, role){
   const stu = S.students.find(s=>s.id===stuId);
   const thread = S.messages[stuId] || [];
   const color = stu?.color || '#E8613A';
 
+  let lastDayKey = null;
   const rows = thread.map(m => {
+    let daySepHtml = '';
+    if (m.created_at) {
+      const dayKey = m.created_at.slice(0, 10);
+      if (dayKey !== lastDayKey) {
+        daySepHtml = `<div class="msg-date-sep">${_msgDayLabel(m.created_at)}</div>`;
+        lastDayKey = dayKey;
+      }
+    }
     const isOut = (role==='coach'&&m.from==='coach')||(role==='student'&&m.from==='student');
     const imgHtml = m.image_url
-      ? `<img src="${esc(m.image_url)}" loading="lazy" onclick="window.open('${esc(m.image_url)}','_blank')" />`
+      ? `<img src="${esc(m.image_url)}" loading="lazy" onload="window._msgImgLoaded(this)" onclick="window.open('${esc(m.image_url)}','_blank')" />`
       : '';
     const textHtml = m.text ? esc(m.text) : '';
     const content = imgHtml + (imgHtml && textHtml ? `<div style="margin-top:5px">${textHtml}</div>` : textHtml);
     if (isOut) {
-      return `<div class="msg-row out">
+      return `${daySepHtml}<div class="msg-row out">
         <div class="msg-bubble out">${content}<div class="msg-bubble-time">${m.time}</div></div>
       </div>`;
     } else {
-      return `<div class="msg-row in">
+      return `${daySepHtml}<div class="msg-row in">
         <div class="msg-avatar-sm" style="background:${color}">${stu?.name[0]||'?'}</div>
         <div class="msg-bubble in">${content}<div class="msg-bubble-time">${m.time}</div></div>
       </div>`;
@@ -4521,14 +4541,15 @@ async function sendMsg(stuId, role){
 
   const { data, error } = await db.from('messages').insert({
     student_id: stuId, coach_id: coachId, from_role: role,
-    text: text || null, image_url, read: false
+    text: text || '', image_url, read: false
   }).select().single();
   if (error) { showToast('Hata: ' + error.message); return; }
 
   if (!S.messages[stuId]) S.messages[stuId] = [];
   S.messages[stuId].push({
     _id: data.id, from: role, text: text || '', image_url,
-    time: new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}), read: false
+    created_at: data.created_at,
+    time: new Date(data.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}), read: false
   });
   inp.value = ''; inp.style.height = 'auto';
   if (currentTab==='messages')   { document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'coach');   scrollMsgs(); }
@@ -4552,6 +4573,15 @@ async function sendMsg(stuId, role){
   }
 }
 function scrollMsgs(){setTimeout(()=>{const b=document.getElementById('msgBody');if(b)b.scrollTop=b.scrollHeight;},60);}
+
+// Resimler asenkron yüklenip yüksekliği sonradan değiştirdiği için, en altta
+// duruyorsak (eski mesajları okumuyorsak) yük bitince tekrar dibe kaydır.
+window._msgImgLoaded = function(img){
+  const body = img.closest('.msg-body');
+  if (!body) return;
+  const nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 150;
+  if (nearBottom) body.scrollTop = body.scrollHeight;
+};
 
 // ═══════════════════════════════════════════════
 // STUDENT PORTAL
@@ -5994,6 +6024,7 @@ function initRealtime() {
       if(S.messages[stuId].find(x=>x._id===m.id)) return;
       S.messages[stuId].push({
         _id: m.id, from: m.from_role, text: m.text||'', image_url: m.image_url||null, read: m.read,
+        created_at: m.created_at,
         time: new Date(m.created_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})
       });
       if (session.role==='student' && m.from_role==='coach' && currentTab!=='smessages') updateMsgBadge();
@@ -11647,7 +11678,8 @@ async function sendCopilotDraft(stuId) {
       _id: data.id,
       from: 'coach',
       text: text,
-      time: new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}),
+      created_at: data.created_at,
+      time: new Date(data.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}),
       read: false
     });
     
