@@ -1607,7 +1607,9 @@ function _renderKaynaklar(stuId) {
     ${booksHtml}`;
 }
 
-function addStudentBook(stuId) {
+let _allCatalogedBooks = [];
+
+async function addStudentBook(stuId) {
   document.getElementById('sbModalTitle').textContent = 'Kaynak Ekle';
   document.getElementById('sbId').value = '';
   document.getElementById('sbStuId').value = stuId;
@@ -1615,8 +1617,49 @@ function addStudentBook(stuId) {
   document.getElementById('sbTotal').value = '0';
   document.getElementById('sbCompleted').value = '0';
   document.getElementById('sbPctPreview').innerHTML = '';
+
+  const sel = document.getElementById('sbSelectResource');
+  if (sel) {
+    sel.innerHTML = '<option value="">⏳ Hazır kitaplar yükleniyor...</option>';
+    if (!_allCatalogedBooks.length) {
+      try {
+        const { data } = await db.from('resources').select('*').eq('active', true).order('name');
+        _allCatalogedBooks = (data || []).filter(r => r.resource_type === 'book');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    if (_allCatalogedBooks.length) {
+      sel.innerHTML = '<option value="">-- Hazır Kitap Kütüphanesinden Seçin --</option>' +
+        _allCatalogedBooks.map(b => {
+          const totalT = b.total_tests || (b.chapters ? b.chapters.reduce((s,c)=>s+(c.test_count||c.tests?.length||0),0) : 0);
+          return `<option value="${b.id}">${esc(b.publisher ? b.publisher + ' - ' : '')}${esc(b.name)} (${totalT > 0 ? totalT + ' test' : 'Kitap'})</option>`;
+        }).join('') +
+        '<option value="custom">✏️ Kütüphanede Yok (Özel Metin Gir)</option>';
+    } else {
+      sel.innerHTML = '<option value="custom">✏️ Özel Kitap Adı Girin</option>';
+    }
+  }
+
   om('sbModal');
 }
+window.addStudentBook = addStudentBook;
+
+function onSbSelectResource(resId) {
+  if (!resId || resId === 'custom') return;
+  const book = _allCatalogedBooks.find(b => b.id === resId);
+  if (!book) return;
+
+  const totalT = book.total_tests || (book.chapters ? book.chapters.reduce((s,c)=>s+(c.test_count||c.tests?.length||0),0) : 0);
+  const fullName = (book.publisher && !book.name.startsWith(book.publisher) ? book.publisher + ' ' : '') + book.name;
+
+  document.getElementById('sbName').value = fullName;
+  if (totalT > 0) {
+    document.getElementById('sbTotal').value = totalT;
+  }
+  sbUpdatePct();
+}
+window.onSbSelectResource = onSbSelectResource;
 
 function editStudentBook(stuId, bookId) {
   const b = (_sbBooks[stuId] || []).find(x => x.id === bookId);
