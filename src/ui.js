@@ -4760,10 +4760,13 @@ function renderMessages(){
 
 async function selectThread(stuId){
   S.msgThread=stuId;
+  const layout = document.querySelector('.msg-layout');
+  if (layout) layout.classList.add('mobile-chat-active');
   const unreadIds=(S.messages[stuId]||[]).filter(m=>m.from==='student'&&!m.read&&m._id).map(m=>m._id);
   if(unreadIds.length) await db.from('messages').update({read:true}).in('id',unreadIds);
   (S.messages[stuId]||[]).forEach(m=>{if(m.from==='student')m.read=true;});
-  document.getElementById('msgMain').innerHTML=renderThreadHTML(stuId,'coach');
+  const main = document.getElementById('msgMain');
+  if (main) main.innerHTML=renderThreadHTML(stuId,'coach');
   const infoPanel = document.getElementById('msgInfoPanel');
   if (infoPanel) infoPanel.innerHTML = renderStudentInfoPanel(stuId);
   document.querySelectorAll('.msg-contact').forEach(el=>el.classList.remove('active'));
@@ -4771,6 +4774,13 @@ async function selectThread(stuId){
   scrollMsgs();
   initRealtime();
 }
+window.selectThread = selectThread;
+
+function deselectThreadMobile() {
+  const layout = document.querySelector('.msg-layout');
+  if (layout) layout.classList.remove('mobile-chat-active');
+}
+window.deselectThreadMobile = deselectThreadMobile;
 
 // pending image for message
 let _msgPendingImg = null; // { file, previewUrl }
@@ -4824,8 +4834,10 @@ function renderThreadHTML(stuId, role){
     }
   }).join('');
 
-  // Quick Templates Chips
-  const templates = [
+  const isCoach = role === 'coach' || role === 'developer';
+
+  // Quick Templates Chips per role
+  const coachTemplates = [
     { label: '📊 Deneme Sonucu', text: 'Selam! Son yaptığın denemenin sonucunu sisteme yükleyebilir misin?' },
     { label: '📋 Program Kontrolü', text: 'Merhaba! Bu haftaki çalışma programını ve görevlerini tamamladın mı?' },
     { label: '📅 Görüşme Hatırlatması', text: 'Selam! Yarın saat 20:00\'deki birebir koçluk görüşmemizi hatırlatmak istedim.' },
@@ -4833,24 +4845,50 @@ function renderThreadHTML(stuId, role){
     { label: '⚡ Ders Aksama Kontrolü', text: 'Selam! Takıldığın veya aksayan dersler varsa beraber revize edelim.' }
   ];
 
+  const studentTemplates = [
+    { label: '❓ Soru Sormak İstiyorum', text: 'Merhaba hocam, çözemediğim bir soru var, bakabilir misiniz?' },
+    { label: '📋 Program Hakkında', text: 'Merhaba hocam, bu haftaki çalışma programımı tamamladım.' },
+    { label: '📊 Deneme Yükledim', text: 'Hocam yeni deneme sonucumu sisteme girdim, değerlendirebilir misiniz?' },
+    { label: '📅 Randevu Talebi', text: 'Hocam bu hafta için birebir görüşme randevusu alabilir miyim?' }
+  ];
+
+  const templates = isCoach ? coachTemplates : studentTemplates;
+
   const tplChipsHtml = templates.map(t => `
     <div class="msg-tpl-chip" onclick="applyMsgTemplate('${esc(t.text)}')">${t.label}</div>
   `).join('');
 
-  const targetLabel = stu?.target ? esc(stu.target) : 'YKS Hedefi Belirtilmemiş';
+  const headerTitle = isCoach ? esc(stu?.name || 'Öğrenci') : (S.coachProfile?.fullName || 'YKS Koçum');
+  const targetLabel = isCoach ? (stu?.target ? esc(stu.target) : 'YKS Hedefi Belirtilmemiş') : 'Rostrum Akademi Koçluğu';
+  const headerAvatarBg = isCoach ? color : 'var(--accent)';
+
+  const toggleBtnHtml = isCoach ? `
+    <button type="button" id="msgPanelToggleBtn" class="btn btn-ghost btn-xs" onclick="toggleMsgInfoPanel()" style="padding:5px 10px;font-size:11.5px;font-weight:700;border-radius:8px;display:flex;align-items:center;gap:4px">
+      <span>ℹ️</span> <span>Bilgi Paneli</span>
+    </button>
+  ` : '';
+
+  const aiBtnHtml = isCoach ? `
+    <button type="button" class="msg-ai-btn" onclick="openAiMsgModal('${stuId}')" title="Yapay zeka koç mesajı oluştur">
+      ✨ AI Asistan
+    </button>
+  ` : '';
+
+  const backBtnHtml = isCoach ? `
+    <button class="btn btn-ghost btn-xs mobile-back-btn" onclick="deselectThreadMobile()" style="display:none;padding:4px 8px;font-size:11px;font-weight:700;border-radius:6px;margin-right:6px">← Öğrenciler</button>
+  ` : '';
 
   return `
   <div class="msg-main-hd">
     <div class="msg-main-hd-user">
-      <div class="msg-main-hd-avatar" style="background:${color}">${stu?.name[0]||'?'}</div>
+      ${backBtnHtml}
+      <div class="msg-main-hd-avatar" style="background:${headerAvatarBg}">${headerTitle[0]||'K'}</div>
       <div>
-        <div class="msg-main-hd-name">${esc(stu?.name||'')}</div>
+        <div class="msg-main-hd-name">${headerTitle}</div>
         <div class="msg-main-hd-status">🟢 Çevrimiçi · <span style="color:var(--accent);font-weight:600">${targetLabel}</span></div>
       </div>
     </div>
-    <button type="button" id="msgPanelToggleBtn" class="btn btn-ghost btn-xs" onclick="toggleMsgInfoPanel()" style="padding:5px 10px;font-size:11.5px;font-weight:700;border-radius:8px;display:flex;align-items:center;gap:4px">
-      <span>ℹ️</span> <span>Bilgi Paneli</span>
-    </button>
+    ${toggleBtnHtml}
   </div>
   <div class="msg-body" id="msgBody">${rows||'<div class="empty" style="margin-top:40px;text-align:center;color:var(--text-dim)">👋 Henüz mesaj yok. Aşağıdaki hazır şablonlarla sohbet başlatabilirsiniz!</div>'}</div>
   
@@ -4871,9 +4909,7 @@ function renderThreadHTML(stuId, role){
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${stuId}','${role}');}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px'"
       onpaste="window._handleMsgPaste(event,'${stuId}','${role}')"></textarea>
-    <button type="button" class="msg-ai-btn" onclick="openAiMsgModal('${stuId}')" title="Yapay zeka koç mesajı oluştur">
-      ✨ AI Asistan
-    </button>
+    ${aiBtnHtml}
     <button class="msg-send-btn" onclick="sendMsg('${stuId}','${role}')">
       <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
     </button>
