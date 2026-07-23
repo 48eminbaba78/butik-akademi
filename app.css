@@ -829,7 +829,7 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 @media(max-width:600px){.smsg-wrap{height:calc(100vh - 180px);min-height:400px;}}
 
 /* PORTAL */
-.portal-hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:18px;display:flex;gap:16px;align-items:center;}
+.portal-hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:18px;display:flex;gap:16px;align-items:center;justify-content:space-between;}
 .portal-avatar{width:56px;height:56px;border-radius:14px;font-family:'Inter',sans-serif;font-size:22px;font-weight:800;color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .portal-info h1{font-family:'Inter',sans-serif;font-size:20px;font-weight:800;}
 .portal-info p{font-size:13px;color:var(--text-mid);}

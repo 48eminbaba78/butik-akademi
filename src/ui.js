@@ -4544,6 +4544,18 @@ function renderPortal(){
   const nextAppt=S.appointments.filter(a=>a.studentId===stu.id&&a.date>=today).sort((a,b)=>a.date.localeCompare(b.date))[0];
   const unread=(S.messages[stu.id]||[]).filter(m=>m.from==='coach'&&!m.read).length;
 
+  // YKS geri sayımı — önceden sadece koç ana sayfasında vardı
+  const yksInfo = getNextYks();
+
+  // Bu haftaki görev tamamlama (ham sayı) — soyut "İlerleme" yüzdesinin altına somut dayanak
+  const wsPortal = getWeekStart(0, stu.weekStart || 0);
+  let weekTotal = 0, weekDone = 0;
+  for (let i = 0; i < 7; i++) {
+    const dTasks = S.tasks[`${stu.id}_${fmtDate(addDays(wsPortal, i))}`] || [];
+    weekTotal += dTasks.length;
+    weekDone += dTasks.filter(t => t.done).length;
+  }
+
   // Tekrar gereken konular
   const stuMastery = S.konuMastery?.[stu.id] || {};
   const tekrarGereken = [];
@@ -4583,10 +4595,16 @@ function renderPortal(){
 
   el.innerHTML=`
     <div class="portal-hero">
-      <div class="portal-avatar" style="background:${stu.color}">${stu.name[0]}</div>
-      <div class="portal-info">
-        <h1>Merhaba, ${esc(stu.name.split(' ')[0])}! 👋</h1>
-        <p>${esc(stu.target)} · ${new Date().toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</p>
+      <div style="display:flex;gap:16px;align-items:center;flex:1;min-width:0">
+        <div class="portal-avatar" style="background:${stu.color}">${stu.name[0]}</div>
+        <div class="portal-info">
+          <h1>Merhaba, ${esc(stu.name.split(' ')[0])}! 👋</h1>
+          <p>${esc(stu.target)} · ${new Date().toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</p>
+        </div>
+      </div>
+      <div class="home-yks-badge">
+        <div class="home-yks-num">${yksInfo.days}</div>
+        <div class="home-yks-meta">gün kaldı<br><b>YKS ${yksInfo.year}</b></div>
       </div>
     </div>
     <div class="portal-grid">
@@ -4603,13 +4621,18 @@ function renderPortal(){
               </div>
             </div>`).join('')}
           <div style="margin-top:8px;font-size:12px;color:var(--text-mid)">${doneTasks}/${todayTasks.length} tamamlandı</div>
-        `:'<div class="empty"><p>Bugün için görev atanmamış</p></div>'}
+        `:`<div class="empty" style="padding:22px 16px">
+            <div style="font-size:28px;margin-bottom:8px">🗓️</div>
+            <p style="margin-bottom:14px">Bugün için görev atanmamış. Koçun henüz program hazırlamamış olabilir.</p>
+            <button class="btn btn-accent" style="font-size:12px;padding:8px 16px" onclick="switchTab('smessages')">💬 Koçuma Mesaj Gönder</button>
+          </div>`}
       </div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card cp">
           <div class="portal-sec-title">📈 İlerleme</div>
           <div style="font-family:'Inter',sans-serif;font-size:36px;font-weight:800;color:${stu.color};margin-bottom:6px">%${stu.progress}</div>
           <div class="prog-bar-wrap"><div class="prog-bar" style="width:${stu.progress}%;background:${stu.color}"></div></div>
+          <div style="font-size:11px;color:var(--text-mid);margin-top:8px">Bu hafta: <b style="color:var(--text)">${weekDone}/${weekTotal}</b> görev tamamlandı${weekTotal>0?` (%${Math.round(weekDone/weekTotal*100)})`:''}</div>
         </div>
         <div class="card cp">
           <div class="portal-sec-title">📅 Sonraki Randevu</div>
@@ -4617,6 +4640,16 @@ function renderPortal(){
           <div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:700">${nextAppt.time}</div>
           <div style="font-size:12px;color:var(--text-mid);margin-top:3px">${esc(nextAppt.type)} · ${nextAppt.duration} dk</div>`
           :'<div style="font-size:13px;color:var(--text-dim)">Yaklaşan randevu yok</div>'}
+        </div>
+        <div class="card cp" style="cursor:pointer;border-color:rgba(232,97,58,.25);transition:opacity .15s" onclick="switchTab('sprofil')" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:22px">🌟</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:13px">Yolculuğum</div>
+              <div style="font-size:11px;color:var(--text-mid)">İlerlemeni ve rozetlerini gör</div>
+            </div>
+            <span style="color:var(--text-dim)">→</span>
+          </div>
         </div>
         ${unread>0?`<div class="card cp" style="border-color:var(--accent);cursor:pointer" onclick="switchTab('smessages')">
           <div style="display:flex;align-items:center;gap:10px">
