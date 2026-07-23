@@ -1006,9 +1006,11 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
       Ücretsiz Başla — 7 Gün Dene
       <span>→</span>
     </a>
+    <!-- Demo butonu geçici olarak kaldırıldı:
     <a href="app.html?sandbox=true" class="btn-hero-ghost">
       ⚡ Önce demoyu incele
     </a>
+    -->
   </div>
 
   <div class="hero-proof">
@@ -1910,7 +1912,7 @@ function selectRole(role) {
       labelCount.textContent = 'Öngörülen Toplam Öğrenci Sayısı';
       btn.textContent = 'Kurumsal Başvuru Yap →';
       if (fieldPass) fieldPass.style.display = 'none';
-      if (regSub) regSub.innerHTML = 'Kurumsal başvurunuz 1 iş günü içinde onaylanır — beklemeden denemek için <a href="app.html?sandbox=true" style="color:var(--acc);font-weight:700">canlı demoya gir →</a>';
+      if (regSub) regSub.innerHTML = 'Kurumsal başvurunuz 1 iş günü içinde onaylanır.';
       document.getElementById('fieldPlan').style.display = 'none';
     } else {
       labelBrand.textContent = 'Akademi / Koçluk Adı (opsiyonel)';
