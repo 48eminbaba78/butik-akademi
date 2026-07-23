@@ -425,9 +425,8 @@
         </div>
         <div id="tmTestList" style="max-height:200px;overflow-y:auto;overflow-x:hidden;box-sizing:border-box;position:relative;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:6px 4px"></div>
         <div id="tmTestSummary" style="margin-top:10px;padding:10px 14px;background:var(--accent-dim);border:1.5px solid rgba(240,165,0,.35);border-radius:10px;font-size:12px;display:none">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0" id="tmSummaryRow">
+          <div style="display:flex;align-items:center;margin-bottom:0" id="tmSummaryRow">
             <span id="tmTestSummaryText" style="font-weight:700;color:var(--text)"></span>
-            <span id="tmSuggestedDuration" style="color:var(--accent);font-weight:800;cursor:pointer;background:var(--surface);padding:4px 12px;border-radius:7px;border:1px solid rgba(240,165,0,.4);box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all .15s" onclick="applyDuration()" title="Önerilen süreyi ve soru sayısını uygula">⏱ Uygula</span>
           </div>
           <div id="tmSpeedRow" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(240,165,0,.2)">
             <div style="font-size:10px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">İzleme Hızı</div>
@@ -452,7 +451,7 @@
         <label>Süre (dk)</label>
         <input type="number" id="tmDuration" value="60" min="5">
       </div>
-      <div class="field" style="width:110px;margin-bottom:0">
+      <div class="field" id="tmStartTimeField" style="width:110px;margin-bottom:0">
         <label>Saat (İsteğe bağlı)</label>
         <input type="time" id="tmStartTime" style="color-scheme:dark">
       </div>
