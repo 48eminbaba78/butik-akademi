@@ -4414,8 +4414,10 @@ function renderStudentInfoPanel(stuId) {
   const name = esc(stu.name || '');
 
   // 1. Hedef Kartı Bilgileri
-  const uni = esc(stu.target_university || stu.target || 'Hacettepe Üniversitesi');
-  const dept = esc(stu.target_department || 'Tıp Fakültesi');
+  const rawTarget = stu.target || '';
+  const isGenericTarget = rawTarget.toLowerCase().includes('tyt') || rawTarget.toLowerCase().includes('ayt') || !rawTarget;
+  const uni = esc(stu.target_university || (!isGenericTarget ? rawTarget : 'Hacettepe Üniversitesi'));
+  const dept = esc(stu.target_department || (isGenericTarget && rawTarget ? rawTarget : 'Tıp Fakültesi'));
   const year = esc(stu.target_year || 'YKS 2026');
 
   // 2. Deneme Netleri
@@ -4527,6 +4529,17 @@ function renderStudentInfoPanel(stuId) {
       </div>
     </div>
 
+    <!-- 🚀 Hızlı Aksiyonlar (Üstte Kolay Erişim) -->
+    <div class="msg-info-card" style="padding:10px 12px">
+      <div class="msg-info-card-hd" style="margin-bottom:8px">🚀 HIZLI İŞLEMLER</div>
+      <div class="msg-quick-actions">
+        <button type="button" class="msg-qa-btn" onclick="switchTab('student-detail'); selectStu('${stuId}'); switchTab('sportal')">📋 Program</button>
+        <button type="button" class="msg-qa-btn" onclick="switchTab('student-detail'); selectStu('${stuId}'); switchTab('exams')">📊 Denemeler</button>
+        <button type="button" class="msg-qa-btn" onclick="openTaskModal(todayStr(), 'Bugün'); selectStu('${stuId}')">➕ Görev Ver</button>
+        <button type="button" class="msg-qa-btn" onclick="openStudentProfileModal('${stuId}')">👤 Profil</button>
+      </div>
+    </div>
+
     <!-- 📌 Koç Notları (Görünür & Üstte) -->
     <div class="msg-info-card">
       <div class="msg-info-card-hd">
@@ -4534,7 +4547,7 @@ function renderStudentInfoPanel(stuId) {
         <span style="font-size:9.5px;color:var(--green);font-weight:700">✓ Otomatik Kayıt</span>
       </div>
       <textarea id="msgCoachNote_${stuId}" placeholder="Öğrenci hakkında hızlı notlar ekleyin..."
-        style="width:100%;background:var(--surface);border:1.5.px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;resize:none;min-height:56px;box-sizing:border-box;font-family:inherit"
+        style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;resize:none;min-height:56px;box-sizing:border-box;font-family:inherit"
         oninput="saveMsgCoachNote('${stuId}', this.value)">${esc(localStorage.getItem(`coach_note_${stuId}`)||'')}</textarea>
     </div>
 
@@ -4575,17 +4588,6 @@ function renderStudentInfoPanel(stuId) {
       <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">${doneTasks}/${totalTasks} görev tamamlandı</div>
       <div style="height:7px;background:var(--surface);border-radius:99px;overflow:hidden;border:1px solid var(--border)">
         <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:99px;transition:width .3s"></div>
-      </div>
-    </div>
-
-    <!-- 🚀 Hızlı Aksiyonlar -->
-    <div style="margin-top:auto">
-      <div class="msg-info-card-hd" style="margin-bottom:6px">🚀 HIZLI İŞLEMLER</div>
-      <div class="msg-quick-actions">
-        <button type="button" class="msg-qa-btn" onclick="switchTab('student-detail'); selectStu('${stuId}'); switchTab('sportal')">📋 Program</button>
-        <button type="button" class="msg-qa-btn" onclick="switchTab('student-detail'); selectStu('${stuId}'); switchTab('exams')">📊 Denemeler</button>
-        <button type="button" class="msg-qa-btn" onclick="openTaskModal(todayStr(), 'Bugün'); selectStu('${stuId}')">➕ Görev Ver</button>
-        <button type="button" class="msg-qa-btn" onclick="openStudentProfileModal('${stuId}')">👤 Profil</button>
       </div>
     </div>
   `;
