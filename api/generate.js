@@ -113,7 +113,8 @@ Sadece caption metnini döndür, başka hiçbir şey yazma.`;
     var dateStr = (req.query && req.query.date) || trDateStr(tomorrow);
     var force = req.query && req.query.force === '1';
     var idea = (req.query && req.query.idea ? String(req.query.idea) : '').slice(0, 600);
-    var result = await generateForDate(dateStr, { force: force, idea: idea });
+    var type = (req.query && req.query.type === 'feed') ? 'feed' : 'story';
+    var result = await generateForDate(dateStr, { force: force, idea: idea, type: type });
     return res.status(200).json(Object.assign({ date: dateStr }, result));
   } catch (e) {
     return res.status(500).json({ error: String(e.message || e) });
