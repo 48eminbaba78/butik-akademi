@@ -5346,7 +5346,150 @@ function renderStoryPanel(){
   let archive = _rspPosts.filter(p => p.status === 'published' || p.status === 'rejected');
   if(_archiveFilter!=='all') archive = archive.filter(p=>p.status===_archiveFilter);
 
-  const pending = queue.filter(p => p.status === 'draft' || p.status === 'pasync function loadFeedPostPanel(){
+  const pending = queue.filter(p => p.status === 'draft' || p.status === 'pending' || !p.status).length;
+  document.getElementById('rspQueueCount').textContent = pending ? '· '+pending : '';
+
+  document.getElementById('rspQueueList').innerHTML = queue.length
+    ? queue.map(p=>rspCard(p,false)).join('')
+    : '<div class="loading" style="grid-column:1/-1">Kuyruk boş — "İçerik Oluştur" sekmesinden yeni story üretin</div>';
+
+  document.getElementById('rspArchiveList').innerHTML = archive.length
+    ? archive.map(p=>rspCard(p,true)).join('')
+    : '<div class="loading" style="grid-column:1/-1">Arşivde içerik yok</div>';
+}
+
+async function rspAction(id, action){
+  try{
+    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action,id})});
+    showToast(action==='approve'?'Onaylandı — planlı saatte otomatik yayınlanacak':'Arşive kaldırıldı');
+    loadStoryPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+async function rspSave(id){
+  const caption = document.getElementById('rspCap-'+id).value;
+  try{
+    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action:'save',id,caption})});
+    showToast('Kaydedildi — tekrar onaylamayı unutmayın');
+    loadStoryPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+async function rspRestore(id){
+  const p = _rspPosts.find(x=>x.id===id);
+  try{
+    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action:'save',id,caption:p?.caption||''})});
+    showToast('Kuyruğa geri alındı (taslak)');
+    loadStoryPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+async function rspGenerate(){
+  const btn = document.getElementById('rspGenBtn');
+  const d = document.getElementById('rspGenDate').value;
+  const idea = document.getElementById('rspIdea').value.trim();
+  const force = document.getElementById('rspForce').checked;
+  if(!d){ showToast('Yayın tarihi seçin',false); return; }
+  btn.disabled = true; btn.textContent = 'Üretiliyor… (~20 sn)';
+  try{
+    let q = '?date='+d + (force?'&force=1':'') + (idea?'&idea='+encodeURIComponent(idea):'');
+    const r = await rspFetch('/api/generate'+q);
+    if(r.skipped){ showToast(r.reason||'Bu tarihte içerik zaten var — üzerine yazmak için kutucuğu işaretleyin',false); }
+    else{
+      showToast('Story üretildi — Kuyruk & Onay sekmesinde sizi bekliyor');
+      document.getElementById('rspIdea').value='';
+      switchStudioTab('queue');
+    }
+    loadStoryPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+  finally{ btn.disabled=false; btn.textContent='Story Üret (~20 sn)'; }
+}
+
+async function rspRegen(dateStr){
+  if(!(await customConfirm(dateStr+' tarihi için yeniden üretilsin mi? Mevcut içeriğin üzerine yazılır.', 'Üret')))return;
+  document.getElementById('rspGenDate').value = dateStr;
+  document.getElementById('rspForce').checked = true;
+  switchStudioTab('create');
+  updateThemeHint();
+  rspGenerate();
+}
+
+async function rspPublishNow(){
+  if(!(await customConfirm('Yayın saati gelmiş onaylı story\'ler hemen Instagram\'a gönderilsin mi?', 'Gönder')))return;
+  try{
+    const r = await rspFetch('/api/generate?_route=publish');
+    const res = r.results||[];
+    if(res.length && res[0].disabled){ showToast(res[0].note,false); }
+    else showToast(r.processed ? r.processed+' içerik işlendi' : 'Yayın saati gelmiş onaylı içerik yok');
+    loadStoryPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+async function rspPublishSingle(id){
+  if(!(await customConfirm('Bu story hemen Instagram\'a gönderilsin mi?', 'Gönder')))return;
+  try{
+    const r = await rspFetch('/api/generate?_route=publish&id=' + id);
+    const res = r.results||[];
+    if(res.length && res[0].disabled){ showToast(res[0].note,false); }
+    else if(res.length && res[0].ok){
+      showToast('Story Instagram\'da başarıyla paylaşıldı! ✓');
+    }else if(res.length && res[0].error){
+      showToast('Hata: ' + res[0].error, false);
+    }else{
+      showToast('İçerik paylaşılamadı.', false);
+    }
+    loadStoryPanel();
+  }catch(e){ showToast('Hata: '+e.message,false); }
+}
+
+let _fpPosts = [];
+let _fpStudioTab = 'queue';
+let _fpArchiveFilter = 'all';
+
+function initFeedPostTab(){
+  const c = rspCfg();
+  const hint = document.getElementById('fpNoConnHint');
+  if (hint) hint.style.display = (c.url && c.key) ? 'none' : 'block';
+  const gd = document.getElementById('fpGenDate');
+  if(gd && !gd.value) gd.value = new Date(Date.now()+86400000).toISOString().split('T')[0];
+  updateFpThemeHint();
+  if(c.url && c.key) loadFeedPostPanel();
+}
+
+function updateFpThemeHint(){
+  const d = document.getElementById('fpGenDate').value;
+  const el = document.getElementById('fpThemeHint');
+  if(!d){ el.textContent='—'; return; }
+  const t = themeForDate(d);
+  el.textContent = t.name + ' · ' + t.hour;
+  renderFpRotationList();
+}
+
+function renderFpRotationList(){
+  const el = document.getElementById('fpRotationList');
+  if(!el) return;
+  const days = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+  const sel = document.getElementById('fpGenDate').value;
+  const selDay = sel ? new Date(sel+'T12:00:00Z').getUTCDay() : -1;
+  el.innerHTML = [1,2,3,4,5,6,0].map(i=>{
+    const t = RSP_THEMES[i];
+    const on = i===selDay;
+    return `<div style="display:flex;justify-content:space-between;gap:10px;${on?'color:var(--acc);font-weight:700':''}">
+      <span>${days[i]}</span><span style="text-align:right">${t.name} · ${t.hour}</span></div>`;
+  }).join('');
+}
+
+function switchFpStudioTab(tab, el){
+  _fpStudioTab = tab;
+  ['queue','create','archive'].forEach(t=>{
+    const b=document.getElementById('igFpTab-'+t);
+    b.classList.toggle('btn-acc', t===tab);
+    b.classList.toggle('btn-ghost', t!==tab);
+    document.getElementById('ig-fp-tab-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+}
+
+async function loadFeedPostPanel(){
   try{
     const d = await rspFetch('/api/generate?_route=posts');
     const raw = Array.isArray(d) ? d : (d.posts || d.data || []);
@@ -5481,130 +5624,13 @@ async function fpGenerate(){
     await loadFeedPostPanel();
   }catch(e){ showToast('Hata: '+e.message,false); }
   finally{ btn.disabled=false; btn.textContent='Gönderi Üret (~20 sn)'; }
-}('btn-acc');b.classList.add('btn-ghost');});
+}
+
+function setFpArchiveFilter(f, el){
+  _fpArchiveFilter = f;
+  document.querySelectorAll('[id^="fpArcF-"]').forEach(b=>{b.classList.remove('btn-acc');b.classList.add('btn-ghost');});
   el.classList.remove('btn-ghost'); el.classList.add('btn-acc');
   renderFeedPostPanel();
-}
-
-async function loadFeedPostPanel(){
-  try{
-    const d = await rspFetch('/api/generate?_route=posts');
-    _fpPosts = (d.posts||[]).filter(p => (p.post_type||'story') === 'feed');
-    renderFeedPostPanel();
-  }catch(e){
-    document.getElementById('fpQueueList').innerHTML = '<div class="loading" style="grid-column:1/-1">'+esc(e.message)+'</div>';
-  }
-}
-
-function fpCard(p, isArchive){
-  const [stLbl, stCls] = RSP_ST[p.status]||[p.status,'st-draft'];
-  const theme = RSP_TH[p.theme]||p.theme||'—';
-  const dt = new Date(p.post_date+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
-  const pub = p.publish_at ? new Date(p.publish_at).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-  const svg = p.svg || '';
-
-  let timeInfo = '';
-  const opt = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
-  if (p.status === 'published' && p.updated_at) timeInfo = `Yayınlandı: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
-  else if (p.status === 'approved' && p.updated_at) timeInfo = `Onaylandı: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
-  else if (p.status === 'rejected' && p.updated_at) timeInfo = `Reddedildi: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
-  else if (p.status === 'error' && p.updated_at) timeInfo = `Hata: ${new Date(p.updated_at).toLocaleString('tr-TR', opt)}`;
-  else if (p.created_at) timeInfo = `Oluşturuldu: ${new Date(p.created_at).toLocaleString('tr-TR', opt)}`;
-
-  const actions = isArchive
-    ? (p.status==='rejected'
-        ? `<button class="btn btn-ghost btn-sm" onclick="fpRestore('${p.id}')">Kuyruğa Geri Al</button>
-           <button class="btn btn-ghost btn-sm" onclick="fpRegen('${p.post_date}')">Yeniden Üret</button>`
-        : `<button class="btn btn-green btn-sm" onclick="fpPublishSingle('${p.id}')">🚀 Tekrar Paylaş</button>
-           <button class="btn btn-ghost btn-sm" onclick="fpRestore('${p.id}')">Kuyruğa Geri Al</button>
-           <button class="btn btn-ghost btn-sm" onclick="fpRegen('${p.post_date}')">Bu Temayla Yeni Üret</button>`)
-    : `<button class="btn btn-ghost btn-sm" onclick="fpSave('${p.id}')">Kaydet</button>
-       ${p.status === 'approved' ? `<button class="btn btn-green btn-sm" onclick="fpPublishSingle('${p.id}')">🚀 Hemen Paylaş</button>` : `<button class="btn btn-green btn-sm" onclick="fpAction('${p.id}','approve')">Onayla</button>`}
-       <button class="btn btn-danger btn-sm" onclick="fpAction('${p.id}','reject')">Arşive Kaldır</button>
-       <button class="btn btn-ghost btn-sm" onclick="fpRegen('${p.post_date}')">Yeniden Üret</button>`;
-  return `<div class="rsp-card">
-    <div class="fp-phone"><div class="fp-scr">${svg||'<span style="font-size:11px;color:var(--dim);padding:10px;text-align:center">Görsel yok</span>'}</div></div>
-    <div class="rsp-meta">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-weight:700;font-size:13px;color:var(--text)">${dt}</span>
-        <span class="status-badge ${stCls}">${stLbl}</span>
-        <span class="chip-method" style="color:var(--acc2)">${esc(theme)}</span>
-      </div>
-      <div style="font-size:10px;color:var(--dim);display:flex;flex-direction:column;gap:2px;margin-top:2px">
-        <div>Planlı yayın: ${pub}</div>
-        ${timeInfo ? `<div style="color:rgba(230,237,243,0.35);font-size:9.5px">${timeInfo}</div>` : ''}
-      </div>
-      ${p.error_msg?`<div style="font-size:11px;color:var(--red);background:var(--red-dim);border-radius:8px;padding:6px 10px;max-height:60px;overflow:auto">${esc(p.error_msg)}</div>`:''}
-      ${isArchive
-        ? `<div style="font-size:11.5px;color:var(--mid);line-height:1.5;max-height:80px;overflow:auto;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;white-space:pre-wrap">${esc(p.caption||'—')}</div>`
-        : `<textarea class="rsp-cap" id="fpCap-${p.id}">${esc(p.caption||'')}</textarea>`}
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto">${actions}</div>
-    </div>
-  </div>`;
-}
-
-function renderFeedPostPanel(){
-  const queue = _fpPosts.filter(p=>['draft','approved','error'].includes(p.status));
-  let archive = _fpPosts.filter(p=>['published','rejected'].includes(p.status));
-  if(_fpArchiveFilter!=='all') archive = archive.filter(p=>p.status===_fpArchiveFilter);
-
-  const pending = queue.filter(p=>p.status==='draft').length;
-  document.getElementById('fpQueueCount').textContent = pending ? '· '+pending : '';
-
-  document.getElementById('fpQueueList').innerHTML = queue.length
-    ? queue.map(p=>fpCard(p,false)).join('')
-    : '<div class="loading" style="grid-column:1/-1">Kuyruk boş — "İçerik Oluştur" sekmesinden yeni gönderi üretin</div>';
-
-  document.getElementById('fpArchiveList').innerHTML = archive.length
-    ? archive.map(p=>fpCard(p,true)).join('')
-    : '<div class="loading" style="grid-column:1/-1">Arşivde içerik yok</div>';
-}
-
-async function fpAction(id, action){
-  try{
-    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action,id})});
-    showToast(action==='approve'?'Onaylandı — planlı saatte otomatik yayınlanacak':'Arşive kaldırıldı');
-    loadFeedPostPanel();
-  }catch(e){ showToast('Hata: '+e.message,false); }
-}
-
-async function fpSave(id){
-  const caption = document.getElementById('fpCap-'+id).value;
-  try{
-    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action:'save',id,caption})});
-    showToast('Kaydedildi — tekrar onaylamayı unutmayın');
-    loadFeedPostPanel();
-  }catch(e){ showToast('Hata: '+e.message,false); }
-}
-
-async function fpRestore(id){
-  const p = _fpPosts.find(x=>x.id===id);
-  try{
-    await rspFetch('/api/generate?_route=posts',{method:'POST',body:JSON.stringify({action:'save',id,caption:p?.caption||''})});
-    showToast('Kuyruğa geri alındı (taslak)');
-    loadFeedPostPanel();
-  }catch(e){ showToast('Hata: '+e.message,false); }
-}
-
-async function fpGenerate(){
-  const btn = document.getElementById('fpGenBtn');
-  const d = document.getElementById('fpGenDate').value;
-  const idea = document.getElementById('fpIdea').value.trim();
-  const force = document.getElementById('fpForce').checked;
-  if(!d){ showToast('Yayın tarihi seçin',false); return; }
-  btn.disabled = true; btn.textContent = 'Üretiliyor… (~20 sn)';
-  try{
-    let q = '?date='+d+'&type=feed' + (force?'&force=1':'') + (idea?'&idea='+encodeURIComponent(idea):'');
-    const r = await rspFetch('/api/generate'+q);
-    if(r.skipped){ showToast(r.reason||'Bu tarihte içerik zaten var — üzerine yazmak için kutucuğu işaretleyin',false); }
-    else{
-      showToast('Gönderi üretildi — Kuyruk & Onay sekmesinde sizi bekliyor');
-      document.getElementById('fpIdea').value='';
-      switchFpStudioTab('queue');
-    }
-    loadFeedPostPanel();
-  }catch(e){ showToast('Hata: '+e.message,false); }
-  finally{ btn.disabled=false; btn.textContent='Gönderi Üret (~20 sn)'; }
 }
 
 async function fpRegen(dateStr){
