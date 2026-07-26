@@ -9593,6 +9593,28 @@ async function renderCoachProfile() {
         </div>
       </div>
 
+      <!-- Studio Quick Guide Banner -->
+      <div id="studioGuideBanner" style="background: linear-gradient(135deg, rgba(232,97,58,0.09) 0%, rgba(37,99,235,0.06) 100%); border: 1.5px solid rgba(232,97,58,0.25); border-radius: 16px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; box-shadow: var(--shadow-sm);">
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div style="background:var(--accent); color:#fff; font-size:18px; width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-weight:800; box-shadow:0 4px 12px rgba(232,97,58,0.3);">💡</div>
+          <div>
+            <div style="font-size:13.5px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:8px;">
+              <span>Sayfanızı 3 Adımda Kolayca Yayınlayın</span>
+              <span style="font-size:10.5px; background:var(--accent-dim); color:var(--accent); font-weight:800; padding:2px 8px; border-radius:99px;">HIZLI REHBER</span>
+            </div>
+            <div style="font-size:12.5px; color:var(--text-mid); margin-top:4px; display:flex; gap:18px; flex-wrap:wrap;">
+              <span>1️⃣ <strong>Sol Panel:</strong> Düzenlemek istediğiniz bloğa tıklayın.</span>
+              <span>2️⃣ <strong>Orta Panel:</strong> Metin & bilgilerinizi yazın.</span>
+              <span>3️⃣ <strong>Sağ Panel:</strong> Canlı önizleyin ve <strong>Yayınla 🚀</strong> butonuna basın.</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button type="button" class="btn btn-ghost btn-xs" onclick="loadStudioPresetTemplate()" style="padding:7px 14px; font-size:12px; font-weight:700; border:1px solid var(--border); background:var(--surface);" title="Tüm alanları yüksek dönüşümlü örnek YKS koçluk şablonuyla doldurur">⚡ Hazır Şablon Yükle</button>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="document.getElementById('studioGuideBanner').style.display='none'" style="padding:7px 10px; font-size:12px; opacity:0.6;">✕ Gizle</button>
+        </div>
+      </div>
+
       <!-- Mobile Studio View Switcher Tabs (Visible on screens < 992px) -->
       <div class="studio-mobile-tabs" style="display:none; margin-bottom:14px; background:var(--surface2); padding:4px; border-radius:12px; border:1px solid var(--border);">
         <button type="button" class="btn btn-ghost studio-m-tab active" id="smt-blocks" onclick="switchStudioMobileView('left')" style="flex:1; font-size:12px; font-weight:700; padding:8px 6px;">📐 Bloklar</button>
@@ -9664,6 +9686,48 @@ window.switchStudioMobileView = function(view) {
   document.querySelectorAll('.studio-m-tab').forEach(b => b.classList.remove('active'));
   const activeTabId = view === 'left' ? 'smt-blocks' : (view === 'middle' ? 'smt-editor' : 'smt-preview');
   document.getElementById(activeTabId)?.classList.add('active');
+};
+
+window.loadStudioPresetTemplate = function() {
+  const p = window._coachProfileData || {};
+  p.headline = p.headline || 'YKS Sayısal & Eşit Ağırlık Birebir Koçluğu';
+  p.bio = p.bio || 'YKS 2022 Türkiye 142.siyim. Bireysel koçluk verdiğim 40+ öğrencimle kişiselleştirilmiş çalışma programları, haftalık net takipleri ve soru çözüm stratejileriyle başarıya ulaşıyoruz.';
+  p.subjects = p.subjects || 'YKS Sayısal, YKS Eşit Ağırlık, TYT Matematik, AYT Fizik';
+  p.education = p.education || 'Boğaziçi Üniversitesi — Endüstri Mühendisliği';
+  p.yks_rank = p.yks_rank || 'YKS Derecesi: Sayısal 142.si';
+  p.experience_years = p.experience_years || '3 Yıl Deneyim';
+  p.pricing_text = p.pricing_text || 'Aylık Birebir Koçluk Paketi • Haftalık 45 dk Görüşme + Sınırsız Mesajlaşma & Ödev Takibi';
+  p.capacity_left = p.capacity_left !== null && p.capacity_left !== undefined ? p.capacity_left : 4;
+  p.whatsapp_number = p.whatsapp_number || '05300000000';
+  p.photo_url = p.photo_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80';
+
+  if (!Array.isArray(p.faq) || p.faq.length === 0) {
+    p.faq = [
+      { q: "Koçluk süreci nasıl işliyor?", a: "Haftalık 1-e-1 görüşmelerimizde deneme netlerinizi analiz edip kişisel programınızı baştan hazırlarız." },
+      { q: "Ödevlerimi nasıl takip edeceksiniz?", a: "Rostrum Akademi uygulaması üzerinden günlük ödev tamamlama oranlarınızı anlık olarak izliyorum." }
+    ];
+  }
+
+  if (!Array.isArray(p.reviews) || p.reviews.length === 0) {
+    p.reviews = [
+      { name: "Selin K. (TYT 102 Net)", role: "YKS 2025 Öğrencisi", text: "Hocamın hazırladığı program ve deneme analizleri sayesinde netlerim 3 ayda 25 net arttı!", stars: 5 }
+    ];
+  }
+
+  window._coachProfileData = p;
+
+  if (window.selectStudioBlock && window._activeStudioBlockId) {
+    window.selectStudioBlock(window._activeStudioBlockId);
+  }
+  if (window.updateProfilePreview) {
+    window.updateProfilePreview();
+  }
+
+  if (window.showToast) {
+    window.showToast('⚡ Hazır YKS Koçluk Şablonu Yüklendi!', 'success');
+  } else {
+    alert('⚡ Hazır YKS Koçluk Şablonu Yüklendi! Bilgileri kendinize göre düzenleyebilirsiniz.');
+  }
 };
 
 window.selectStudioBlock = function(blockId) {
