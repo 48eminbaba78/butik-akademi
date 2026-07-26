@@ -9593,6 +9593,13 @@ async function renderCoachProfile() {
         </div>
       </div>
 
+      <!-- Mobile Studio View Switcher Tabs (Visible on screens < 992px) -->
+      <div class="studio-mobile-tabs" style="display:none; margin-bottom:14px; background:var(--surface2); padding:4px; border-radius:12px; border:1px solid var(--border);">
+        <button type="button" class="btn btn-ghost studio-m-tab active" id="smt-blocks" onclick="switchStudioMobileView('left')" style="flex:1; font-size:12px; font-weight:700; padding:8px 6px;">📐 Bloklar</button>
+        <button type="button" class="btn btn-ghost studio-m-tab" id="smt-editor" onclick="switchStudioMobileView('middle')" style="flex:1; font-size:12px; font-weight:700; padding:8px 6px;">✏️ Editör</button>
+        <button type="button" class="btn btn-ghost studio-m-tab" id="smt-preview" onclick="switchStudioMobileView('right')" style="flex:1; font-size:12px; font-weight:700; padding:8px 6px;">📱 Mobil Önizleme</button>
+      </div>
+
       <!-- 3-COLUMN STUDIO LAYOUT GRID — ~25% sol / ~40% editör / ~35% önizleme -->
       <div class="rostrum-studio-grid" style="display:grid; grid-template-columns: 272px 1fr 432px; gap:18px; align-items: start;">
 
@@ -9650,10 +9657,24 @@ async function renderCoachProfile() {
 // bildirimi bulur) sessizce eski/ölü bir sürümü çalıştırmasına yol açıyordu.
 // Kilitlenen bir bug'du, bu yüzden eski tanımlar tamamen kaldırıldı.
 
+window.switchStudioMobileView = function(view) {
+  const grid = document.querySelector('.rostrum-studio-grid');
+  if (!grid) return;
+  grid.setAttribute('data-mobile-view', view);
+  document.querySelectorAll('.studio-m-tab').forEach(b => b.classList.remove('active'));
+  const activeTabId = view === 'left' ? 'smt-blocks' : (view === 'middle' ? 'smt-editor' : 'smt-preview');
+  document.getElementById(activeTabId)?.classList.add('active');
+};
+
 window.selectStudioBlock = function(blockId) {
   window._activeStudioBlockId = blockId;
   const inspector = document.getElementById('studioBlockInspector');
   if (!inspector) return;
+
+  // On mobile screens, automatically switch to middle (Editor) panel when a block is clicked
+  if (window.innerWidth <= 991) {
+    window.switchStudioMobileView('middle');
+  }
 
   const rows = document.querySelectorAll('#cpBlocksContainer .cp-block-row');
   rows.forEach(r => {

@@ -1531,6 +1531,30 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 
   <!-- BENTO - KOÇLAR İÇİN -->
   <div class="bento bento-group active" id="bento-coach">
+    <!-- Rostrum Studio - 12 col Featured -->
+    <div class="bc bc-12" onclick="openFeatureModal('rostrum-studio')" style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(232,97,58,0.14) 0%, rgba(26,24,40,0.85) 100%); border: 1.5px solid rgba(232,97,58,0.35); border-radius:20px; padding:24px; position:relative; overflow:hidden; cursor:pointer;">
+      <div class="bc-tag new" style="background:var(--acc); color:#07060a; font-weight:800; padding:4px 10px; border-radius:99px; font-size:11px; display:inline-block; margin-bottom:12px;">Yeni Nesil YKS Koçluk Web Sayfası</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
+        <div style="max-width:580px;">
+          <div class="bc-icon" style="font-size:32px; margin-bottom:8px;">🎨</div>
+          <div class="bc-title" style="font-size:21px; font-weight:800; color:#fff; margin-bottom:6px;">Rostrum Studio — No-Code Sayfa Oluşturucu</div>
+          <div class="bc-desc" style="font-size:13.5px; line-height:1.65; color:var(--mid); margin-bottom:14px;">
+            Instagram biyografiniz ve sosyal medya reklamlarınız için sürükle-bırak yöntemiyle yüksek dönüşümlü kişisel YKS koçluk web sayfanızı saniyeler içinde tasarlayın. Kod yazmadan lansman yapın.
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:11px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); padding:4px 10px; border-radius:99px; color:#fff; font-weight:600;">✨ Sürükle - Bırak Bloklar</span>
+            <span style="font-size:11px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); padding:4px 10px; border-radius:99px; color:#fff; font-weight:600;">📱 Canlı Mobil Önizleme</span>
+            <span style="font-size:11px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); padding:4px 10px; border-radius:99px; color:#fff; font-weight:600;">🚀 Tek Tıkla Yayınla</span>
+          </div>
+        </div>
+        <div style="background:rgba(0,0,0,0.45); border:1px solid rgba(232,97,58,0.3); border-radius:16px; padding:18px 24px; text-align:center; min-width:240px; flex:1; max-width:320px;">
+          <div style="font-size:10px; color:var(--mid); font-weight:800; text-transform:uppercase; letter-spacing:0.8px;">Özel Sayfa Bağlantınız</div>
+          <div style="font-size:14px; font-weight:800; color:var(--acc); margin:8px 0; word-break:break-all;">rostrumakademi.com/koc/adiniz</div>
+          <div style="font-size:11.5px; color:#3ecf8e; font-weight:700;">✓ Instagram Bio Uyumlu</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Haftalık Program - 8 col -->
     <div class="bc bc-8" onclick="openFeatureModal('haftalik-program')">
       <div class="bc-icon">📋</div>
@@ -2724,6 +2748,16 @@ async function submitReg(){
 
 // FEATURE MODAL DATA
 const FEATURE_DATA = {
+  'rostrum-studio': {
+    title: 'Rostrum Studio — No-Code Sayfa Oluşturucu',
+    icon: '🎨',
+    desc: 'Instagram biyografiniz ve reklamlarınız için sürükle-bırak yöntemiyle yüksek dönüşümlü kişisel YKS koçluk web sayfanızı tasarlayın.',
+    details: [
+      '<b>Sürükle - Bırak Mimari:</b> Hero, Öğrenci Başarıları, İstatistikler, SSS ve Danışmanlık Paketleri gibi modülleri sürükleyerek sıralayın.',
+      '<b>Özel Link (rostrumakademi.com/koc/adiniz):</b> Instagram biyografinize ekleyeceğiniz profesyonel bir web adresine anında sahip olun.',
+      '<b>Canlı Mobil Önizleme:</b> Sayfanızı tasarlarken sağ taraftaki telefon simülatöründe gerçek zamanlı olarak görün ve tek tıkla yayınlayın.'
+    ]
+  },
   'haftalik-program': {
     title: 'Haftalık Çalışma Programı',
     icon: '📋',
