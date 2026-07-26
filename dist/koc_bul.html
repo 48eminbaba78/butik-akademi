@@ -721,36 +721,28 @@
               }
             };
           } else {
-            // RPC role filter fallback for developers or hidden coaches (direct fetch)
-            let { data: p, error: pErr } = await db.from('coach_profiles').select('*').eq('slug', slugParam).eq('published', true).maybeSingle();
-            if (pErr && /column/i.test(pErr.message || '')) {
-              ({ data: p } = await db.from('coach_profiles').select('*').eq('slug', slugParam).maybeSingle());
-            }
+            // Direct fetch fallback if RPC is empty or pending (handles draft previews and case insensitive slugs)
+            let { data: p } = await db.from('coach_profiles').select('*').ilike('slug', slugParam).maybeSingle();
             if (p) {
-              const { data: u } = await db.from('users').select('id, full_name, color, target').eq('id', p.id).single();
-              if (u) {
-                target = {
-                  id: u.id,
-                  name: u.full_name,
-                  color: u.color || '#f0a500',
-                  brand: u.target || 'Rostrum Akademi Koçu',
-                  profile: p
-                };
-              }
+              const { data: u } = await db.from('users').select('id, full_name, color, target').eq('id', p.id).maybeSingle();
+              target = {
+                id: p.id,
+                name: u ? u.full_name : 'Rostrum Koçu',
+                color: u ? (u.color || '#f0a500') : '#f0a500',
+                brand: u ? (u.target || 'Rostrum Akademi Koçu') : 'Rostrum Akademi Koçu',
+                profile: p
+              };
             }
           }
-        } catch(e) {}
+        } catch(e) { console.warn('[DeepLink RPC fallback error]', e); }
       }
     } else if (coachParam) {
       target = allCoaches.find(c => c.id === coachParam);
       if (!target) {
         try {
-          const { data: u } = await db.from('users').select('id, full_name, color, target').eq('id', coachParam).single();
+          const { data: u } = await db.from('users').select('id, full_name, color, target').eq('id', coachParam).maybeSingle();
           if (u) {
-            let { data: p, error: pErr2 } = await db.from('coach_profiles').select('*').eq('id', coachParam).eq('published', true).maybeSingle();
-            if (pErr2 && /column/i.test(pErr2.message || '')) {
-              ({ data: p } = await db.from('coach_profiles').select('*').eq('id', coachParam).maybeSingle());
-            }
+            let { data: p } = await db.from('coach_profiles').select('*').eq('id', coachParam).maybeSingle();
             target = {
               id: u.id,
               name: u.full_name,
@@ -767,10 +759,19 @@
       if (slugParam) renderCoachShowcase(target);
       else viewCoachDetails(target.id);
     } else if (slugParam) {
-      // Profil bulunamadı — spinner'da asılı kalmasın, normal listeye dön
+      // Profil bulunamadı — spinner'da asılı kalmasın, şık 404 ekranı ver
       document.documentElement.classList.remove('deep-link-boot');
-      document.getElementById('showcaseContainer').style.display = 'none';
-      showToast('Bu linkte bir koç profili bulunamadı.');
+      const sc = document.getElementById('showcaseContainer');
+      sc.style.display = 'block';
+      document.querySelector('.container').style.display = 'none';
+      sc.innerHTML = `
+        <div style="max-width:440px;margin:80px auto;text-align:center;padding:36px 24px;font-family:-apple-system,sans-serif;color:#FAFAFA">
+          <div style="font-size:54px;margin-bottom:14px">🔍</div>
+          <div style="font-size:20px;font-weight:800;margin-bottom:8px">Koç Profili Bulunamadı</div>
+          <div style="font-size:13.5px;color:#A1A1AA;line-height:1.6;margin-bottom:24px">Aradığınız <b>/koc/${esc(slugParam)}</b> bağlantısına ait bir profil bulunamadı veya henüz bir kullanıcı adı (slug) tanımlanmamış olabilir.</div>
+          <a href="/koc_bul.html" style="display:inline-block;background:#E8613A;color:#fff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:12px;text-decoration:none">Tüm YKS Koçlarını İncele →</a>
+        </div>
+      `;
     }
   }
 
