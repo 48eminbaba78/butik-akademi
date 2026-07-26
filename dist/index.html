@@ -954,9 +954,9 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   position: fixed;
   inset: 0;
   z-index: 100000;
-  background: rgba(7, 6, 10, 0.88);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(10, 9, 20, 0.75);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -965,12 +965,12 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 }
 
 .ob-modal-card {
-  background: #110e19;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 24px;
+  background: #1c1829;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
   width: 100%;
   max-width: 520px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(232, 97, 58, 0.15);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(232, 97, 58, 0.08);
   position: relative;
   overflow: hidden;
   animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -982,8 +982,9 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #E8613A, #f59e0b, #3ecf8e);
+  height: 3px;
+  background: linear-gradient(90deg, #c94e2a 0%, #E8613A 50%, #f07849 100%);
+  opacity: 0.9;
 }
 
 .ob-modal-close {
@@ -1109,34 +1110,35 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 
 .ob-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 13px 15px;
   font-size: 14px;
   font-family: inherit;
   color: #fff;
   outline: none;
-  transition: all 0.2s ease;
-}
-
-.ob-input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
-}
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .ob-input:focus {
-  border-color: var(--acc);
-  background: rgba(255, 255, 255, 0.07);
-  box-shadow: 0 0 0 3px rgba(232, 97, 58, 0.2);
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(232, 97, 58, 0.55);
+  box-shadow: 0 0 0 3px rgba(232, 97, 58, 0.1);
 }
+
+.ob-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+
 
 .ob-select {
   width: 100%;
-  background: #1a1726;
-  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 13px 15px;
   font-size: 14px;
   font-family: inherit;
   color: #fff;
