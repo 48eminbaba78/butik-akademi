@@ -11182,9 +11182,12 @@ function openReportModal(stuId) {
     modal.className = 'modal-bg';
     modal.innerHTML = `<div class="modal">
       <button class="modal-close" onclick="cm('reportModal')">×</button>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <h2 style="margin:0">📄 Performans Raporu</h2>
-        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="toggleReportPanel('performance')">🎨 Görünüm</button>
+      <h2 style="margin:0 0 12px">📄 Performans Raporu</h2>
+      <div class="field"><label>Rapor Türü</label>
+        <div id="rpTypeChips" style="display:flex;gap:8px"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin:-6px 0 4px">
+        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="toggleReportPanel('performance')">⚙️ Gelişmiş Görünüm Ayarları</button>
       </div>
       <div id="rtPanel_performance" class="rt-panel" style="display:none"></div>
       <input type="hidden" id="rpStuId">
@@ -11245,13 +11248,12 @@ function openReportModal(stuId) {
   document.getElementById('rpEnd').value = fmtDate(now);
   document.getElementById('rpNote').value = '';
   ['prSummary','prStrengths','prGrowth','prGoals'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  // Koçun daha önce Premium'u aktif bırakmış olma ihtimaline karşı, "🎨
-  // Görünüm" paneli hiç açılmasa bile ek alanlar doğru görünürlükte açılsın.
-  const _cfg = getActiveReportConfig('performance');
-  const _premiumFields = document.getElementById('rpPremiumFields');
-  const _noteLbl = document.getElementById('rpNoteLbl');
-  if (_premiumFields) _premiumFields.style.display = _cfg.style==='premium' ? 'block' : 'none';
-  if (_noteLbl) _noteLbl.textContent = _cfg.style==='premium' ? '(Koç Yorumu — Sayfa 3)' : '(isteğe bağlı)';
+  // Rapor Türü çiplerini ve (Premium ise) ek alanların görünürlüğünü modal
+  // her açıldığında senkronla — "Gelişmiş Görünüm" paneli hiç açılmasa bile.
+  _rtCurrentType = 'performance';
+  window._reportWorkingConfig = window._reportWorkingConfig || {};
+  window._reportWorkingConfig.performance = getActiveReportConfig('performance');
+  _rtSyncUI('performance');
   om('reportModal');
 }
 
@@ -14257,7 +14259,7 @@ function toggleReportPanel(reportType) {
     container.innerHTML = _rtPanelInnerHTML(reportType);
     container.dataset.built = '1';
   }
-  renderReportPanel(container, reportType);
+  _rtSyncUI(reportType);
   container.style.display = 'block';
 }
 
@@ -14351,22 +14353,37 @@ function renderReportPanel(container, reportType) {
   selEl.innerHTML = saved.length===0
     ? `<option value="">Henüz kaydedilmiş bir stiliniz yok</option>`
     : saved.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+}
 
-  // Premium stil seçiliyse ek metin alanları (özet/güçlü yönler/gelişim
-  // alanları/hedefler) görünür olur; "Koç Notu" Sayfa 3'teki "Koç Yorumu"
-  // olarak da kullanıldığı için etiketi buna göre değişir.
+// Rapor Türü seçimi (Standart/Sade/Premium) sadece gizli "Gelişmiş Görünüm"
+// panelinin içinde değil, modalın en üstünde HER ZAMAN görünür — gerçek
+// kullanıcı testinde küçük/ikincil "🎨 Görünüm" butonunun fark edilmediği
+// (özellikle Premium'un keşfedilemediği) tespit edildi. Bu fonksiyon hem bu
+// üstteki çipleri hem (açıksa) gelişmiş paneli hem premium alan görünürlüğünü
+// TEK yerden senkron tutar.
+function _rtSyncUI(reportType) {
+  const cfg = (window._reportWorkingConfig && window._reportWorkingConfig[reportType]) || getActiveReportConfig(reportType);
   if (reportType === 'performance') {
+    const chipsEl = document.getElementById('rpTypeChips');
+    if (chipsEl) {
+      chipsEl.innerHTML = REPORT_PRESETS[reportType].map(p => {
+        const active = JSON.stringify(p.config.sections)===JSON.stringify(cfg.sections) && p.config.style===cfg.style;
+        return `<button type="button" class="btn btn-sm ${active?'btn-accent':'btn-ghost'}" style="flex:1;justify-content:center" onclick="applyReportPreset('${p.key}')">${p.key==='premium'?'✨ ':''}${esc(p.name)}</button>`;
+      }).join('');
+    }
     const premiumFields = document.getElementById('rpPremiumFields');
     const noteLbl = document.getElementById('rpNoteLbl');
     const isPremium = cfg.style === 'premium';
     if (premiumFields) premiumFields.style.display = isPremium ? 'block' : 'none';
     if (noteLbl) noteLbl.textContent = isPremium ? '(Koç Yorumu — Sayfa 3)' : '(isteğe bağlı)';
   }
+  const container = document.getElementById(`rtPanel_${reportType}`);
+  if (container && container.dataset.built) renderReportPanel(container, reportType);
 }
 
 function toggleReorderMode() {
   _rtShowReorder[_rtCurrentType] = !_rtShowReorder[_rtCurrentType];
-  renderReportPanel(_rtContainer(), _rtCurrentType);
+  _rtSyncUI(_rtCurrentType);
 }
 
 function _rtPersistWorkingConfig() {
@@ -14376,9 +14393,10 @@ function _rtPersistWorkingConfig() {
 function applyReportPreset(presetKey) {
   const preset = REPORT_PRESETS[_rtCurrentType].find(p=>p.key===presetKey);
   if (!preset) return;
+  window._reportWorkingConfig = window._reportWorkingConfig || {};
   window._reportWorkingConfig[_rtCurrentType] = JSON.parse(JSON.stringify(preset.config));
   setActiveReport(_rtCurrentType, { presetKey });
-  renderReportPanel(_rtContainer(), _rtCurrentType);
+  _rtSyncUI(_rtCurrentType);
 }
 
 function toggleReportSection(key) {
@@ -14389,7 +14407,7 @@ function toggleReportSection(key) {
   if (idx >= 0) cfg.sections.splice(idx,1);
   else cfg.sections.push(key);
   _rtPersistWorkingConfig();
-  renderReportPanel(_rtContainer(), _rtCurrentType);
+  _rtSyncUI(_rtCurrentType);
 }
 
 function moveReportSection(key, dir) {
@@ -14399,13 +14417,13 @@ function moveReportSection(key, dir) {
   if (idx<0 || newIdx<0 || newIdx>=cfg.sections.length) return;
   [cfg.sections[idx], cfg.sections[newIdx]] = [cfg.sections[newIdx], cfg.sections[idx]];
   _rtPersistWorkingConfig();
-  renderReportPanel(_rtContainer(), _rtCurrentType);
+  _rtSyncUI(_rtCurrentType);
 }
 
 function setReportStyle(style) {
   window._reportWorkingConfig[_rtCurrentType].style = style;
   _rtPersistWorkingConfig();
-  renderReportPanel(_rtContainer(), _rtCurrentType);
+  _rtSyncUI(_rtCurrentType);
 }
 
 async function saveReportTemplate() {
@@ -14424,7 +14442,7 @@ async function saveReportTemplate() {
   S.reportTemplates.push({ id:data.id, name, reportType, config: data.config });
   setActiveReport(reportType, { templateId: data.id });
   nameInput.value = '';
-  renderReportPanel(container, reportType);
+  _rtSyncUI(reportType);
   showToast('Görünüm kaydedildi ✓');
 }
 
@@ -14435,7 +14453,7 @@ function applyReportTemplate() {
   if (!t) return;
   window._reportWorkingConfig[_rtCurrentType] = JSON.parse(JSON.stringify(t.config));
   setActiveReport(_rtCurrentType, { templateId: t.id });
-  renderReportPanel(container, _rtCurrentType);
+  _rtSyncUI(_rtCurrentType);
   showToast(`"${t.name}" uygulandı ✓`);
 }
 
