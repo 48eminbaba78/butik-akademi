@@ -960,7 +960,8 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
+  overflow-y: auto;
   animation: modalFadeIn 0.25s ease-out forwards;
 }
 
@@ -970,6 +971,10 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   border-radius: 20px;
   width: 100%;
   max-width: 520px;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(232, 97, 58, 0.08);
   position: relative;
   overflow: hidden;
@@ -1018,6 +1023,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   justify-content: space-between;
   padding: 22px 64px 16px 24px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .ob-step-item {
@@ -1075,7 +1081,29 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 }
 
 .ob-body {
-  padding: 28px 28px 32px 28px;
+  padding: 24px 24px 28px 24px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+}
+
+@media (max-width: 480px) {
+  .ob-stepper {
+    padding: 16px 52px 14px 16px;
+  }
+  .ob-step-item span {
+    font-size: 11px;
+  }
+  .ob-body {
+    padding: 18px 16px 22px 16px;
+  }
+  .ob-title {
+    font-size: 19px !important;
+  }
+  .ob-sub {
+    font-size: 12.5px !important;
+    margin-bottom: 16px !important;
+  }
 }
 
 .ob-title {
