@@ -12227,12 +12227,59 @@ function openWeeklyPDFModal(){
         <textarea id="pdfNote" placeholder="Bu haftaki programla ilgili notunuzu ekleyin..." style="min-height:90px"></textarea>
       </div>
       <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="generateWeeklyPDF()">PDF Oluştur →</button>
+      <button class="btn btn-ghost btn-xs" style="width:100%;justify-content:center;margin-top:8px;font-size:11px" onclick="repairTaskNoteSummaries()">🔧 Eski Test/Video İsimlerini Onar</button>
     </div>`;
     document.body.appendChild(modal);
     modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
   }
   document.getElementById('pdfNote').value='';
   om('weeklyPDFModal');
+}
+
+// Geçmişte oluşturulmuş görev notlarını (o zamanki sabit-13-karakter kesme
+// mantığıyla üretilip "Temel Kavraml…, Temel Kavraml…, Temel Kavraml…" gibi
+// anlamsız tekrarlar içeren) task_items'taki TAM (kesilmemiş) isimlerden
+// yeniden üretir — yeni _summarizeLabels() mantığıyla. Sadece bu koça ait
+// görevleri düzeltir, DB'de kalıcı olarak günceller.
+async function repairTaskNoteSummaries() {
+  const ok = await customConfirm('Geçmişte oluşturulmuş, tekrarlanan kısaltılmış test/video isimleri içeren görev notlarını (ör. "Temel Kavraml…, Temel Kavraml…") düzeltmek istiyor musunuz? Bu işlem geri alınamaz.');
+  if (!ok) return;
+
+  showLoading(true);
+  try {
+    const { data: rows, error } = await db.from('tasks')
+      .select('id, student_id, date, note, task_items')
+      .eq('coach_id', session.coachId)
+      .not('task_items', 'is', null);
+    if (error) throw error;
+
+    const pattern = /^(\d+)\s+(video|test):/;
+    const toFix = (rows||[]).filter(r => {
+      if (!Array.isArray(r.task_items) || r.task_items.length < 2) return false;
+      return pattern.test(r.note||'');
+    });
+
+    let fixedCount = 0;
+    for (const r of toFix) {
+      const match = r.note.match(pattern);
+      const kind = match[2];
+      const labels = r.task_items.map(i => i.label || '').filter(Boolean);
+      const newNote = _summarizeLabels(labels, kind);
+      if (newNote === r.note) continue;
+      const { error: upErr } = await db.from('tasks').update({ note: newNote }).eq('id', r.id);
+      if (upErr) { console.error('[repairTaskNoteSummaries]', r.id, upErr.message); continue; }
+      fixedCount++;
+      // Bellekteki S.tasks da güncellensin — sayfa yenilenmeden de yansısın
+      const key = `${r.student_id}_${r.date}`;
+      const cached = (S.tasks[key]||[]).find(t => t._id === r.id);
+      if (cached) cached.note = newNote;
+    }
+    showLoading(false);
+    showToast(fixedCount > 0 ? `${fixedCount} görev notu düzeltildi ✓` : 'Düzeltilecek eski görev notu bulunamadı.');
+  } catch (e) {
+    showLoading(false);
+    showToast('Onarım sırasında hata: ' + e.message);
+  }
 }
 
 function generateWeeklyPDF(){
@@ -14802,6 +14849,19 @@ async function confirmApplyTemplate() {
   
   for(const t of template.tasks) {
     const targetDate = fmtDate(addDays(wStart, t.day_index));
+    // Şablon eski bir tarihte kaydedilmiş olabilir — notu olduğu gibi
+    // kopyalamak yerine, task_items'taki TAM isimlerden GÜNCEL özetleme
+    // mantığıyla yeniden üretiyoruz. Böylece şablon ne kadar eski olursa
+    // olsun, her uygulamada temiz bir not oluşur (tekrarlanan kısaltmalar
+    // sonsuza kadar taşınmaz).
+    let note = t.note;
+    if (Array.isArray(t.task_items) && t.task_items.length > 1) {
+      const kindMatch = (t.note||'').match(/^\d+\s+(video|test):/);
+      if (kindMatch) {
+        const labels = t.task_items.map(i=>i.label||'').filter(Boolean);
+        note = _summarizeLabels(labels, kindMatch[1]);
+      }
+    }
     const payload = {
       student_id: S.activeStuId,
       coach_id: session.coachId,
@@ -14810,7 +14870,7 @@ async function confirmApplyTemplate() {
       exam_type: t.exam_type,
       subject: t.subject,
       duration: t.duration,
-      note: t.note,
+      note: note,
       done: false,
       task_items: t.task_items
     };
@@ -15433,6 +15493,7 @@ window.previewReport = previewReport;
 window.generatePDF = generatePDF;
 window.openWeeklyPDFModal = openWeeklyPDFModal;
 window.generateWeeklyPDF = generateWeeklyPDF;
+window.repairTaskNoteSummaries = repairTaskNoteSummaries;
 window.printWeeklyProgramWithNote = printWeeklyProgramWithNote;
 window.openInviteCodeModal = openInviteCodeModal;
 window.copyInviteCode = copyInviteCode;
