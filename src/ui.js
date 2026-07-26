@@ -11169,8 +11169,9 @@ function openReportModal(stuId) {
       <button class="modal-close" onclick="cm('reportModal')">×</button>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
         <h2 style="margin:0">📄 Performans Raporu</h2>
-        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="openReportTemplateModal('performance')">⚙️ Rapor Şablonu</button>
+        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="toggleReportPanel('performance')">🎨 Görünüm</button>
       </div>
+      <div id="rtPanel_performance" class="rt-panel" style="display:none"></div>
       <input type="hidden" id="rpStuId">
       <div class="field"><label>Dönem</label>
         <select id="rpPeriod">
@@ -11715,8 +11716,9 @@ function openWeeklyPDFModal(){
       <button class="modal-close" onclick="cm('weeklyPDFModal')">×</button>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
         <h2 style="margin:0">🖨️ Haftalık Program PDF</h2>
-        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="openReportTemplateModal('weekly')">⚙️ Rapor Şablonu</button>
+        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="toggleReportPanel('weekly')">🎨 Görünüm</button>
       </div>
+      <div id="rtPanel_weekly" class="rt-panel" style="display:none"></div>
       <div class="field">
         <label>Koç Notu (isteğe bağlı)</label>
         <textarea id="pdfNote" placeholder="Bu haftaki programla ilgili notunuzu ekleyin..." style="min-height:90px"></textarea>
@@ -13731,98 +13733,128 @@ async function applyTemplateToWeek() {
 }
 
 // ═══════════════════════════════════════════════
-// RAPOR ŞABLONU PANELİ (Performans Raporu + Haftalık Program PDF)
+// RAPOR GÖRÜNÜMÜ PANELİ (Performans Raporu + Haftalık Program PDF)
+// Ana rapor modalının İÇİNDE aç/kapa bir panel olarak çalışır — koçun asıl
+// işini (raporu gönderme) kesmesin diye ayrı bir modal-üstü-modal AÇMAZ.
+// "Hazır Stiller" (kod içi presetler) ve "Benim Stillerim" (coach'un kaydettiği
+// report_templates satırları) kasıtlı olarak ayrı iki kavram olarak adlandırıldı.
 // ═══════════════════════════════════════════════
 let _rtCurrentType = 'performance';
+const _rtShowReorder = {};
 
-function openReportTemplateModal(reportType) {
+function _rtContainer() { return document.getElementById(`rtPanel_${_rtCurrentType}`); }
+
+function toggleReportPanel(reportType) {
   _rtCurrentType = reportType;
-  let modal = document.getElementById('reportTemplateModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'reportTemplateModal';
-    modal.className = 'modal-bg';
-    modal.innerHTML = `<div class="modal">
-      <button class="modal-close" onclick="cm('reportTemplateModal')">×</button>
-      <h2>⚙️ Rapor Şablonu</h2>
-      <div class="field"><label>Hazır Şablonlar</label>
-        <div id="rtPresetChips" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-      </div>
-      <div class="field"><label>Görünecek Bölümler ve Sırası</label>
-        <div id="rtSectionList" style="display:flex;flex-direction:column;gap:6px"></div>
-      </div>
-      <div class="field"><label>Stil</label>
-        <div style="display:flex;gap:14px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
-            <input type="radio" name="rtStyle" value="default" onchange="setReportStyle('default')"> Standart Görünüm
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
-            <input type="radio" name="rtStyle" value="minimal" onchange="setReportStyle('minimal')"> Sade Görünüm
-          </label>
-        </div>
-      </div>
-      <div class="field"><label>Kayıtlı Şablonlarım</label>
-        <div style="display:flex;gap:8px">
-          <select id="rtSavedSelect" style="flex:1"></select>
-          <button class="btn btn-ghost btn-sm" onclick="applyReportTemplate()">Yükle</button>
-        </div>
-      </div>
-      <div class="field"><label>Bu Ayarları Şablon Olarak Kaydet</label>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="rtSaveName" placeholder="Şablon adı (ör. Kısa Rapor)" style="flex:1">
-          <button class="btn btn-accent btn-sm" onclick="saveReportTemplate()">Kaydet</button>
-        </div>
-      </div>
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="cm('reportTemplateModal')">Kapat ve Kullan</button>
-    </div>`;
-    document.body.appendChild(modal);
-    modal.addEventListener('click', e=>{ if(e.target===modal) modal.classList.remove('open'); });
-  }
+  const container = document.getElementById(`rtPanel_${reportType}`);
+  if (!container) return;
+  const opening = container.style.display === 'none' || !container.style.display;
+  if (!opening) { container.style.display = 'none'; return; }
   window._reportWorkingConfig = window._reportWorkingConfig || {};
   window._reportWorkingConfig[reportType] = getActiveReportConfig(reportType);
-  document.getElementById('rtSaveName').value = '';
-  renderReportTemplateModal();
-  om('reportTemplateModal');
+  if (!container.dataset.built) {
+    container.innerHTML = _rtPanelInnerHTML(reportType);
+    container.dataset.built = '1';
+  }
+  renderReportPanel(container, reportType);
+  container.style.display = 'block';
 }
 
-function _rtSectionRowHTML(def, enabled, i, total) {
+function _rtPanelInnerHTML(reportType) {
+  return `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin:4px 0 12px">
+      <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🎨 Rapor Görünümü</div>
+
+      <div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">Hazır Stiller</div>
+      <div class="rt-preset-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px"></div>
+      <div class="rt-preset-caption" style="font-size:11px;color:var(--text-dim);margin-bottom:14px;line-height:1.5"></div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-mid)">Görünecek Bölümler</div>
+        <button type="button" class="rt-reorder-toggle" style="font-size:10px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;padding:0" onclick="toggleReorderMode()">🔀 Sıralamayı Düzenle</button>
+      </div>
+      <div class="rt-section-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+
+      <div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">Stil</div>
+      <div style="display:flex;gap:14px;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+          <input type="radio" name="rtStyle_${reportType}" class="rt-style-radio" value="default" onchange="setReportStyle('default')"> Standart Görünüm
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+          <input type="radio" name="rtStyle_${reportType}" class="rt-style-radio" value="minimal" onchange="setReportStyle('minimal')"> Sade Görünüm
+        </label>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">Benim Stillerim</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <select class="rt-saved-select" style="flex:1"></select>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="applyReportTemplate()">Yükle</button>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">Bu Görünümü Kaydet</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" class="rt-save-name" placeholder="İsim ver (ör. Kısa Rapor)" style="flex:1">
+        <button type="button" class="btn btn-accent btn-xs" onclick="saveReportTemplate()">Kaydet</button>
+      </div>
+    </div>`;
+}
+
+function _rtSectionRowHTML(def, enabled, i, total, showReorder) {
   const locked = !!def.locked;
-  return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border-radius:8px;${enabled?'':'opacity:.55'}">
+  const arrows = (enabled && showReorder) ? `
+    <button type="button" class="btn btn-ghost btn-xs" ${i===0?'disabled':''} onclick="moveReportSection('${def.key}',-1)">↑</button>
+    <button type="button" class="btn btn-ghost btn-xs" ${i===total-1?'disabled':''} onclick="moveReportSection('${def.key}',1)">↓</button>` : '';
+  return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface3);border-radius:8px;${enabled?'':'opacity:.55'}">
     <input type="checkbox" ${enabled?'checked':''} ${locked?'disabled':''} onchange="toggleReportSection('${def.key}')" style="cursor:${locked?'not-allowed':'pointer'}">
     <span style="flex:1;font-size:13px;font-weight:600">${esc(def.label)}${locked?' <span style="font-size:10px;color:var(--text-dim);font-weight:500">(zorunlu)</span>':''}</span>
-    ${enabled?`<button class="btn btn-ghost btn-xs" ${i===0?'disabled':''} onclick="moveReportSection('${def.key}',-1)">↑</button>
-    <button class="btn btn-ghost btn-xs" ${i===total-1?'disabled':''} onclick="moveReportSection('${def.key}',1)">↓</button>`:''}
+    ${arrows}
   </div>`;
 }
 
-function renderReportTemplateModal() {
-  const reportType = _rtCurrentType;
+function renderReportPanel(container, reportType) {
   const cfg = window._reportWorkingConfig[reportType];
   const defs = REPORT_SECTION_DEFS[reportType];
 
-  const chipsEl = document.getElementById('rtPresetChips');
+  // Hazır Stiller — aktif olan vurgulanır, altına o stilin kapsadığı bölümlerin
+  // kısa özeti yazılır (isimden anlaşılmayan farkı somutlaştırmak için).
+  const chipsEl = container.querySelector('.rt-preset-chips');
   chipsEl.innerHTML = REPORT_PRESETS[reportType].map(p => {
     const active = JSON.stringify(p.config.sections)===JSON.stringify(cfg.sections) && p.config.style===cfg.style;
-    return `<button class="btn btn-xs ${active?'btn-accent':'btn-ghost'}" onclick="applyReportPreset('${p.key}')">${esc(p.name)}</button>`;
+    return `<button type="button" class="btn btn-xs ${active?'btn-accent':'btn-ghost'}" onclick="applyReportPreset('${p.key}')">${esc(p.name)}</button>`;
   }).join('');
+  const activePreset = REPORT_PRESETS[reportType].find(p => JSON.stringify(p.config.sections)===JSON.stringify(cfg.sections) && p.config.style===cfg.style);
+  const labels = cfg.sections.map(k => esc((defs.find(d=>d.key===k)||{label:k}).label));
+  container.querySelector('.rt-preset-caption').innerHTML = activePreset
+    ? `<b>${esc(activePreset.name)}:</b> ${labels.join(' · ')}`
+    : `<b>Özel görünüm:</b> ${labels.join(' · ')}`;
 
+  // Bölüm listesi — etkin olanlar üstte (kendi sırasında), kapalı olanlar altta
+  const showReorder = !!_rtShowReorder[reportType];
   const disabledDefs = defs.filter(d => !cfg.sections.includes(d.key));
   const rows = [
     ...cfg.sections.map((key,i) => {
       const def = defs.find(d=>d.key===key) || { key, label:key };
-      return _rtSectionRowHTML(def, true, i, cfg.sections.length);
+      return _rtSectionRowHTML(def, true, i, cfg.sections.length, showReorder);
     }),
-    ...disabledDefs.map(def => _rtSectionRowHTML(def, false, null, null))
+    ...disabledDefs.map(def => _rtSectionRowHTML(def, false, null, null, showReorder))
   ];
-  document.getElementById('rtSectionList').innerHTML = rows.join('');
+  container.querySelector('.rt-section-list').innerHTML = rows.join('');
 
-  document.querySelectorAll('input[name="rtStyle"]').forEach(r => r.checked = (r.value === cfg.style));
+  const toggleBtn = container.querySelector('.rt-reorder-toggle');
+  if (toggleBtn) toggleBtn.textContent = showReorder ? '✓ Sıralama Açık' : '🔀 Sıralamayı Düzenle';
+
+  container.querySelectorAll('.rt-style-radio').forEach(r => r.checked = (r.value === cfg.style));
 
   const saved = (S.reportTemplates||[]).filter(t=>t.reportType===reportType);
-  const selEl = document.getElementById('rtSavedSelect');
+  const selEl = container.querySelector('.rt-saved-select');
   selEl.innerHTML = saved.length===0
-    ? `<option value="">Henüz kayıtlı şablonunuz yok</option>`
+    ? `<option value="">Henüz kaydedilmiş bir stiliniz yok</option>`
     : saved.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+}
+
+function toggleReorderMode() {
+  _rtShowReorder[_rtCurrentType] = !_rtShowReorder[_rtCurrentType];
+  renderReportPanel(_rtContainer(), _rtCurrentType);
 }
 
 function _rtPersistWorkingConfig() {
@@ -13834,7 +13866,7 @@ function applyReportPreset(presetKey) {
   if (!preset) return;
   window._reportWorkingConfig[_rtCurrentType] = JSON.parse(JSON.stringify(preset.config));
   setActiveReport(_rtCurrentType, { presetKey });
-  renderReportTemplateModal();
+  renderReportPanel(_rtContainer(), _rtCurrentType);
 }
 
 function toggleReportSection(key) {
@@ -13845,7 +13877,7 @@ function toggleReportSection(key) {
   if (idx >= 0) cfg.sections.splice(idx,1);
   else cfg.sections.push(key);
   _rtPersistWorkingConfig();
-  renderReportTemplateModal();
+  renderReportPanel(_rtContainer(), _rtCurrentType);
 }
 
 function moveReportSection(key, dir) {
@@ -13855,18 +13887,20 @@ function moveReportSection(key, dir) {
   if (idx<0 || newIdx<0 || newIdx>=cfg.sections.length) return;
   [cfg.sections[idx], cfg.sections[newIdx]] = [cfg.sections[newIdx], cfg.sections[idx]];
   _rtPersistWorkingConfig();
-  renderReportTemplateModal();
+  renderReportPanel(_rtContainer(), _rtCurrentType);
 }
 
 function setReportStyle(style) {
   window._reportWorkingConfig[_rtCurrentType].style = style;
   _rtPersistWorkingConfig();
-  renderReportTemplateModal();
+  renderReportPanel(_rtContainer(), _rtCurrentType);
 }
 
 async function saveReportTemplate() {
-  const name = document.getElementById('rtSaveName').value.trim();
-  if (!name) return showToast('Şablon adı girin.');
+  const container = _rtContainer();
+  const nameInput = container.querySelector('.rt-save-name');
+  const name = nameInput.value.trim();
+  if (!name) return showToast('Bir isim girin.');
   const reportType = _rtCurrentType;
   const config = window._reportWorkingConfig[reportType];
   showLoading(true);
@@ -13874,22 +13908,23 @@ async function saveReportTemplate() {
     coach_id: session.coachId, name, report_type: reportType, config
   }).select().single();
   showLoading(false);
-  if (error) return showToast('Şablon kaydedilemedi: ' + error.message);
+  if (error) return showToast('Kaydedilemedi: ' + error.message);
   S.reportTemplates.push({ id:data.id, name, reportType, config: data.config });
   setActiveReport(reportType, { templateId: data.id });
-  document.getElementById('rtSaveName').value = '';
-  renderReportTemplateModal();
-  showToast('Rapor şablonu kaydedildi ✓');
+  nameInput.value = '';
+  renderReportPanel(container, reportType);
+  showToast('Görünüm kaydedildi ✓');
 }
 
 function applyReportTemplate() {
-  const templateId = document.getElementById('rtSavedSelect').value;
+  const container = _rtContainer();
+  const templateId = container.querySelector('.rt-saved-select').value;
   const t = (S.reportTemplates||[]).find(x=>x.id===templateId);
   if (!t) return;
   window._reportWorkingConfig[_rtCurrentType] = JSON.parse(JSON.stringify(t.config));
   setActiveReport(_rtCurrentType, { templateId: t.id });
-  renderReportTemplateModal();
-  showToast(`"${t.name}" şablonu uygulandı ✓`);
+  renderReportPanel(container, _rtCurrentType);
+  showToast(`"${t.name}" uygulandı ✓`);
 }
 
 async function openWeeklyReportModal() {
@@ -14910,7 +14945,8 @@ window.getTestStatus = getTestStatus;
 window.openCoachTaskEdit = openCoachTaskEdit;
 window.saveWeekAsTemplate = saveWeekAsTemplate;
 window.applyTemplateToWeek = applyTemplateToWeek;
-window.openReportTemplateModal = openReportTemplateModal;
+window.toggleReportPanel = toggleReportPanel;
+window.toggleReorderMode = toggleReorderMode;
 window.applyReportPreset = applyReportPreset;
 window.toggleReportSection = toggleReportSection;
 window.moveReportSection = moveReportSection;
