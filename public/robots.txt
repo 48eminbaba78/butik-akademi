@@ -8,5 +8,7 @@ Disallow: /admin/
 Disallow: /__*
 Disallow: /migration*
 Disallow: /*.sql
+Disallow: /*sandbox*
+Disallow: /*?sandbox=*
 
 Sitemap: https://rostrumakademi.com/sitemap.xml
