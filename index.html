@@ -1962,8 +1962,8 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   <div class="reg-inner">
     <div class="reg-left reveal">
       <div class="sec-chip">Hemen Başlayın</div>
-      <div class="sec-h" style="margin-top:10px">7 gün tamamen<br>ücretsiz deneyin</div>
-      <p>Kurulum yok. Kredi kartı gerekmez. Hesabınız 2 dakikada hazır — koçluğa hemen başlayın.</p>
+      <div class="sec-h" style="margin-top:10px">Koçluğunuza<br>hemen başlayın</div>
+      <p>Kurulum yok. Kart gerekmez. Hesabınız dakikalar içinde aktif — tek yapmanız gereken kayıt olmak.</p>
       <div class="perks">
         <div class="perk"><div class="perk-ico">📋</div>Haftalık program oluşturun</div>
         <div class="perk"><div class="perk-ico">📊</div>TYT/AYT deneme takibi ve grafikler</div>
@@ -1972,63 +1972,61 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
         <div class="perk"><div class="perk-ico">▶️</div>YouTube playlist entegrasyonu</div>
         <div class="perk"><div class="perk-ico">📅</div>Zoom & Google Meet entegrasyonu</div>
       </div>
+      <div style="margin-top:18px;padding:12px 16px;border-radius:10px;background:rgba(232,97,58,0.08);border:1px solid rgba(232,97,58,0.2);font-size:13px;color:var(--text)">
+        ⏰ <strong>Kurucu üye lansman fiyatı</strong> — fiyat artmadan önce ömür boyu kilitleyebilirsiniz.
+      </div>
     </div>
 
     <div class="reveal d1">
       
       <div class="form-card" id="regForm">
-        <div class="form-h">Ücretsiz Hesabını Oluştur</div>
-        <div class="form-sub" id="regSub">Hesabınız anında oluşturulur ve 7 günlük ücretsiz denemeniz başlar. Kart gerekmez.</div>
-
-        <!-- Kayıt Tipi Seçici -->
-        <div style="font-size:10px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Kayıt Tipi</div>
-        <div class="role-pills">
-          <div class="role-pill active" id="rp-coach" onclick="selectRole('coach')">👨‍🏫 Koç</div>
-          <div class="role-pill" id="rp-institution" onclick="selectRole('institution')">🏢 Kurum</div>
-          <div class="role-pill" id="rp-student" onclick="selectRole('student')">🎓 Öğrenci</div>
-        </div>
+        <div class="form-h">Koçluğunuza Başlayın</div>
+        <div class="form-sub" id="regSub">Hesabınız anında aktif olur. Kart gerekmez.</div>
 
         <div id="formFieldsContainer">
           <div class="ff-row">
             <div class="ff"><label>Ad *</label><input type="text" id="rFN" placeholder="Adınız"></div>
             <div class="ff"><label>Soyad</label><input type="text" id="rLN" placeholder="Soyadınız"></div>
           </div>
-          <div class="ff" id="fieldBrand"><label>Akademi / Koçluk Adı *</label><input type="text" id="rBrand" placeholder="Örn: Derece Akademi, YKS Koçluk Merkezi"></div>
-          <div class="ff"><label>E-posta *</label><input type="email" id="rEmail" placeholder="email@domain.com"></div>
-          <div class="ff"><label>Telefon</label><input type="tel" id="rPhone" placeholder="0532 000 00 00"></div>
-          <div class="ff" id="fieldPass"><label>Şifre Belirle *</label><input type="password" id="rPass" placeholder="En az 8 karakter"></div>
-          <div class="ff" id="fieldCount"><label>Kaç öğrenciniz var?</label>
-            <select id="rCount">
-              <option value="">Seçiniz</option>
-              <option value="1-5">1–5 öğrenci</option>
-              <option value="6-15">6–15 öğrenci</option>
-              <option value="16-30">16–30 öğrenci</option>
-              <option value="30+">30+ öğrenci</option>
-            </select>
-          </div>
+          <div class="ff"><label>E-posta *</label><input type="email" id="rEmail" placeholder="kurumsal@eposta.com"></div>
+          <div class="ff" id="fieldBrand"><label>Akademi / Koçluk Adı (opsiyonel)</label><input type="text" id="rBrand" placeholder="Boş bırakırsanız adınızdan türetilir"></div>
 
-          <div class="ff" id="fieldPlan" style="display:none">
+          <div class="ff" id="fieldPlan">
             <label>Plan seçin</label>
             <div class="plan-pills">
               <div class="plan-pill sel" onclick="selPlan(this,'bireysel')" style="flex:1">
                 <div class="pp-name">Bireysel ✦</div>
-                <div class="pp-price">7 gün ücretsiz · sonra ₺999/ay · 15 öğrenciye kadar</div>
+                <div class="pp-price">₺999/ay · 15 öğrenciye kadar</div>
               </div>
               <div class="plan-pill" onclick="selPlan(this,'profesyonel')" style="flex:1">
                 <div class="pp-name">Profesyonel 🌟</div>
-                <div class="pp-price">7 gün ücretsiz · sonra ₺1.899/ay · 40 öğrenciye kadar</div>
+                <div class="pp-price">₺1.899/ay · 40 öğrenciye kadar</div>
               </div>
             </div>
           </div>
+
+          <div class="ff" id="fieldPass"><label>Şifre Belirleyin *</label><input type="password" id="rPass" placeholder="En az 8 karakter"></div>
+          <div class="ff"><label>Telefon (opsiyonel)</label><input type="tel" id="rPhone" placeholder="0532 000 00 00"></div>
         </div>
 
         <div id="studentInfoBox" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--mid)">
-          🎓 <strong>Öğrenci ve Velilerimiz için:</strong> Kayıtlar koçunuz veya kurumunuz tarafından açılmaktadır. Giriş bilgilerinizi almak için lütfen koçunuza danışın.<br><br>
-          <a href="app.html" class="btn-hero-ghost" style="width:100%;justify-content:center;padding:10px;font-size:13px;margin-top:8px;text-decoration:none">Giriş Yapmak İçin Tıklayın</a>
+          🎓 <strong>Öğrenci veya veli misiniz?</strong> Sisteme koçunuz sizi ekleyecek — giriş bilgilerinizi koçunuzdan alabilirsiniz.<br><br>
+          <a href="app.html" class="btn-hero-ghost" style="width:100%;justify-content:center;padding:10px;font-size:13px;margin-top:8px;text-decoration:none">Giriş ekranına git →</a>
         </div>
 
-        <button class="f-submit" id="regBtn" onclick="submitReg()">Ücretsiz Hesap Oluştur →</button>
-        <div class="f-note" id="regNote">Kaydolarak Kullanım Koşullarını kabul edersiniz.<br>İlk 7 gün ücretsiz · İstediğiniz zaman iptal</div>
+        <button class="f-submit" id="regBtn" onclick="submitReg()">Hesabımı Oluştur — Ücretsiz Başla →</button>
+        <div class="f-note" id="regNote">Kaydolarak Kullanım Koşullarını kabul edersiniz. İstediğiniz zaman iptal edin.</div>
+
+        <!-- Farklı bir hesap türü -->
+        <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--mid)">
+          Koç değil misiniz?
+          <span style="cursor:pointer;color:var(--acc);font-weight:600;text-decoration:underline" onclick="document.getElementById('altRolePicker').style.display=document.getElementById('altRolePicker').style.display==='none'?'flex':'none'">Kurum veya öğrenci kaydı</span>
+        </div>
+        <div id="altRolePicker" class="role-pills" style="display:none;margin-top:10px">
+          <div class="role-pill active" id="rp-coach" onclick="selectRole('coach')">👨‍🏫 Koç</div>
+          <div class="role-pill" id="rp-institution" onclick="selectRole('institution')">🏢 Kurum</div>
+          <div class="role-pill" id="rp-student" onclick="selectRole('student')">🎓 Öğrenci</div>
+        </div>
       </div>
 <div class="success-box" id="regSuccess">
         <div class="suc-ico">🎉</div>
@@ -2476,25 +2474,24 @@ function selectRole(role) {
 
     const labelBrand = document.querySelector('#fieldBrand label');
     const inputBrand = document.getElementById('rBrand');
-    const labelCount = document.querySelector('#fieldCount label');
     const fieldPass = document.getElementById('fieldPass');
-    
+    const fieldPlan = document.getElementById('fieldPlan');
+    const fieldPhone = document.getElementById('rPhone')?.closest('.ff');
+
     if (role === 'institution') {
       labelBrand.textContent = 'Kurum Adı (Okul / Dershane) *';
       inputBrand.placeholder = 'Örn: Başarı Koleji, Limit Kurs Merkezi';
-      labelCount.textContent = 'Öngörülen Toplam Öğrenci Sayısı';
-      btn.textContent = 'Kurumsal Başvuru Yap →';
+      btn.textContent = 'Kurumsal Başvuru Gönder →';
       if (fieldPass) fieldPass.style.display = 'none';
-      if (regSub) regSub.innerHTML = 'Kurumsal başvurunuz 1 iş günü içinde onaylanır.';
-      document.getElementById('fieldPlan').style.display = 'none';
+      if (fieldPlan) fieldPlan.style.display = 'none';
+      if (regSub) regSub.innerHTML = 'Kurumsal başvurular genellikle <strong>aynı gün</strong> onaylanır.';
     } else {
       labelBrand.textContent = 'Akademi / Koçluk Adı (opsiyonel)';
-      inputBrand.placeholder = 'Boş bırakırsan adından türetilir — sonra değiştirebilirsin';
-      labelCount.textContent = 'Kaç öğrenciniz var?';
-      btn.textContent = 'Ücretsiz Hesap Oluştur →';
+      inputBrand.placeholder = 'Boş bırakırsanız adınızdan türetilir';
+      btn.textContent = 'Hesabımı Oluştur — Ücretsiz Başla →';
       if (fieldPass) fieldPass.style.display = 'block';
-      if (regSub) regSub.innerHTML = 'Hesabınız anında oluşturulur ve 7 günlük ücretsiz denemeniz başlar. Kart gerekmez.';
-      document.getElementById('fieldPlan').style.display = 'block';
+      if (fieldPlan) fieldPlan.style.display = 'block';
+      if (regSub) regSub.innerHTML = 'Hesabınız anında aktif olur. Kart gerekmez.';
     }
   }
 }
@@ -2576,14 +2573,15 @@ async function submitReg(){
   const brand=document.getElementById('rBrand')?.value?.trim() || '';
   const email=document.getElementById('rEmail').value.trim();
   const phone=(document.getElementById('rPhone')?.value||'').trim();
-  const count=document.getElementById('rCount')?.value||'';
+  // count is now derived from plan selection, not a standalone dropdown
+  const count = selectedPlan === 'profesyonel' ? '20+' : '1-15';
   const btn=document.getElementById('regBtn');
-  
+
   if(selectedRole === 'student') return;
-  
+
   if(!fn||!email||(selectedRole==='institution'&&!brand)){
     btn.style.background='#ff5c7a';btn.textContent='Zorunlu alanları doldurun!';
-    setTimeout(()=>{btn.style.background='';btn.textContent=selectedRole==='institution'?'Kurumsal Başvuru Yap →':'Ücretsiz Hesap Oluştur →';},2500);
+    setTimeout(()=>{btn.style.background='';btn.textContent=selectedRole==='institution'?'Kurumsal Başvuru Gönder →':'Hesabımı Oluştur — Ücretsiz Başla →';},2500);
     return;
   }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
@@ -2644,7 +2642,7 @@ async function submitReg(){
         ? 'Bu e-posta zaten kayıtlı!'
         : err.message.slice(0, 30);
       btn.disabled = false;
-      setTimeout(()=>{btn.style.background='';btn.textContent='Ücretsiz Hesap Oluştur →';},3000);
+      setTimeout(()=>{btn.style.background='';btn.textContent='Hesabımı Oluştur — Ücretsiz Başla →';},3000);
     }
   } else {
     // Institution Lead Flow
@@ -2663,7 +2661,7 @@ async function submitReg(){
           btn.style.background='#ff5c7a';
           btn.textContent='Bu e-posta zaten kayıtlı!';
           btn.disabled=false;
-          setTimeout(()=>{btn.style.background='';btn.textContent='Kurumsal Başvuru Yap →';},3000);
+          setTimeout(()=>{btn.style.background='';btn.textContent='Kurumsal Başvuru Gönder →';},3000);
           return;
         }
         console.error('Supabase error:',error);
@@ -2687,7 +2685,7 @@ async function submitReg(){
     successBox.innerHTML = `
       <div class="suc-ico">🎉</div>
       <div class="suc-title">Kurumsal Başvurunuz Alındı!</div>
-      <div class="suc-sub">Sizinle en kısa sürede iletişime geçeceğiz.<br>Ortalama yanıt süresi: <strong style="color:var(--acc)">1 iş günü</strong>.</div>
+      <div class="suc-sub">Sizinle en kısa sürede iletişime geçeceğiz.<br>Başvurular genellikle <strong style="color:var(--acc)">aynı gün</strong> onaylanır.</div>
     `;
     successBox.style.display='block';
     btn.disabled=false;
