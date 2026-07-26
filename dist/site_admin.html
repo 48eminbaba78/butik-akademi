@@ -5271,8 +5271,15 @@ async function rspFetch(path, opts={}){
       headers: {'content-type':'application/json','x-panel-key':c.key,...(opts.headers||{})}
     });
   }catch(e){
+    // /api/generate (route param'sız, yani gerçek üretim çağrısı) uzun sürebilir
+    // ve Vercel'in 60sn fonksiyon sınırına takılırsa 504 döner — bu yanıt CORS
+    // başlığı taşımaz (fonksiyon zamanaşımına uğrayınca hiç çalışmamış olur),
+    // tarayıcı bunu "CORS hatası" gibi raporlar. Asıl sebep neredeyse hep budur.
+    const isGenerate = path.includes('/api/generate') && !path.includes('_route=');
     document.getElementById('rspCorsHint').style.display='block';
-    throw new Error('Bağlantı kurulamadı (CORS veya adres hatası)');
+    throw new Error(isGenerate
+      ? 'Üretim tamamlanamadı — muhtemelen 60 saniyelik süre sınırına takıldı (uzun/detaylı "fikir" metni bu riski artırır). Fikir metnini kısaltıp tekrar dene.'
+      : 'Bağlantı kurulamadı (CORS veya adres hatası)');
   }
   document.getElementById('rspCorsHint').style.display='none';
   let d={}; try{ d=await r.json(); }catch(e){}
