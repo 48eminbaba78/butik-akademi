@@ -11264,107 +11264,193 @@ function buildReportHTML(stuId, preview=false) {
     .sort((a,b)=>a.date.localeCompare(b.date));
 
   const periodLabel = `${new Date(start+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})} – ${new Date(end+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}`;
+  // Header'da yer kazanmak için aynı ay/yıl içindeyse kısa biçim kullanılır
+  // (ör. "1 – 26 Temmuz 2026"), aksi halde tam biçime düşer — uzun aralıklar
+  // marka adını sıkıştırıp iki satıra bölmesin diye.
+  const startD = new Date(start+'T12:00'), endD = new Date(end+'T12:00');
+  const periodLabelHeader = (startD.getMonth()===endD.getMonth() && startD.getFullYear()===endD.getFullYear())
+    ? `${startD.getDate()} – ${endD.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}`
+    : periodLabel;
 
-  // Bar chart SVG for exams
+  // Marka rengini koyulaştırıp header band'i için gradyan üretir (color-mix
+  // yerine düz RGB hesabı — eski/print motorlarında da güvenilir çalışsın diye)
+  function shade(hex, pct) {
+    const h = (hex||'#E8613A').replace('#','');
+    const full = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
+    const num = parseInt(full,16) || 0xE8613A;
+    let r=(num>>16)&255, g=(num>>8)&255, b=num&255;
+    const mix = (c) => Math.max(0, Math.min(255, Math.round(c + (pct<0 ? c : 255-c) * pct)));
+    return '#'+[mix(r),mix(g),mix(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  }
+  const brandDark = shade(brandColor, -0.32);
+
+  // Ders bazında (Türkçe 40 soru, Fizik 14 soru gibi) net rozetlerini MUTLAK
+  // eşik yerine o dersin azami soru sayısına göre YÜZDE olarak normalize eder —
+  // aksi halde 40 sorudan 14 net ile 14 sorudan 14 net aynı renk çıkıyordu.
+  const examSoruMap = (typeof EXAM_SORU !== 'undefined' && EXAM_SORU) || window.EXAM_SORU || {};
+  function subjMax(examType, field) { return (examSoruMap[examType]||{})[field]; }
+  function netBadgeClass(v, max) {
+    if (!max) return v>=20?'badge-green':v>=12?'badge-yellow':'badge-red';
+    const p = (v/max)*100;
+    return p>=70?'badge-green':p>=45?'badge-yellow':'badge-red';
+  }
+
+  // Deneme grafiği: eksen/ölçek gerçek azami net üzerinden (ör. TYT=120) çizilir,
+  // en yeni deneme daha koyu vurgulanır.
   let examChartSVG = '';
-  if(myExams.length > 1) {
-    const maxNet = Math.max(...myExams.map(e=>(EXAM_DEFS[e.type]||[]).reduce((s,f)=>s+Number(e.nets?.[f]||0),0)),1);
-    const w = 400, h = 80, bw = Math.min(40, (w-20)/myExams.length-4);
-    examChartSVG = `<svg width="${w}" height="${h+30}" style="overflow:visible">
+  let chartCaption = '';
+  if (myExams.length > 1) {
+    const typeMax = t => Object.values(examSoruMap[t]||{}).reduce((s,v)=>s+v,0);
+    const totals = myExams.map(e=>(EXAM_DEFS[e.type]||[]).reduce((s,f)=>s+Number(e.nets?.[f]||0),0));
+    const chartMax = Math.max(...myExams.map(e=>typeMax(e.type)), ...totals, 1);
+    const w=732, chartBottom=100, chartTop=14, chartH=chartBottom-chartTop;
+    const n=myExams.length;
+    const slot=(w-40)/n, bw=Math.min(64, slot-14);
+    const gridY = v => chartBottom - (v/chartMax)*chartH;
+    const examTypesUsed = [...new Set(myExams.map(e=>e.type))];
+    chartCaption = `Toplam net (${Math.round(chartMax)} üzerinden) — ${esc(examTypesUsed.length===1?examTypesUsed[0]:'deneme')} geçmişi`;
+    examChartSVG = `<svg width="100%" height="150" viewBox="0 0 ${w} 150" preserveAspectRatio="none">
+      <line x1="0" y1="${gridY(chartMax).toFixed(1)}" x2="${w}" y2="${gridY(chartMax).toFixed(1)}" stroke="#e5e5e5" stroke-width="1"/>
+      <line x1="0" y1="${gridY(chartMax/2).toFixed(1)}" x2="${w}" y2="${gridY(chartMax/2).toFixed(1)}" stroke="#eee" stroke-width="1"/>
+      <line x1="0" y1="${chartBottom}" x2="${w}" y2="${chartBottom}" stroke="#ddd" stroke-width="1.5"/>
+      <text x="4" y="${(gridY(chartMax)-3).toFixed(1)}" font-size="9" fill="#999">${Math.round(chartMax)}</text>
+      <text x="4" y="${(gridY(chartMax/2)-3).toFixed(1)}" font-size="9" fill="#999">${Math.round(chartMax/2)}</text>
+      <text x="4" y="${chartBottom-3}" font-size="9" fill="#999">0</text>
       ${myExams.map((e,i)=>{
-        const total=(EXAM_DEFS[e.type]||[]).reduce((s,f)=>s+Number(e.nets?.[f]||0),0);
-        const bh=Math.max(Math.round((total/maxNet)*(h-10)),4);
-        const x=10+i*((w-20)/myExams.length);
-        return `<rect x="${x}" y="${h-bh}" width="${bw}" height="${bh}" rx="3" fill="${brandColor}" opacity="0.85"/>
-          <text x="${x+bw/2}" y="${h-bh-4}" text-anchor="middle" font-size="10" fill="#333">${total.toFixed(0)}</text>
-          <text x="${x+bw/2}" y="${h+14}" text-anchor="middle" font-size="9" fill="#666">${esc(e.name.replace('Deneme','').replace('TYT','').replace('AYT','').trim()||String(i+1))}</text>`;
+        const total=totals[i];
+        const x=40+i*slot+(slot-bw)/2;
+        const bh=Math.max(gridY(0)-gridY(total),3);
+        const y=chartBottom-bh;
+        const opacity=(0.45+0.55*((i+1)/n)).toFixed(2);
+        const label=esc(e.name.replace('Deneme','').replace('TYT','').replace('AYT','').trim()||String(i+1));
+        const dateLbl=new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
+        return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="${brandColor}" opacity="${opacity}"/>
+          <text x="${(x+bw/2).toFixed(1)}" y="${(y-6).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="#16151a">${total.toFixed(0)}</text>
+          <text x="${(x+bw/2).toFixed(1)}" y="${chartBottom+18}" text-anchor="middle" font-size="10" fill="#6b6a72">${label} · ${dateLbl}</text>`;
       }).join('')}
     </svg>`;
   }
+
+  // Öğrenci hero'daki dairesel ilerleme göstergesi
+  const ringR=33, ringC=2*Math.PI*ringR;
+  const ringPct=Math.min(100,Math.max(0,Number(stu.progress)||0));
+  const ringOffset=ringC*(1-ringPct/100);
 
   return `<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;background:#fff;font-size:13px;line-height:1.5;}
-  .page{max-width:800px;margin:0 auto;padding:${preview?'30px':'20px 30px'};}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:18px;border-bottom:3px solid ${brandColor};margin-bottom:24px;}
-  .brand{font-size:22px;font-weight:800;color:${brandColor};letter-spacing:-0.5px;}
-  .brand-sub{font-size:11px;color:#888;margin-top:3px;}
+  :root{
+    --brand:${brandColor};
+    --ink:#16151a;
+    --muted:#6b6a72;
+    --hair:rgba(22,21,26,.09);
+    --tint:${brandColor}0F;
+    --tint2:${brandColor}1F;
+    --green:#16a34a; --green-bg:#eafaf1;
+    --amber:#b45309; --amber-bg:#fef3e0;
+    --red:#dc2626; --red-bg:#fef2f2;
+  }
+  body{font-family:'Inter',Arial,sans-serif;color:var(--ink);background:#fff;font-size:13px;line-height:1.55;font-variant-numeric:tabular-nums;}
+  .page{max-width:820px;margin:0 auto;}
+  .band{background:linear-gradient(135deg,var(--brand),${brandDark});padding:${preview?'30px 40px 26px':'26px 36px 22px'};color:#fff;position:relative;overflow:hidden;}
+  .band::after{content:'';position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.08);}
+  .band-row{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;position:relative;}
+  .band-id{flex-shrink:0;}
+  .report-title{flex-shrink:1;min-width:0;}
+  .brand{font-family:'Syne',sans-serif;font-size:23px;font-weight:800;letter-spacing:-.3px;white-space:nowrap;}
+  .brand-sub{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:4px;font-weight:500;}
   .report-title{text-align:right;}
-  .report-title h1{font-size:18px;font-weight:700;color:#1a1a1a;}
-  .report-title p{font-size:11px;color:#888;margin-top:3px;}
-  .student-hero{background:linear-gradient(135deg,${brandColor}15,${brandColor}05);border:1.5px solid ${brandColor}30;border-radius:12px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;gap:16px;}
-  .stu-avatar{width:52px;height:52px;border-radius:12px;background:${brandColor};color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .stu-name{font-size:20px;font-weight:800;}
-  .stu-target{font-size:12px;color:#666;margin-top:3px;}
-  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
-  .stat-box{background:#f8f8f8;border:1px solid #e8e8e8;border-radius:10px;padding:12px 14px;text-align:center;}
-  .stat-box .val{font-size:26px;font-weight:800;color:${brandColor};}
-  .stat-box .lbl{font-size:10px;color:#888;margin-top:3px;text-transform:uppercase;letter-spacing:.5px;}
-  .section{margin-bottom:20px;}
-  .section-title{font-size:14px;font-weight:700;color:${brandColor};margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid ${brandColor}20;display:flex;align-items:center;gap:6px;}
+  .report-title .eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.7);}
+  .report-title h1{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-top:3px;}
+  .report-title p{font-size:11px;color:rgba(255,255,255,.75);margin-top:4px;}
+  .body-pad{padding:${preview?'26px 40px 32px':'22px 36px 28px'};}
+  .student-hero{display:flex;align-items:center;gap:22px;padding-bottom:20px;margin-bottom:20px;border-bottom:1px solid var(--hair);}
+  .ring-wrap{position:relative;width:78px;height:78px;flex-shrink:0;}
+  .ring-val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:17px;color:var(--ink);}
+  .ring-val span{font-family:'Inter',sans-serif;font-size:8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:1px;}
+  .stu-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.2px;}
+  .stu-target{font-size:12px;color:var(--muted);margin-top:4px;font-weight:500;}
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:26px;}
+  .stat-box{background:var(--tint);border:1px solid ${brandColor}2A;border-radius:12px;padding:14px 16px;}
+  .stat-box .ic{font-size:14px;margin-bottom:8px;opacity:.8;}
+  .stat-box .val{font-family:'Syne',sans-serif;font-size:23px;font-weight:800;color:var(--ink);line-height:1;}
+  .stat-box .lbl{font-size:10px;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+  .section{margin-bottom:24px;}
+  .section-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .section-title .dot{width:7px;height:7px;border-radius:2px;background:var(--brand);display:inline-block;flex-shrink:0;}
   table{width:100%;border-collapse:collapse;font-size:12px;}
-  th{background:${brandColor}15;color:#333;font-weight:700;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;}
-  td{padding:7px 10px;border-bottom:1px solid #f0f0f0;}
+  th{color:var(--muted);font-weight:700;padding:0 10px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid var(--hair);}
+  td{padding:9px 10px;border-bottom:1px solid var(--hair);}
   tr:last-child td{border-bottom:none;}
-  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;}
-  .badge-green{background:#e8faf3;color:#16a34a;}
-  .badge-yellow{background:#fef9ec;color:#ca8a04;}
-  .badge-red{background:#fef2f2;color:#dc2626;}
-  .prog-bar{height:8px;background:#eee;border-radius:99px;overflow:hidden;margin-top:4px;}
-  .prog-fill{height:100%;border-radius:99px;background:${brandColor};}
-  .note-box{background:#fffbeb;border:1.5px solid ${brandColor}40;border-radius:10px;padding:14px 16px;}
-  .note-box .note-header{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${brandColor};margin-bottom:6px;}
-  .footer{margin-top:30px;padding-top:14px;border-top:1px solid #eee;display:flex;justify-content:space-between;font-size:10px;color:#aaa;}
-  .progress-circle{position:relative;width:64px;height:64px;flex-shrink:0;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:800;}
+  .badge small{opacity:.65;font-weight:600;margin-left:1px;}
+  .badge-green{background:var(--green-bg);color:var(--green);}
+  .badge-yellow{background:var(--amber-bg);color:var(--amber);}
+  .badge-red{background:var(--red-bg);color:var(--red);}
+  .prog-bar{height:6px;background:var(--hair);border-radius:99px;overflow:hidden;margin-top:4px;}
+  .prog-fill{height:100%;border-radius:99px;background:var(--brand);}
+  .chart-card{background:#fafafa;border:1px solid var(--hair);border-radius:12px;padding:18px 20px 8px;margin-bottom:14px;}
+  .chart-cap{font-size:10.5px;color:var(--muted);margin-top:6px;text-align:center;font-weight:600;}
+  .note-box{background:var(--tint);border-left:3px solid var(--brand);border-radius:0 10px 10px 0;padding:16px 18px;}
+  .note-box .note-header{font-family:'Syne',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--brand);margin-bottom:8px;}
+  .footer{margin-top:8px;padding-top:16px;border-top:1px solid var(--hair);display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-weight:500;}
   @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.no-print{display:none!important;}}
 </style>
 </head>
 <body>
 <div class="page">
   <!-- HEADER -->
-  <div class="header">
-    <div>
-      <div class="brand">${esc(brandName)}</div>
-      <div class="brand-sub">Koç: ${esc(coachName)}</div>
-    </div>
-    <div class="report-title">
-      <h1>Performans Raporu</h1>
-      <p>${periodLabel}</p>
-      <p>Oluşturulma: ${new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}</p>
+  <div class="band">
+    <div class="band-row">
+      <div class="band-id">
+        <div class="brand">${esc(brandName)}</div>
+        <div class="brand-sub">Koç: ${esc(coachName)}</div>
+      </div>
+      <div class="report-title">
+        <div class="eyebrow">Performans Raporu</div>
+        <h1>${periodLabelHeader}</h1>
+        <p>Oluşturulma: ${new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}</p>
+      </div>
     </div>
   </div>
 
+  <div class="body-pad">
   <!-- ÖĞRENCİ -->
   <div class="student-hero">
-    <div class="stu-avatar">${stu.name[0]}</div>
+    <div class="ring-wrap">
+      <svg width="78" height="78" viewBox="0 0 78 78">
+        <circle cx="39" cy="39" r="${ringR}" fill="none" stroke="#eee" stroke-width="8"/>
+        <circle cx="39" cy="39" r="${ringR}" fill="none" stroke="${brandColor}" stroke-width="8" stroke-linecap="round"
+          stroke-dasharray="${ringC.toFixed(1)}" stroke-dashoffset="${ringOffset.toFixed(1)}" transform="rotate(-90 39 39)"/>
+      </svg>
+      <div class="ring-val">${Math.round(ringPct)}<span>%</span></div>
+    </div>
     <div>
       <div class="stu-name">${esc(stu.name)}</div>
-      <div class="stu-target">${esc(stu.target)}</div>
-      <div style="margin-top:8px">
-        <div style="font-size:11px;color:#666;margin-bottom:3px">Genel İlerleme %${stu.progress}</div>
-        <div class="prog-bar" style="width:200px"><div class="prog-fill" style="width:${stu.progress}%"></div></div>
-      </div>
+      <div class="stu-target">${esc(stu.target)} · Genel ilerleme %${Math.round(ringPct)}</div>
     </div>
   </div>
 
   <!-- ÖZET İSTATİSTİKLER -->
   <div class="stats-grid">
-    <div class="stat-box"><div class="val">${totalTasks}</div><div class="lbl">Toplam Görev</div></div>
-    <div class="stat-box"><div class="val" style="color:#16a34a">${doneTasks}</div><div class="lbl">Tamamlanan</div></div>
-    <div class="stat-box"><div class="val">%${pct}</div><div class="lbl">Tamamlanma</div></div>
-    <div class="stat-box"><div class="val">${Math.round(totalMin/60)}</div><div class="lbl">Çalışma (saat)</div></div>
+    <div class="stat-box"><div class="ic">📋</div><div class="val">${totalTasks}</div><div class="lbl">Toplam Görev</div></div>
+    <div class="stat-box"><div class="ic">✓</div><div class="val" style="color:var(--green)">${doneTasks}</div><div class="lbl">Tamamlanan</div></div>
+    <div class="stat-box"><div class="ic">%</div><div class="val">${pct}</div><div class="lbl">Tamamlanma</div></div>
+    <div class="stat-box"><div class="ic">⏱</div><div class="val">${Math.round(totalMin/60)}</div><div class="lbl">Çalışma (Saat)</div></div>
   </div>
 
   <!-- DERS BAZINDA ÇALIŞMA -->
   ${Object.keys(bySubject).length > 0 ? `
   <div class="section">
-    <div class="section-title">📚 Ders Bazında Çalışma</div>
+    <div class="section-title"><span class="dot"></span>Ders Bazında Çalışma</div>
     <table>
-      <thead><tr><th>Ders</th><th>Toplam</th><th>Tamamlanan</th><th>Oran</th><th></th></tr></thead>
+      <thead><tr><th>Ders</th><th>Toplam</th><th>Tamamlanan</th><th>Oran</th><th style="width:110px"></th></tr></thead>
       <tbody>
         ${Object.entries(bySubject).sort((a,b)=>b[1].total-a[1].total).map(([subj,data])=>{
           const pct2=Math.round((data.done/data.total)*100);
@@ -11374,7 +11460,7 @@ function buildReportHTML(stuId, preview=false) {
             <td>${data.total}</td>
             <td>${data.done}</td>
             <td><span class="badge ${badge}">%${pct2}</span></td>
-            <td style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:${pct2}%"></div></div></td>
+            <td><div class="prog-bar"><div class="prog-fill" style="width:${pct2}%"></div></div></td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -11384,8 +11470,8 @@ function buildReportHTML(stuId, preview=false) {
   <!-- DENEMELER -->
   ${myExams.length > 0 ? `
   <div class="section">
-    <div class="section-title">📊 Deneme Sonuçları</div>
-    ${examChartSVG ? `<div style="margin-bottom:16px;padding:12px;background:#f8f8f8;border-radius:8px">${examChartSVG}</div>` : ''}
+    <div class="section-title"><span class="dot"></span>Deneme Sonuçları</div>
+    ${examChartSVG ? `<div class="chart-card">${examChartSVG}<div class="chart-cap">${chartCaption}</div></div>` : ''}
     <table>
       <thead><tr><th>Sınav</th><th>Tarih</th><th>Tür</th>${(EXAM_DEFS[myExams[0]?.type]||[]).map(f=>`<th>${f}</th>`).join('')}<th>Toplam</th></tr></thead>
       <tbody>
@@ -11396,7 +11482,11 @@ function buildReportHTML(stuId, preview=false) {
             <td><strong>${esc(e.name)}</strong></td>
             <td>${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</td>
             <td>${esc(e.type)}</td>
-            ${fields.map(f=>{const v=Number(e.nets?.[f]||0);return `<td><span class="badge ${v>=20?'badge-green':v>=12?'badge-yellow':'badge-red'}">${v}</span></td>`;}).join('')}
+            ${fields.map(f=>{
+              const v=Number(e.nets?.[f]||0);
+              const max=subjMax(e.type,f);
+              return `<td><span class="badge ${netBadgeClass(v,max)}">${v}${max?`<small>/${max}</small>`:''}</span></td>`;
+            }).join('')}
             <td><strong>${total}</strong></td>
           </tr>`;
         }).join('')}
@@ -11407,7 +11497,7 @@ function buildReportHTML(stuId, preview=false) {
   <!-- RANDEVULAR -->
   ${myAppts.length > 0 ? `
   <div class="section">
-    <div class="section-title">📅 Görüşmeler</div>
+    <div class="section-title"><span class="dot"></span>Görüşmeler</div>
     <table>
       <thead><tr><th>Tarih</th><th>Saat</th><th>Tür</th><th>Süre</th></tr></thead>
       <tbody>
@@ -11426,8 +11516,8 @@ function buildReportHTML(stuId, preview=false) {
   <div class="section">
     <div class="note-box">
       <div class="note-header">Koç Değerlendirmesi</div>
-      <div style="font-size:13px;line-height:1.7;color:#333">${esc(coachNote).replace(/\n/g,'<br>')}</div>
-      <div style="margin-top:10px;font-size:11px;color:#888">— ${esc(coachName)}</div>
+      <div style="font-size:13px;line-height:1.7;color:var(--ink)">${esc(coachNote).replace(/\n/g,'<br>')}</div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted);font-weight:600">— ${esc(coachName)}</div>
     </div>
   </div>` : ''}
 
@@ -11436,6 +11526,7 @@ function buildReportHTML(stuId, preview=false) {
     <span>${esc(brandName)} · ${esc(coachName)}</span>
     <span>${esc(stu.name)} · ${periodLabel}</span>
     <span>Rostrum Akademi Platformu</span>
+  </div>
   </div>
 </div>
 </body>
