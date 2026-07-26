@@ -11201,8 +11201,25 @@ function openReportModal(stuId) {
           <div class="field"><label>Bitiş</label><input type="date" id="rpEnd"></div>
         </div>
       </div>
-      <div class="field"><label>Koç Notu (isteğe bağlı)</label>
+      <div class="field"><label>Koç Notu <span id="rpNoteLbl">(isteğe bağlı)</span></label>
         <textarea id="rpNote" placeholder="Bu dönem için genel değerlendirmenizi yazın..." style="min-height:90px"></textarea>
+      </div>
+      <div id="rpPremiumFields" style="display:none">
+        <div class="field"><label>Bu Haftanın Özeti (Sayfa 1)</label>
+          <textarea id="prSummary" placeholder="Bu hafta genel olarak nasıl geçti..." style="min-height:70px"></textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin:-6px 0 10px">
+          <button type="button" id="prAiDraftBtn" class="btn btn-ghost btn-xs" style="font-size:11px" onclick="generateReportDraftAI(document.getElementById('rpStuId').value)">✨ AI ile Taslak Oluştur</button>
+        </div>
+        <div class="field"><label>Güçlü Yönler <span style="font-weight:400;color:var(--text-dim)">(her satır bir madde)</span></label>
+          <textarea id="prStrengths" placeholder="Düzenli çalışma&#10;Görev tamamlama" style="min-height:70px"></textarea>
+        </div>
+        <div class="field"><label>Gelişim Alanları <span style="font-weight:400;color:var(--text-dim)">(her satır bir madde)</span></label>
+          <textarea id="prGrowth" placeholder="Zaman yönetimi&#10;Konu tekrarları" style="min-height:70px"></textarea>
+        </div>
+        <div class="field"><label>Gelecek Hafta Hedefleri <span style="font-weight:400;color:var(--text-dim)">(her satır bir madde)</span></label>
+          <textarea id="prGoals" placeholder="Haftada 2 deneme çöz&#10;Geometri konu tekrarı yap" style="min-height:70px"></textarea>
+        </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
         <div style="display:flex;gap:8px">
@@ -11227,6 +11244,14 @@ function openReportModal(stuId) {
   document.getElementById('rpStart').value = fmtDate(firstDay);
   document.getElementById('rpEnd').value = fmtDate(now);
   document.getElementById('rpNote').value = '';
+  ['prSummary','prStrengths','prGrowth','prGoals'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  // Koçun daha önce Premium'u aktif bırakmış olma ihtimaline karşı, "🎨
+  // Görünüm" paneli hiç açılmasa bile ek alanlar doğru görünürlükte açılsın.
+  const _cfg = getActiveReportConfig('performance');
+  const _premiumFields = document.getElementById('rpPremiumFields');
+  const _noteLbl = document.getElementById('rpNoteLbl');
+  if (_premiumFields) _premiumFields.style.display = _cfg.style==='premium' ? 'block' : 'none';
+  if (_noteLbl) _noteLbl.textContent = _cfg.style==='premium' ? '(Koç Yorumu — Sayfa 3)' : '(isteğe bağlı)';
   om('reportModal');
 }
 
@@ -11252,7 +11277,11 @@ const REPORT_SECTION_DEFS = {
     { key:'bySubject',    label:'Ders Bazında Çalışma' },
     { key:'exams',        label:'Deneme Sonuçları' },
     { key:'appointments', label:'Görüşmeler' },
-    { key:'coachNote',    label:'Koç Notu' }
+    { key:'coachNote',    label:'Koç Notu' },
+    // ── Premium'a özgü (Standart/Sade'de bu key'ler için renderer yok → no-op) ──
+    { key:'strengths',    label:'Güçlü Yönler' },
+    { key:'growth',       label:'Gelişim Alanları' },
+    { key:'weeklyGoals',  label:'Gelecek Hafta Hedefleri' }
   ],
   weekly: [
     { key:'statsBar',    label:'Özet Bar',              locked:true },
@@ -11264,7 +11293,8 @@ const REPORT_SECTION_DEFS = {
 const REPORT_PRESETS = {
   performance: [
     { key:'standart', name:'Standart', config:{ sections:['statsGrid','bySubject','exams','appointments','coachNote'], style:'default' } },
-    { key:'sade',     name:'Sade',     config:{ sections:['statsGrid','exams','coachNote'], style:'minimal' } }
+    { key:'sade',     name:'Sade',     config:{ sections:['statsGrid','exams','coachNote'], style:'minimal' } },
+    { key:'premium',  name:'Premium',  config:{ sections:['strengths','growth','coachNote','weeklyGoals'], style:'premium' } }
   ],
   weekly: [
     { key:'standart', name:'Standart', config:{ sections:['statsBar','dayTasks','coachNote','footerQuote'], style:'default' } },
@@ -11305,11 +11335,13 @@ function setActiveReport(reportType, sel) {
   localStorage.setItem(_reportActiveKey(reportType), JSON.stringify(sel));
 }
 
-function buildReportHTML(stuId, preview=false) {
+// Performans Raporu (Standart/Sade/Premium) için ortak veri hesaplaması —
+// tek bir yerden hesaplanır ki iki rapor türü arasında sayı tutarsızlığı
+// (ör. Standart raporda %71, Premium'da %69 gibi) hiçbir zaman oluşmasın.
+function computeReportMetrics(stuId) {
   const stu = S.students.find(s=>s.id===stuId);
-  if(!stu) return '';
+  if (!stu) return null;
   const {start, end} = getReportDates();
-  const coachNote = document.getElementById('rpNote').value.trim();
   const brandName = S.workspace?.brand_name || 'Rostrum Akademi';
   const brandColor = S.workspace?.brand_color || '#E8613A';
   const coachName = session.dbUser?.full_name || 'Koç';
@@ -11354,6 +11386,19 @@ function buildReportHTML(stuId, preview=false) {
     : periodLabel;
 
   const brandDark = shade(brandColor, -0.32);
+
+  return { stu, start, end, brandName, brandColor, brandDark, coachName,
+    allTasks, totalTasks, doneTasks, pct, totalMin, bySubject, myExams, myAppts,
+    periodLabel, periodLabelHeader };
+}
+
+function buildReportHTML(stuId, preview=false) {
+  const m = computeReportMetrics(stuId);
+  if (!m) return '';
+  const { stu, start, end, brandName, brandColor, brandDark, coachName,
+    allTasks, totalTasks, doneTasks, pct, totalMin, bySubject, myExams, myAppts,
+    periodLabel, periodLabelHeader } = m;
+  const coachNote = document.getElementById('rpNote').value.trim();
 
   // Ders bazında (Türkçe 40 soru, Fizik 14 soru gibi) net rozetlerini MUTLAK
   // eşik yerine o dersin azami soru sayısına göre YÜZDE olarak normalize eder —
@@ -11610,9 +11655,449 @@ function buildReportHTML(stuId, preview=false) {
 </html>`;
 }
 
+// ═══════════════════════════════════════════════
+// PREMIUM PERFORMANS RAPORU — hesaplamalar + grafikler
+// ═══════════════════════════════════════════════
+
+// Ders adını 5 sabit kovaya indirger (donut grafiği + "en çok çalışılan ders" için)
+function bucketSubject(subj) {
+  const s = (subj||'').toLowerCase();
+  if (s.includes('matemat')) return 'Matematik';
+  if (s.includes('geometri')) return 'Geometri';
+  if (s.includes('türkçe') || s.includes('turkce') || s.includes('paragraf') || s.includes('dil bilgisi')) return 'Türkçe';
+  if (['fizik','kimya','biyoloji','fen'].some(k=>s.includes(k))) return 'Fen';
+  return 'Diğer';
+}
+
+// dataviz skill'inin doğrulanmış (CVD-güvenli, sabit sıralı) kategorik paleti —
+// marka rengi sadece raporun kendi kimliğinde (bant/kart) kullanılır, veri
+// rengi olarak KULLANILMAZ (herhangi bir marka rengi CVD kontrolünü geçemeyebilir).
+const PREMIUM_SUBJECT_PALETTE = {
+  'Matematik': '#2a78d6', // slot 1 — blue
+  'Geometri':  '#eb6834', // slot 2 — orange
+  'Türkçe':    '#1baf7a', // slot 3 — aqua
+  'Fen':       '#eda100', // slot 4 — yellow
+  'Diğer':     '#e87ba4', // slot 5 — magenta
+};
+const PREMIUM_SUBJECT_ORDER = ['Matematik','Geometri','Türkçe','Fen','Diğer'];
+
+// Standart rapordaki temel metriklerin (m = computeReportMetrics çıktısı)
+// üzerine Premium'a özgü ek hesapları ekler. AI taslak isteği de PDF'in
+// kendisi de bu TEK fonksiyondan beslenir — iki yerde ayrı hesap, dolayısıyla
+// sayı tutarsızlığı riski yok.
+function computePremiumExtras(m) {
+  const { allTasks, totalMin, pct, myExams } = m;
+
+  // Tutarlılık: en az 1 görev PLANLANMIŞ gün sayısı vs en az 1 görev
+  // TAMAMLANMIŞ gün sayısı.
+  const plannedDays = new Set(allTasks.map(t=>t.date)).size;
+  const activeDays = new Set(allTasks.filter(t=>t.done).map(t=>t.date)).size;
+
+  // Ders bazlı ÇALIŞMA SÜRESİ (dakika) — bySubject (adet bazlı) değil, ayrı
+  // bir agregasyon; donut grafiği bunun üzerinden çizilir.
+  const bucketMinutes = {};
+  allTasks.forEach(t => {
+    const b = bucketSubject(t.subject);
+    bucketMinutes[b] = (bucketMinutes[b]||0) + Number(t.duration||0);
+  });
+
+  // Günlük dağılım: Cumartesi → Cuma sabit sırayla (haftalık raporun doğal
+  // döngüsü). Dönem 7 günden uzunsa (aylık/özel) haftagünü ORTALAMASI
+  // gösterilir, aksi halde ham toplam.
+  const DAY_ORDER = [6,0,1,2,3,4,5]; // JS getDay(): 0=Pazar..6=Cumartesi
+  const DAY_LABELS = ['Cmt','Paz','Pzt','Sal','Çar','Per','Cum'];
+  const dailyMinutes = new Array(7).fill(0);
+  const dailyOccurrences = new Array(7).fill(0);
+  allTasks.forEach(t => {
+    const wd = new Date(t.date+'T12:00').getDay();
+    const idx = DAY_ORDER.indexOf(wd);
+    dailyMinutes[idx] += Number(t.duration||0);
+    dailyOccurrences[idx]++;
+  });
+  const isWeeklyLike = (new Date(m.end) - new Date(m.start)) / 86400000 <= 7;
+  const dailyValues = isWeeklyLike ? dailyMinutes.slice()
+    : dailyMinutes.map((min,i) => dailyOccurrences[i] ? Math.round(min/Math.max(1,dailyOccurrences[i])) : 0);
+  const dailyCaption = isWeeklyLike ? 'Günlük toplam çalışma (dk)' : 'Haftagünü ortalama çalışma (dk)';
+
+  const mostProductiveDay = (() => {
+    const maxV = Math.max(...dailyValues);
+    const idx = maxV > 0 ? dailyValues.indexOf(maxV) : -1;
+    return idx >= 0 ? ['Cumartesi','Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma'][idx] : '—';
+  })();
+  const mostStudiedSubject = Object.entries(bucketMinutes).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
+  const avgDailyMinutes = activeDays > 0 ? Math.round(totalMin/activeDays) : 0;
+  const bestSubjectEntry = Object.entries(m.bySubject)
+    .filter(([,d])=>d.total>=2)
+    .map(([s,d])=>[s, Math.round((d.done/d.total)*100)])
+    .sort((a,b)=>b[1]-a[1])[0] || null;
+
+  // Performans Skoru — şeffaf, 3 bileşenli, /10. Kara kutu değil: her
+  // bileşen rapor üzerinde ayrı ayrı gösterilir.
+  const completionComponent = (pct/100) * 5; // 0–5
+  const consistencyComponent = plannedDays > 0 ? (activeDays/plannedDays) * 3 : 0; // 0–3
+  let examTrendComponent = 1; // veri yok/tek deneme → nötr
+  if (myExams.length >= 2) {
+    const totals = myExams.map(e => (EXAM_DEFS[e.type]||[]).reduce((s,f)=>s+Number(e.nets?.[f]||0),0));
+    const last = totals[totals.length-1], prev = totals[totals.length-2];
+    const deltaPct = prev > 0 ? (last-prev)/prev : 0;
+    examTrendComponent = deltaPct > 0.02 ? 2 : (deltaPct < -0.02 ? 0 : 1);
+  }
+  const score = Math.round((completionComponent+consistencyComponent+examTrendComponent)*10)/10;
+  const scoreBreakdown = {
+    completion: Math.round(completionComponent*10)/10,
+    consistency: Math.round(consistencyComponent*10)/10,
+    examTrend: examTrendComponent
+  };
+
+  return { plannedDays, activeDays, bucketMinutes, dailyValues, dailyCaption, DAY_LABELS,
+    mostProductiveDay, mostStudiedSubject, avgDailyMinutes, bestSubjectEntry,
+    score, scoreBreakdown };
+}
+
+// Donut grafiği — stacked-arc tekniği (stroke-dasharray/dashoffset).
+// dataviz skill: kategorik palet CVD-doğrulandı (bkz. PREMIUM_SUBJECT_PALETTE),
+// kontrast WARN'ı olan renkler (aqua/sarı/magenta) için "relief" olarak her
+// segment ayrıca bir metin lejantında (ink rengiyle) etiketleniyor — sadece
+// renge güvenilmiyor.
+function buildDonutSVG(bucketMinutes) {
+  const total = PREMIUM_SUBJECT_ORDER.reduce((s,k)=>s+(bucketMinutes[k]||0),0) || 1;
+  const r = 58, cx = 78, cy = 78, strokeW = 26, c = 2*Math.PI*r;
+  let offset = 0;
+  const arcs = PREMIUM_SUBJECT_ORDER.filter(k => bucketMinutes[k] > 0).map(k => {
+    const v = bucketMinutes[k];
+    const frac = v/total;
+    const len = frac*c;
+    const gap = 2; // dataviz: segmentler arası 2px yüzey boşluğu
+    const dasharray = `${Math.max(0,len-gap).toFixed(1)} ${(c-len+gap).toFixed(1)}`;
+    const dashoffset = (-offset).toFixed(1);
+    offset += len;
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${PREMIUM_SUBJECT_PALETTE[k]}" stroke-width="${strokeW}"
+      stroke-dasharray="${dasharray}" stroke-dashoffset="${dashoffset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+  }).join('');
+  return `<svg width="${cx*2}" height="${cy*2}" viewBox="0 0 ${cx*2} ${cy*2}">${arcs}</svg>`;
+}
+
+function buildDonutLegend(bucketMinutes) {
+  const total = PREMIUM_SUBJECT_ORDER.reduce((s,k)=>s+(bucketMinutes[k]||0),0) || 1;
+  return PREMIUM_SUBJECT_ORDER.filter(k => bucketMinutes[k] > 0).map(k => {
+    const v = bucketMinutes[k];
+    const p = Math.round((v/total)*100);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0">
+      <span style="width:10px;height:10px;border-radius:3px;background:${PREMIUM_SUBJECT_PALETTE[k]};flex-shrink:0"></span>
+      <span style="flex:1;font-size:12px;font-weight:600;color:var(--ink)">${esc(k)}</span>
+      <span style="font-size:12px;font-weight:700;color:var(--muted)">%${p}</span>
+    </div>`;
+  }).join('');
+}
+
+// Günlük çalışma bar grafiği — tek seri (dataviz: tek seri lejant gerektirmez),
+// mevcut deneme grafiğiyle aynı eksenli/gridline yaklaşımı, marka rengiyle.
+function buildDailyBarSVG(dailyValues, dayLabels, brandColor) {
+  const w = 640, chartBottom = 92, chartTop = 10, chartH = chartBottom-chartTop;
+  const maxV = Math.max(...dailyValues, 1);
+  const n = dailyValues.length;
+  const slot = w/n, bw = Math.min(46, slot-14);
+  const gridY = v => chartBottom - (v/maxV)*chartH;
+  const bars = dailyValues.map((v,i) => {
+    const x = i*slot + (slot-bw)/2;
+    const bh = Math.max(gridY(0)-gridY(v), v>0?3:0);
+    const y = chartBottom-bh;
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="${brandColor}" opacity="0.85"/>
+      ${v>0?`<text x="${(x+bw/2).toFixed(1)}" y="${(y-6).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="#16151a">${v}</text>`:''}
+      <text x="${(x+bw/2).toFixed(1)}" y="${chartBottom+16}" text-anchor="middle" font-size="10" fill="#6b6a72">${esc(dayLabels[i])}</text>`;
+  }).join('');
+  return `<svg width="100%" height="118" viewBox="0 0 ${w} 118" preserveAspectRatio="none">
+    <line x1="0" y1="${chartBottom}" x2="${w}" y2="${chartBottom}" stroke="#ddd" stroke-width="1.5"/>
+    ${bars}
+  </svg>`;
+}
+
+// Sayfa başına tekrar eden footer — marka kimliği her sayfada net olsun diye
+// (PDF başkasına iletildiğinde hangi platforma ait olduğu belli olur).
+function _premFooter(brandName, pageNo) {
+  return `<div class="prem-footer">
+    <span>${esc(brandName)}</span>
+    <span>rostrumakademi.com</span>
+    <span>${pageNo}/3</span>
+  </div>`;
+}
+
+// Premium Performans Raporu — 3 sayfalı, Linear/Stripe/Notion estetiğinde.
+// metricsOnly=true ise HTML üretmez, sadece computePremiumExtras() çıktısını
+// (m ile birleştirilmiş) döner — "✨ AI ile Taslak Oluştur" butonu PDF'teki
+// SAYILARIN AYNISINI kullanabilsin diye (iki ayrı hesap = tutarsızlık riski).
+function buildPremiumReportHTML(stuId, preview=false, metricsOnly=false) {
+  const m = computeReportMetrics(stuId);
+  if (!m) return metricsOnly ? null : '';
+  const extras = computePremiumExtras(m);
+  if (metricsOnly) return { ...m, ...extras };
+
+  const { stu, brandName, brandColor, brandDark, coachName, totalTasks, doneTasks,
+    pct, totalMin, periodLabelHeader } = m;
+  const { plannedDays, activeDays, bucketMinutes, dailyValues, dailyCaption, DAY_LABELS,
+    mostProductiveDay, mostStudiedSubject, avgDailyMinutes, bestSubjectEntry,
+    score, scoreBreakdown } = extras;
+
+  const summary = (document.getElementById('prSummary')?.value || '').trim();
+  const strengths = (document.getElementById('prStrengths')?.value || '').split('\n').map(s=>s.trim()).filter(Boolean);
+  const growthAreas = (document.getElementById('prGrowth')?.value || '').split('\n').map(s=>s.trim()).filter(Boolean);
+  const coachComment = (document.getElementById('rpNote')?.value || '').trim();
+  const weeklyGoals = (document.getElementById('prGoals')?.value || '').split('\n').map(s=>s.trim()).filter(Boolean);
+
+  // AI taslağı sonraki üretimde de kullanılabilsin diye (arşivleme dahil)
+  // hesaplanan skoru pencere-seviyesinde saklıyoruz.
+  window._lastPremiumMetrics = { ...m, ...extras };
+
+  const ringR = 30, ringC = 2*Math.PI*ringR;
+  const ringPct = Math.min(100, Math.max(0, Number(stu.progress)||0));
+  const ringOffset = ringC * (1 - ringPct/100);
+
+  const cardGrid = (items, emptyLabel) => items.length === 0
+    ? `<div class="prem-card-empty">${esc(emptyLabel)}</div>`
+    : `<div class="prem-card-grid">${items.map(t=>`<div class="prem-card">${esc(t)}</div>`).join('')}</div>`;
+
+  return `<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --brand:${brandColor}; --brand-dark:${brandDark};
+    --ink:#0b0b0b; --muted:#52514e; --dim:#898781; --hair:#e1e0d9;
+    --tint:${brandColor}0F; --tint2:${brandColor}1F;
+    --green:#0ca30c; --amber:#c98500; --red:#d03b3b;
+  }
+  body{font-family:'Inter',Arial,sans-serif;color:var(--ink);background:#efeee9;font-variant-numeric:tabular-nums;}
+  .pdf-page{width:794px;min-height:1123px;margin:0 auto 24px;background:#fff;position:relative;padding:0;
+    box-shadow:${preview?'0 20px 60px rgba(0,0,0,.25)':'none'};display:flex;flex-direction:column;}
+  .pdf-page:last-child{margin-bottom:0;}
+  .page-body{flex:1;padding:36px 44px;}
+  .band{background:linear-gradient(135deg,var(--brand),var(--brand-dark));padding:30px 44px 26px;color:#fff;position:relative;overflow:hidden;}
+  .band::after{content:'';position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.08);}
+  .band-row{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;position:relative;}
+  .band-id{flex-shrink:0;}
+  .eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.75);margin-bottom:6px;}
+  .brand-name{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;letter-spacing:-.2px;white-space:nowrap;}
+  .stu-hero{display:flex;align-items:center;gap:16px;margin-top:14px;}
+  .stu-ring{position:relative;width:60px;height:60px;flex-shrink:0;}
+  .stu-ring-val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#fff;}
+  .stu-ring-val span{font-size:7px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;}
+  .stu-name{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;letter-spacing:-.4px;line-height:1.1;}
+  .stu-meta{font-size:12px;color:rgba(255,255,255,.8);margin-top:4px;}
+  .period{text-align:right;font-size:12px;color:rgba(255,255,255,.85);}
+  .period b{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#fff;display:block;margin-top:2px;}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:28px;}
+  .kpi-card{background:var(--tint);border:1px solid ${brandColor}2A;border-radius:14px;padding:16px 12px;text-align:center;}
+  .kpi-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--ink);line-height:1;}
+  .kpi-lbl{font-size:9.5px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;line-height:1.3;}
+  .kpi-sub{font-size:9px;color:var(--dim);margin-top:3px;}
+
+  .section-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .section-title .dot{width:7px;height:7px;border-radius:2px;background:var(--brand);display:inline-block;flex-shrink:0;}
+  .summary-box{background:var(--tint);border-left:3px solid var(--brand);border-radius:0 12px 12px 0;padding:20px 22px;font-size:13.5px;line-height:1.8;color:var(--ink);}
+  .summary-box.empty{color:var(--dim);font-style:italic;}
+
+  .analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px;}
+  .chart-card{background:#fcfcfb;border:1px solid var(--hair);border-radius:14px;padding:20px;}
+  .chart-card-title{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;}
+  .donut-wrap{display:flex;align-items:center;gap:18px;}
+  .metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .metric-card{background:#fcfcfb;border:1px solid var(--hair);border-radius:12px;padding:14px 16px;}
+  .metric-val{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--ink);}
+  .metric-lbl{font-size:10px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;}
+
+  .prem-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .prem-card{background:var(--tint);border:1px solid ${brandColor}22;border-radius:10px;padding:12px 14px;font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.5;}
+  .prem-card-empty{font-size:12px;color:var(--dim);font-style:italic;padding:8px 0;}
+  .goals-list{margin:0;padding-left:20px;font-size:13px;color:var(--ink);line-height:2;}
+
+  .prem-footer{margin-top:auto;padding:14px 44px;border-top:1px solid var(--hair);display:flex;justify-content:space-between;font-size:9.5px;color:var(--dim);font-weight:600;}
+
+  @media print{
+    body{background:#fff;}
+    .pdf-page{width:auto;min-height:auto;box-shadow:none;margin-bottom:0;page-break-after:always;}
+    .pdf-page:last-child{page-break-after:auto;}
+    @page{size:A4 portrait;margin:0;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════ SAYFA 1 — YÖNETİCİ ÖZETİ ══════ -->
+<div class="pdf-page">
+  <div class="band">
+    <div class="band-row">
+      <div class="band-id">
+        <div class="eyebrow">${esc(brandName)} · Premium Performans Raporu</div>
+        <div class="brand-name">${esc(brandName)}</div>
+      </div>
+      <div class="period">
+        Dönem
+        <b>${periodLabelHeader}</b>
+      </div>
+    </div>
+    <div class="stu-hero">
+      <div class="stu-ring">
+        <svg width="60" height="60" viewBox="0 0 60 60">
+          <circle cx="30" cy="30" r="${ringR}" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="6"/>
+          <circle cx="30" cy="30" r="${ringR}" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"
+            stroke-dasharray="${ringC.toFixed(1)}" stroke-dashoffset="${ringOffset.toFixed(1)}" transform="rotate(-90 30 30)"/>
+        </svg>
+        <div class="stu-ring-val">${Math.round(ringPct)}<span>%</span></div>
+      </div>
+      <div>
+        <div class="stu-name">${esc(stu.name)}</div>
+        <div class="stu-meta">${esc(stu.target||'')} · Koç: ${esc(coachName)}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-val">%${pct}</div><div class="kpi-lbl">Tamamlama Oranı</div></div>
+      <div class="kpi-card"><div class="kpi-val">${Math.round(totalMin/60)} sa</div><div class="kpi-lbl">Toplam Çalışma</div></div>
+      <div class="kpi-card"><div class="kpi-val">${doneTasks}</div><div class="kpi-lbl">Tamamlanan Görev</div></div>
+      <div class="kpi-card"><div class="kpi-val">${activeDays}/${plannedDays}</div><div class="kpi-lbl">Aktif Gün</div></div>
+      <div class="kpi-card"><div class="kpi-val">${score}/10</div><div class="kpi-lbl">Performans Skoru</div>
+        <div class="kpi-sub">Tamamlanma ${scoreBreakdown.completion} + Tutarlılık ${scoreBreakdown.consistency} + Deneme ${scoreBreakdown.examTrend}</div>
+      </div>
+    </div>
+
+    <div class="section-title"><span class="dot"></span>Bu Haftanın Özeti</div>
+    <div class="summary-box ${summary?'':'empty'}">${summary ? esc(summary).replace(/\n/g,'<br>') : 'Henüz özet eklenmedi — koç panelinden yazabilir veya "✨ AI ile Taslak Oluştur" ile bir öneri alabilir.'}</div>
+  </div>
+  ${_premFooter(brandName, 1)}
+</div>
+
+<!-- ══════ SAYFA 2 — ANALİZ VE GRAFİKLER ══════ -->
+<div class="pdf-page">
+  <div class="page-body">
+    <div class="section-title" style="margin-top:8px"><span class="dot"></span>Analiz ve Grafikler</div>
+    <div class="analysis-grid">
+      <div class="chart-card">
+        <div class="chart-card-title">Ders Bazlı Çalışma Dağılımı</div>
+        <div class="donut-wrap">
+          ${buildDonutSVG(bucketMinutes)}
+          <div style="flex:1">${buildDonutLegend(bucketMinutes)}</div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">${esc(dailyCaption)}</div>
+        ${buildDailyBarSVG(dailyValues, DAY_LABELS, brandColor)}
+      </div>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-card"><div class="metric-val">${avgDailyMinutes} dk</div><div class="metric-lbl">Ortalama Günlük Çalışma</div></div>
+      <div class="metric-card"><div class="metric-val">${esc(mostProductiveDay)}</div><div class="metric-lbl">En Verimli Gün</div></div>
+      <div class="metric-card"><div class="metric-val">${esc(mostStudiedSubject)}</div><div class="metric-lbl">En Çok Çalışılan Ders</div></div>
+      <div class="metric-card"><div class="metric-val">${bestSubjectEntry ? `${esc(bestSubjectEntry[0])} · %${bestSubjectEntry[1]}` : '—'}</div><div class="metric-lbl">En Yüksek Tamamlanma</div></div>
+    </div>
+  </div>
+  ${_premFooter(brandName, 2)}
+</div>
+
+<!-- ══════ SAYFA 3 — KOÇLUK DEĞERLENDİRMESİ ══════ -->
+<div class="pdf-page">
+  <div class="page-body">
+    <div class="section-title" style="margin-top:8px"><span class="dot"></span>Güçlü Yönler</div>
+    ${cardGrid(strengths, 'Henüz eklenmedi.')}
+
+    <div class="section-title" style="margin-top:24px"><span class="dot"></span>Gelişim Alanları</div>
+    ${cardGrid(growthAreas, 'Henüz eklenmedi.')}
+
+    <div class="section-title" style="margin-top:24px"><span class="dot"></span>Koç Yorumu</div>
+    <div class="summary-box ${coachComment?'':'empty'}">${coachComment ? esc(coachComment).replace(/\n/g,'<br>') : 'Henüz koç yorumu eklenmedi.'}</div>
+
+    <div class="section-title" style="margin-top:24px"><span class="dot"></span>Gelecek Hafta Hedefleri</div>
+    ${weeklyGoals.length ? `<ol class="goals-list">${weeklyGoals.map(g=>`<li>${esc(g)}</li>`).join('')}</ol>` : `<div class="prem-card-empty">Henüz eklenmedi.</div>`}
+  </div>
+  ${_premFooter(brandName, 3)}
+</div>
+
+</body>
+</html>`;
+}
+
+// Premium raporun hesaplanmış metriklerinden, /api/ai-chat'in zaten var olan
+// "AI COACH COPILOT" moduna (bkz. api/ai-chat.js — çaba-odaklı, jenerik
+// tavsiye yasaklı, veliye gönderilmeye hazır metin üretme talimatı zaten
+// yerleşik) gönderilecek tek bir kullanıcı mesajı kurar. Yeni bir AI endpoint'i
+// YAZILMADI — mevcut, JWT ile doğrulanmış, RLS-topraklanmış copilot yeniden
+// kullanılıyor; sadece kesin JSON çıktı formatı isteniyor.
+function buildReportDraftPrompt(metrics) {
+  const m = metrics;
+  const examLines = (m.myExams||[]).map(e => {
+    const total = (EXAM_DEFS[e.type]||[]).reduce((s,f)=>s+Number(e.nets?.[f]||0),0);
+    return `${e.name} (${e.date}): ${total.toFixed(1)} net`;
+  }).join(', ') || 'Bu dönemde deneme verisi yok';
+
+  return `Aşağıdaki GERÇEK, ÖNCEDEN HESAPLANMIŞ verilere dayanarak bir haftalık performans raporu taslağı hazırla.
+
+Öğrenci: ${m.stu.name} · Dönem: ${m.periodLabel}
+Tamamlama oranı: %${m.pct} (${m.doneTasks}/${m.totalTasks} görev)
+Toplam çalışma: ${m.totalMin} dakika · Aktif gün: ${m.activeDays}/${m.plannedDays}
+Ders bazlı çalışma (dakika): ${Object.entries(m.bucketMinutes).map(([k,v])=>`${k}: ${v}dk`).join(', ')}
+En verimli gün: ${m.mostProductiveDay} · En çok çalışılan ders: ${m.mostStudiedSubject}
+Ortalama günlük çalışma: ${m.avgDailyMinutes} dakika
+Deneme geçmişi: ${examLines}
+Performans Skoru: ${m.score}/10 (Tamamlanma ${m.scoreBreakdown.completion}/5 + Tutarlılık ${m.scoreBreakdown.consistency}/3 + Deneme Trendi ${m.scoreBreakdown.examTrend}/2)
+
+Yukarıdaki verilere dayanarak, SADECE aşağıdaki JSON formatında (markdown yok, başka hiçbir metin yok) bir taslak üret:
+{
+  "summary": "2-4 cümlelik haftanın özeti",
+  "strengths": ["madde1","madde2"],
+  "growthAreas": ["madde1","madde2"],
+  "coachComment": "1 paragraflık serbest koç yorumu taslağı",
+  "weeklyGoals": ["madde1","madde2","madde3"]
+}
+Yalnızca yukarıdaki gerçek sayılara dayan, veri uydurma. Jenerik tavsiye ("düzenli çalış" gibi) yazma.`;
+}
+
+async function generateReportDraftAI(stuId) {
+  if (!stuId) return showToast('Önce bir önizleme açın.');
+  const btn = document.getElementById('prAiDraftBtn');
+  const originalLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⌛ Taslak Oluşturuluyor...'; }
+  try {
+    const metrics = buildPremiumReportHTML(stuId, true, true);
+    if (!metrics) throw new Error('Öğrenci verisi bulunamadı');
+    const { data: { session: authSess } } = await db.auth.getSession();
+    const resp = await fetch('/api/ai-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authSess?.access_token||''}` },
+      body: JSON.stringify({
+        userRole: 'coach',
+        messages: [{ role: 'user', content: buildReportDraftPrompt(metrics) }]
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast('Taslak oluşturulamadı: ' + (data.error||'bilinmeyen hata')); return; }
+    const clean = (data.reply||'').replace(/```json|```/g,'').trim();
+    const draft = JSON.parse(clean);
+    document.getElementById('prSummary').value = draft.summary || '';
+    document.getElementById('prStrengths').value = (draft.strengths||[]).join('\n');
+    document.getElementById('prGrowth').value = (draft.growthAreas||[]).join('\n');
+    if (draft.coachComment) document.getElementById('rpNote').value = draft.coachComment;
+    document.getElementById('prGoals').value = (draft.weeklyGoals||[]).join('\n');
+    showToast('Taslak oluşturuldu — düzenleyip kaydedin ✓');
+  } catch (e) {
+    console.error('[generateReportDraftAI]', e);
+    showToast('Taslak oluşturulamadı, alanları elle doldurabilirsiniz.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalLabel || '✨ AI ile Taslak Oluştur'; }
+  }
+}
+
 function previewReport() {
   const stuId = document.getElementById('rpStuId').value;
-  const html = buildReportHTML(stuId, true);
+  const cfg = getActiveReportConfig('performance');
+  const html = cfg.style === 'premium' ? buildPremiumReportHTML(stuId, true) : buildReportHTML(stuId, true);
   const win = window.open('', '_blank', 'width=900,height=700');
   win.document.write(html);
   win.document.close();
@@ -11621,7 +12106,8 @@ function previewReport() {
 function generatePDF() {
   const stuId = document.getElementById('rpStuId').value;
   const stu = S.students.find(s=>s.id===stuId);
-  const html = buildReportHTML(stuId, false);
+  const cfg = getActiveReportConfig('performance');
+  const html = cfg.style === 'premium' ? buildPremiumReportHTML(stuId, false) : buildReportHTML(stuId, false);
   const win = window.open('', '_blank');
   win.document.write(html);
   win.document.close();
@@ -13865,6 +14351,17 @@ function renderReportPanel(container, reportType) {
   selEl.innerHTML = saved.length===0
     ? `<option value="">Henüz kaydedilmiş bir stiliniz yok</option>`
     : saved.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+
+  // Premium stil seçiliyse ek metin alanları (özet/güçlü yönler/gelişim
+  // alanları/hedefler) görünür olur; "Koç Notu" Sayfa 3'teki "Koç Yorumu"
+  // olarak da kullanıldığı için etiketi buna göre değişir.
+  if (reportType === 'performance') {
+    const premiumFields = document.getElementById('rpPremiumFields');
+    const noteLbl = document.getElementById('rpNoteLbl');
+    const isPremium = cfg.style === 'premium';
+    if (premiumFields) premiumFields.style.display = isPremium ? 'block' : 'none';
+    if (noteLbl) noteLbl.textContent = isPremium ? '(Koç Yorumu — Sayfa 3)' : '(isteğe bağlı)';
+  }
 }
 
 function toggleReorderMode() {
@@ -14968,6 +15465,7 @@ window.moveReportSection = moveReportSection;
 window.setReportStyle = setReportStyle;
 window.saveReportTemplate = saveReportTemplate;
 window.applyReportTemplate = applyReportTemplate;
+window.generateReportDraftAI = generateReportDraftAI;
 window.downloadICS = downloadICS;
 window.confirmApplyTemplate = confirmApplyTemplate;
 window.copyTaskToClipboard = copyTaskToClipboard;
@@ -15001,26 +15499,50 @@ async function archivePerformanceReport() {
   const period = document.getElementById('rpPeriod').value;
   const { start, end } = getReportDates();
   const note = document.getElementById('rpNote').value.trim();
-  
+  const cfg = getActiveReportConfig('performance');
+  const isPremium = cfg.style === 'premium';
+
   let periodTitle = "Performans Raporu";
   if (period === 'weekly') periodTitle = "Haftalık Performans Raporu";
   else if (period === 'monthly') periodTitle = "Aylık Performans Raporu";
   else periodTitle = "Özel Dönem Performans Raporu";
-  
+  if (isPremium) periodTitle = 'Premium ' + periodTitle;
+
   const title = `${periodTitle} (${start} - ${end})`;
-  const content = note || "Değerlendirme notu eklenmedi.";
-  
+
+  // Premium'da yapılandırılmış alanlar ayrı kolonlara yazılır, ama eski
+  // görüntüleyici (viewArchivedReport) hâlâ düz `content` metnini gösterdiği
+  // için geriye dönük uyumluluk adına burada da okunabilir bir özet birleştirilir.
+  const summary = isPremium ? (document.getElementById('prSummary')?.value || '').trim() : '';
+  const strengths = isPremium ? (document.getElementById('prStrengths')?.value || '').split('\n').map(x=>x.trim()).filter(Boolean) : [];
+  const growthAreas = isPremium ? (document.getElementById('prGrowth')?.value || '').split('\n').map(x=>x.trim()).filter(Boolean) : [];
+  const weeklyGoals = isPremium ? (document.getElementById('prGoals')?.value || '').split('\n').map(x=>x.trim()).filter(Boolean) : [];
+  const content = isPremium
+    ? [summary, strengths.length?('Güçlü Yönler:\n'+strengths.join('\n')):'', growthAreas.length?('Gelişim Alanları:\n'+growthAreas.join('\n')):'', note?('Koç Yorumu:\n'+note):'', weeklyGoals.length?('Hedefler:\n'+weeklyGoals.join('\n')):''].filter(Boolean).join('\n\n') || 'Değerlendirme notu eklenmedi.'
+    : (note || "Değerlendirme notu eklenmedi.");
+
   showLoading(true);
   const coachId = session.coachId || s.coachId;
-  const { error } = await db.from('reports').insert({
+  const insertPayload = {
     student_id: stuId,
     coach_id: coachId,
     type: 'performance',
     title: title,
     content: content,
     start_date: start,
-    end_date: end
-  });
+    end_date: end,
+    report_style: isPremium ? 'premium' : 'standard'
+  };
+  if (isPremium) {
+    insertPayload.summary = summary || null;
+    insertPayload.strengths = strengths;
+    insertPayload.growth_areas = growthAreas;
+    insertPayload.coach_comment = note || null;
+    insertPayload.weekly_goals = weeklyGoals;
+    insertPayload.score = window._lastPremiumMetrics?.score ?? null;
+    insertPayload.score_breakdown = window._lastPremiumMetrics?.scoreBreakdown ?? null;
+  }
+  const { error } = await db.from('reports').insert(insertPayload);
   showLoading(false);
   
   if (error) {
