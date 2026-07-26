@@ -1802,6 +1802,14 @@ function renderProfile(){
         ${(session.role==='coach' || session.role==='developer')?`<div>
           <label style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Akademi Adı</label>
           <input id="pf_brand" value="${esc(S.workspace?.brand_name||'')}" style="width:100%;padding:9px 12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);outline:none;box-sizing:border-box" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Marka Rengi <span style="font-weight:400;text-transform:none">(raporlar ve panelde kullanılır)</span></label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center" id="pf_brand_color_container">
+            ${['#E8613A','#f0a500','#4da6ff','#3ecf8e','#c084fc','#f472b6'].map(hex=>`<div onclick="setPfBrandColor('${hex}',this)" data-hex="${hex}" style="width:28px;height:28px;background:${hex};border-radius:8px;cursor:pointer;transition:transform .1s;outline:${(S.workspace?.brand_color||'#E8613A').toLowerCase()===hex.toLowerCase()?'3px solid var(--text)':'none'}" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''"></div>`).join('')}
+            <input type="color" id="pf_brand_color_custom" value="${esc(S.workspace?.brand_color||'#E8613A')}" oninput="setPfBrandColor(this.value,null)" style="width:32px;height:32px;padding:0;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:none">
+          </div>
+          <input type="hidden" id="pf_brand_color" value="${esc(S.workspace?.brand_color||'#E8613A')}">
         </div>`:''}
         <div>
           <label style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Yeni Şifre <span style="font-weight:400;text-transform:none">(boş bırakılırsa değişmez)</span></label>
@@ -1810,6 +1818,16 @@ function renderProfile(){
         <button class="btn btn-accent" onclick="saveProfile()" style="align-self:flex-start;padding:9px 20px">Kaydet</button>
       </div>
     </div>`;
+}
+
+function setPfBrandColor(hex, el) {
+  document.getElementById('pf_brand_color').value = hex;
+  const container = document.getElementById('pf_brand_color_container');
+  if (container) container.querySelectorAll('[data-hex]').forEach(d => {
+    d.style.outline = d.dataset.hex.toLowerCase() === hex.toLowerCase() ? '3px solid var(--text)' : 'none';
+  });
+  const customInput = document.getElementById('pf_brand_color_custom');
+  if (customInput && el) customInput.value = hex;
 }
 
 async function saveProfile(){
@@ -1831,10 +1849,16 @@ async function saveProfile(){
     if(/duplicate|unique|23505/i.test(error.message||'')) return showToast('Bu kullanıcı adı alınmış, başka bir tane deneyin');
     return showToast('Kaydedilemedi: '+error.message);
   }
-  if(brand && (session.role==='coach' || session.role==='developer')) {
-    await db.from('workspaces').update({brand_name:brand}).eq('coach_id',session.coachId);
-    S.workspace = {...(S.workspace||{}), brand_name:brand};
-    document.querySelector('.sb-logo-text').textContent = brand;
+  if((session.role==='coach' || session.role==='developer')) {
+    const brandColor = document.getElementById('pf_brand_color')?.value || S.workspace?.brand_color;
+    const wsPayload = {};
+    if (brand) wsPayload.brand_name = brand;
+    if (brandColor) wsPayload.brand_color = brandColor;
+    if (Object.keys(wsPayload).length) {
+      await db.from('workspaces').update(wsPayload).eq('coach_id',session.coachId);
+      S.workspace = {...(S.workspace||{}), ...wsPayload};
+    }
+    if (brand) document.querySelector('.sb-logo-text').textContent = brand;
   }
   session.dbUser = {...session.dbUser, full_name:name, ...(payload.username ? {username: payload.username} : {})};
   document.getElementById('sbName').textContent = name;
@@ -15346,6 +15370,7 @@ window.openStudentExams = openStudentExams;
 window.openStudentAppointments = openStudentAppointments;
 window.renderProfile = renderProfile;
 window.saveProfile = saveProfile;
+window.setPfBrandColor = setPfBrandColor;
 window.renderSettings = renderSettings;
 window.saveGeminiKey = saveGeminiKey;
 window.renderProgram = renderProgram;
