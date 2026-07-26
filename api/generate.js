@@ -127,7 +127,7 @@ async function runOnboardingCron(req, res) {
     // 1. Trial veya müsamaha (grace) sürecindeki koçları sorgula
     const { data: coaches, error: queryErr } = await supabaseAdmin
       .from('users')
-      .select('id, full_name, email, created_at, onboarding_email_step, plan')
+      .select('id, full_name, email, created_at, onboarding_email_step, plan, onboarding_rescue_sent_at')
       .eq('role', 'coach')
       .in('plan', ['trial', 'grace']);
 
@@ -145,6 +145,36 @@ async function runOnboardingCron(req, res) {
       let targetStep = coach.onboarding_email_step || 0;
       let emailType = null;
       let emailPayload = { to: coach.email, coach_name: coach.full_name };
+
+      // Sıfır aktivasyon kurtarma e-postası — gün bazlı akıştan bağımsız,
+      // tek seferlik. 48 saat geçtiği halde hâlâ hiç öğrencisi yoksa nazik
+      // bir hatırlatma gönderilir (FOMO değil, düşük eforlu bir davet).
+      if (hoursSinceSignup >= 48 && !coach.onboarding_rescue_sent_at) {
+        const { count: liveStudentCount } = await supabaseAdmin
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('coach_id', coach.id)
+          .eq('role', 'student');
+
+        if (!liveStudentCount) {
+          try {
+            await fetch(mailerUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: 'onboarding_rescue', to: coach.email, coach_name: coach.full_name })
+            });
+            results.push({ email: coach.email, sentType: 'onboarding_rescue', step: null });
+          } catch (mailErr) {
+            console.error(`[Cron Rescue Mail Failure] ${coach.email}`, mailErr.message);
+          }
+        }
+        // Öğrencisi olsun ya da olmasın kontrol tamamlandı — cron'un her
+        // çalıştığında bu koç için tekrar tekrar kontrol etmesini önler.
+        await supabaseAdmin
+          .from('users')
+          .update({ onboarding_rescue_sent_at: new Date().toISOString() })
+          .eq('id', coach.id);
+      }
 
       // Hangi adımın tetikleneceğini hesapla
       if (hoursSinceSignup >= 240 && coach.plan === 'grace') {
@@ -183,6 +213,16 @@ async function runOnboardingCron(req, res) {
           .eq('role', 'student');
 
         emailPayload.student_count = count || 0;
+
+        // "İlk 100 koç" iddiası gerçek bir sayaç olmalı — sahte kıtlık güven
+        // kaybettirir. Bugüne kadar kayıt olmuş toplam koç sayısını gönderiyoruz;
+        // e-posta şablonu sayı 100'ü geçtiyse bu iddiayı otomatik göstermez.
+        const { count: totalCoachCount } = await supabaseAdmin
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('role', 'coach');
+
+        emailPayload.founding_coach_count = totalCoachCount || 0;
 
       } else if (hoursSinceSignup >= 120 && targetStep < 4) {
         // 5. Gün - Sokratik AI

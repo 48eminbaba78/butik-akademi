@@ -18,7 +18,8 @@ export const S = {
   msgThread: null,
   workspace: null,
   studentSpeeds: [],
-  konuHaftaSoru: []
+  konuHaftaSoru: [],
+  pendingInvites: []
 };
 
 export const session = {

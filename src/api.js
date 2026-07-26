@@ -38,6 +38,7 @@ function _saveCache() {
       studentSpeeds: S.studentSpeeds,
       workspace: S.workspace,
       konuHaftaSoru: S.konuHaftaSoru,
+      pendingInvites: S.pendingInvites,
     }));
   } catch(e) {}
 }
@@ -57,6 +58,7 @@ function _restoreCache() {
     if (c.studentSpeeds) S.studentSpeeds = c.studentSpeeds;
     if (c.workspace)     S.workspace     = c.workspace;
     if (c.konuHaftaSoru) S.konuHaftaSoru = c.konuHaftaSoru;
+    if (c.pendingInvites) S.pendingInvites = c.pendingInvites;
     return true;
   } catch(e) { return false; }
 }
@@ -129,8 +131,14 @@ async function _fetchAll() {
     ? db.from('konu_tekrar_log').select('*').eq('student_id', session.studentId)
     : Promise.resolve({ data: [] });
 
-  const [wsRes, stuRes, taskRes, apptRes, examRes, msgRes, todoRes, speedRes, masteryRes, tekrarLogRes] =
-    await Promise.all([wsP, stuP, taskP, apptP, examP, msgP, todoP, speedP, masteryP, tekrarLogP]);
+  // Kabul edilmemiş öğrenci davetleri — koç, davetin sessizce başarısız
+  // olduğunu (öğrenci hiç katılmadı) fark edebilsin diye (bkz. renderHome anomali listesi).
+  const inviteP = (role === 'coach' || role === 'developer')
+    ? db.from('student_invitations').select('*').eq('coach_id', coachId).is('used_at', null)
+    : Promise.resolve({ data: [] });
+
+  const [wsRes, stuRes, taskRes, apptRes, examRes, msgRes, todoRes, speedRes, masteryRes, tekrarLogRes, inviteRes] =
+    await Promise.all([wsP, stuP, taskP, apptP, examP, msgP, todoP, speedP, masteryP, tekrarLogP, inviteP]);
 
   S.workspace = wsRes?.data || null;
 
@@ -217,6 +225,15 @@ async function _fetchAll() {
   });
 
   S.studentSpeeds = speedRes.data || [];
+
+  S.pendingInvites = (inviteRes.data || []).map(i => ({
+    id:         i.id,
+    email:      i.email,
+    studentName: i.student_name || i.email,
+    createdAt:  i.created_at,
+    expiresAt:  i.expires_at,
+    expired:    new Date(i.expires_at) < new Date()
+  }));
 
   // konu_mastery: { student_id: { subject: { konu: masteryRow } } }
   S.konuMastery = {};

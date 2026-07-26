@@ -224,6 +224,28 @@ function onboardingDay1Email({ coach_name }) {
 </td></tr>`);
 }
 
+function onboardingRescueEmail({ coach_name }) {
+  const url = `${SITE_URL}/app.html`;
+  return wrap(`
+<tr><td style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:48px 40px;text-align:center;border-bottom:4px solid #E8613A">
+  <div style="font-size:56px;margin-bottom:16px">👋</div>
+  <h1 style="color:#ffffff;font-size:26px;font-weight:800;margin:0 0 10px;letter-spacing:-0.5px">Bir Şeye mi Takıldınız?</h1>
+  <p style="color:#94a3b8;margin:0;font-size:15px">Panelin farkını görmek için tek gereken: ilk öğrenciniz</p>
+</td></tr>
+<tr><td style="padding:40px">
+  <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.75">
+    Hesabınızı oluşturalı 2 gün oldu ama henüz bir öğrenci eklemediğinizi fark ettik. Panelin gerçek değeri, ilk öğrenciyi ekleyip ona bir haftalık program çıkardığınız anda ortaya çıkıyor — ve bu <strong>2 dakikadan az</strong> sürüyor.
+  </p>
+  <p style="margin:0 0 28px;font-size:14px;color:#475569;line-height:1.75">
+    Takıldığınız bir nokta varsa bu e-postaya doğrudan yanıt verebilirsiniz, size yardımcı oluruz.
+  </p>
+  <div style="text-align:center;margin-bottom:28px">
+    <a href="${url}" style="display:inline-block;background:#E8613A;color:#ffffff;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 20px rgba(232,97,58,.35)">İlk Öğrencimi Ekle →</a>
+  </div>
+</td></tr>`);
+}
+
 function onboardingDay3Email({ coach_name }) {
   const url = `${SITE_URL}/app.html`;
   return wrap(`
@@ -272,8 +294,14 @@ function onboardingDay5Email({ coach_name }) {
 </td></tr>`);
 }
 
-function onboardingDay6Email({ coach_name, student_count }) {
+function onboardingDay6Email({ coach_name, student_count, founding_coach_count }) {
   const url = `${SITE_URL}/app.html`;
+  // "İlk 100 koç" iddiası yalnızca gerçekten doğruyken (kayıtlı koç sayısı 100'ün
+  // altındayken) gösterilir — sayaç 100'ü geçtiyse sahte kıtlık yaratmamak için
+  // bu cümle sessizce genel "Kurucu Üye" ifadesine düşer.
+  const foundingClaim = (founding_coach_count != null && founding_coach_count < 100)
+    ? `İlk 100 koçumuzdan biri olarak (şu ana kadar <strong>${founding_coach_count}. katılımcı</strong>) size özel <strong>Kurucu Üye lansman fiyatı</strong>`
+    : `Size özel <strong>Kurucu Üye lansman fiyatı</strong>`;
   return wrap(`
 <tr><td style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:48px 40px;text-align:center;border-bottom:4px solid #E8613A">
   <div style="font-size:56px;margin-bottom:16px">⏱️🔥</div>
@@ -283,7 +311,7 @@ function onboardingDay6Email({ coach_name, student_count }) {
 <tr><td style="padding:40px">
   <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
   <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.75">
-    Rostrum Akademi deneme sürenizin bitmesine son 24 saat kaldı. İlk 100 koçumuza özel <strong>Kurucu Üye lansman fiyatı</strong> ve ömür boyu sabit fiyat garantisi yarın sona eriyor.
+    Rostrum Akademi deneme sürenizin bitmesine son 24 saat kaldı. ${foundingClaim} ve ömür boyu sabit fiyat garantisi yarın sona eriyor.
   </p>
   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin-bottom:28px">
     <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Aktif Durumunuz</div>
@@ -306,7 +334,7 @@ function onboardingDay7Email({ coach_name, delete_date }) {
 <tr><td style="padding:40px">
   <p style="margin:0 0 20px;font-size:16px;color:#1e293b">Merhaba <strong>${coach_name || 'Hocam'}</strong>,</p>
   <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.75">
-    Rostrum Akademi'nin 7 günlük ücretsiz deneme süreniz doldu. Öğrencilerinizin çalışmaları kesintiye uğramasın diye panelinize <strong>3 gün daha</strong> erişiminiz açık tutulacak. Bu süre dolduktan sonra da öğrencileriniz, hazırladığınız programlar ve tüm geçmiş verileriniz **${delete_date || '30 gün boyunca'}** silinmeyecektir.
+    Rostrum Akademi'nin 7 günlük ücretsiz deneme süreniz doldu. Öğrencilerinizin çalışmaları kesintiye uğramasın diye panelinize <strong>3 gün daha</strong> erişiminiz açık tutulacak. Bu süre içinde aboneliğinizi başlatmazsanız panele erişiminiz kapanır — ama merak etmeyin: öğrencileriniz, hazırladığınız programlar ve tüm geçmiş verileriniz <strong>${delete_date || '30 gün'}</strong> tarihine kadar silinmeden saklanır, dilerseniz o tarihe kadar geri dönüp kaldığınız yerden devam edebilirsiniz.
   </p>
   <p style="margin:0 0 28px;font-size:14px;color:#475569;line-height:1.75">
     Aboneliğinizi başlatmak için panelinizdeki <strong>"Üyeliğim"</strong> sayfasından güncel fiyatı, banka bilgilerini ve size özel referans kodunuzu görebilir, dekontunuzu yükleyebilirsiniz.
@@ -434,6 +462,12 @@ export default async function handler(req, res) {
     if (type === 'onboarding_day1') {
       if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
       await sendEmail(data.to, 'Pazar günlerinizi geri kazanın: 5 Dakikada Haftalık Program ⏱️', onboardingDay1Email(data));
+      return res.status(200).json({ success: true });
+    }
+
+    if (type === 'onboarding_rescue') {
+      if (!data.to) return res.status(400).json({ error: 'to alanı gerekli' });
+      await sendEmail(data.to, 'Bir şeye mi takıldınız? 👋', onboardingRescueEmail(data));
       return res.status(200).json({ success: true });
     }
 

@@ -948,7 +948,277 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   from { transform: scale(0.95) translateY(10px); }
   to { transform: scale(1) translateY(0); }
 }
+
+/* ONBOARDING TRIAL WIZARD MODAL */
+.ob-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(7, 6, 10, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modalFadeIn 0.25s ease-out forwards;
+}
+
+.ob-modal-card {
+  background: #110e19;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(232, 97, 58, 0.15);
+  position: relative;
+  overflow: hidden;
+  animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ob-modal-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #E8613A, #f59e0b, #3ecf8e);
+}
+
+.ob-modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--mid);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 5;
+}
+
+.ob-modal-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.ob-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 32px 16px 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ob-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dim);
+}
+
+.ob-step-item.active {
+  color: var(--acc);
+}
+
+.ob-step-item.completed {
+  color: #3ecf8e;
+}
+
+.ob-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ob-step-item.active .ob-step-num {
+  background: var(--acc);
+  color: #07060a;
+}
+
+.ob-step-item.completed .ob-step-num {
+  background: #3ecf8e;
+  color: #07060a;
+}
+
+.ob-step-line {
+  flex: 1;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 10px;
+}
+
+.ob-step-line.active {
+  background: var(--acc);
+}
+
+.ob-body {
+  padding: 28px 32px 32px 32px;
+}
+
+.ob-title {
+  font-family: 'Geist', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.ob-sub {
+  font-size: 13.5px;
+  color: var(--mid);
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+
+.ob-field {
+  margin-bottom: 16px;
+}
+
+.ob-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mid);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
+
+.ob-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #fff;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.ob-input:focus {
+  border-color: var(--acc);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 3px rgba(232, 97, 58, 0.2);
+}
+
+.ob-select {
+  width: 100%;
+  background: #1a1726;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #fff;
+  outline: none;
+  cursor: pointer;
+}
+
+.ob-btn-main {
+  width: 100%;
+  background: linear-gradient(135deg, var(--acc), #d9532b);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 20px rgba(232, 97, 58, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.ob-btn-main:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(232, 97, 58, 0.45);
+}
+
+.ob-btn-main:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ob-trust-pills {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--dim);
+  margin-top: 14px;
+}
+
+.ob-badge-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.ob-badge-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ob-badge-option.active {
+  background: rgba(232, 97, 58, 0.12);
+  border-color: var(--acc);
+}
+
+.ob-badge-option.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ob-badge-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--mid);
+}
+
+.ob-badge-option.active .ob-badge-tag {
+  background: var(--acc);
+  color: #07060a;
+}
 </style>
+
 </head>
 <body>
 
@@ -965,7 +1235,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </div>
   <div class="nav-right">
     <button class="theme-toggle" onclick="toggleTheme()" title="Tema değiştir" aria-label="Tema değiştir"><span id="themeIcon">🌙</span></button><a href="app.html" class="btn-ghost-sm">Giriş Yap</a>
-    <a href="/app.html" class="btn-acc-sm">Ücretsiz Başla →</a>
+    <a href="#register" onclick="openTrialOnboarding(); return false;" class="btn-acc-sm">Ücretsiz Başla →</a>
   </div>
 </nav>
 <div class="mobile-menu" id="mobileMenu">
@@ -974,7 +1244,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   <a href="#pricing" onclick="closeMobileMenu()">Fiyatlar</a>
   <a href="#faq" onclick="closeMobileMenu()">SSS</a>
   <a href="app.html" onclick="closeMobileMenu()" style="border-top:1px solid var(--bd);margin-top:8px;padding-top:16px;">Giriş Yap</a>
-  <a href="app.html" onclick="closeMobileMenu()" style="color:var(--acc);font-weight:700">Ücretsiz Başla →</a>
+  <a href="#register" onclick="closeMobileMenu(); openTrialOnboarding(); return false;" style="color:var(--acc);font-weight:700">Ücretsiz Başla →</a>
 </div>
 
 <!-- HERO -->
@@ -1002,7 +1272,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </p>
 
   <div class="hero-cta">
-    <a href="#register" class="btn-hero-main">
+    <a href="#register" onclick="openTrialOnboarding(); return false;" class="btn-hero-main">
       Ücretsiz Başla — 7 Gün Dene
       <span>→</span>
     </a>
@@ -1846,6 +2116,147 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   </div>
 </div>
 
+<!-- 3-STEP TRIAL ONBOARDING WIZARD MODAL -->
+<div id="trialOnboardingModal" class="ob-modal-overlay" style="display:none" onclick="closeObWizard(event)">
+  <div class="ob-modal-card" onclick="event.stopPropagation()">
+    <button class="ob-modal-close" onclick="closeObWizard(event)" aria-label="Kapat">×</button>
+    
+    <!-- STEPPER HEADER -->
+    <div class="ob-stepper">
+      <div class="ob-step-item active" id="obStepHeader1">
+        <div class="ob-step-num">1</div>
+        <span>Hesap</span>
+      </div>
+      <div class="ob-step-line" id="obStepLine1"></div>
+      <div class="ob-step-item" id="obStepHeader2">
+        <div class="ob-step-num">2</div>
+        <span>Özelleştirme</span>
+      </div>
+      <div class="ob-step-line" id="obStepLine2"></div>
+      <div class="ob-step-item" id="obStepHeader3">
+        <div class="ob-step-num">3</div>
+        <span>Aktivasyon</span>
+      </div>
+    </div>
+
+    <!-- STEP 1: HIZLI KAYIT -->
+    <div class="ob-body" id="obStep1">
+      <div class="ob-title">🚀 7 Günlük Ücretsiz Denemenizi Başlatın</div>
+      <div class="ob-sub">Kredi kartı gerekmez • Anında aktivasyon • 15 saniyede hazır</div>
+
+      <div class="ob-field">
+        <label class="ob-label">Adınız Soyadınız *</label>
+        <input type="text" id="obFullName" class="ob-input" placeholder="Örn: Ahmet Yılmaz" required>
+      </div>
+
+      <div class="ob-field">
+        <label class="ob-label">E-posta Adresiniz *</label>
+        <input type="email" id="obEmail" class="ob-input" placeholder="ahmet@kocluk.com" required>
+      </div>
+
+      <div class="ob-field">
+        <label class="ob-label">Şifre Belirleyin (En az 8 karakter) *</label>
+        <input type="password" id="obPassword" class="ob-input" placeholder="••••••••" required>
+      </div>
+
+      <div class="ob-field">
+        <label class="ob-label">Koçluk Markanız / Unvanınız (Opsiyonel)</label>
+        <input type="text" id="obBrandName" class="ob-input" placeholder="Boş bırakırsanız adınızdan türetilir">
+      </div>
+
+      <div id="obStep1Err" style="color:#ff5c7a;font-size:12.5px;margin-top:6px;display:none"></div>
+
+      <button type="button" class="ob-btn-main" onclick="goToObStep(2)">
+        İleri: Koçluğumu Özelleştir <span>→</span>
+      </button>
+
+      <div class="ob-trust-pills">
+        <span>🔒 %100 Güvenli</span>
+        <span>•</span>
+        <span>💳 Kart İstenmez</span>
+        <span>•</span>
+        <span>⚡ 7 Gün Tam Sürüm</span>
+      </div>
+    </div>
+
+    <!-- STEP 2: KOÇLUK PROFİLİ ÖZELLEŞTİRME -->
+    <div class="ob-body" id="obStep2" style="display:none">
+      <div class="ob-title">🎯 Koçluk Alanınızı Şekillendirin</div>
+      <div class="ob-sub">Panelinizi uzmanlık alanınıza göre hazır hale getiriyoruz.</div>
+
+      <div class="ob-field">
+        <label class="ob-label">Ana Sınav Odak Alanınız *</label>
+        <div class="ob-badge-group">
+          <div class="ob-badge-option active" id="examOptYKS" onclick="selectObExam('YKS')">
+            <div>
+              <div style="font-weight:700;color:#fff;font-size:14px">YKS (TYT - AYT - YDT)</div>
+              <div style="font-size:11.5px;color:var(--mid)">Soru bankaları, konu takip şablonları & net analizi</div>
+            </div>
+            <span class="ob-badge-tag">Aktif</span>
+          </div>
+
+          <div class="ob-badge-option disabled">
+            <div>
+              <div style="font-weight:700;color:var(--mid);font-size:14px">LGS</div>
+              <div style="font-size:11.5px;color:var(--dim)">Lise geçiş sınavı takip şablonları</div>
+            </div>
+            <span class="ob-badge-tag">Yakında</span>
+          </div>
+
+          <div class="ob-badge-option disabled">
+            <div>
+              <div style="font-weight:700;color:var(--mid);font-size:14px">KPSS / DGS</div>
+              <div style="font-size:11.5px;color:var(--dim)">Memurluk ve dikey geçiş takibi</div>
+            </div>
+            <span class="ob-badge-tag">Yakında</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ob-field">
+        <label class="ob-label">Şu An Kaç Öğrenciniz Var?</label>
+        <select id="obStudentCount" class="ob-select">
+          <option value="1-5">1 - 5 Öğrenci</option>
+          <option value="6-20" selected>6 - 20 Öğrenci</option>
+          <option value="20+">20+ Öğrenci</option>
+        </select>
+      </div>
+
+      <div class="ob-field" style="margin-top:16px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;background:rgba(232,97,58,0.1);padding:12px 14px;border-radius:12px;border:1px solid rgba(232,97,58,0.25)">
+          <input type="checkbox" id="obAddDemoData" checked style="accent-color:var(--acc);width:18px;height:18px">
+          <span style="font-size:13px;color:#fff;font-weight:600">⚡ Örnek 3 öğrenci & hazır YKS haftalık çalışma programı yüklensin (Tavsiye Edilir)</span>
+        </label>
+      </div>
+
+      <div id="obStep2Err" style="color:#ff5c7a;font-size:12.5px;margin-top:6px;display:none"></div>
+
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button type="button" class="btn-ghost-sm" style="padding:14px 20px;border-radius:14px" onclick="goToObStep(1)">← Geri</button>
+        <button type="button" class="ob-btn-main" id="obSubmitBtn" onclick="submitObWizard()" style="margin:0;flex:1">
+          Hesabımı Oluştur ve Başla 🚀
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 3: AKTİVASYON VE YÖNLENDİRME -->
+    <div class="ob-body" id="obStep3" style="display:none;text-align:center;padding:40px 32px">
+      <div style="width:64px;height:64px;border-radius:50%;background:rgba(232,97,58,0.15);border:2px solid var(--acc);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 20px auto;animation:pulse 1.5s infinite">
+        🎉
+      </div>
+      <div class="ob-title" id="obSuccessTitle">7 Günlük Ücretsiz Lisansınız Hazırlanıyor...</div>
+      <div class="ob-sub" id="obSuccessSub">Panele aktarılıyorsunuz, lütfen bekleyin...</div>
+
+      <div style="background:rgba(255,255,255,0.06);border-radius:99px;height:8px;overflow:hidden;margin:24px 0 12px 0;border:1px solid rgba(255,255,255,0.1)">
+        <div id="obProgressBar" style="width:15%;height:100%;background:linear-gradient(90deg, var(--acc), #3ecf8e);transition:width 0.4s ease"></div>
+      </div>
+      <div id="obProgressStatus" style="font-size:12px;color:var(--mid);font-weight:600">Hesabınız oluşturuluyor (%30)...</div>
+    </div>
+
+  </div>
+</div>
+
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 
@@ -1853,6 +2264,156 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 // Supabase Dashboard > Authentication > Row Level Security (RLS) politikalarına dayanır.
 // site_admin.html erişimi için mutlaka auth.uid() bazlı RLS aktif olmalıdır.
 const _SB=supabase.createClient('https://imyhenrwmsmyikpollur.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34');
+
+// ── 7 GÜN ÜCRETSİZ DENEME WIZARD MODAL ──
+let selectedObExam = 'YKS';
+
+function openTrialOnboarding() {
+  const modal = document.getElementById('trialOnboardingModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    goToObStep(1);
+  }
+}
+
+function closeObWizard(e) {
+  const modal = document.getElementById('trialOnboardingModal');
+  if (modal) {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
+function goToObStep(step) {
+  document.getElementById('obStep1').style.display = step === 1 ? 'block' : 'none';
+  document.getElementById('obStep2').style.display = step === 2 ? 'block' : 'none';
+  document.getElementById('obStep3').style.display = step === 3 ? 'block' : 'none';
+
+  const h1 = document.getElementById('obStepHeader1');
+  const h2 = document.getElementById('obStepHeader2');
+  const h3 = document.getElementById('obStepHeader3');
+  const l1 = document.getElementById('obStepLine1');
+  const l2 = document.getElementById('obStepLine2');
+
+  if (h1) h1.className = 'ob-step-item' + (step >= 1 ? (step === 1 ? ' active' : ' completed') : '');
+  if (h2) h2.className = 'ob-step-item' + (step >= 2 ? (step === 2 ? ' active' : ' completed') : '');
+  if (h3) h3.className = 'ob-step-item' + (step >= 3 ? ' active' : '');
+
+  if (l1) l1.className = 'ob-step-line' + (step >= 2 ? ' active' : '');
+  if (l2) l2.className = 'ob-step-line' + (step >= 3 ? ' active' : '');
+
+  if (step === 1) {
+    const err = document.getElementById('obStep1Err');
+    if (err) err.style.display = 'none';
+  }
+}
+
+function selectObExam(exam) {
+  if (exam !== 'YKS') return; // Sadece YKS aktif
+  selectedObExam = exam;
+  document.querySelectorAll('#obStep2 .ob-badge-option').forEach(el => el.classList.remove('active'));
+  document.getElementById('examOpt' + exam)?.classList.add('active');
+}
+
+async function submitObWizard() {
+  const fn = document.getElementById('obFullName').value.trim();
+  const email = document.getElementById('obEmail').value.trim().toLowerCase();
+  const pass = document.getElementById('obPassword').value;
+  const brand = document.getElementById('obBrandName').value.trim();
+  const demoData = document.getElementById('obAddDemoData').checked;
+
+  const btn = document.getElementById('obSubmitBtn');
+
+  if (!fn || !email || !pass) {
+    goToObStep(1);
+    const err1 = document.getElementById('obStep1Err');
+    if (err1) {
+      err1.textContent = 'Lütfen Ad, E-posta ve Şifre alanlarını doldurun.';
+      err1.style.display = 'block';
+    }
+    return;
+  }
+
+  if (pass.length < 8) {
+    goToObStep(1);
+    const err1 = document.getElementById('obStep1Err');
+    if (err1) {
+      err1.textContent = 'Şifreniz en az 8 karakter olmalıdır.';
+      err1.style.display = 'block';
+    }
+    return;
+  }
+
+  goToObStep(3);
+  const bar = document.getElementById('obProgressBar');
+  const txt = document.getElementById('obProgressStatus');
+
+  if (bar) bar.style.width = '35%';
+  if (txt) txt.textContent = 'Hesabınız oluşturuluyor...';
+
+  try {
+    const res = await fetch('/api/create-student', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'coach',
+        full_name: fn,
+        email: email,
+        password: pass,
+        brand_name: brand || (fn.split(' ')[0] + ' Akademi'),
+        plan_tier: 'bireysel'
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Hesap oluşturulamadı.');
+    }
+
+    if (bar) bar.style.width = '75%';
+    if (txt) txt.textContent = '7 Günlük Ücretsiz Lisansınız Tanımlandı (%75)...';
+
+    sessionStorage.setItem('ra_new_coach_email', email);
+    sessionStorage.setItem('ra_new_coach_pass', pass);
+    if (demoData) {
+      sessionStorage.setItem('ra_add_demo_data', '1');
+    }
+
+    setTimeout(() => {
+      if (bar) bar.style.width = '100%';
+      if (txt) txt.textContent = 'Yönlendiriliyorsunuz! 🎉';
+      document.getElementById('obSuccessTitle').textContent = 'Tebrikler! Denemeniz Başladı 🚀';
+      document.getElementById('obSuccessSub').textContent = 'Yönetim paneline aktarılıyorsunuz...';
+
+      setTimeout(() => {
+        window.location.href = '/app.html?new_coach=1';
+      }, 700);
+    }, 500);
+
+  } catch (err) {
+    goToObStep(1);
+    const err1 = document.getElementById('obStep1Err');
+    if (err1) {
+      err1.textContent = err.message.includes('already') || err.message.includes('zaten')
+        ? 'Bu e-posta adresiyle zaten bir hesap var! Lütfen giriş yapın.'
+        : err.message;
+      err1.style.display = 'block';
+    }
+  }
+}
+
+// Reklam URL veya hash algılandığında modalı otomatik aç
+(function checkTrialAutoOpen() {
+  const params = new URLSearchParams(window.location.search);
+  const hash = window.location.hash;
+  if (params.get('start_trial') === '1' || params.get('ref') === 'ig' || hash === '#register' || hash === '#deneme') {
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(openTrialOnboarding, 350);
+    });
+  }
+})();
+
 // NAV scroll + active section highlight
 const _sections=["features","how","pricing","faq","register"];
 const _navLinks=document.querySelectorAll(".nav-center a");

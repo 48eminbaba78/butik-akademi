@@ -617,7 +617,15 @@ export async function finishLogin(rows) {
     document.getElementById('aiChatBubble').style.display = 'flex';
     if ((session.role === 'coach' || session.role === 'developer') && (!S.workspace || !S.workspace.onboarding_done)) {
       window.switchTab('home');
-      window.showOnboarding();
+      // Karşılama modalı sadece ilk girişte gösterilir; sonraki girişlerde
+      // (onboarding_done henüz false olsa bile) doğrudan görev widget'ı gösterilir.
+      const _welcomeKey = 'ra_ob_welcomed_' + session.coachId;
+      if (!localStorage.getItem(_welcomeKey)) {
+        localStorage.setItem(_welcomeKey, '1');
+        window.showOnboarding();
+      } else {
+        window.showOnboardingWidget && window.showOnboardingWidget();
+      }
       return;
     }
     // Öğrenci ilk girişte profil formu göster

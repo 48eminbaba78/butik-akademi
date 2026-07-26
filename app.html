@@ -13,6 +13,7 @@
 <title>Rostrum Akademi</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="app.css">
+<script type="module" src="/src/main.js"></script>
 </head>
 <body>
 
@@ -39,7 +40,7 @@
         <!-- Mode tabs: Giriş / Kayıt -->
         <div class="login-mode-tabs">
           <button class="lmt active" id="lmtLogin" onclick="setAuthMode('login')">Giriş Yap</button>
-          <button class="lmt" id="lmtRegister" onclick="setAuthMode('register')">Hesap Oluştur</button>
+          <button class="lmt" id="lmtRegister" onclick="window.location.href='/index.html#register'">Hesap Oluştur</button>
         </div>
 
         <!-- ── GİRİŞ PANELİ ── -->
@@ -767,7 +768,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
-<script src="config.js"></script>
-<script type="module" src="/src/main.js"></script>
+<script src="/config.js"></script>
 </body>
 </html>

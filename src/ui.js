@@ -198,9 +198,31 @@ async function applySubscriptionState(plan, trialEndsAt, createdAt, coachId) {
   }
 }
 
-function showTrialExpiredScreen() {
+async function showTrialExpiredScreen() {
   const isCoachView = session.role === 'coach' || session.role === 'developer';
   let modal = document.getElementById('trialExpiredModal');
+
+  // Somut ROI hatırlatması: "N öğrenciniz var, abonelik öğrenci başına sadece X ₺" —
+  // en yüksek dönüşüm anında (erişim kilitliyken) fiyatı soyut değil somut gösterir.
+  let roiLine = '';
+  if (isCoachView && session.dbUser?.id) {
+    try {
+      const [{ data: settingsRow }, { count: studentCount }] = await Promise.all([
+        db.from('platform_settings').select('value').eq('key', 'payment_settings').maybeSingle(),
+        db.from('users').select('id', { count: 'exact', head: true }).eq('coach_id', session.dbUser.id).eq('role', 'student')
+      ]);
+      const settings = settingsRow?.value || {};
+      const tier = session.dbUser?.plan_tier === 'profesyonel' ? 'profesyonel' : 'bireysel';
+      const priceMonthly = +settings[`price_${tier}`] || 0;
+      if (priceMonthly > 0 && studentCount > 0) {
+        const perStudent = Math.round(priceMonthly / studentCount);
+        roiLine = `<div style="font-size:12.5px;background:var(--accent-dim);color:var(--accent);border-radius:10px;padding:10px 14px;margin-bottom:20px;font-weight:700;line-height:1.6">
+          ${studentCount} öğrenciniz var — aylık ${priceMonthly.toLocaleString('tr-TR')} ₺ abonelik, öğrenci başına sadece <b>${perStudent.toLocaleString('tr-TR')} ₺/ay</b> ediyor.
+        </div>`;
+      }
+    } catch (e) { /* ROI satırı olmadan devam et */ }
+  }
+
   const bodyHtml = `
     <div style="font-size:54px;margin-bottom:18px">⏳</div>
     <h2 style="font-size:20px;font-weight:900;margin-bottom:12px;color:var(--accent)">Erişiminiz Askıya Alındı</h2>
@@ -208,6 +230,7 @@ function showTrialExpiredScreen() {
       Rostrum Akademi'nin 7 günlük ücretsiz deneme süresi (+3 günlük müsamaha süresi) sona ermiştir.
       ${isCoachView ? 'Öğrencilerinizin bilgilerine ve koçluk paneline erişmeye devam etmek için lütfen aboneliğinizi başlatın.' : 'Koçunuzun aboneliği yenilenene kadar erişim kapalıdır.'}
     </p>
+    ${roiLine}
     <div style="display:flex;flex-direction:column;gap:10px;align-items:stretch">
       ${isCoachView ? `
       <button class="btn btn-accent" onclick="openCoachPaymentModal()" style="justify-content:center;padding:12px;font-size:14px;font-weight:700">
@@ -595,6 +618,25 @@ function renderHome(){
     });
   });
 
+  // 7) Kabul edilmemiş öğrenci davetleri — koç, davetin sessizce başarısız
+  // olduğunu (öğrenci hiç katılmadı) fark edebilsin diye. Yeni gönderilen
+  // davetler (24 saatten taze, süresi dolmamış) henüz alarm oluşturmaz.
+  (S.pendingInvites || []).forEach(inv => {
+    const hoursSincePending = (Date.now() - new Date(inv.createdAt).getTime()) / 3600000;
+    if (!inv.expired && hoursSincePending < 24) return;
+    anomalies.push({
+      studentId: `invite_${inv.id}`,
+      studentName: inv.studentName,
+      color: '#94a3b8',
+      type: 'invite',
+      icon: '📨',
+      title: inv.expired ? 'Davet Süresi Doldu' : 'Davet Bekliyor',
+      desc: inv.expired
+        ? `<b>${esc(inv.email)}</b> adresine gönderilen davet kabul edilmeden süresi doldu. Öğrenci hiç katılmamış olabilir — tekrar davet gönderin.`
+        : `<b>${esc(inv.email)}</b> adresine gönderilen davet henüz kabul edilmedi (${Math.floor(hoursSincePending)} saat önce gönderildi).`
+    });
+  });
+
   let anomaliesHTML = '';
   if (anomalies.length === 0) {
     if (S.students.length === 0) {
@@ -619,6 +661,7 @@ function renderHome(){
       tasks:   { badge: '#ff5c7a', badgeBg: 'rgba(255,92,122,.08)', border: 'rgba(255,92,122,.2)' },
       exams:   { badge: '#ff5c7a', badgeBg: 'rgba(255,92,122,.08)', border: 'rgba(255,92,122,.2)' },
       speed:   { badge: '#f0a500', badgeBg: 'rgba(240,165,0,.1)',   border: 'rgba(240,165,0,.2)' },
+      invite:  { badge: '#60a5fa', badgeBg: 'rgba(96,165,250,.1)',  border: 'rgba(96,165,250,.2)' },
     };
     // Uyarı tipine göre tek-tık hızlı aksiyon (koç ilgili ekrana ışınlanır)
     const quickAction = {
@@ -652,7 +695,8 @@ function renderHome(){
       if (grp.items.length === 1) {
         const a = grp.items[0];
         const st = typeStyle[a.type] || typeStyle.tasks;
-        return `<div style="cursor:pointer;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:${st.badgeBg};border:1px solid ${st.border};display:flex;align-items:center;gap:10px;transition:opacity .15s" onclick="openStudentDetail('${a.studentId}')" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        const clickAction = a.type === 'invite' ? `switchTab('students')` : `openStudentDetail('${a.studentId}')`;
+        return `<div style="cursor:pointer;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:${st.badgeBg};border:1px solid ${st.border};display:flex;align-items:center;gap:10px;transition:opacity .15s" onclick="${clickAction}" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
           <div style="font-size:18px;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0">${a.icon}</div>
           <div style="flex:1;min-width:0">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px">
@@ -725,6 +769,7 @@ function renderHome(){
     </div>
 
     <!-- STAT KARTLARI -->
+    ${S.students.length === 0 ? '' : `
     <div class="home-stats-v2">
       <div class="hsv2-card" onclick="switchTab('students')" title="Öğrencilere git">
         <div class="hsv2-top">
@@ -762,6 +807,7 @@ function renderHome(){
         <div class="hsv2-progress"><div class="hsv2-bar" style="width:${weekPct}%;background:${weekPct>=70?'var(--green)':weekPct>=40?'var(--accent)':'var(--red)'}"></div></div>
       </div>
     </div>
+    `}
 
     <!-- ALT GRID: Uyarılar + Randevular -->
     <div class="home-bottom-grid">
@@ -819,6 +865,7 @@ function renderHome(){
           <div><div style="font-size:12px;font-weight:700">${label}</div><div style="font-size:10px;color:var(--text-dim)">${sub}</div></div>
         </div>`).join('')}
     </div>`;
+  _obRefreshWidget();
   }catch(err){ console.error('[renderHome] HATA:',err); el.innerHTML=`<div style='padding:24px;color:var(--text)'><b>İyi günler 👋</b><p style='color:var(--text-mid);margin-top:6px'>Hata: ${esc(err.message)}</p></div>`; }
 }
 
@@ -2582,6 +2629,40 @@ function selectBook(idx){
   document.getElementById('tmTestWrap').style.display='';
 }
 
+function cleanTestLabel(rawLabel, bookName = '') {
+  if (!rawLabel) return '';
+  let str = String(rawLabel).trim();
+  
+  if (str.includes('>')) {
+    const parts = str.split('>').map(p => p.trim()).filter(Boolean);
+    const cleanParts = parts.filter(part => {
+      const c = part.toLowerCase();
+      if (c.includes('soru banka') || c.includes('sezon') || c.includes('kitaplar') || c.includes('arsiv')) return false;
+      if (/\d{4}/.test(c)) return false;
+      if (c.includes('bankası') || c.includes('bankasi')) return false;
+      return true;
+    });
+    str = (cleanParts.length > 0 ? cleanParts : parts.slice(-2)).join(' > ');
+  }
+
+  const tokens = str.split(' - ');
+  const cleanTokens = [];
+  for (let t of tokens) {
+    const trimmed = t.trim();
+    if (!trimmed) continue;
+    if (cleanTokens.length > 0) {
+      const last = cleanTokens[cleanTokens.length - 1];
+      const lastWord = last.includes('>') ? last.split('>').pop().trim() : last.trim();
+      if (lastWord.toLowerCase() === trimmed.toLowerCase()) {
+        continue;
+      }
+    }
+    cleanTokens.push(trimmed);
+  }
+
+  return cleanTokens.join(' - ').trim();
+}
+
 // Çoklu test/video seçim listesi
 function renderTestList(){
   if(!_selectedBook) return;
@@ -2602,6 +2683,8 @@ function renderTestList(){
     const statusClass = status === 'done' ? 'ti-status-done' : (status === 'pending' ? 'ti-status-pending' : '');
     const statusBadge = status === 'done' ? `<span class="ti-badge ti-badge-done">✓ Tamamlandı</span>` : (status === 'pending' ? `<span class="ti-badge ti-badge-pending">⏳ Atandı</span>` : '');
 
+    const displayLabel = cleanTestLabel(label, bookName);
+
     if(isPlaylist){
       // Video satırı — checkbox + numara + başlık + link + süre
       return `<label class="${statusClass}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--border)"
@@ -2610,7 +2693,7 @@ function renderTestList(){
           style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
         <div style="width:22px;height:22px;border-radius:6px;background:var(--surface3);color:var(--text-mid);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</div>
+          <div style="font-size:12px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(displayLabel)}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
             <span style="font-size:10px;color:var(--text-dim)">${soru>0?`⏱ ${soru} dk`:'⏱ ?'}</span>
             ${statusBadge}
@@ -2628,7 +2711,7 @@ function renderTestList(){
         <input type="checkbox" id="test_${i}" value="${i}" onchange="updateTestSummary()"
           style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
         <div style="flex:1;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="font-size:12.5px;font-weight:600;color:var(--text)">${esc(label)}</span>
+          <span style="font-size:12.5px;font-weight:600;color:var(--text)">${esc(displayLabel)}</span>
           ${statusBadge}
         </div>
         ${soru>0?`<span style="font-size:10.5px;font-weight:700;color:var(--text-mid);background:var(--surface3);padding:3px 8px;border-radius:99px;flex-shrink:0">${soru} soru</span>`:''}
@@ -8001,11 +8084,17 @@ const _devSaveStudent = saveStudent;
 // KARŞILAMA & AKTİF GÖREV LİSTESİ (ONBOARDING)
 // ═══════════════════════════════════════════════
 
-// Görev tamamlama durumunu localStorage'dan oku/yaz
+// Görev tamamlama durumu: student/program gerçek veriden canlı hesaplanır
+// (tıklamayla değil), report için ilgili gönderim fonksiyonlarının başarı
+// anında çağırdığı _obMarkDone bayrağı kullanılır.
 function _obKey(task) { return `ra_ob_${session.coachId}_${task}`; }
-function _obDone(task) { return localStorage.getItem(_obKey(task)) === '1'; }
+function _obDone(task) {
+  if (task === 'student') return (S.students || []).length > 0;
+  if (task === 'program') return Object.values(S.tasks || {}).some(arr => (arr || []).length > 0);
+  return localStorage.getItem(_obKey(task)) === '1';
+}
 function _obMarkDone(task) {
-  localStorage.setItem(_obKey(task), '1');
+  if (task !== 'student' && task !== 'program') localStorage.setItem(_obKey(task), '1');
   _obRefreshWidget();
   // Tüm görevler tamam mı?
   const tasks = ['student','program','report'];
@@ -8029,15 +8118,16 @@ function _obRefreshWidget() {
   const widget = document.getElementById('obWidget');
   if (!widget) return;
   const tasks = [
-    { id: 'student', icon: '👤', label: 'İlk öğrencinizi ekleyin', action: `window.openStudentModal?.()`, btnLabel: 'Ekle →' },
-    { id: 'program', icon: '📅', label: 'Haftalık program oluşturun', action: `switchTab('program')`, btnLabel: 'Git →' },
-    { id: 'report',  icon: '📄', label: 'İlk raporunuzu gönderin',   action: `switchTab('program')`, btnLabel: 'Git →' },
+    { id: 'account', icon: '✅', label: 'Hesabınızı oluşturdunuz', done: true },
+    { id: 'student', icon: '👤', label: 'İlk öğrencini ekle → programını 2 dakikada gör', action: `window.openStudentModal?.()`, btnLabel: 'Ekle →' },
+    { id: 'program', icon: '📅', label: 'Haftalık program oluştur → ilerlemesini anlık izle', action: `switchTab('program')`, btnLabel: 'Git →' },
+    { id: 'report',  icon: '📄', label: 'İlk raporunu gönder → veli farkı görsün',   action: `switchTab('program')`, btnLabel: 'Git →' },
   ];
-  const doneCount = tasks.filter(t => _obDone(t.id)).length;
-  const pct = Math.round(((doneCount + 1) / (tasks.length + 1)) * 100);
+  const doneCount = tasks.filter(t => t.done || _obDone(t.id)).length;
+  const pct = Math.round((doneCount / tasks.length) * 100);
 
   widget.querySelector('.ob-body').innerHTML = tasks.map(t => {
-    const done = _obDone(t.id);
+    const done = t.done || _obDone(t.id);
     return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
       <div style="width:22px;height:22px;border-radius:50%;border:2px solid ${done?'var(--green)':'var(--border2)'};background:${done?'var(--green)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
         ${done?`<svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4L4 7L9 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`:''}
@@ -8045,11 +8135,11 @@ function _obRefreshWidget() {
       <div style="flex:1;font-size:12px;color:${done?'var(--text-dim)':'var(--text)'};${done?'text-decoration:line-through':''}">
         <span style="margin-right:5px">${t.icon}</span>${t.label}
       </div>
-      ${!done?`<button onclick="${t.action};window._obMarkDone?.('${t.id}')" style="font-size:11px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;white-space:nowrap;padding:0">${t.btnLabel}</button>`:''}
+      ${!done && t.action?`<button onclick="${t.action};window._obMarkDone?.('${t.id}')" style="font-size:11px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;white-space:nowrap;padding:0">${t.btnLabel}</button>`:''}
     </div>`;
   }).join('');
   widget.querySelector('.ob-progress-bar-inner').style.width = pct + '%';
-  widget.querySelector('.ob-progress-text').textContent = `${doneCount + 1}/${tasks.length + 1} tamamlandı`;
+  widget.querySelector('.ob-progress-text').textContent = `${doneCount}/${tasks.length} tamamlandı`;
 }
 
 function showOnboardingWidget() {
@@ -11294,6 +11384,7 @@ async function sendWhatsAppReport() {
   window.open(whatsappUrl, '_blank');
   cm('reportModal');
   showToast('WhatsApp yönlendirmesi açıldı ✓');
+  window._obMarkDone?.('report');
 }
 
 async function sendParentEmailReport() {
@@ -11356,6 +11447,7 @@ async function sendParentEmailReport() {
 
     showToast('Veli performans raporu başarıyla e-posta olarak gönderildi ✓');
     cm('reportModal');
+    window._obMarkDone?.('report');
   } catch (err) {
     console.error('[sendParentEmailReport Error]', err);
     showToast('E-posta gönderilirken hata: ' + err.message, false);
@@ -14452,6 +14544,7 @@ async function archivePerformanceReport() {
   } else {
     showToast('Rapor başarıyla geçmişe kaydedildi! ✓');
     cm('reportModal');
+    window._obMarkDone?.('report');
   }
 }
 

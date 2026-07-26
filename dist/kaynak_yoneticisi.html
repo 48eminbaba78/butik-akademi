@@ -4,545 +4,979 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Rostrum Akademi — Kaynak Yöneticisi</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<title>Rostrum Akademi — Kaynak Yöneticisi Pro</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-:root{
-  --bg:#0f0e0c;--surface:#1a1916;--surface2:#242220;--surface3:#2e2b28;
-  --border:#383430;--border2:#454038;
-  --accent:#f0a500;--accent-dim:rgba(240,165,0,.12);
-  --text:#f0ece6;--text-mid:#9a9088;--text-dim:#5a5450;
-  --green:#3ecf8e;--green-dim:rgba(62,207,142,.12);
-  --blue:#4da6ff;--blue-dim:rgba(77,166,255,.12);
-  --red:#ff5c5c;--red-dim:rgba(255,92,92,.12);
-  --r:12px;--shadow:0 4px 24px rgba(0,0,0,.4);
+:root {
+  --bg: #090d16;
+  --bg-secondary: #0f172a;
+  --surface: #151e32;
+  --surface-hover: #1e293b;
+  --surface-card: rgba(21, 30, 50, 0.7);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-active: rgba(245, 158, 11, 0.4);
+  
+  --accent: #f59e0b;
+  --accent-light: #fbbf24;
+  --accent-dim: rgba(245, 158, 11, 0.12);
+  --accent-glow: rgba(245, 158, 11, 0.25);
+  
+  --primary: #6366f1;
+  --primary-dim: rgba(99, 102, 241, 0.15);
+  --emerald: #10b981;
+  --emerald-dim: rgba(16, 185, 129, 0.15);
+  --cyan: #06b6d4;
+  --cyan-dim: rgba(6, 182, 212, 0.15);
+  --rose: #f43f5e;
+  --rose-dim: rgba(244, 63, 94, 0.15);
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --r-xl: 20px;
+  --r-lg: 14px;
+  --r-md: 10px;
+  --r-sm: 6px;
+  
+  --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 25px rgba(245, 158, 11, 0.15);
+  --glass: backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
 }
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text-main);
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(245, 158, 11, 0.05) 0%, transparent 40%);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.5); }
 
 /* LAYOUT */
-.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh;}
-.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;}
-.main{padding:32px;overflow-y:auto;}
+.app-container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
 
 /* SIDEBAR */
-.logo{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:16px;}
-.logo-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--accent);}
-.logo-sub{font-size:11px;color:var(--text-dim);margin-top:3px;}
-.nav-section{font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.8px;padding:0 20px;margin:16px 0 6px;}
-.nav-btn{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:600;color:var(--text-mid);cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left;}
-.nav-btn:hover{background:var(--surface2);color:var(--text);}
-.nav-btn.active{background:var(--accent-dim);color:var(--accent);}
-.nav-btn .icon{font-size:16px;width:20px;text-align:center;}
+.sidebar {
+  background: rgba(15, 23, 42, 0.85);
+  border-right: 1px solid var(--border);
+  padding: 28px 20px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(20px);
+  z-index: 10;
+}
 
-/* HEADER */
-.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
-.page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;}
-.page-sub{font-size:13px;color:var(--text-mid);margin-top:3px;}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
 
-/* CARDS */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;}
-.card-sm{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.brand-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
 
-/* STATS */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;}
-.stat-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent);}
-.stat-lbl{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;}
+.brand-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #fff;
+}
 
-/* FORMS */
-.field{margin-bottom:14px;}
-.field label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
-.field input,.field select,.field textarea{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:13px;font-family:inherit;color:var(--text);outline:none;transition:border .15s;}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
-.field textarea{resize:vertical;min-height:120px;}
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.brand-title span {
+  color: var(--accent);
+}
+
+.brand-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.nav-group {
+  margin-bottom: 24px;
+}
+
+.nav-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 0 12px;
+  margin-bottom: 10px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  background: none;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.nav-item:hover {
+  background: var(--surface-hover);
+  color: var(--text-main);
+  transform: translateX(3px);
+}
+
+.nav-item.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--border-active);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+}
+
+.nav-item .icon {
+  font-size: 18px;
+  width: 22px;
+  text-align: center;
+}
+
+.conn-status-card {
+  margin-top: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.conn-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  position: relative;
+}
+
+.conn-dot.online {
+  background: var(--emerald);
+  box-shadow: 0 0 10px var(--emerald);
+}
+
+.conn-dot.online::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--emerald);
+  animation: pulse 1.8s infinite;
+}
+
+/* MAIN CONTENT */
+.main-content {
+  padding: 36px 40px;
+  overflow-y: auto;
+  max-width: 1400px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.page-title-group h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.page-title-group p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* CARDS & CONTAINERS */
+.glass-card {
+  background: var(--surface-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 24px;
+  box-shadow: var(--shadow-lg);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-bottom: 24px;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* STATS GRID */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: var(--surface-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-active);
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--primary));
+}
+
+.stat-value {
+  font-family: 'Outfit', sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+}
+
+/* FORMS & INPUTS */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 8px;
+}
+
+.form-control {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px 16px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--text-main);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
 
 /* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;border:none;transition:all .15s;}
-.btn-accent{background:var(--accent);color:#0f0e0c;}
-.btn-accent:hover{background:#fbb800;}
-.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text-mid);}
-.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
-.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid transparent;}
-.btn-danger:hover{background:var(--red);color:white;}
-.btn-sm{padding:6px 12px;font-size:12px;}
-.btn-xs{padding:4px 8px;font-size:11px;}
-.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--r-md);
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+}
 
-/* TAGS */
-.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;}
-.tag-green{background:var(--green-dim);color:var(--green);}
-.tag-red{background:var(--red-dim);color:var(--red);}
-.tag-blue{background:var(--blue-dim);color:var(--blue);}
-.tag-accent{background:var(--accent-dim);color:var(--accent);}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #d97706);
+  color: #090d16;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
+}
 
-/* RESOURCE LIST */
-.resource-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;transition:border .15s;}
-.resource-item:hover{border-color:var(--border2);}
-.resource-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.btn-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
+}
 
-/* LOG */
-.log{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;max-height:250px;overflow-y:auto;font-size:12px;font-family:monospace;}
-.log-ok{color:var(--green);}
-.log-err{color:var(--red);}
-.log-info{color:var(--accent);}
+.btn-indigo {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
+}
 
-/* VIDEO LIST */
-.video-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border-bottom:1px solid var(--border);transition:background .1s;}
-.video-item:hover{background:var(--surface2);}
-.video-num{width:24px;height:24px;border-radius:6px;background:var(--surface3);color:var(--text-dim);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.btn-indigo:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.btn-danger {
+  background: var(--rose-dim);
+  color: var(--rose);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.btn-danger:hover {
+  background: var(--rose);
+  color: #fff;
+}
+
+.btn-sm { padding: 7px 12px; font-size: 12px; }
+.btn-xs { padding: 4px 8px; font-size: 11px; }
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* BADGES / TAGS */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tag-accent { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(245, 158, 11, 0.3); }
+.tag-emerald { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
+.tag-cyan { background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
+.tag-rose { background: var(--rose-dim); color: var(--rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+.tag-indigo { background: var(--primary-dim); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.3); }
 
 /* TABS */
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px;}
-.tab-btn{padding:10px 16px;font-size:13px;font-weight:700;font-family:inherit;background:none;border:none;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
-.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
-.tab-pane{display:none;}
-.tab-pane.active{display:block;}
+.tabs-header {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
 
-/* SCROLLBAR */
-::-webkit-scrollbar{width:5px;height:5px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px;}
+.tab-btn {
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s ease;
+}
 
-/* ANIMATIONS */
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.fade-up{animation:fadeUp .25s ease;}
+.tab-btn:hover { color: var(--text-main); }
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
 
-/* TOAST */
-.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;font-weight:600;box-shadow:var(--shadow);z-index:999;animation:fadeUp .2s ease;}
-</style>
-<style>
-/* ── LOGIN GATE ── */
-#kaynak-login{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
-.kl-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:360px;}
-.kl-logo{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--accent);margin-bottom:4px;}
-.kl-sub{font-size:12px;color:var(--text-dim);margin-bottom:28px;}
-.kl-label{display:block;font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
-.kl-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none;transition:border .15s;margin-bottom:14px;}
-.kl-input:focus{border-color:var(--accent);}
-.kl-btn{width:100%;background:var(--accent);color:#0f0e0c;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:4px;}
-.kl-err{font-size:12px;color:#ff5c5c;margin-top:10px;display:none;text-align:center;}
+.tab-pane { display: none; }
+.tab-pane.active { display: block; animation: fadeIn 0.3s ease; }
+
+/* RESOURCE ITEM */
+.resource-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.resource-card:hover {
+  border-color: var(--border-active);
+  transform: translateX(4px);
+  background: var(--surface-hover);
+}
+
+.resource-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+/* ANIMATIONS & UTILS */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.fade-in { animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* TOAST NOTIFICATION */
+.toast-box {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px 22px;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
+  display: none;
+  animation: fadeIn 0.25s ease;
+  backdrop-filter: blur(12px);
+}
+
+/* LOGIN OVERLAY */
+#loginOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.08) 0%, transparent 60%);
+}
+
+.login-card {
+  background: var(--surface-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+/* MODAL PREVIEW */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(12px);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-active);
+  border-radius: var(--r-xl);
+  max-width: 760px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  padding: 28px;
+}
 </style>
 </head>
+
 <body>
-<!-- LOGIN GATE -->
-<div id="kaynak-login">
-  <div class="kl-card">
-    <div class="kl-logo">ROSTRUM<span style="color:var(--text)">AKADEMİ</span></div>
-    <div class="kl-sub">Kaynak Yöneticisi — Yetkili Giriş</div>
-    <label class="kl-label">Şifre</label>
-    <input class="kl-input" type="password" id="klPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')kaynakLogin()">
-    <button class="kl-btn" onclick="kaynakLogin()">Giriş →</button>
-    <div class="kl-err" id="klErr">Şifre hatalı</div>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay">
+  <div class="login-card fade-in">
+    <div class="brand-icon" style="margin:0 auto 16px auto; width:52px; height:52px; font-size:26px;">📚</div>
+    <h2 style="font-family:'Outfit',sans-serif; font-size:24px; font-weight:800; margin-bottom:4px;">ROSTRUM<span style="color:var(--accent)">AKADEMİ</span></h2>
+    <p style="font-size:13px; color:var(--text-muted); margin-bottom:28px;">Kaynak Yöneticisi — Yetkili Girişi</p>
+    
+    <div class="form-group" style="text-align:left;">
+      <label class="form-label">Giriş Şifresi</label>
+      <input type="password" id="loginPass" class="form-control" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%; justify-content:center; padding:13px; margin-top:8px;" onclick="doLogin()">Giriş Yap →</button>
+    <div id="loginErr" style="color:var(--rose); font-size:12.5px; margin-top:12px; display:none;">⚠️ Şifre hatalı, tekrar deneyin</div>
   </div>
 </div>
 
-<div class="app" id="kaynakApp" style="display:none">
+<!-- MAIN APPLICATION -->
+<div class="app-container" id="appMain" style="display:none">
+
   <!-- SIDEBAR -->
   <aside class="sidebar">
-    <div class="logo">
-      <div class="logo-title">Rostrum Akademi</div>
-      <div class="logo-sub">Kaynak Yöneticisi</div>
+    <div class="brand">
+      <div class="brand-icon">📚</div>
+      <div>
+        <div class="brand-title">Rostrum<span>.AI</span></div>
+        <div class="brand-sub">Kaynak Yöneticisi v2</div>
+      </div>
     </div>
-    <div class="nav-section">Araçlar</div>
-    <button class="nav-btn active" onclick="showPage('dashboard')" data-page="dashboard"><span class="icon">📊</span> Dashboard</button>
-    <button class="nav-btn" onclick="showPage('youtube')" data-page="youtube"><span class="icon">▶️</span> YouTube Import</button>
-    <button class="nav-btn" onclick="showPage('manuel')" data-page="manuel"><span class="icon">✏️</span> Manuel Giriş</button>
-    <button class="nav-btn" onclick="showPage('fernus')" data-page="fernus"><span class="icon">🦊</span> Fernus Import</button>
-    <button class="nav-btn" onclick="showPage('liste')" data-page="liste"><span class="icon">📚</span> Tüm Kaynaklar</button>
-    <div class="nav-section" style="margin-top:24px">Bağlantı</div>
-    <div style="padding:12px 20px">
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">Supabase</div>
-      <div id="connStatus" style="font-size:12px;color:var(--text-mid)">⏳ Bağlanıyor...</div>
+
+    <div class="nav-group">
+      <div class="nav-header">Ana Menü</div>
+      <button class="nav-item active" onclick="navigate('dashboard')" data-page="dashboard"><span class="icon">📊</span> Dashboard</button>
+      <button class="nav-item" onclick="navigate('fernus')" data-page="fernus"><span class="icon">🦊</span> Fernus Import</button>
+      <button class="nav-item" onclick="navigate('youtube')" data-page="youtube"><span class="icon">▶️</span> YouTube Import</button>
+      <button class="nav-item" onclick="navigate('manuel')" data-page="manuel"><span class="icon">✏️</span> Manuel Ekleme</button>
+      <button class="nav-item" onclick="navigate('liste')" data-page="liste"><span class="icon">📚</span> Tüm Kaynaklar</button>
+    </div>
+
+    <div class="conn-status-card">
+      <div class="conn-dot" id="dbDot"></div>
+      <div>
+        <div style="font-size:11px; color:var(--text-dim); font-weight:700; text-transform:uppercase;">Supabase DB</div>
+        <div id="dbStatus" style="font-size:12px; color:var(--text-muted); font-weight:600;">Bağlanıyor...</div>
+      </div>
     </div>
   </aside>
 
-  <!-- MAIN -->
-  <main class="main">
+  <!-- CONTENT -->
+  <main class="main-content">
 
-    <!-- DASHBOARD -->
-    <div id="page-dashboard" class="fade-up">
+    <!-- PAGE: DASHBOARD -->
+    <div id="page-dashboard" class="fade-in">
       <div class="page-header">
-        <div>
-          <div class="page-title">Dashboard</div>
-          <div class="page-sub">Kaynak veritabanı özeti</div>
+        <div class="page-title-group">
+          <h1>Kaynak İstatistikleri</h1>
+          <p>Veritabanında kayıtlı soru bankaları, playlistler ve video içerikleri</p>
         </div>
-        <button class="btn btn-accent" onclick="loadStats()">🔄 Yenile</button>
+        <button class="btn btn-ghost" onclick="loadStats()">🔄 Yenile</button>
       </div>
-      <div class="stats" id="statsGrid">
-        <div class="stat"><div class="stat-val">—</div><div class="stat-lbl">Toplam Kaynak</div></div>
-        <div class="stat"><div class="stat-val">—</div><div class="stat-lbl">Soru Bankası</div></div>
-        <div class="stat"><div class="stat-val">—</div><div class="stat-lbl">Playlist</div></div>
-        <div class="stat"><div class="stat-val">—</div><div class="stat-lbl">Toplam Video</div></div>
+
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="stat-value" id="stTotal">—</div><div class="stat-label">Toplam Kaynak</div></div>
+        <div class="stat-card"><div class="stat-value" id="stBooks" style="color:var(--accent)">—</div><div class="stat-label">Soru Bankası</div></div>
+        <div class="stat-card"><div class="stat-value" id="stPlaylists" style="color:var(--cyan)">—</div><div class="stat-label">Playlist</div></div>
+        <div class="stat-card"><div class="stat-value" id="stVideos" style="color:var(--emerald)">—</div><div class="stat-label">Toplam Video</div></div>
       </div>
-      <div class="card" id="subjectBreakdown"><div style="color:var(--text-dim);font-size:13px">Yükleniyor...</div></div>
+
+      <div class="glass-card">
+        <h3 style="font-family:'Outfit',sans-serif; font-size:18px; margin-bottom:16px;">Ders & Sınav Dağılımı</h3>
+        <div id="subjectBreakdown"><div style="color:var(--text-dim); font-size:13px;">Yükleniyor...</div></div>
+      </div>
     </div>
 
-    <!-- YOUTUBE IMPORT -->
-    <div id="page-youtube" style="display:none" class="fade-up">
+    <!-- PAGE: FERNUS IMPORT -->
+    <div id="page-fernus" style="display:none" class="fade-in">
       <div class="page-header">
-        <div>
-          <div class="page-title">▶️ YouTube Import</div>
-          <div class="page-sub">Playlist URL yapıştır, video listesi otomatik gelsin</div>
+        <div class="page-title-group">
+          <h1>🔍 Fernus Dijital Import</h1>
+          <p>30+ Yayınevinin video çözümlerinden kitap, ünite ve soru sayılarını saniyeler içinde çekin</p>
         </div>
       </div>
 
-      <!-- API Key -->
-      <div class="card" style="margin-bottom:20px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-          🔑 YouTube API Key
-          <span id="apiKeyStatus" class="tag tag-red">Girilmedi</span>
-        </div>
-        <div class="field-row">
-          <div class="field" style="margin:0">
-            <input type="password" id="ytApiKey" placeholder="AIzaSy... (Google Cloud Console'dan alın)" oninput="checkApiKey()">
+      <!-- Controls -->
+      <div class="glass-card">
+        <div class="form-row">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">1. Yayınevi Listesinden Seçin</label>
+            <select class="form-control" id="fernusPubSelect" onchange="selectFernusPublisher()">
+              <option value="">-- Bir Yayınevi Seçin (30+ Yayınevi) --</option>
+            </select>
           </div>
-          <div style="display:flex;gap:8px;align-items:flex-end">
-            <button class="btn btn-accent" onclick="saveApiKey()">💾 Kaydet</button>
-            <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" class="btn btn-ghost">API Al →</a>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">2. Veya Kelime ile Arayın</label>
+            <div style="display:flex; gap:8px">
+              <input id="fernusQuery" class="form-control" placeholder="Kitap veya konu adı… (örn: 345 AYT Fizik)" onkeydown="if(event.key==='Enter')startFernusSearch()">
+              <button class="btn btn-primary" id="fernusSearchBtn" onclick="startFernusSearch()">ARA →</button>
+            </div>
           </div>
         </div>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:8px">Google Cloud Console → YouTube Data API v3 → Credentials → API Key</div>
+
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border)">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Özel Fernus Domaini Girin</label>
+            <div style="display:flex; gap:8px">
+              <input id="fernusCustomBase" class="form-control" placeholder="https://domain.frns.in veya custom.cozum.com">
+              <button class="btn btn-ghost" onclick="loadCustomFernusDomain()">Git →</button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Playlist URL -->
-      <div class="card" style="margin-bottom:20px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:12px">🔗 Playlist URL</div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <input id="ytUrl" placeholder="https://www.youtube.com/playlist?list=PL..." style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:13px;font-family:inherit;color:var(--text);outline:none">
-          <button class="btn btn-accent" onclick="fetchPlaylist()" id="fetchBtn">Çek →</button>
-        </div>
-        <div id="fetchStatus" style="font-size:12px;color:var(--text-mid)"></div>
+      <!-- Loading State -->
+      <div id="fernusLoading" class="glass-card" style="display:none; align-items:center; gap:16px;">
+        <div style="width:20px; height:20px; border:3px solid var(--accent); border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite"></div>
+        <span id="fernusLoadingTxt" style="font-size:14px; font-weight:600; color:var(--accent)">İşleniyor...</span>
       </div>
 
-      <!-- Preview -->
-      <div id="previewSection" style="display:none">
-        <div class="card" style="margin-bottom:20px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <div style="font-size:14px;font-weight:700">📋 Önizleme</div>
-            <div id="previewCount" class="tag tag-green"></div>
-          </div>
-          <div id="videoPreview" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"></div>
-        </div>
+      <!-- Error State -->
+      <div id="fernusErr" style="display:none; background:var(--rose-dim); border:1px solid rgba(244,63,94,0.3); border-radius:var(--r-lg); padding:16px 20px; color:var(--rose); font-size:13.5px; margin-bottom:20px;"></div>
 
-        <!-- Kaydet -->
-        <div class="card">
-          <div style="font-size:14px;font-weight:700;margin-bottom:14px">💾 Kaynağı Kaydet</div>
-          <div class="field-row">
-            <div class="field"><label>Sınav</label>
-              <select id="ytExam">
+      <!-- Category / Book Select Tree -->
+      <div id="fernusSelectPanel" style="display:none" class="glass-card fade-in">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px">
+          <div id="fernusBackWrap"></div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-ghost btn-xs" onclick="toggleFernusSelectAll(true)">☑️ Tümünü Seç</button>
+            <button class="btn btn-ghost btn-xs" onclick="toggleFernusSelectAll(false)">☐ Temizle</button>
+            <button class="btn btn-primary btn-sm" id="fernusBulkImportBtn" onclick="runFernusBulkImport()" style="display:none">
+              🚀 Seçilenleri Toplu Aktar (<span id="fernusSelCount">0</span>)
+            </button>
+          </div>
+        </div>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px" id="fernusSelectDesc">Aşağıdaki kategoriden içerik seçin:</p>
+        <div id="fernusSelectList" style="display:flex; flex-direction:column; gap:10px;"></div>
+      </div>
+
+      <!-- Bulk Progress Bar -->
+      <div id="fernusBulkPanel" style="display:none" class="glass-card fade-in">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+          <div style="font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px">
+            🚀 Toplu İçe Aktarma Süreci
+            <span id="fernusBulkBadge" class="tag tag-accent">İşleniyor</span>
+          </div>
+          <button class="btn btn-danger btn-xs" onclick="stopFernusBulkImport()">⏹ Durdur</button>
+        </div>
+        <div style="background:rgba(15,23,42,0.8); border-radius:99px; height:10px; overflow:hidden; margin-bottom:12px; border:1px solid var(--border)">
+          <div id="fernusProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent), var(--emerald)); transition:width 0.2s"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); margin-bottom:14px">
+          <span id="fernusBulkStatusTxt">Başlatılıyor...</span>
+          <span id="fernusBulkPercentTxt">%0</span>
+        </div>
+        <div id="fernusBulkLog" style="background:rgba(15,23,42,0.9); border:1px solid var(--border); border-radius:var(--r-md); padding:14px; max-height:220px; overflow-y:auto; font-family:monospace; font-size:12px; line-height:1.6"></div>
+      </div>
+
+      <!-- Book Result Details -->
+      <div id="fernusResultPanel" style="display:none" class="fade-in">
+        <div class="glass-card">
+          <h3 style="font-family:'Outfit',sans-serif; font-size:18px; margin-bottom:16px">💾 Kitap Kayıt Bilgileri</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Sınav Tipi</label>
+              <select id="fernusExam" class="form-control">
                 <option value="TYT">TYT</option>
                 <option value="AYT-SAY">AYT Sayısal</option>
                 <option value="AYT-EA">AYT Eşit Ağırlık</option>
                 <option value="AYT-SOZ">AYT Sözel</option>
               </select>
             </div>
-            <div class="field"><label>Ders</label>
-              <select id="ytSubject">
-                <option>Matematik</option><option>Fizik</option><option>Kimya</option>
-                <option>Biyoloji</option><option>Geometri</option><option>Türkçe</option>
-                <option>Edebiyat</option><option>Tarih</option><option>Coğrafya</option>
-                <option>Felsefe</option><option>Din</option>
+            <div class="form-group">
+              <label class="form-label">Ders / Branş</label>
+              <select id="fernusSubject" class="form-control">
+                <option>Matematik</option><option>Fizik</option><option>Kimya</option><option>Biyoloji</option>
+                <option>Geometri</option><option>Türkçe</option><option>Edebiyat</option><option>Tarih</option>
+                <option>Coğrafya</option><option>Felsefe</option><option>Din Kültürü</option>
               </select>
             </div>
           </div>
-          <div class="field-row">
-            <div class="field"><label>Hoca / Kanal Adı</label>
-              <input id="ytPublisher" placeholder="Mert Hoca, Eyüp B...">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Yayınevi</label>
+              <input id="fernusPublisher" class="form-control" placeholder="345, Bilgi Sarmal...">
             </div>
-            <div class="field"><label>Playlist Adı</label>
-              <input id="ytName" placeholder="AYT Matematik Kampı 2025">
+            <div class="form-group">
+              <label class="form-label">Kitap Adı</label>
+              <input id="fernusBookName" class="form-control" placeholder="AYT Fizik Soru Bankası">
             </div>
           </div>
-          <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="saveYouTubePlaylist()">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px">
+            <button class="btn btn-primary" id="fernusSaveBtn" onclick="saveFernusBook()" style="justify-content:center; padding:12px">
+              ✅ Veritabanına Kaydet
+            </button>
+            <button class="btn btn-indigo" onclick="openFernusBookPreview()" style="justify-content:center; padding:12px">
+              👁️ Canlı Önizleme Simülasyonu
+            </button>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+            <div style="display:flex; align-items:center; gap:10px">
+              <span style="font-family:'Outfit',sans-serif; font-size:16px; font-weight:700">Test Listesi</span>
+              <span id="fernusStatTest" class="tag tag-accent">0 test</span>
+              <span id="fernusStatSoru" class="tag tag-indigo">Soru: ...</span>
+            </div>
+            <button class="btn btn-ghost btn-xs" id="fernusBackBtn">← Geri</button>
+          </div>
+          <div id="fernusTableBody" style="max-height:360px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r-md)"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PAGE: YOUTUBE IMPORT -->
+    <div id="page-youtube" style="display:none" class="fade-in">
+      <div class="page-header">
+        <div class="page-title-group">
+          <h1>▶️ YouTube Playlist Import</h1>
+          <p>Ders kempları ve oynatma listelerini doğrudan veritabanına aktarın</p>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div style="font-size:14px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:10px;">
+          🔑 YouTube Data API Key
+          <span id="apiKeyStatus" class="tag tag-rose">Girilmedi</span>
+        </div>
+        <div class="form-row">
+          <input type="password" id="ytApiKey" class="form-control" placeholder="AIzaSy... (Google Cloud Console)" oninput="checkApiKey()">
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary" onclick="saveApiKey()">💾 Kaydet</button>
+            <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" class="btn btn-ghost">API Al →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <label class="form-label">🔗 Playlist URL</label>
+        <div style="display:flex; gap:10px; margin-bottom:12px">
+          <input id="ytUrl" class="form-control" placeholder="https://www.youtube.com/playlist?list=PL...">
+          <button class="btn btn-primary" onclick="fetchPlaylist()" id="fetchBtn">Videoları Çek →</button>
+        </div>
+        <div id="fetchStatus" style="font-size:13px; color:var(--text-muted)"></div>
+      </div>
+
+      <div id="previewSection" style="display:none" class="fade-in">
+        <div class="glass-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+            <span style="font-size:15px; font-weight:700">📋 Önizleme</span>
+            <span id="previewCount" class="tag tag-emerald"></span>
+          </div>
+          <div id="videoPreview" style="max-height:280px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r-md)"></div>
+        </div>
+
+        <div class="glass-card">
+          <h3 style="font-family:'Outfit',sans-serif; font-size:18px; margin-bottom:16px">💾 Playlist Kaydet</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Sınav</label>
+              <select id="ytExam" class="form-control">
+                <option value="TYT">TYT</option>
+                <option value="AYT-SAY">AYT Sayısal</option>
+                <option value="AYT-EA">AYT Eşit Ağırlık</option>
+                <option value="AYT-SOZ">AYT Sözel</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ders</label>
+              <select id="ytSubject" class="form-control">
+                <option>Matematik</option><option>Fizik</option><option>Kimya</option><option>Biyoloji</option>
+                <option>Geometri</option><option>Türkçe</option><option>Edebiyat</option><option>Tarih</option>
+                <option>Coğrafya</option><option>Felsefe</option><option>Din Kültürü</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Hoca / Kanal Adı</label>
+              <input id="ytPublisher" class="form-control" placeholder="Mert Hoca, Eyüp B...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Playlist Adı</label>
+              <input id="ytName" class="form-control" placeholder="AYT Matematik Kampı">
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%; justify-content:center; padding:12px" onclick="saveYouTubePlaylist()">
             ✅ Veritabanına Kaydet
           </button>
         </div>
       </div>
     </div>
 
-    <!-- MANUEL GİRİŞ -->
-    <div id="page-manuel" style="display:none" class="fade-up">
+    <!-- PAGE: MANUEL EKLEME -->
+    <div id="page-manuel" style="display:none" class="fade-in">
       <div class="page-header">
-        <div>
-          <div class="page-title">✏️ Manuel Giriş</div>
-          <div class="page-sub">Soru bankası veya playlist elle ekle</div>
+        <div class="page-title-group">
+          <h1>✏️ Manuel Giriş</h1>
+          <p>Soru bankası veya video listesini elle yapıştırıp ekleyin</p>
         </div>
       </div>
 
-      <!-- TABS -->
-      <div class="tabs">
+      <div class="tabs-header">
         <button class="tab-btn active" onclick="switchTab('tab-soru', this)">📚 Soru Bankası</button>
-        <button class="tab-btn" onclick="switchTab('tab-playlist', this)">▶️ Playlist / Video</button>
+        <button class="tab-btn" onclick="switchTab('tab-playlist', this)">▶️ Playlist</button>
       </div>
 
-      <!-- SORU BANKASI -->
+      <!-- TAB: SORU BANKASI -->
       <div id="tab-soru" class="tab-pane active">
-        <div class="card">
-          <div class="field-row">
-            <div class="field"><label>Sınav Türü</label>
-              <select id="sb_exam">
+        <div class="glass-card">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Sınav Türü</label>
+              <select id="sb_exam" class="form-control">
                 <option value="TYT">TYT</option><option value="AYT-SAY">AYT Sayısal</option>
                 <option value="AYT-EA">AYT Eşit Ağırlık</option><option value="AYT-SOZ">AYT Sözel</option>
               </select>
             </div>
-            <div class="field"><label>Ders</label>
-              <select id="sb_subject">
+            <div class="form-group">
+              <label class="form-label">Ders</label>
+              <select id="sb_subject" class="form-control">
                 <option>Matematik</option><option>Fizik</option><option>Kimya</option><option>Biyoloji</option>
                 <option>Geometri</option><option>Türkçe</option><option>Edebiyat</option><option>Tarih</option>
-                <option>Coğrafya</option><option>Felsefe</option><option>Din</option>
+                <option>Coğrafya</option><option>Felsefe</option><option>Din Kültürü</option>
               </select>
             </div>
           </div>
-          <div class="field-row">
-            <div class="field"><label>Yayınevi</label>
-              <input id="sb_publisher" placeholder="Karekök, İşler Yayınları, Delta...">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Yayınevi</label>
+              <input id="sb_publisher" class="form-control" placeholder="Karekök, İşler, 345...">
             </div>
-            <div class="field"><label>Kitap Adı</label>
-              <input id="sb_name" placeholder="TYT Matematik Soru Bankası">
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Testler ve Soru Sayıları</label>
-            <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">
-              Her satıra: <code style="background:var(--surface3);padding:2px 6px;border-radius:4px">Test Adı | Soru Sayısı</code> &nbsp; Örnek: <code style="background:var(--surface3);padding:2px 6px;border-radius:4px">Sayılar - Test 1 | 14</code>
-            </div>
-            <textarea id="sb_tests" style="min-height:250px;font-size:12px;font-family:monospace;line-height:1.6"
-              placeholder="Sayılar - Test 1 | 14&#10;Sayılar - Test 2 | 16&#10;Sayılar - Test 3 | 18&#10;Asal Sayılar - Test 1 | 12&#10;Asal Sayılar - Test 2 | 14&#10;Tam Sayılar - Test 1 | 16"></textarea>
-            <div style="display:flex;justify-content:space-between;margin-top:6px">
-              <span id="sb_count" style="font-size:12px;color:var(--text-dim)">0 test</span>
-              <button class="btn btn-ghost btn-xs" onclick="parseSBTests()">Önizle</button>
+            <div class="form-group">
+              <label class="form-label">Kitap Adı</label>
+              <input id="sb_name" class="form-control" placeholder="TYT Matematik Soru Bankası">
             </div>
           </div>
-
-          <!-- Önizleme -->
-          <div id="sb_preview" style="display:none;margin-bottom:14px">
-            <div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Önizleme</div>
-            <div id="sb_preview_list" style="max-height:200px;overflow-y:auto;background:var(--surface2);border-radius:8px;border:1px solid var(--border)"></div>
+          <div class="form-group">
+            <label class="form-label">Testler ve Soru Sayıları (Her satıra: Test Adı | Soru Sayısı)</label>
+            <textarea id="sb_tests" class="form-control" style="min-height:200px; font-family:monospace" placeholder="Sayılar - Test 1 | 14&#10;Sayılar - Test 2 | 16&#10;Asal Sayılar - Test 1 | 12"></textarea>
           </div>
-
-          <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="saveSoruBankasi()">
+          <button class="btn btn-primary" style="width:100%; justify-content:center; padding:12px" onclick="saveSoruBankasi()">
             💾 Soru Bankasını Kaydet
           </button>
         </div>
       </div>
 
-      <!-- PLAYLİST -->
+      <!-- TAB: PLAYLIST -->
       <div id="tab-playlist" class="tab-pane">
-        <div class="card">
-          <div class="field-row">
-            <div class="field"><label>Sınav</label>
-              <select id="pl_exam">
+        <div class="glass-card">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Sınav</label>
+              <select id="pl_exam" class="form-control">
                 <option value="TYT">TYT</option><option value="AYT-SAY">AYT Sayısal</option>
                 <option value="AYT-EA">AYT Eşit Ağırlık</option><option value="AYT-SOZ">AYT Sözel</option>
               </select>
             </div>
-            <div class="field"><label>Ders</label>
-              <select id="pl_subject">
+            <div class="form-group">
+              <label class="form-label">Ders</label>
+              <select id="pl_subject" class="form-control">
                 <option>Matematik</option><option>Fizik</option><option>Kimya</option><option>Biyoloji</option>
                 <option>Geometri</option><option>Türkçe</option><option>Edebiyat</option><option>Tarih</option>
-                <option>Coğrafya</option><option>Felsefe</option><option>Din</option>
+                <option>Coğrafya</option><option>Felsefe</option><option>Din Kültürü</option>
               </select>
             </div>
           </div>
-          <div class="field-row">
-            <div class="field"><label>Hoca / Kanal</label>
-              <input id="pl_publisher" placeholder="Mert Hoca, Şükrü Akkoyun...">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Hoca / Kanal</label>
+              <input id="pl_publisher" class="form-control" placeholder="Mert Hoca...">
             </div>
-            <div class="field"><label>Playlist Adı</label>
-              <input id="pl_name" placeholder="TYT Matematik Kampı 2025">
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Videolar</label>
-            <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">
-              Her satıra: <code style="background:var(--surface3);padding:2px 6px;border-radius:4px">Video Başlığı | YouTube Linki | Süre(dk)</code>
-            </div>
-            <textarea id="pl_videos" style="min-height:250px;font-size:12px;font-family:monospace;line-height:1.6"
-              placeholder="Ders 1 - Polinomlar | https://youtube.com/watch?v=xxx | 45&#10;Ders 2 - Türev | https://youtube.com/watch?v=yyy | 38&#10;Ders 3 - İntegral | https://youtube.com/watch?v=zzz | 52"></textarea>
-            <div style="display:flex;justify-content:space-between;margin-top:6px">
-              <span id="pl_count" style="font-size:12px;color:var(--text-dim)">0 video</span>
+            <div class="form-group">
+              <label class="form-label">Playlist Adı</label>
+              <input id="pl_name" class="form-control" placeholder="TYT Matematik Kampı">
             </div>
           </div>
-
-          <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="saveManuelPlaylist()">
+          <div class="form-group">
+            <label class="form-label">Videolar (Her satıra: Video Başlığı | YouTube Linki | Süre(dk))</label>
+            <textarea id="pl_videos" class="form-control" style="min-height:200px; font-family:monospace" placeholder="Ders 1 - Polinomlar | https://youtube.com/watch?v=xxx | 45&#10;Ders 2 - Türev | https://youtube.com/watch?v=yyy | 38"></textarea>
+          </div>
+          <button class="btn btn-primary" style="width:100%; justify-content:center; padding:12px" onclick="saveManuelPlaylist()">
             💾 Playlist Kaydet
           </button>
         </div>
       </div>
     </div>
 
-    <!-- FERNUS IMPORT -->
-    <div id="page-fernus" style="display:none" class="fade-up">
+    <!-- PAGE: TÜM KAYNAKLAR -->
+    <div id="page-liste" style="display:none" class="fade-in">
       <div class="page-header">
-        <div>
-          <div class="page-title">🔍 Fernus Import</div>
-          <div class="page-sub">Yayınevi video çözüm sistemlerinden kitap testlerini ve soru sayılarını çekin</div>
+        <div class="page-title-group">
+          <h1>📚 Veritabanındaki Kaynaklar</h1>
+          <p>Kayıtlı tüm soru bankaları ve oynatma listeleri</p>
         </div>
-      </div>
-
-      <!-- Search & Browse -->
-      <div class="card" style="margin-bottom:20px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:12px">📚 Kitap / Yayınevi Seçimi</div>
-        
-        <div class="field-row" style="margin-bottom:12px">
-          <div class="field" style="margin:0">
-            <label style="display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Yayınevi Seçerek Göz At</label>
-            <select id="fernusPublisherSelect" onchange="selectFernusPublisher()">
-              <option value="">-- Bir Yayınevi Seçin --</option>
-            </select>
-          </div>
-          <div class="field" style="margin:0">
-            <label style="display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Veya Kelime ile Ara</label>
-            <div style="display:flex;gap:8px">
-              <input id="fernusQuery" placeholder="Kitap adı… (örn: 345 AYT Fizik)" style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:13px;font-family:inherit;color:var(--text);outline:none" onkeydown="if(event.key==='Enter')startFernusSearch()">
-              <button class="btn btn-accent" onclick="startFernusSearch()" id="fernusSearchBtn">ARA →</button>
-            </div>
-          </div>
-        </div>
-        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-          <div class="field" style="margin:0">
-            <label style="display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Veya Özel Fernus Domaini Girin</label>
-            <div style="display:flex;gap:8px">
-              <input id="fernusCustomBase" placeholder="https://domain.frns.in veya custom.cozum.com" style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:13px;font-family:inherit;color:var(--text);outline:none">
-              <button class="btn btn-ghost" onclick="loadCustomFernusDomain()" id="fernusCustomBtn" style="padding:10px 20px">Git →</button>
-            </div>
-          </div>
-        </div>
-        <div id="fernusSearchStatus" style="font-size:12px;color:var(--text-mid);margin-top:6px"></div>
-      </div>
-
-      <!-- Loading -->
-      <div id="fernusLoadingEl" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:20px;align-items:center;gap:12px;">
-        <div style="width:16px;height:16px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;"></div>
-        <span id="fernusLoadingTxt" style="font-size:13px;color:var(--accent);"></span>
-      </div>
-
-      <!-- Select Category/Book -->
-      <div id="fernusSelectPanel" style="display:none;margin-bottom:20px;" class="card fade-up">
-        <div id="fernusSelectHeader" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
-          <div id="fernusSelectBackWrap"></div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn btn-ghost btn-xs" onclick="toggleFernusSelectAll(true)">☑️ Tümünü Seç</button>
-            <button class="btn btn-ghost btn-xs" onclick="toggleFernusSelectAll(false)">☐ Temizle</button>
-            <button class="btn btn-accent btn-sm" id="fernusBulkImportBtn" onclick="runFernusBulkImport()" style="display:none">
-              🚀 Seçilenleri Toplu İçe Aktar (<span id="fernusSelCount">0</span>)
-            </button>
-          </div>
-        </div>
-        <p style="font-size:11px;color:var(--accent);letter-spacing:.1em;margin-bottom:4px;text-transform:uppercase;font-weight:700;">Kitap / Kategori Seçimi</p>
-        <p style="font-size:12px;color:var(--text-mid);margin-bottom:14px;" id="fernusSelectDesc">İster detay için tıklayın, ister kutuları işaretleyip toplu veritabanına aktarın:</p>
-        <div id="fernusSelectList" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
-
-      <!-- Bulk Progress Panel -->
-      <div id="fernusBulkPanel" style="display:none;margin-bottom:20px;" class="card fade-up">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <div style="font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px">
-            🚀 Toplu İçe Aktarma İşlemi
-            <span id="fernusBulkBadge" class="tag tag-accent">İşleniyor...</span>
-          </div>
-          <button class="btn btn-danger btn-xs" onclick="stopFernusBulkImport()" id="fernusBulkStopBtn">⏹ Durdur</button>
-        </div>
-        
-        <!-- Progress Bar -->
-        <div style="background:var(--surface2);border-radius:8px;height:12px;overflow:hidden;margin-bottom:12px;border:1px solid var(--border)">
-          <div id="fernusProgressBar" style="width:0%;height:100%;background:linear-gradient(90deg, var(--accent), var(--green));transition:width 0.2s"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-mid);margin-bottom:14px">
-          <span id="fernusBulkStatusTxt">Başlatılıyor...</span>
-          <span id="fernusBulkPercentTxt">%0</span>
-        </div>
-
-        <!-- Live Log -->
-        <div id="fernusBulkLog" class="log" style="max-height:220px;font-family:monospace;font-size:11.5px;line-height:1.6">
-        </div>
-      </div>
-
-      <!-- Error -->
-      <div id="fernusErrEl" style="display:none;background:rgba(255,92,92,.07);border:1px solid rgba(255,92,92,.2);border-radius:6px;padding:13px 16px;margin-bottom:20px;font-size:13px;color:var(--red);"></div>
-
-      <!-- Results Preview -->
-      <div id="fernusResultPanel" style="display:none" class="fade-up">
-        
-        <!-- Save form -->
-        <div class="card" style="margin-bottom:20px">
-          <div style="font-size:14px;font-weight:700;margin-bottom:14px">💾 Kaynağı Veritabanına Kaydet</div>
-          <div class="field-row">
-            <div class="field"><label>Sınav</label>
-              <select id="fernusExam">
-                <option value="TYT">TYT</option>
-                <option value="AYT-SAY">AYT Sayısal</option>
-                <option value="AYT-EA">AYT Eşit Ağırlık</option>
-                <option value="AYT-SOZ">AYT Sözel</option>
-              </select>
-            </div>
-            <div class="field"><label>Ders</label>
-              <select id="fernusSubject">
-                <option>Matematik</option><option>Fizik</option><option>Kimya</option>
-                <option>Biyoloji</option><option>Geometri</option><option>Türkçe</option>
-                <option>Edebiyat</option><option>Tarih</option><option>Coğrafya</option>
-                <option>Felsefe</option><option>Din Kültürü</option>
-              </select>
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field"><label>Yayınevi</label>
-              <input id="fernusPublisher" placeholder="345, Bilgi Sarmal...">
-            </div>
-            <div class="field"><label>Kitap Adı</label>
-              <input id="fernusBookName" placeholder="AYT Fizik Soru Bankası">
-            </div>
-          </div>
-          <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="saveFernusBook()" id="fernusSaveBtn">
-            ✅ Veritabanına Kaydet
-          </button>
-        </div>
-
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <div style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px">
-              📋 Önizleme
-              <span id="fernusStatTest" class="tag tag-accent">0 test</span>
-              <span id="fernusStatSoru" class="tag tag-blue">Soru: ...</span>
-              <span id="fernusCountProgress" style="font-size:11px;color:var(--text-mid)"></span>
-            </div>
-            <button class="btn btn-ghost btn-xs" id="fernusBackBtn">← Geri</button>
-          </div>
-          
-          <div style="max-height:350px;overflow-y:auto;border:1px solid var(--border);border-radius:8px" id="fernusTableBody">
-          </div>
-        </div>
-      </div>
-
-      <!-- Info -->
-      <div id="fernusEmptyState" class="card">
-        <p style="font-size:11px;color:var(--text-dim);letter-spacing:.1em;margin-bottom:10px;text-transform:uppercase;font-weight:700;">Desteklenen Fernus Yayınevleri (30+ Yayınevi)</p>
-        <p style="font-size:12px;color:var(--text-mid);line-height:1.8;">
-          ÜçDörtBeş (345) · Bilgi Sarmal · Çap Yayınları · Apotemi · Benim Hocam · Palme Yayıncılık · Okyanus Yayınları · Paraf Yayınları · Aydın Yayınları · Karekök Yayınları · Hız ve Renk · Hız Yayınları · Nitelik Yayınları · Limit Yayınları · Eis Yayınları · Sınav Yayınları · Orijinal Yayınları · Miray Yayınları · Sadık Uygun · Kafa Dengi · Puan Yayınları · Mozaik Yayınları · Yanıt Yayınları · Kurmay / Fenomen · ENS / Edes · Berkay · 5 Yıldız · Günay · Kırmızı Beyaz · Model · Akademik Başarı · Gizli Yayınlar
-        </p>
-      </div>
-    </div>eight:700">📋 Önizleme</div>
-            <div id="fePreviewCount" class="tag tag-green">0 test / 0 soru</div>
-          </div>
-          <div id="feBookPreview" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TÜM KAYNAKLAR -->
-    <div id="page-liste" style="display:none" class="fade-up">
-      <div class="page-header">
-        <div>
-          <div class="page-title">📚 Tüm Kaynaklar</div>
-          <div class="page-sub">Veritabanındaki tüm kaynaklar</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <input id="searchInput" placeholder="Ara..." oninput="filterList()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:8px 13px;font-size:13px;font-family:inherit;color:var(--text);outline:none;width:200px">
-          <select id="filterType" onchange="filterList()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:8px 13px;font-size:13px;font-family:inherit;color:var(--text);outline:none">
+        <div style="display:flex; gap:10px">
+          <input id="searchInput" class="form-control" placeholder="Ara..." oninput="filterList()" style="width:200px">
+          <select id="filterType" class="form-control" onchange="filterList()" style="width:140px">
             <option value="">Tümü</option>
             <option value="book">Soru Bankası</option>
             <option value="playlist">Playlist</option>
@@ -557,417 +991,33 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <!-- TOAST -->
-<div id="toast" class="toast" style="display:none"></div>
+<div id="toast" class="toast-box"></div>
 
+<!-- PREVIEW MODAL -->
+<div id="fernusPreviewModal" class="modal-backdrop">
+  <div class="modal-content fade-in">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border)">
+      <div>
+        <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#fff">👁️ Öğrenci Uygulaması Canlı Görünümü</h3>
+        <p style="font-size:12px; color:var(--text-muted)">Eklediğiniz kitap koç paneli ve öğrenci uygulamasında tam olarak bu görünümle yer alacaktır.</p>
+      </div>
+      <button class="btn btn-ghost btn-xs" onclick="closeFernusBookPreview()">✕ Kapat</button>
+    </div>
+    <div id="fernusPreviewModalBody"></div>
+  </div>
+</div>
+
+<!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-// ── CONFIG ──────────────────────────────────────
+// ── CONFIG ────────────────────────────────────────
 const SB_URL = 'https://imyhenrwmsmyikpollur.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
 const db = supabase.createClient(SB_URL, SB_KEY);
-
-// ── LOGIN GATE ───────────────────────────────────
+const WORKER = 'https://claude-proxy.ceylanemin1928.workers.dev';
 const _KR_HASH = '07cf99a32383fa51aedb193252e8815d09cf3f36cd72b95b08e966f681af0ba8'; // kaynak2026
 
-async function kaynakLogin() {
-  const p = document.getElementById('klPass').value;
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p));
-  const hash = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-  if(hash === _KR_HASH) {
-    sessionStorage.setItem('kaynak_auth', '1');
-    document.getElementById('kaynak-login').style.display = 'none';
-    document.getElementById('kaynakApp').style.display = 'grid';
-    initKaynak();
-  } else {
-    const err = document.getElementById('klErr');
-    err.style.display = 'block';
-    setTimeout(() => err.style.display='none', 2500);
-  }
-}
-
-if(sessionStorage.getItem('kaynak_auth')) {
-  document.getElementById('kaynak-login').style.display = 'none';
-  document.getElementById('kaynakApp').style.display = 'grid';
-}
-let _allResources = [];
-let _fetchedVideos = [];
-
-// ── INIT ────────────────────────────────────────
-async function initKaynak() {
-  try {
-    const { data } = await db.from('resources').select('id').limit(1);
-    document.getElementById('connStatus').innerHTML = '<span style="color:var(--green)">✓ Bağlandı</span>';
-    loadStats();
-  } catch(e) {
-    document.getElementById('connStatus').innerHTML = '<span style="color:var(--red)">✗ Bağlantı hatası</span>';
-  }
-
-  // Kayıtlı API key
-  const key = localStorage.getItem('yt_api_key') || '';
-  if(key) {
-    document.getElementById('ytApiKey').value = key;
-    checkApiKey();
-  }
-  // (Claude API key optional — no longer stored in a dedicated input)
-
-  // Test sayacı
-  document.getElementById('sb_tests').addEventListener('input', () => {
-    const lines = document.getElementById('sb_tests').value.split('\n').filter(l=>l.trim());
-    document.getElementById('sb_count').textContent = lines.length + ' test';
-  });
-  document.getElementById('pl_videos').addEventListener('input', () => {
-    const lines = document.getElementById('pl_videos').value.split('\n').filter(l=>l.trim());
-    document.getElementById('pl_count').textContent = lines.length + ' video';
-  });
-}
-
-// Oturum açıksa otomatik init
-if(sessionStorage.getItem('kaynak_auth')) { initKaynak(); }
-
-// ── NAVIGATION ──────────────────────────────────
-function showPage(page) {
-  document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
-  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-  document.getElementById('page-' + page).style.display = 'block';
-  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
-  if(page === 'liste') loadList();
-}
-
-function switchTab(tabId, btn) {
-  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  btn.classList.add('active');
-}
-
-// ── TOAST ───────────────────────────────────────
-function toast(msg, type='ok') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.display = 'block';
-  el.style.borderColor = type === 'ok' ? 'var(--green)' : type === 'err' ? 'var(--red)' : 'var(--accent)';
-  setTimeout(() => el.style.display = 'none', 3000);
-}
-
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-// ── DASHBOARD ───────────────────────────────────
-async function loadStats() {
-  const { data } = await db.from('resources').select('*');
-  _allResources = data || [];
-  const books = _allResources.filter(r => r.resource_type !== 'playlist');
-  const playlists = _allResources.filter(r => r.resource_type === 'playlist');
-  const totalVideos = playlists.reduce((s, p) => s + (p.tests||[]).length, 0);
-
-  document.getElementById('statsGrid').innerHTML = `
-    <div class="stat"><div class="stat-val">${_allResources.length}</div><div class="stat-lbl">Toplam Kaynak</div></div>
-    <div class="stat"><div class="stat-val">${books.length}</div><div class="stat-lbl">Soru Bankası</div></div>
-    <div class="stat"><div class="stat-val">${playlists.length}</div><div class="stat-lbl">Playlist</div></div>
-    <div class="stat"><div class="stat-val">${totalVideos}</div><div class="stat-lbl">Toplam Video</div></div>`;
-
-  // Ders dağılımı
-  const bySubject = {};
-  _allResources.forEach(r => {
-    const k = r.exam_type + ' · ' + r.subject;
-    if(!bySubject[k]) bySubject[k] = {book:0, playlist:0};
-    if(r.resource_type === 'playlist') bySubject[k].playlist++;
-    else bySubject[k].book++;
-  });
-  const sorted = Object.entries(bySubject).sort((a,b) => (b[1].book+b[1].playlist) - (a[1].book+a[1].playlist));
-
-  document.getElementById('subjectBreakdown').innerHTML = `
-    <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:14px">Ders Dağılımı</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
-      ${sorted.map(([k,v]) => `
-        <div style="background:var(--surface2);border-radius:9px;padding:10px 13px">
-          <div style="font-size:12px;font-weight:700;margin-bottom:5px">${esc(k)}</div>
-          <div style="display:flex;gap:8px;font-size:11px;color:var(--text-dim)">
-            ${v.book > 0 ? `<span class="tag tag-accent">${v.book} kitap</span>` : ''}
-            ${v.playlist > 0 ? `<span class="tag tag-blue">${v.playlist} playlist</span>` : ''}
-          </div>
-        </div>`).join('')}
-    </div>`;
-}
-
-// ── YOUTUBE IMPORT ───────────────────────────────
-function checkApiKey() {
-  const key = document.getElementById('ytApiKey').value.trim();
-  const status = document.getElementById('apiKeyStatus');
-  if(key.startsWith('AIza') && key.length > 30) {
-    status.className = 'tag tag-green'; status.textContent = '✓ Geçerli format';
-  } else if(key) {
-    status.className = 'tag tag-accent'; status.textContent = '⚠ Format hatalı?';
-  } else {
-    status.className = 'tag tag-red'; status.textContent = 'Girilmedi';
-  }
-}
-
-function saveApiKey() {
-  const key = document.getElementById('ytApiKey').value.trim();
-  if(!key) return toast('API key girin!', 'err');
-  localStorage.setItem('yt_api_key', key);
-  toast('API Key kaydedildi ✓');
-  checkApiKey();
-}
-
-async function fetchPlaylist() {
-  const url = document.getElementById('ytUrl').value.trim();
-  const apiKey = document.getElementById('ytApiKey').value.trim() || localStorage.getItem('yt_api_key');
-  const statusEl = document.getElementById('fetchStatus');
-  const btn = document.getElementById('fetchBtn');
-
-  if(!apiKey) return statusEl.innerHTML = '<span style="color:var(--red)">⚠️ Önce API Key girin ve kaydedin</span>';
-  if(!url) return statusEl.innerHTML = '<span style="color:var(--red)">⚠️ Playlist URL girin</span>';
-
-  const match = url.match(/[?&]list=([^&\s]+)/);
-  if(!match) return statusEl.innerHTML = '<span style="color:var(--red)">⚠️ Geçersiz URL — "list=..." kısmı bulunamadı</span>';
-  const listId = match[1];
-
-  btn.disabled = true;
-  statusEl.innerHTML = '⏳ Videolar çekiliyor...';
-
-  try {
-    _fetchedVideos = [];
-    let nextPage = '';
-    let playlistTitle = '';
-
-    do {
-      const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${listId}&maxResults=50&pageToken=${nextPage}&key=${apiKey}`);
-      const data = await res.json();
-      if(data.error) throw new Error(data.error.message);
-      if(!playlistTitle && data.items?.[0]?.snippet?.channelTitle) {
-        playlistTitle = data.items[0].snippet.playlistId;
-      }
-
-      statusEl.innerHTML = `⏳ ${_fetchedVideos.length + data.items.length} video yükleniyor...`;
-
-      // Süreleri çek
-      const ids = data.items.map(i => i.snippet.resourceId.videoId).join(',');
-      const durRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${ids}&key=${apiKey}`);
-      const durData = await durRes.json();
-      const durMap = {};
-      (durData.items||[]).forEach(v => {
-        const iso = v.contentDetails.duration;
-        const h = parseInt(iso.match(/(\d+)H/)?.[1]||0);
-        const m = parseInt(iso.match(/(\d+)M/)?.[1]||0);
-        const s = parseInt(iso.match(/(\d+)S/)?.[1]||0);
-        durMap[v.id] = Math.ceil((h*3600+m*60+s)/60);
-      });
-
-      data.items.forEach(item => {
-        const vid = item.snippet.resourceId.videoId;
-        _fetchedVideos.push({
-          title: item.snippet.title,
-          url: `https://www.youtube.com/watch?v=${vid}`,
-          duration: durMap[vid] || 0
-        });
-      });
-
-      nextPage = data.nextPageToken || '';
-    } while(nextPage && _fetchedVideos.length < 200);
-
-    statusEl.innerHTML = `<span style="color:var(--green)">✓ ${_fetchedVideos.length} video başarıyla yüklendi!</span>`;
-
-    // Önizleme
-    document.getElementById('previewCount').textContent = _fetchedVideos.length + ' video';
-    document.getElementById('videoPreview').innerHTML = _fetchedVideos.map((v,i) => `
-      <div class="video-item">
-        <div class="video-num">${i+1}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v.title)}</div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:2px">${v.duration} dk</div>
-        </div>
-        <a href="${esc(v.url)}" target="_blank" style="font-size:10px;background:var(--red-dim);color:var(--red);padding:2px 8px;border-radius:99px;text-decoration:none;flex-shrink:0">▶</a>
-      </div>`).join('');
-    document.getElementById('previewSection').style.display = 'block';
-
-    // Playlist adı tahmin et
-    if(_fetchedVideos.length > 0 && !document.getElementById('ytName').value) {
-      const firstTitle = _fetchedVideos[0].title;
-      document.getElementById('ytName').value = firstTitle.split(' - ')[0] || firstTitle.slice(0,40);
-    }
-
-  } catch(e) {
-    statusEl.innerHTML = `<span style="color:var(--red)">⚠️ Hata: ${esc(e.message)}</span>`;
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function saveYouTubePlaylist() {
-  const name = document.getElementById('ytName').value.trim();
-  const publisher = document.getElementById('ytPublisher').value.trim();
-  if(!name || !publisher) return toast('Hoca adı ve playlist adı zorunlu!', 'err');
-  if(!_fetchedVideos.length) return toast('Önce playlist çekin!', 'err');
-
-  const tests = _fetchedVideos.map(v => ({
-    label: v.title,
-    url: v.url,
-    topic: '',
-    soru: v.duration
-  }));
-
-  const { error } = await db.from('resources').insert({
-    exam_type: document.getElementById('ytExam').value,
-    subject: document.getElementById('ytSubject').value,
-    publisher, name,
-    year: new Date().getFullYear(),
-    tests, active: true,
-    resource_type: 'playlist'
-  });
-
-  if(error) return toast('Hata: ' + error.message, 'err');
-  toast(`✓ "${name}" kaydedildi — ${tests.length} video`);
-  document.getElementById('previewSection').style.display = 'none';
-  document.getElementById('ytUrl').value = '';
-  document.getElementById('ytName').value = '';
-  document.getElementById('ytPublisher').value = '';
-  _fetchedVideos = [];
-  loadStats();
-}
-
-// ── MANUEL GİRİŞ ────────────────────────────────
-function parseSBTests() {
-  const lines = document.getElementById('sb_tests').value.split('\n').map(l=>l.trim()).filter(Boolean);
-  const el = document.getElementById('sb_preview_list');
-  const preview = document.getElementById('sb_preview');
-  if(!lines.length) { preview.style.display='none'; return; }
-
-  el.innerHTML = lines.map(line => {
-    const parts = line.split('|').map(p=>p.trim());
-    const label = parts[0] || '';
-    const soru = parseInt(parts[1]) || 0;
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12px">
-      <span style="font-weight:600">${esc(label)}</span>
-      ${soru > 0 ? `<span class="tag tag-accent">${soru} soru</span>` : '<span style="color:var(--text-dim)">soru sayısı yok</span>'}
-    </div>`;
-  }).join('');
-  preview.style.display = 'block';
-  document.getElementById('sb_count').textContent = lines.length + ' test';
-}
-
-async function saveSoruBankasi() {
-  const name = document.getElementById('sb_name').value.trim();
-  const publisher = document.getElementById('sb_publisher').value.trim();
-  const subject = document.getElementById('sb_subject').value;
-  if(!name || !publisher) return toast('Yayınevi ve kitap adı zorunlu!', 'err');
-
-  const lines = document.getElementById('sb_tests').value.split('\n').map(l=>l.trim()).filter(Boolean);
-  if(!lines.length) return toast('En az 1 test girin!', 'err');
-
-  const tests = lines.map(line => {
-    const parts = line.split('|').map(p=>p.trim());
-    return { label: parts[0]||'', soru: parseInt(parts[1])||0 };
-  }).filter(t => t.label);
-
-  const { error } = await db.from('resources').insert({
-    exam_type: document.getElementById('sb_exam').value,
-    subject, publisher, name,
-    year: new Date().getFullYear(),
-    tests, active: true,
-    resource_type: 'book'
-  });
-
-  if(error) return toast('Hata: ' + error.message, 'err');
-  toast(`✓ "${name}" kaydedildi — ${tests.length} test`);
-  document.getElementById('sb_name').value = '';
-  document.getElementById('sb_publisher').value = '';
-  document.getElementById('sb_tests').value = '';
-  document.getElementById('sb_preview').style.display = 'none';
-  document.getElementById('sb_count').textContent = '0 test';
-  loadStats();
-}
-
-async function saveManuelPlaylist() {
-  const name = document.getElementById('pl_name').value.trim();
-  const publisher = document.getElementById('pl_publisher').value.trim();
-  if(!name || !publisher) return toast('Hoca adı ve playlist adı zorunlu!', 'err');
-
-  const lines = document.getElementById('pl_videos').value.split('\n').map(l=>l.trim()).filter(Boolean);
-  if(!lines.length) return toast('En az 1 video girin!', 'err');
-
-  const tests = lines.map(line => {
-    const parts = line.split('|').map(p=>p.trim());
-    return { label:parts[0]||'', url:parts[1]||'', topic:'', soru:parseInt(parts[2])||0 };
-  }).filter(t => t.label);
-
-  const { error } = await db.from('resources').insert({
-    exam_type: document.getElementById('pl_exam').value,
-    subject: document.getElementById('pl_subject').value,
-    publisher, name,
-    year: new Date().getFullYear(),
-    tests, active: true,
-    resource_type: 'playlist'
-  });
-
-  if(error) return toast('Hata: ' + error.message, 'err');
-  toast(`✓ "${name}" kaydedildi — ${tests.length} video`);
-  document.getElementById('pl_name').value = '';
-  document.getElementById('pl_publisher').value = '';
-  document.getElementById('pl_videos').value = '';
-  document.getElementById('pl_count').textContent = '0 video';
-  loadStats();
-}
-
-// ── KAYNAK LİSTESİ ───────────────────────────────
-async function loadList() {
-  document.getElementById('resourceList').innerHTML = '<div style="color:var(--text-dim);padding:20px">Yükleniyor...</div>';
-  const { data } = await db.from('resources').select('*').order('resource_type,exam_type,subject,name');
-  _allResources = data || [];
-  renderList(_allResources);
-}
-
-function filterList() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  const type = document.getElementById('filterType').value;
-  const filtered = _allResources.filter(r => {
-    const matchType = !type || r.resource_type === type;
-    const matchQ = !q || r.name.toLowerCase().includes(q) || r.publisher?.toLowerCase().includes(q) || r.subject?.toLowerCase().includes(q);
-    return matchType && matchQ;
-  });
-  renderList(filtered);
-}
-
-function renderList(items) {
-  const el = document.getElementById('resourceList');
-  if(!items.length) { el.innerHTML = '<div class="empty" style="padding:40px;text-align:center;color:var(--text-dim)">Kaynak bulunamadı</div>'; return; }
-
-  const grouped = {};
-  items.forEach(r => {
-    const k = r.resource_type === 'playlist' ? '▶ Playlist' : '📚 Soru Bankası';
-    if(!grouped[k]) grouped[k] = [];
-    grouped[k].push(r);
-  });
-
-  el.innerHTML = Object.entries(grouped).map(([group, resources]) => `
-    <div style="margin-bottom:24px">
-      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px;color:var(--accent)">${group} <span style="font-size:12px;font-weight:400;color:var(--text-dim)">${resources.length} kaynak</span></div>
-      ${resources.map(r => `
-        <div class="resource-item">
-          <div class="resource-icon" style="background:${r.resource_type==='playlist'?'var(--blue-dim)':'var(--accent-dim)'}">
-            ${r.resource_type==='playlist'?'▶':'📚'}
-          </div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</div>
-            <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${esc(r.publisher)} · ${r.exam_type} ${r.subject} · ${(r.tests||[]).length} ${r.resource_type==='playlist'?'video':'test'}</div>
-          </div>
-          <span class="tag ${r.active?'tag-green':'tag-red'}" style="flex-shrink:0">${r.active?'Aktif':'Pasif'}</span>
-          <button class="btn btn-danger btn-xs" onclick="deleteResource('${r.id}')" style="opacity:.4;flex-shrink:0" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.4">🗑</button>
-        </div>`).join('')}
-    </div>`).join('');
-}
-
-async function deleteResource(id) {
-  if(!confirm('Bu kaynağı silmek istediğinizden emin misiniz?')) return;
-  const { error } = await db.from('resources').delete().eq('id', id);
-  if(error) return toast('Hata: ' + error.message, 'err');
-  toast('Silindi ✓');
-  loadList();
-  loadStats();
-}
-
-// ── FERNUS IMPORT ────────────────────────────────
-const WORKER = 'https://claude-proxy.ceylanemin1928.workers.dev';
 const FERNUS_PUBLISHERS = [
   { name: "345 (ÜçDörtBeş)", base: "https://ucdortbes.frns.in" },
   { name: "Bilgi Sarmal", base: "https://bilgisarmal.frns.in" },
@@ -1003,23 +1053,145 @@ const FERNUS_PUBLISHERS = [
   { name: "Gizli Yayınlar", base: "https://gizli.frns.in" }
 ];
 
-let fernusCurrentWords = [];
+let _allResources = [];
+let _fetchedVideos = [];
 let fernusNavHistory = [];
 let fernusCountingActive = false;
 let fernusCurrentResult = null;
+let fernusCurrentSelectItems = [];
+let fernusBulkActive = false;
 
-// Populate publisher dropdown on load
-(function initFernusDropdown() {
-  const select = document.getElementById('fernusPublisherSelect');
-  if (select) {
+// ── AUTH & INIT ──────────────────────────────────
+async function doLogin() {
+  const p = document.getElementById('loginPass').value;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p));
+  const hash = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  if (hash === _KR_HASH) {
+    sessionStorage.setItem('kaynak_auth', '1');
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('appMain').style.display = 'grid';
+    initApp();
+  } else {
+    const err = document.getElementById('loginErr');
+    err.style.display = 'block';
+    setTimeout(() => err.style.display='none', 2500);
+  }
+}
+
+if (sessionStorage.getItem('kaynak_auth')) {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('appMain').style.display = 'grid';
+  window.addEventListener('DOMContentLoaded', initApp);
+}
+
+async function initApp() {
+  try {
+    const { data } = await db.from('resources').select('id').limit(1);
+    document.getElementById('dbDot').classList.add('online');
+    document.getElementById('dbStatus').innerHTML = '<span style="color:var(--emerald)">✓ Bağlı</span>';
+    loadStats();
+  } catch(e) {
+    document.getElementById('dbStatus').innerHTML = '<span style="color:var(--rose)">✗ Hata</span>';
+  }
+
+  // Populate Fernus dropdown
+  const sel = document.getElementById('fernusPubSelect');
+  if (sel && sel.options.length <= 1) {
     FERNUS_PUBLISHERS.forEach(pub => {
       const opt = document.createElement('option');
       opt.value = pub.base;
       opt.textContent = pub.name;
-      select.appendChild(opt);
+      sel.appendChild(opt);
     });
   }
-})();
+
+  const key = localStorage.getItem('yt_api_key') || '';
+  if (key) {
+    document.getElementById('ytApiKey').value = key;
+    checkApiKey();
+  }
+}
+
+// ── NAVIGATION ───────────────────────────────────
+function navigate(page) {
+  document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+  document.getElementById('page-' + page).style.display = 'block';
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+  if (page === 'liste') loadList();
+}
+
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+}
+
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.borderColor = type === 'ok' ? 'var(--emerald)' : type === 'err' ? 'var(--rose)' : 'var(--accent)';
+  setTimeout(() => el.style.display = 'none', 3200);
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── DASHBOARD ────────────────────────────────────
+async function loadStats() {
+  const { data } = await db.from('resources').select('*');
+  _allResources = data || [];
+  const books = _allResources.filter(r => r.resource_type !== 'playlist');
+  const playlists = _allResources.filter(r => r.resource_type === 'playlist');
+  const totalVideos = playlists.reduce((s, p) => s + (p.tests||[]).length, 0);
+
+  document.getElementById('stTotal').textContent = _allResources.length;
+  document.getElementById('stBooks').textContent = books.length;
+  document.getElementById('stPlaylists').textContent = playlists.length;
+  document.getElementById('stVideos').textContent = totalVideos;
+
+  const bySubject = {};
+  _allResources.forEach(r => {
+    const k = r.exam_type + ' · ' + r.subject;
+    if(!bySubject[k]) bySubject[k] = {book:0, playlist:0};
+    if(r.resource_type === 'playlist') bySubject[k].playlist++;
+    else bySubject[k].book++;
+  });
+  const sorted = Object.entries(bySubject).sort((a,b) => (b[1].book+b[1].playlist) - (a[1].book+a[1].playlist));
+
+  document.getElementById('subjectBreakdown').innerHTML = `
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px">
+      ${sorted.map(([k,v]) => `
+        <div style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:var(--r-md); padding:12px 16px">
+          <div style="font-size:13px; font-weight:700; color:#fff; margin-bottom:6px">${esc(k)}</div>
+          <div style="display:flex; gap:8px;">
+            ${v.book > 0 ? `<span class="tag tag-accent">${v.book} kitap</span>` : ''}
+            ${v.playlist > 0 ? `<span class="tag tag-cyan">${v.playlist} playlist</span>` : ''}
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ── FERNUS INTEGRATION ────────────────────────────
+async function fetchFernusSourceList(base, id = '1') {
+  try {
+    const url = `${base}/mobile_solved/mobile_watch.php?action=source_list&id=${id}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.status || !data.sources) return [];
+    return data.sources.map(s => ({
+      id: s.id, nm: s.nm, base, parent: s.parent === 'true' || s.parent === true, pid: s.pid
+    }));
+  } catch (e) {
+    try {
+      const res = await callWorker('/fernus-continue', { base, id, words: [] });
+      const items = res.categories || res.multiple || [];
+      return items.map(it => ({ id: it.id, nm: it.nm, base: it.base || base, parent: true }));
+    } catch (_) { return []; }
+  }
+}
 
 async function callWorker(path, body) {
   const res = await fetch(WORKER + path, {
@@ -1033,27 +1205,28 @@ async function callWorker(path, body) {
 }
 
 async function selectFernusPublisher() {
-  const base = document.getElementById('fernusPublisherSelect').value;
+  const base = document.getElementById('fernusPubSelect').value;
   if (!base) return;
-  
   document.getElementById('fernusQuery').value = '';
-  
-  fernusCountingActive = false;
   fernusNavHistory = [];
-  setFernusLoading(true, 'Yayınevi kategorileri yükleniyor…');
+  setFernusLoading(true, 'Yayınevi kategorileri çekiliyor...');
   showFernusError(null);
   document.getElementById('fernusResultPanel').style.display = 'none';
   document.getElementById('fernusSelectPanel').style.display = 'none';
-  document.getElementById('fernusEmptyState').style.display = 'none';
 
   try {
-    const res = await callWorker('/fernus-continue', { base, id: '1', words: [] });
-    if ((!res.categories || !res.categories.length) && !res.testler) {
-      const res2 = await callWorker('/fernus-continue', { base, id: '2', words: [] });
-      handleFernusDescendResult(res2);
-    } else {
-      handleFernusDescendResult(res);
+    let items = await fetchFernusSourceList(base, '1');
+    if (!items.length) items = await fetchFernusSourceList(base, '5');
+    if (!items.length) items = await fetchFernusSourceList(base, '2');
+
+    if (items.length === 1 && items[0].parent) {
+      const subItems = await fetchFernusSourceList(base, items[0].id);
+      if (subItems.length > 0) items = subItems;
     }
+
+    setFernusLoading(false);
+    if (!items.length) return showFernusError('Kategori bulunamadı');
+    showFernusSelect(items, true);
   } catch(e) {
     setFernusLoading(false);
     showFernusError(e.message);
@@ -1062,470 +1235,239 @@ async function selectFernusPublisher() {
 
 async function loadCustomFernusDomain() {
   let base = document.getElementById('fernusCustomBase').value.trim();
-  if (!base) return toast('Lütfen geçerli bir URL veya domain girin!', 'err');
-  
-  if (!base.startsWith('http://') && !base.startsWith('https://')) {
-    base = 'https://' + base;
-  }
+  if (!base) return toast('Lütfen Fernus adresi girin', 'err');
+  if (!base.startsWith('http')) base = 'https://' + base;
   base = base.replace(/\/$/, '');
-  
-  document.getElementById('fernusPublisherSelect').value = '';
-  document.getElementById('fernusQuery').value = '';
-  
-  fernusCountingActive = false;
-  fernusNavHistory = [];
-  setFernusLoading(true, 'Özel yayınevi kategorileri yükleniyor…');
-  showFernusError(null);
-  document.getElementById('fernusResultPanel').style.display = 'none';
-  document.getElementById('fernusSelectPanel').style.display = 'none';
-  document.getElementById('fernusEmptyState').style.display = 'none';
 
+  setFernusLoading(true, 'Özel yayınevi taranıyor...');
   try {
-    const res = await callWorker('/fernus-continue', { base, id: '1', words: [] });
-    if ((!res.categories || !res.categories.length) && !res.testler) {
-      const res2 = await callWorker('/fernus-continue', { base, id: '2', words: [] });
-      handleFernusDescendResult(res2);
-    } else {
-      handleFernusDescendResult(res);
-    }
+    let items = await fetchFernusSourceList(base, '1');
+    if (!items.length) items = await fetchFernusSourceList(base, '5');
+    setFernusLoading(false);
+    if (!items.length) return showFernusError('Kategori bulunamadı');
+    showFernusSelect(items, true);
   } catch(e) {
     setFernusLoading(false);
-    showFernusError(e.message + ' (Girdiğiniz domain Fernus sistemiyle uyumlu olmayabilir veya kapalıdır)');
+    showFernusError(e.message);
   }
 }
 
 async function startFernusSearch() {
   const bookName = document.getElementById('fernusQuery').value.trim();
   if (!bookName) return;
-  
-  document.getElementById('fernusPublisherSelect').value = '';
-  
-  fernusCountingActive = false;
+  document.getElementById('fernusPubSelect').value = '';
   fernusNavHistory = [];
-  setFernusLoading(true, "Fernus'ta aranıyor…");
+  setFernusLoading(true, "Fernus sisteminde aranıyor...");
   showFernusError(null);
-  document.getElementById('fernusResultPanel').style.display = 'none';
-  document.getElementById('fernusSelectPanel').style.display = 'none';
-  document.getElementById('fernusEmptyState').style.display = 'none';
 
   try {
     const res = await callWorker('/fernus-search', { bookName });
-    fernusCurrentWords = res.words || [];
-    handleFernusDescendResult(res);
+    setFernusLoading(false);
+    if (res.single) loadFernusBook(res.single.base, res.single.id, res.single.nm);
+    else if (res.multiple) showFernusSelect(res.multiple);
+    else if (res.browse && res.categories) showFernusSelect(res.categories, true);
+    else showFernusError(res.reason || 'Sonuç bulunamadı');
   } catch(e) {
     setFernusLoading(false);
     showFernusError(e.message);
   }
 }
 
-function handleFernusDescendResult(res) {
-  if (res.single) {
-    loadFernusBook(res.single.base, res.single.id, res.single.nm);
-    return;
+async function resolveFernusNode(base, itemId, itemName) {
+  const subItems = await fetchFernusSourceList(base, itemId);
+  if (!subItems || subItems.length === 0) return { isBook: false, categories: [] };
+  const hasDirectTests = subItems.some(s => s.parent === false);
+  if (hasDirectTests) {
+    const testler = subItems.filter(t => t.parent === false).map(t => ({
+      testId: t.id, test: formatTestLabel(t.nm, itemName), bolum: itemName, soru: 0
+    }));
+    return { isBook: true, bookName: itemName, testler };
   }
-  if (res.multiple) {
-    setFernusLoading(false);
-    showFernusSelect(res.multiple);
-    return;
-  }
-  if (res.browse) {
-    setFernusLoading(false);
-    if (!res.categories || !res.categories.length) {
-      showFernusError('Kategori bulunamadı');
-      return;
-    }
-    showFernusSelect(res.categories, true);
-    return;
-  }
-  setFernusLoading(false);
-  showFernusError(res.reason || 'Bulunamadı');
-}
 
-async function continueFernusFrom(base, id) {
-  setFernusLoading(true, 'Devam ediliyor…');
-  document.getElementById('fernusSelectPanel').style.display = 'none';
   try {
-    const res = await callWorker('/fernus-continue', { base, id, words: fernusCurrentWords });
-    handleFernusDescendResult(res);
-  } catch(e) {
-    setFernusLoading(false);
-    showFernusError(e.message);
-  }
+    const firstSub = subItems[0];
+    if (firstSub && firstSub.id) {
+      const grandSubs = await fetchFernusSourceList(base, firstSub.id);
+      if (grandSubs && grandSubs.some(g => g.parent === false)) {
+        let allTests = [];
+        for (let sec of subItems) {
+          const secTests = await fetchFernusSourceList(base, sec.id);
+          secTests.forEach(t => {
+            if (t.parent === false) {
+              allTests.push({ testId: t.id, test: formatTestLabel(t.nm, sec.nm), bolum: sec.nm, soru: 0 });
+            }
+          });
+        }
+        return { isBook: true, bookName: itemName, testler: allTests };
+      }
+    }
+  } catch (e) {}
+  return { isBook: false, categories: subItems };
 }
 
 async function loadFernusBook(base, bookId, bookName, fromItems, fromIsBrowse) {
   if (fromItems) fernusNavHistory.push({ items: fromItems, isBrowse: fromIsBrowse });
-
-  setFernusLoading(true, `"${bookName}" yükleniyor…`);
+  setFernusLoading(true, `"${bookName}" içeriği taranıyor...`);
   document.getElementById('fernusSelectPanel').style.display = 'none';
+  document.getElementById('fernusResultPanel').style.display = 'none';
+
   try {
-    const res = await callWorker('/fernus-tests', { base, bookId });
-    if (!res.found || !res.testler.length) {
-      await continueFernusFrom(base, bookId);
-      return;
-    }
+    const res = await resolveFernusNode(base, bookId, bookName);
     setFernusLoading(false);
-    fernusCurrentResult = { testler: res.testler, bookName, base };
-    showFernusResult(res.testler, bookName, base);
-    loadFernusQuestionCounts(res.testler, base);
+    if (res.isBook && res.testler?.length) {
+      fernusCurrentResult = { testler: res.testler, bookName: res.bookName, base };
+      showFernusResult(res.testler, res.bookName, base);
+      loadFernusQuestionCounts(res.testler, base);
+    } else if (res.categories?.length) {
+      showFernusSelect(res.categories, true);
+    } else {
+      showFernusError('Test veya kitap içeriği bulunamadı');
+    }
   } catch(e) {
     setFernusLoading(false);
     showFernusError(e.message);
   }
 }
 
-function goFernusBack() {
-  fernusCountingActive = false;
-  document.getElementById('fernusResultPanel').style.display = 'none';
-  const prev = fernusNavHistory.pop();
-  if (!prev) {
-    document.getElementById('fernusSelectPanel').style.display = 'none';
-    document.getElementById('fernusEmptyState').style.display = 'block';
-    showFernusError(null);
-    setFernusLoading(false);
-    document.getElementById('fernusPublisherSelect').value = '';
-    return;
-  }
-  showFernusSelect(prev.items, prev.isBrowse, true);
-}
-
-let fernusCurrentSelectItems = [];
-let fernusBulkActive = false;
-
-function showFernusSelect(items, isBrowse, isGoingBack) {
+function showFernusSelect(items, isBrowse) {
   fernusCurrentSelectItems = items || [];
   const panel = document.getElementById('fernusSelectPanel');
   const list = document.getElementById('fernusSelectList');
-  document.getElementById('fernusSelectDesc').textContent =
-    isBrowse ? 'İster detay incelemek için tıklayın, ister kutuları işaretleyip toplu veritabanına aktarın:' : 'Birden fazla eşleşme bulundu — seçim yapın:';
+  document.getElementById('fernusResultPanel').style.display = 'none';
 
-  const backWrap = document.getElementById('fernusSelectBackWrap');
-  if (fernusNavHistory.length > 0 || isGoingBack) {
-    backWrap.innerHTML = `<button class="btn btn-ghost btn-xs" id="fernusSelectBackBtn">← Geri</button>`;
-    document.getElementById('fernusSelectBackBtn').onclick = goFernusBack;
-  } else {
-    backWrap.innerHTML = '';
+  const isSectionList = items.some(it => isSectionName(it.nm));
+  document.getElementById('fernusSelectDesc').textContent = isSectionList
+    ? 'Kitabın ünite/bölümleri bulundu. İsterseniz hepsini tek kitap olarak birleştirin:'
+    : 'Lütfen incelemek istediğiniz kitabı veya kategoriyi seçin:';
+
+  const backWrap = document.getElementById('fernusBackWrap');
+  if (fernusNavHistory.length > 0) {
+    backWrap.innerHTML = `<button class="btn btn-ghost btn-xs" onclick="goFernusBack()">← Geri</button>`;
+  } else { backWrap.innerHTML = ''; }
+
+  let bannerHtml = '';
+  if (isSectionList) {
+    bannerHtml = `
+      <div style="background:var(--accent-dim); border:1px solid var(--accent); border-radius:var(--r-lg); padding:16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div style="font-weight:800; font-size:14px; color:#fff;">📚 Tüm Bölümleri Tek Kitap Olarak Birleştir</div>
+          <div style="font-size:12px; color:var(--text-muted);">Her bir bölümdeki testler tek parçada toplanır.</div>
+        </div>
+        <button class="btn btn-primary" onclick="loadAllSectionsAsSingleBook()">⚡ Tek Kitap Olarak Yükle →</button>
+      </div>`;
   }
 
-  list.innerHTML = items.map((it, i) =>
-    `<div class="select-item-row" style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;transition:all 0.15s">
-      <input type="checkbox" class="fernus-item-chk" data-i="${i}" onchange="updateFernusSelectCount()" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
-      <div class="select-item-title" data-i="${i}" style="flex:1;min-width:0;cursor:pointer">
-        <div style="font-weight:600;color:var(--text);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.nm)}</div>
-        <div style="font-size:10px;color:var(--text-dim);margin-top:2px">${esc(it.category || '')}</div>
+  list.innerHTML = bannerHtml + items.map((it, i) => `
+    <div style="display:flex; align-items:center; gap:12px; background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:var(--r-md); padding:12px 16px; transition:all 0.2s">
+      <input type="checkbox" class="fernus-chk" data-i="${i}" onchange="updateFernusSelectCount()" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer">
+      <div style="flex:1; min-width:0; cursor:pointer" onclick="loadFernusBook('${esc(it.base)}', '${esc(it.id)}', '${esc(it.nm)}', fernusCurrentSelectItems, ${isBrowse})">
+        <div style="font-weight:700; color:#fff; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(it.nm)}</div>
+        <div style="font-size:11px; color:var(--text-dim); margin-top:2px">${it.parent ? '📁 Klasör / Kategori' : '📘 Kitap'}</div>
       </div>
-      <button class="btn btn-ghost btn-xs" style="flex-shrink:0" onclick="loadFernusBook('${esc(it.base)}', '${esc(it.id)}', '${esc(it.nm)}', fernusCurrentSelectItems, ${isBrowse})">İncele →</button>
-     </div>`
-  ).join('');
-
-  list.querySelectorAll('.select-item-title').forEach((el) => {
-    const i = el.getAttribute('data-i');
-    el.onclick = () => {
-      loadFernusBook(items[i].base, items[i].id, items[i].nm, items, isBrowse);
-    };
-  });
+      <button class="btn btn-ghost btn-xs" onclick="loadFernusBook('${esc(it.base)}', '${esc(it.id)}', '${esc(it.nm)}', fernusCurrentSelectItems, ${isBrowse})">İncele →</button>
+    </div>
+  `).join('');
 
   updateFernusSelectCount();
   panel.style.display = 'block';
 }
 
-function toggleFernusSelectAll(selectAll) {
-  document.querySelectorAll('.fernus-item-chk').forEach(chk => {
-    chk.checked = selectAll;
-  });
+function toggleFernusSelectAll(on) {
+  document.querySelectorAll('.fernus-chk').forEach(c => c.checked = on);
   updateFernusSelectCount();
 }
 
 function updateFernusSelectCount() {
-  const chks = document.querySelectorAll('.fernus-item-chk:checked');
-  const count = chks.length;
-  const countSpan = document.getElementById('fernusSelCount');
-  const bulkBtn = document.getElementById('fernusBulkImportBtn');
-  if (countSpan) countSpan.textContent = count;
-  if (bulkBtn) bulkBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+  const count = document.querySelectorAll('.fernus-chk:checked').length;
+  document.getElementById('fernusSelCount').textContent = count;
+  document.getElementById('fernusBulkImportBtn').style.display = count > 0 ? 'inline-flex' : 'none';
 }
 
-function autoDetectExamAndSubject(rawName, rawCategory = '') {
-  const nameLower = (rawName + ' ' + rawCategory).toLowerCase();
-  
-  // Exam Type
-  let exam_type = 'TYT';
-  if (nameLower.includes('ayt')) {
-    if (nameLower.includes('say') || nameLower.includes('fizik') || nameLower.includes('kimya') || nameLower.includes('biyoloji') || nameLower.includes('geometri') || nameLower.includes('sayısal')) {
-      exam_type = 'AYT-SAY';
-    } else if (nameLower.includes('ea') || nameLower.includes('eşit ağırlık') || nameLower.includes('edebiyat')) {
-      exam_type = 'AYT-EA';
-    } else if (nameLower.includes('söz') || nameLower.includes('sözel') || nameLower.includes('tarih') || nameLower.includes('coğrafya')) {
-      exam_type = 'AYT-SOZ';
-    } else {
-      exam_type = 'AYT-SAY';
-    }
-  } else if (nameLower.includes('lgs')) {
-    exam_type = 'LGS';
+function goFernusBack() {
+  const prev = fernusNavHistory.pop();
+  if (!prev) {
+    document.getElementById('fernusSelectPanel').style.display = 'none';
+    return;
   }
-
-  // Subject
-  let subject = 'Matematik';
-  const subjectsMap = [
-    { key: 'geometri', val: 'Geometri' },
-    { key: 'matematik', val: 'Matematik' },
-    { key: 'fizik', val: 'Fizik' },
-    { key: 'kimya', val: 'Kimya' },
-    { key: 'biyoloji', val: 'Biyoloji' },
-    { key: 'edebiyat', val: 'Edebiyat' },
-    { key: 'türkçe', val: 'Türkçe' },
-    { key: 'paragraf', val: 'Türkçe' },
-    { key: 'dil bilgisi', val: 'Türkçe' },
-    { key: 'tarih', val: 'Tarih' },
-    { key: 'coğrafya', val: 'Coğrafya' },
-    { key: 'felsefe', val: 'Felsefe' },
-    { key: 'din', val: 'Din Kültürü' },
-    { key: 'fen', val: 'Fen Bilimleri' }
-  ];
-
-  for (let item of subjectsMap) {
-    if (nameLower.includes(item.key)) {
-      subject = item.val;
-      break;
-    }
-  }
-
-  return { exam_type, subject };
+  showFernusSelect(prev.items, prev.isBrowse);
 }
 
-function logFernusBulk(msg, type = 'info') {
-  const logEl = document.getElementById('fernusBulkLog');
-  if (!logEl) return;
-  const time = new Date().toLocaleTimeString('tr-TR');
-  const cls = type === 'ok' ? 'log-ok' : type === 'err' ? 'log-err' : 'log-info';
-  logEl.innerHTML += `<div class="${cls}">[${time}] ${esc(msg)}</div>`;
-  logEl.scrollTop = logEl.scrollHeight;
-}
+async function loadAllSectionsAsSingleBook() {
+  if (!fernusCurrentSelectItems.length) return;
+  const base = fernusCurrentSelectItems[0].base;
+  setFernusLoading(true, 'Tüm bölümler birleştiriliyor...');
 
-function stopFernusBulkImport() {
-  fernusBulkActive = false;
-  logFernusBulk('İşlem kullanıcı tarafından durduruldu 🛑', 'err');
-  const badge = document.getElementById('fernusBulkBadge');
-  if (badge) {
-    badge.textContent = 'Durduruldu';
-    badge.className = 'tag tag-red';
-  }
-}
-
-function updateFernusBulkUI(current, total, msg) {
-  const pct = total > 0 ? Math.round((current / total) * 100) : 0;
-  const bar = document.getElementById('fernusProgressBar');
-  const txt = document.getElementById('fernusBulkStatusTxt');
-  const pctTxt = document.getElementById('fernusBulkPercentTxt');
-  if (bar) bar.style.width = pct + '%';
-  if (txt) txt.textContent = msg;
-  if (pctTxt) pctTxt.textContent = '%' + pct;
-}
-
-async function runFernusBulkImport() {
-  const chks = document.querySelectorAll('.fernus-item-chk:checked');
-  if (!chks.length) return toast('Lütfen en az 1 kitap/kategori seçin!', 'err');
-
-  const selectedItems = [];
-  chks.forEach(chk => {
-    const idx = parseInt(chk.getAttribute('data-i'));
-    if (fernusCurrentSelectItems[idx]) {
-      selectedItems.push(fernusCurrentSelectItems[idx]);
-    }
-  });
-
-  document.getElementById('fernusSelectPanel').style.display = 'none';
-  document.getElementById('fernusBulkPanel').style.display = 'block';
-  document.getElementById('fernusBulkLog').innerHTML = '';
-  const badge = document.getElementById('fernusBulkBadge');
-  if (badge) {
-    badge.textContent = 'İşleniyor...';
-    badge.className = 'tag tag-accent';
-  }
-  
-  fernusBulkActive = true;
-  logFernusBulk(`${selectedItems.length} öge için toplu içe aktarma başlatıldı...`, 'info');
-
-  let successCount = 0;
-  let totalSoruCount = 0;
-  
-  // Tarama & Alt kitap düğümlerini toplama
-  const bookList = [];
-  for (let i = 0; i < selectedItems.length; i++) {
-    if (!fernusBulkActive) break;
-    const it = selectedItems[i];
-    updateFernusBulkUI(i, selectedItems.length, `Katalog taranıyor: ${it.nm}`);
-    
-    try {
-      const res = await callWorker('/fernus-tests', { base: it.base, bookId: it.id });
-      if (res.found && res.testler && res.testler.length) {
-        bookList.push({ base: it.base, bookId: it.id, bookName: it.nm, category: it.category || '', testler: res.testler });
-      } else {
-        // Kategori ise alt elemanları aç
-        const resCont = await callWorker('/fernus-continue', { base: it.base, id: it.id, words: [] });
-        const subItems = resCont.categories || resCont.multiple || [];
-        for (let sub of subItems) {
-          try {
-            const subRes = await callWorker('/fernus-tests', { base: sub.base || it.base, bookId: sub.id });
-            if (subRes.found && subRes.testler && subRes.testler.length) {
-              bookList.push({ base: sub.base || it.base, bookId: sub.id, bookName: sub.nm, category: it.nm, testler: subRes.testler });
-            }
-          } catch (_) {}
+  try {
+    let combinedTests = [];
+    for (let sec of fernusCurrentSelectItems) {
+      const subs = await fetchFernusSourceList(base, sec.id);
+      for (let sub of subs) {
+        if (sub.parent) {
+          const secTests = await fetchFernusSourceList(base, sub.id);
+          secTests.forEach(t => {
+            combinedTests.push({ testId: t.id, test: formatTestLabel(t.nm, sub.nm), bolum: `${sec.nm} > ${sub.nm}`, soru: 0 });
+          });
+        } else {
+          combinedTests.push({ testId: sub.id, test: formatTestLabel(sub.nm, sec.nm), bolum: sec.nm, soru: 0 });
         }
       }
-    } catch (e) {
-      logFernusBulk(`"${it.nm}" okunurken hata: ${e.message}`, 'err');
     }
-  }
-
-  logFernusBulk(`Toplam ${bookList.length} kitap tespit edildi. Testler ve soru sayıları çekiliyor...`, 'info');
-
-  // Kitapları sırayla işle
-  for (let i = 0; i < bookList.length; i++) {
-    if (!fernusBulkActive) break;
-    const book = bookList[i];
-    updateFernusBulkUI(i + 1, bookList.length, `Aktarılıyor (${i+1}/${bookList.length}): ${book.bookName}`);
-    
-    logFernusBulk(`▶ [${i+1}/${bookList.length}] "${book.bookName}" işleniyor (${book.testler.length} test)...`);
-
-    // Soru sayılarını 5'li paralel isteklerle hızlı çek
-    let bookTotalQuestions = 0;
-    const batchSize = 5;
-    for (let b = 0; b < book.testler.length; b += batchSize) {
-      if (!fernusBulkActive) break;
-      const chunk = book.testler.slice(b, b + batchSize);
-      await Promise.all(chunk.map(async (t) => {
-        try {
-          const res = await callWorker('/fernus-count', { base: book.base, testId: t.testId });
-          if (res.soru != null) {
-            t.soru = res.soru;
-            bookTotalQuestions += res.soru;
-          }
-        } catch (_) {
-          t.soru = 0;
-        }
-      }));
-    }
-
-    if (!fernusBulkActive) break;
-
-    // Sınav ve ders otomatik tespiti
-    const { exam_type, subject } = autoDetectExamAndSubject(book.bookName, book.category);
-    
-    // Yayınevi adı tespiti
-    const pubObj = FERNUS_PUBLISHERS.find(p => p.base === book.base);
-    const publisher = pubObj ? pubObj.name.replace(/ \(.+\)/, '') : 'Fernus Yayınevi';
-
-    // Testleri formatla
-    const tests = book.testler.map(t => ({
-      label: t.test,
-      soru: t.soru || 0,
-      topic: t.bolum || ''
-    }));
-
-    // Supabase veritabanına ekle
-    try {
-      const { error } = await db.from('resources').insert({
-        exam_type,
-        subject,
-        publisher,
-        name: book.bookName,
-        year: new Date().getFullYear(),
-        tests,
-        active: true,
-        resource_type: 'book'
-      });
-
-      if (error) throw error;
-
-      successCount++;
-      totalSoruCount += bookTotalQuestions;
-      logFernusBulk(`✓ Kaydedildi: "${book.bookName}" — ${exam_type} ${subject} (${tests.length} test, ${bookTotalQuestions} soru)`, 'ok');
-    } catch (err) {
-      logFernusBulk(`✗ Hata ("${book.bookName}"): ${err.message}`, 'err');
-    }
-  }
-
-  if (fernusBulkActive) {
-    updateFernusBulkUI(bookList.length, bookList.length, 'Tamamlandı!');
-    if (badge) {
-      badge.textContent = 'Tamamlandı ✓';
-      badge.className = 'tag tag-green';
-    }
-    logFernusBulk(`🎉 TEBRİKLER! ${successCount} kitap başarıyla veritabanına kaydedildi. Toplam soru: ${totalSoruCount}`, 'ok');
-    toast(`✓ Toplu aktarım tamamlandı: ${successCount} kitap eklendi`);
-    loadStats();
+    setFernusLoading(false);
+    if (!combinedTests.length) return showFernusError('Testler toplanamadı');
+    fernusCurrentResult = { testler: combinedTests, bookName: 'Soru Bankası', base };
+    showFernusResult(combinedTests, 'Soru Bankası', base);
+    loadFernusQuestionCounts(combinedTests, base);
+  } catch(e) {
+    setFernusLoading(false);
+    showFernusError(e.message);
   }
 }
 
 function showFernusResult(testler, bookName, base) {
   document.getElementById('fernusBookName').value = bookName;
   const pub = FERNUS_PUBLISHERS.find(p => p.base === base);
-  document.getElementById('fernusPublisher').value = pub ? pub.name.replace(/ \(.+\)/, '') : '';
+  document.getElementById('fernusPublisher').value = pub ? pub.name.replace(/ \(.+\)/, '') : 'Fernus Yayınevi';
   
-  const nameLower = bookName.toLowerCase();
-  if (nameLower.includes('tyt')) {
-    document.getElementById('fernusExam').value = 'TYT';
-  } else if (nameLower.includes('ayt')) {
-    document.getElementById('fernusExam').value = 'AYT-SAY';
-  }
-  
-  const subjects = ['Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Geometri', 'Türkçe', 'Edebiyat', 'Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü'];
-  for (let s of subjects) {
-    if (nameLower.includes(s.toLowerCase())) {
-      document.getElementById('fernusSubject').value = s;
-      break;
-    }
-  }
+  const auto = autoDetectExamAndSubject(bookName);
+  document.getElementById('fernusExam').value = auto.exam_type;
+  document.getElementById('fernusSubject').value = auto.subject;
 
   document.getElementById('fernusStatTest').textContent = testler.length + ' test';
-  document.getElementById('fernusStatSoru').textContent = 'Soru: ...';
-  document.getElementById('fernusCountProgress').textContent = 'Soru sayıları yükleniyor…';
-  
+  document.getElementById('fernusStatSoru').textContent = 'Soru hesaplanıyor...';
+
   document.getElementById('fernusTableBody').innerHTML = testler.map((row, i) => `
-    <div style="display:grid;grid-template-columns:40px 1fr 140px 80px;padding:10px 12px;border-bottom:1px solid var(--border);align-items:center;font-size:12px">
-      <span style="color:var(--text-dim);font-weight:700">${String(i+1).padStart(2,'0')}</span>
-      <span style="color:var(--text);font-weight:600">${esc(row.test)}</span>
-      <span style="color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(row.bolum||'')}</span>
-      <div class="fernus-soru-cell" id="fernus-soru-${i}"><span style="display:inline-block;width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1s infinite"></span></div>
+    <div style="display:grid; grid-template-columns:40px 1fr 140px 90px; padding:10px 14px; border-bottom:1px solid var(--border); align-items:center; font-size:12.5px">
+      <span style="color:var(--text-dim); font-weight:700">${String(i+1).padStart(2,'0')}</span>
+      <span style="color:#fff; font-weight:600">${esc(row.test)}</span>
+      <span style="color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(row.bolum||'')}</span>
+      <div id="soru-cell-${i}"><span style="display:inline-block; width:6px; height:6px; background:var(--accent); border-radius:50%; animation:pulse 1s infinite"></span></div>
     </div>
   `).join('');
-  
+
   document.getElementById('fernusResultPanel').style.display = 'block';
   document.getElementById('fernusBackBtn').onclick = goFernusBack;
 }
 
 async function loadFernusQuestionCounts(testler, base) {
   fernusCountingActive = true;
-  let loaded = 0;
-  const total = testler.length;
-  let totalQuestions = 0;
-  
-  for(let i=0; i<testler.length; i++){
-    if(!fernusCountingActive) break;
+  let totalSoru = 0;
+  for (let i = 0; i < testler.length; i++) {
+    if (!fernusCountingActive) break;
     const t = testler[i];
     try {
       const res = await callWorker('/fernus-count', { base, testId: t.testId });
-      if(res.soru != null){
+      if (res.soru != null) {
         t.soru = res.soru;
-        const cell = document.getElementById(`fernus-soru-${i}`);
-        if(cell){
-          const bar = `<div style="height:3px;width:${Math.max(8,Math.min(44,res.soru/20*44))}px;background:var(--accent);border-radius:2px;opacity:.5;display:inline-block;margin-right:6px;vertical-align:middle;"></div>`;
-          cell.innerHTML = `${bar}<span style="font-weight:700;color:var(--accent)">${res.soru}</span>`;
-        }
-        loaded++;
-        totalQuestions += res.soru;
-        document.getElementById('fernusStatSoru').textContent = `Soru: ${totalQuestions}`;
-        document.getElementById('fernusCountProgress').textContent = `(${loaded}/${total} yüklendi)`;
+        totalSoru += res.soru;
+        const cell = document.getElementById(`soru-cell-${i}`);
+        if (cell) cell.innerHTML = `<span style="font-weight:700; color:var(--accent)">${res.soru} soru</span>`;
+        document.getElementById('fernusStatSoru').textContent = `Soru: ${totalSoru}`;
       }
     } catch(e) {
-      const cell = document.getElementById(`fernus-soru-${i}`);
-      if(cell) cell.innerHTML = `<span style="color:var(--text-dim)">-</span>`;
+      const cell = document.getElementById(`soru-cell-${i}`);
+      if (cell) cell.innerHTML = `<span style="color:var(--text-dim)">-</span>`;
     }
-    await new Promise(r => setTimeout(r, 120));
-  }
-  if (fernusCountingActive) {
-    document.getElementById('fernusCountProgress').textContent = '✓ Tüm soru sayıları yüklendi';
+    await new Promise(r => setTimeout(r, 100));
   }
 }
 
@@ -1534,41 +1476,32 @@ async function saveFernusBook() {
   const publisher = document.getElementById('fernusPublisher').value.trim();
   const exam_type = document.getElementById('fernusExam').value;
   const subject = document.getElementById('fernusSubject').value;
-  
+
   if (!name || !publisher) return toast('Yayınevi ve kitap adı zorunlu!', 'err');
-  if (!fernusCurrentResult || !fernusCurrentResult.testler.length) return toast('Geçerli test verisi yok!', 'err');
+  if (!fernusCurrentResult?.testler?.length) return toast('Test verisi yok!', 'err');
 
   const btn = document.getElementById('fernusSaveBtn');
   btn.disabled = true;
   btn.textContent = '⏳ Kaydediliyor...';
 
   const tests = fernusCurrentResult.testler.map(t => ({
-    label: t.test,
+    label: formatTestLabel(t.test, t.bolum),
     soru: t.soru || 0,
     topic: t.bolum || ''
   }));
 
   try {
     const { error } = await db.from('resources').insert({
-      exam_type,
-      subject,
-      publisher,
-      name,
+      exam_type, subject, publisher, name,
       year: new Date().getFullYear(),
-      tests,
-      active: true,
-      resource_type: 'book'
+      tests, active: true, resource_type: 'book'
     });
-
     if (error) throw error;
-    toast(`✓ "${name}" başarıyla kaydedildi — ${tests.length} test`);
-    
+    toast(`✓ "${name}" kaydedildi — ${tests.length} test`);
     document.getElementById('fernusResultPanel').style.display = 'none';
-    document.getElementById('fernusPublisherSelect').value = '';
-    document.getElementById('fernusEmptyState').style.display = 'block';
     loadStats();
-    showPage('dashboard');
-  } catch (e) {
+    navigate('dashboard');
+  } catch(e) {
     toast('Hata: ' + e.message, 'err');
   } finally {
     btn.disabled = false;
@@ -1576,33 +1509,348 @@ async function saveFernusBook() {
   }
 }
 
+function openFernusBookPreview() {
+  const modal = document.getElementById('fernusPreviewModal');
+  const body = document.getElementById('fernusPreviewModalBody');
+  const bookName = document.getElementById('fernusBookName').value || 'Kitap Adı';
+  const publisher = document.getElementById('fernusPublisher').value || 'Yayınevi';
+  const testler = fernusCurrentResult?.testler || [];
+
+  body.innerHTML = `
+    <div style="background:var(--accent-dim); border:1px solid var(--accent); border-radius:var(--r-lg); padding:20px; margin-bottom:20px">
+      <div style="font-size:12px; font-weight:800; color:var(--accent); text-transform:uppercase;">${esc(publisher)}</div>
+      <div style="font-size:20px; font-weight:800; color:#fff; margin-top:2px;">${esc(bookName)}</div>
+      <div style="margin-top:12px; display:flex; gap:12px; font-size:12.5px; color:var(--text-muted)">
+        <span>📚 ${testler.length} Test</span>
+        <span>✓ Soru Bankası Mode</span>
+      </div>
+    </div>
+    <div style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px;">
+      <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:10px;">TEST LİSTESİ MOCKUP</div>
+      <div style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
+        ${testler.map(t => `
+          <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--surface); border-radius:6px; font-size:12.5px">
+            <span style="color:#fff; font-weight:600">${esc(t.test)}</span>
+            <span style="color:var(--accent)">${t.soru||0} soru</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  modal.style.display = 'flex';
+}
+
+function closeFernusBookPreview() {
+  document.getElementById('fernusPreviewModal').style.display = 'none';
+}
+
+// ── BULK FERNUS IMPORT ────────────────────────────
+async function runFernusBulkImport() {
+  const chks = document.querySelectorAll('.fernus-chk:checked');
+  if (!chks.length) return toast('Kitap seçin', 'err');
+  const selected = [];
+  chks.forEach(c => selected.push(fernusCurrentSelectItems[parseInt(c.getAttribute('data-i'))]));
+
+  document.getElementById('fernusSelectPanel').style.display = 'none';
+  document.getElementById('fernusBulkPanel').style.display = 'block';
+  const log = document.getElementById('fernusBulkLog');
+  log.innerHTML = '';
+  fernusBulkActive = true;
+
+  log.innerHTML += `<div style="color:var(--accent)">[${new Date().toLocaleTimeString()}] Toplu aktarım başlatıldı (${selected.length} öge)</div>`;
+
+  let done = 0;
+  for (let i = 0; i < selected.length; i++) {
+    if (!fernusBulkActive) break;
+    const it = selected[i];
+    const pct = Math.round(((i + 1) / selected.length) * 100);
+    document.getElementById('fernusProgressBar').style.width = pct + '%';
+    document.getElementById('fernusBulkPercentTxt').textContent = '%' + pct;
+    document.getElementById('fernusBulkStatusTxt').textContent = `Aktarılıyor: ${it.nm}`;
+
+    try {
+      const subs = await fetchFernusSourceList(it.base, it.id);
+      const tests = subs.map(s => ({ label: formatTestLabel(s.nm, it.nm), soru: 0, topic: it.nm }));
+      const auto = autoDetectExamAndSubject(it.nm);
+      const pubObj = FERNUS_PUBLISHERS.find(p => p.base === it.base);
+
+      await db.from('resources').insert({
+        exam_type: auto.exam_type,
+        subject: auto.subject,
+        publisher: pubObj ? pubObj.name.replace(/ \(.+\)/, '') : 'Fernus',
+        name: it.nm,
+        year: new Date().getFullYear(),
+        tests, active: true, resource_type: 'book'
+      });
+      done++;
+      log.innerHTML += `<div style="color:var(--emerald)">✓ Kaydedildi: "${it.nm}" (${tests.length} test)</div>`;
+    } catch(e) {
+      log.innerHTML += `<div style="color:var(--rose)">✗ Hata (${it.nm}): ${e.message}</div>`;
+    }
+    log.scrollTop = log.scrollHeight;
+  }
+
+  document.getElementById('fernusBulkBadge').textContent = 'Tamamlandı ✓';
+  document.getElementById('fernusBulkBadge').className = 'tag tag-emerald';
+  toast(`✓ Toplu aktarım tamamlandı (${done} kitap)`);
+  loadStats();
+}
+
+function stopFernusBulkImport() {
+  fernusBulkActive = false;
+  document.getElementById('fernusBulkBadge').textContent = 'Durduruldu';
+  document.getElementById('fernusBulkBadge').className = 'tag tag-rose';
+}
+
+// ── YOUTUBE PLAYLIST IMPORT ───────────────────────
+function checkApiKey() {
+  const key = document.getElementById('ytApiKey').value.trim();
+  const status = document.getElementById('apiKeyStatus');
+  if (key.startsWith('AIza') && key.length > 30) {
+    status.className = 'tag tag-emerald'; status.textContent = '✓ Geçerli Format';
+  } else if (key) {
+    status.className = 'tag tag-accent'; status.textContent = '⚠ Kontrol Edilmeli';
+  } else {
+    status.className = 'tag tag-rose'; status.textContent = 'Girilmedi';
+  }
+}
+
+function saveApiKey() {
+  const key = document.getElementById('ytApiKey').value.trim();
+  if(!key) return toast('API key girin', 'err');
+  localStorage.setItem('yt_api_key', key);
+  toast('API Key kaydedildi');
+  checkApiKey();
+}
+
+async function fetchPlaylist() {
+  const url = document.getElementById('ytUrl').value.trim();
+  const apiKey = document.getElementById('ytApiKey').value.trim() || localStorage.getItem('yt_api_key');
+  const statusEl = document.getElementById('fetchStatus');
+
+  if(!apiKey) return statusEl.innerHTML = '<span style="color:var(--rose)">⚠️ Önce API Key girin</span>';
+  const match = url.match(/[?&]list=([^&\s]+)/);
+  if(!match) return statusEl.innerHTML = '<span style="color:var(--rose)">⚠️ Geçersiz Playlist URL</span>';
+
+  statusEl.innerHTML = '⏳ Videolar çekiliyor...';
+  try {
+    _fetchedVideos = [];
+    let nextPage = '';
+    do {
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${match[1]}&maxResults=50&pageToken=${nextPage}&key=${apiKey}`);
+      const data = await res.json();
+      if(data.error) throw new Error(data.error.message);
+
+      const ids = data.items.map(i => i.snippet.resourceId.videoId).join(',');
+      const durRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${apiKey}`);
+      const durData = await durRes.json();
+      const durMap = {};
+      (durData.items||[]).forEach(v => {
+        const iso = v.contentDetails.duration;
+        const h = parseInt(iso.match(/(\d+)H/)?.[1]||0);
+        const m = parseInt(iso.match(/(\d+)M/)?.[1]||0);
+        const s = parseInt(iso.match(/(\d+)S/)?.[1]||0);
+        durMap[v.id] = Math.ceil((h*3600+m*60+s)/60);
+      });
+
+      data.items.forEach(item => {
+        const vid = item.snippet.resourceId.videoId;
+        _fetchedVideos.push({ title: item.snippet.title, url: `https://www.youtube.com/watch?v=${vid}`, duration: durMap[vid]||0 });
+      });
+      nextPage = data.nextPageToken || '';
+    } while(nextPage && _fetchedVideos.length < 200);
+
+    statusEl.innerHTML = `<span style="color:var(--emerald)">✓ ${_fetchedVideos.length} video çekildi</span>`;
+    document.getElementById('previewCount').textContent = _fetchedVideos.length + ' video';
+    document.getElementById('videoPreview').innerHTML = _fetchedVideos.map((v,i) => `
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid var(--border); font-size:12.5px">
+        <span style="font-weight:600; color:#fff">${i+1}. ${esc(v.title)}</span>
+        <span style="color:var(--text-dim)">${v.duration} dk</span>
+      </div>
+    `).join('');
+    document.getElementById('previewSection').style.display = 'block';
+  } catch(e) { statusEl.innerHTML = `<span style="color:var(--rose)">Hata: ${e.message}</span>`; }
+}
+
+async function saveYouTubePlaylist() {
+  const name = document.getElementById('ytName').value.trim();
+  const publisher = document.getElementById('ytPublisher').value.trim();
+  if(!name || !publisher) return toast('Eksik bilgi', 'err');
+  if(!_fetchedVideos.length) return toast('Önce playlist çekin', 'err');
+
+  const tests = _fetchedVideos.map(v => ({ label: v.title, url: v.url, topic: '', soru: v.duration }));
+  const { error } = await db.from('resources').insert({
+    exam_type: document.getElementById('ytExam').value,
+    subject: document.getElementById('ytSubject').value,
+    publisher, name, year: new Date().getFullYear(),
+    tests, active: true, resource_type: 'playlist'
+  });
+
+  if(error) return toast('Hata: ' + error.message, 'err');
+  toast(`✓ "${name}" kaydedildi`);
+  document.getElementById('previewSection').style.display = 'none';
+  loadStats();
+}
+
+// ── MANUEL SAVE ───────────────────────────────────
+async function saveSoruBankasi() {
+  const name = document.getElementById('sb_name').value.trim();
+  const publisher = document.getElementById('sb_publisher').value.trim();
+  if(!name || !publisher) return toast('Yayınevi ve kitap adı zorunlu', 'err');
+
+  const lines = document.getElementById('sb_tests').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return toast('En az 1 test girin', 'err');
+
+  const tests = lines.map(line => {
+    const parts = line.split('|').map(p=>p.trim());
+    return { label: parts[0]||'', soru: parseInt(parts[1])||0 };
+  });
+
+  const { error } = await db.from('resources').insert({
+    exam_type: document.getElementById('sb_exam').value,
+    subject: document.getElementById('sb_subject').value,
+    publisher, name, year: new Date().getFullYear(),
+    tests, active: true, resource_type: 'book'
+  });
+
+  if(error) return toast('Hata: ' + error.message, 'err');
+  toast(`✓ "${name}" kaydedildi`);
+  document.getElementById('sb_name').value = '';
+  document.getElementById('sb_tests').value = '';
+  loadStats();
+}
+
+async function saveManuelPlaylist() {
+  const name = document.getElementById('pl_name').value.trim();
+  const publisher = document.getElementById('pl_publisher').value.trim();
+  if(!name || !publisher) return toast('Hoca ve playlist adı zorunlu', 'err');
+
+  const lines = document.getElementById('pl_videos').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  const tests = lines.map(line => {
+    const parts = line.split('|').map(p=>p.trim());
+    return { label: parts[0]||'', url: parts[1]||'', topic: '', soru: parseInt(parts[2])||0 };
+  });
+
+  const { error } = await db.from('resources').insert({
+    exam_type: document.getElementById('pl_exam').value,
+    subject: document.getElementById('pl_subject').value,
+    publisher, name, year: new Date().getFullYear(),
+    tests, active: true, resource_type: 'playlist'
+  });
+
+  if(error) return toast('Hata: ' + error.message, 'err');
+  toast(`✓ "${name}" kaydedildi`);
+  document.getElementById('pl_name').value = '';
+  document.getElementById('pl_videos').value = '';
+  loadStats();
+}
+
+// ── KAYNAK LİSTESİ ───────────────────────────────
+async function loadList() {
+  const el = document.getElementById('resourceList');
+  el.innerHTML = '<div style="color:var(--text-dim); padding:20px">Yükleniyor...</div>';
+  const { data } = await db.from('resources').select('*').order('resource_type,exam_type,subject,name');
+  _allResources = data || [];
+  renderList(_allResources);
+}
+
+function filterList() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const type = document.getElementById('filterType').value;
+  const filtered = _allResources.filter(r => {
+    const matchType = !type || r.resource_type === type;
+    const matchQ = !q || r.name.toLowerCase().includes(q) || r.publisher?.toLowerCase().includes(q) || r.subject?.toLowerCase().includes(q);
+    return matchType && matchQ;
+  });
+  renderList(filtered);
+}
+
+function renderList(items) {
+  const el = document.getElementById('resourceList');
+  if(!items.length) { el.innerHTML = '<div class="glass-card" style="text-align:center; color:var(--text-dim)">Kaynak bulunamadı</div>'; return; }
+
+  el.innerHTML = items.map(r => `
+    <div class="resource-card">
+      <div class="resource-icon" style="background:${r.resource_type==='playlist'?'var(--cyan-dim)':'var(--accent-dim)'}; color:${r.resource_type==='playlist'?'var(--cyan)':'var(--accent)'}">
+        ${r.resource_type==='playlist'?'▶':'📚'}
+      </div>
+      <div style="flex:1; min-width:0">
+        <div style="font-size:14px; font-weight:700; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(r.name)}</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:2px">${esc(r.publisher)} · ${r.exam_type} ${r.subject} · ${(r.tests||[]).length} ${r.resource_type==='playlist'?'video':'test'}</div>
+      </div>
+      <span class="tag ${r.active?'tag-emerald':'tag-rose'}">${r.active?'Aktif':'Pasif'}</span>
+      <button class="btn btn-danger btn-xs" onclick="deleteResource('${r.id}')">🗑 Sil</button>
+    </div>
+  `).join('');
+}
+
+async function deleteResource(id) {
+  if(!confirm('Bu kaynağı silmek istediğinize emin misiniz?')) return;
+  const { error } = await db.from('resources').delete().eq('id', id);
+  if(error) return toast('Hata: ' + error.message, 'err');
+  toast('Kaynak silindi');
+  loadList();
+  loadStats();
+}
+
+// Helpers
+function trClean(str) {
+  if (!str) return '';
+  return str.replace(/İ/g, 'i').replace(/I/g, 'i').replace(/ı/g, 'i').replace(/Ö/g, 'o').replace(/ö/g, 'o')
+    .replace(/Ü/g, 'u').replace(/ü/g, 'u').replace(/Ş/g, 's').replace(/ş/g, 's').replace(/Ç/g, 'c').replace(/ç/g, 'c')
+    .toLowerCase().trim();
+}
+
+function isSectionName(name) {
+  if (!name) return false;
+  const c = trClean(name);
+  return c.includes('bolum') || c.includes('unite') || c.includes('konu') || /^\d+\./.test(c);
+}
+
+function formatTestLabel(testName, topicName) {
+  if (!testName) return '';
+  let cleanTest = testName.trim();
+  let cleanTopic = (topicName || '').trim();
+  if (!cleanTopic || cleanTopic === cleanTest) return cleanTest;
+  return `${cleanTopic} - ${cleanTest}`;
+}
+
+function autoDetectExamAndSubject(rawName = '') {
+  const c = trClean(rawName);
+  let exam_type = 'TYT';
+  if (c.includes('ayt')) {
+    if (c.includes('fizik') || c.includes('kimya') || c.includes('biyo') || c.includes('say')) exam_type = 'AYT-SAY';
+    else if (c.includes('edebiyat') || c.includes('ea')) exam_type = 'AYT-EA';
+    else if (c.includes('tarih') || c.includes('cog') || c.includes('soz')) exam_type = 'AYT-SOZ';
+    else exam_type = 'AYT-SAY';
+  }
+  let subject = 'Matematik';
+  if (c.includes('fizik')) subject = 'Fizik';
+  else if (c.includes('kimya')) subject = 'Kimya';
+  else if (c.includes('biyoloji') || c.includes('biyo')) subject = 'Biyoloji';
+  else if (c.includes('geometri') || c.includes('geom')) subject = 'Geometri';
+  else if (c.includes('turkce') || c.includes('paragraf')) subject = 'Türkçe';
+  else if (c.includes('edebiyat')) subject = 'Edebiyat';
+  else if (c.includes('tarih')) subject = 'Tarih';
+  else if (c.includes('cografya')) subject = 'Coğrafya';
+  else if (c.includes('felsefe')) subject = 'Felsefe';
+  return { exam_type, subject };
+}
+
 function setFernusLoading(on, msg='') {
-  const searchBtn = document.getElementById('fernusSearchBtn');
-  const queryEl = document.getElementById('fernusQuery');
-  const pubSel = document.getElementById('fernusPublisherSelect');
-  if(searchBtn) searchBtn.disabled = on;
-  if(queryEl) queryEl.disabled = on;
-  if(pubSel) pubSel.disabled = on;
-  const el = document.getElementById('fernusLoadingEl');
+  const el = document.getElementById('fernusLoading');
   if (on) {
     el.style.display = 'flex';
     document.getElementById('fernusLoadingTxt').textContent = msg;
-  } else {
-    el.style.display = 'none';
-  }
+  } else { el.style.display = 'none'; }
 }
 
 function showFernusError(msg) {
-  const el = document.getElementById('fernusErrEl');
-  if (msg) {
-    el.textContent = '⚠ ' + msg;
-    el.style.display = 'block';
-  } else {
-    el.style.display = 'none';
-  }
+  const el = document.getElementById('fernusErr');
+  if (msg) { el.textContent = '⚠️ ' + msg; el.style.display = 'block'; }
+  else { el.style.display = 'none'; }
 }
-
-
 </script>
+
 </body>
 </html>
