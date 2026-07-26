@@ -12241,9 +12241,12 @@ function openWeeklyPDFModal(){
     modal = document.createElement('div'); modal.id='weeklyPDFModal'; modal.className='modal-bg';
     modal.innerHTML=`<div class="modal">
       <button class="modal-close" onclick="cm('weeklyPDFModal')">×</button>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <h2 style="margin:0">🖨️ Haftalık Program PDF</h2>
-        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="toggleReportPanel('weekly')">🎨 Görünüm</button>
+      <h2 style="margin:0 0 12px">🖨️ Haftalık Program PDF</h2>
+      <div class="field"><label>Rapor Türü</label>
+        <div id="rpTypeChips_weekly" style="display:flex;gap:8px"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin:-6px 0 4px">
+        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="toggleReportPanel('weekly')">⚙️ Gelişmiş Görünüm Ayarları</button>
       </div>
       <div id="rtPanel_weekly" class="rt-panel" style="display:none"></div>
       <div class="field">
@@ -12257,6 +12260,10 @@ function openWeeklyPDFModal(){
     modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
   }
   document.getElementById('pdfNote').value='';
+  _rtCurrentType = 'weekly';
+  window._reportWorkingConfig = window._reportWorkingConfig || {};
+  window._reportWorkingConfig.weekly = getActiveReportConfig('weekly');
+  _rtSyncUI('weekly');
   om('weeklyPDFModal');
 }
 
@@ -14434,14 +14441,14 @@ function renderReportPanel(container, reportType) {
 // TEK yerden senkron tutar.
 function _rtSyncUI(reportType) {
   const cfg = (window._reportWorkingConfig && window._reportWorkingConfig[reportType]) || getActiveReportConfig(reportType);
+  const chipsEl = document.getElementById(reportType === 'performance' ? 'rpTypeChips' : `rpTypeChips_${reportType}`);
+  if (chipsEl) {
+    chipsEl.innerHTML = REPORT_PRESETS[reportType].map(p => {
+      const active = JSON.stringify(p.config.sections)===JSON.stringify(cfg.sections) && p.config.style===cfg.style;
+      return `<button type="button" class="btn btn-sm ${active?'btn-accent':'btn-ghost'}" style="flex:1;justify-content:center" onclick="applyReportPreset('${p.key}')">${p.key==='premium'?'✨ ':''}${esc(p.name)}</button>`;
+    }).join('');
+  }
   if (reportType === 'performance') {
-    const chipsEl = document.getElementById('rpTypeChips');
-    if (chipsEl) {
-      chipsEl.innerHTML = REPORT_PRESETS[reportType].map(p => {
-        const active = JSON.stringify(p.config.sections)===JSON.stringify(cfg.sections) && p.config.style===cfg.style;
-        return `<button type="button" class="btn btn-sm ${active?'btn-accent':'btn-ghost'}" style="flex:1;justify-content:center" onclick="applyReportPreset('${p.key}')">${p.key==='premium'?'✨ ':''}${esc(p.name)}</button>`;
-      }).join('');
-    }
     const premiumFields = document.getElementById('rpPremiumFields');
     const noteLbl = document.getElementById('rpNoteLbl');
     const isPremium = cfg.style === 'premium';
