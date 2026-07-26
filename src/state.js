@@ -19,7 +19,8 @@ export const S = {
   workspace: null,
   studentSpeeds: [],
   konuHaftaSoru: [],
-  pendingInvites: []
+  pendingInvites: [],
+  reportTemplates: []
 };
 
 export const session = {

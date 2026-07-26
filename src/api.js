@@ -39,6 +39,7 @@ function _saveCache() {
       workspace: S.workspace,
       konuHaftaSoru: S.konuHaftaSoru,
       pendingInvites: S.pendingInvites,
+      reportTemplates: S.reportTemplates,
     }));
   } catch(e) {}
 }
@@ -59,6 +60,7 @@ function _restoreCache() {
     if (c.workspace)     S.workspace     = c.workspace;
     if (c.konuHaftaSoru) S.konuHaftaSoru = c.konuHaftaSoru;
     if (c.pendingInvites) S.pendingInvites = c.pendingInvites;
+    if (c.reportTemplates) S.reportTemplates = c.reportTemplates;
     return true;
   } catch(e) { return false; }
 }
@@ -137,8 +139,13 @@ async function _fetchAll() {
     ? db.from('student_invitations').select('*').eq('coach_id', coachId).is('used_at', null)
     : Promise.resolve({ data: [] });
 
-  const [wsRes, stuRes, taskRes, apptRes, examRes, msgRes, todoRes, speedRes, masteryRes, tekrarLogRes, inviteRes] =
-    await Promise.all([wsP, stuP, taskP, apptP, examP, msgP, todoP, speedP, masteryP, tekrarLogP, inviteP]);
+  // Koçun kendi kaydettiği rapor şablonları (bkz. openReportTemplateModal)
+  const reportTemplatesP = (role === 'coach' || role === 'developer')
+    ? db.from('report_templates').select('*').eq('coach_id', coachId)
+    : Promise.resolve({ data: [] });
+
+  const [wsRes, stuRes, taskRes, apptRes, examRes, msgRes, todoRes, speedRes, masteryRes, tekrarLogRes, inviteRes, reportTemplatesRes] =
+    await Promise.all([wsP, stuP, taskP, apptP, examP, msgP, todoP, speedP, masteryP, tekrarLogP, inviteP, reportTemplatesP]);
 
   S.workspace = wsRes?.data || null;
 
@@ -233,6 +240,13 @@ async function _fetchAll() {
     createdAt:  i.created_at,
     expiresAt:  i.expires_at,
     expired:    new Date(i.expires_at) < new Date()
+  }));
+
+  S.reportTemplates = (reportTemplatesRes.data || []).map(r => ({
+    id:         r.id,
+    name:       r.name,
+    reportType: r.report_type,
+    config:     r.config
   }));
 
   // konu_mastery: { student_id: { subject: { konu: masteryRow } } }

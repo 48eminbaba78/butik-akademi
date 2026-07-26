@@ -11167,7 +11167,10 @@ function openReportModal(stuId) {
     modal.className = 'modal-bg';
     modal.innerHTML = `<div class="modal">
       <button class="modal-close" onclick="cm('reportModal')">×</button>
-      <h2>📄 Performans Raporu</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <h2 style="margin:0">📄 Performans Raporu</h2>
+        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="openReportTemplateModal('performance')">⚙️ Rapor Şablonu</button>
+      </div>
       <input type="hidden" id="rpStuId">
       <div class="field"><label>Dönem</label>
         <select id="rpPeriod">
@@ -11224,6 +11227,68 @@ function getReportDates() {
   }
 }
 
+// ═══════════════════════════════════════════════
+// RAPOR ŞABLONLARI (Performans Raporu + Haftalık Program PDF)
+// ═══════════════════════════════════════════════
+const REPORT_SECTION_DEFS = {
+  performance: [
+    { key:'statsGrid',    label:'Özet İstatistikler',    locked:true },
+    { key:'bySubject',    label:'Ders Bazında Çalışma' },
+    { key:'exams',        label:'Deneme Sonuçları' },
+    { key:'appointments', label:'Görüşmeler' },
+    { key:'coachNote',    label:'Koç Notu' }
+  ],
+  weekly: [
+    { key:'statsBar',    label:'Özet Bar',              locked:true },
+    { key:'dayTasks',    label:'Günlük Görev Listesi',  locked:true },
+    { key:'coachNote',   label:'Koç Notu' },
+    { key:'footerQuote', label:'Motivasyon Sözü' }
+  ]
+};
+const REPORT_PRESETS = {
+  performance: [
+    { key:'standart', name:'Standart', config:{ sections:['statsGrid','bySubject','exams','appointments','coachNote'], style:'default' } },
+    { key:'sade',     name:'Sade',     config:{ sections:['statsGrid','exams','coachNote'], style:'minimal' } }
+  ],
+  weekly: [
+    { key:'standart', name:'Standart', config:{ sections:['statsBar','dayTasks','coachNote','footerQuote'], style:'default' } },
+    { key:'sade',     name:'Sade',     config:{ sections:['statsBar','dayTasks'], style:'minimal' } }
+  ]
+};
+// Marka rengini koyulaştırıp header band'i için gradyan üretir (color-mix
+// yerine düz RGB hesabı — eski/print motorlarında da güvenilir çalışsın diye).
+// Hem buildReportHTML hem printWeeklyProgramWithNote ortak kullanır.
+function shade(hex, pct) {
+  const h = (hex||'#E8613A').replace('#','');
+  const full = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
+  const num = parseInt(full,16) || 0xE8613A;
+  let r=(num>>16)&255, g=(num>>8)&255, b=num&255;
+  const mix = (c) => Math.max(0, Math.min(255, Math.round(c + (pct<0 ? c : 255-c) * pct)));
+  return '#'+[mix(r),mix(g),mix(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function _reportActiveKey(reportType) { return `ra_report_active_${reportType}_${session.coachId}`; }
+function getActiveReportConfig(reportType) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(_reportActiveKey(reportType)) || 'null');
+    // Ham (kaydedilmemiş) özelleştirme — koç bir preset/şablonu isim vermeden
+    // düzenlediğinde bir sonraki rapor üretiminde de kaybolmasın diye.
+    if (saved?.config) return JSON.parse(JSON.stringify(saved.config));
+    if (saved?.templateId) {
+      const t = (S.reportTemplates||[]).find(x=>x.id===saved.templateId && x.reportType===reportType);
+      if (t) return JSON.parse(JSON.stringify(t.config));
+    }
+    if (saved?.presetKey) {
+      const p = REPORT_PRESETS[reportType].find(x=>x.key===saved.presetKey);
+      if (p) return JSON.parse(JSON.stringify(p.config));
+    }
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(REPORT_PRESETS[reportType][0].config));
+}
+function setActiveReport(reportType, sel) {
+  // sel: { templateId } | { presetKey } | { config }
+  localStorage.setItem(_reportActiveKey(reportType), JSON.stringify(sel));
+}
+
 function buildReportHTML(stuId, preview=false) {
   const stu = S.students.find(s=>s.id===stuId);
   if(!stu) return '';
@@ -11272,16 +11337,6 @@ function buildReportHTML(stuId, preview=false) {
     ? `${startD.getDate()} – ${endD.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}`
     : periodLabel;
 
-  // Marka rengini koyulaştırıp header band'i için gradyan üretir (color-mix
-  // yerine düz RGB hesabı — eski/print motorlarında da güvenilir çalışsın diye)
-  function shade(hex, pct) {
-    const h = (hex||'#E8613A').replace('#','');
-    const full = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
-    const num = parseInt(full,16) || 0xE8613A;
-    let r=(num>>16)&255, g=(num>>8)&255, b=num&255;
-    const mix = (c) => Math.max(0, Math.min(255, Math.round(c + (pct<0 ? c : 255-c) * pct)));
-    return '#'+[mix(r),mix(g),mix(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
-  }
   const brandDark = shade(brandColor, -0.32);
 
   // Ders bazında (Türkçe 40 soru, Fizik 14 soru gibi) net rozetlerini MUTLAK
@@ -11335,6 +11390,90 @@ function buildReportHTML(stuId, preview=false) {
   const ringR=33, ringC=2*Math.PI*ringR;
   const ringPct=Math.min(100,Math.max(0,Number(stu.progress)||0));
   const ringOffset=ringC*(1-ringPct/100);
+
+  // Rapor Şablonu: hangi bölümler hangi sırada görünsün + stil varyantı
+  // (bkz. openReportTemplateModal). Varsayılan preset = bu bölümün altındaki
+  // sabit HTML'lerle birebir aynı görünüm.
+  const cfg = getActiveReportConfig('performance');
+  const bodyClass = cfg.style === 'minimal' ? ' class="style-minimal"' : '';
+  const sectionRenderers = {
+    statsGrid: () => `
+  <div class="stats-grid">
+    <div class="stat-box"><div class="ic">📋</div><div class="val">${totalTasks}</div><div class="lbl">Toplam Görev</div></div>
+    <div class="stat-box"><div class="ic">✓</div><div class="val" style="color:var(--green)">${doneTasks}</div><div class="lbl">Tamamlanan</div></div>
+    <div class="stat-box"><div class="ic">%</div><div class="val">${pct}</div><div class="lbl">Tamamlanma</div></div>
+    <div class="stat-box"><div class="ic">⏱</div><div class="val">${Math.round(totalMin/60)}</div><div class="lbl">Çalışma (Saat)</div></div>
+  </div>`,
+    bySubject: () => Object.keys(bySubject).length > 0 ? `
+  <div class="section">
+    <div class="section-title"><span class="dot"></span>Ders Bazında Çalışma</div>
+    <table>
+      <thead><tr><th>Ders</th><th>Toplam</th><th>Tamamlanan</th><th>Oran</th><th style="width:110px"></th></tr></thead>
+      <tbody>
+        ${Object.entries(bySubject).sort((a,b)=>b[1].total-a[1].total).map(([subj,data])=>{
+          const pct2=Math.round((data.done/data.total)*100);
+          const badge=pct2>=80?'badge-green':pct2>=50?'badge-yellow':'badge-red';
+          return `<tr>
+            <td><strong>${esc(subj)}</strong></td>
+            <td>${data.total}</td>
+            <td>${data.done}</td>
+            <td><span class="badge ${badge}">%${pct2}</span></td>
+            <td><div class="prog-bar"><div class="prog-fill" style="width:${pct2}%"></div></div></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>` : '',
+    exams: () => myExams.length > 0 ? `
+  <div class="section">
+    <div class="section-title"><span class="dot"></span>Deneme Sonuçları</div>
+    ${examChartSVG ? `<div class="chart-card">${examChartSVG}<div class="chart-cap">${chartCaption}</div></div>` : ''}
+    <table>
+      <thead><tr><th>Sınav</th><th>Tarih</th><th>Tür</th>${(EXAM_DEFS[myExams[0]?.type]||[]).map(f=>`<th>${f}</th>`).join('')}<th>Toplam</th></tr></thead>
+      <tbody>
+        ${myExams.map(e=>{
+          const fields=EXAM_DEFS[e.type]||[];
+          const total=fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0).toFixed(1);
+          return `<tr>
+            <td><strong>${esc(e.name)}</strong></td>
+            <td>${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</td>
+            <td>${esc(e.type)}</td>
+            ${fields.map(f=>{
+              const v=Number(e.nets?.[f]||0);
+              const max=subjMax(e.type,f);
+              return `<td><span class="badge ${netBadgeClass(v,max)}">${v}${max?`<small>/${max}</small>`:''}</span></td>`;
+            }).join('')}
+            <td><strong>${total}</strong></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>` : '',
+    appointments: () => myAppts.length > 0 ? `
+  <div class="section">
+    <div class="section-title"><span class="dot"></span>Görüşmeler</div>
+    <table>
+      <thead><tr><th>Tarih</th><th>Saat</th><th>Tür</th><th>Süre</th></tr></thead>
+      <tbody>
+        ${myAppts.map(a=>`<tr>
+          <td>${new Date(a.date+'T12:00').toLocaleDateString('tr-TR',{weekday:'short',day:'numeric',month:'short'})}</td>
+          <td>${a.time}</td>
+          <td>${esc(a.type)}</td>
+          <td>${a.duration} dk</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>` : '',
+    coachNote: () => coachNote ? `
+  <div class="section">
+    <div class="note-box">
+      <div class="note-header">Koç Değerlendirmesi</div>
+      <div style="font-size:13px;line-height:1.7;color:var(--ink)">${esc(coachNote).replace(/\n/g,'<br>')}</div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted);font-weight:600">— ${esc(coachName)}</div>
+    </div>
+  </div>` : ''
+  };
+  const sectionsHTML = cfg.sections.map(k => sectionRenderers[k]?.() || '').join('');
 
   return `<!DOCTYPE html>
 <html lang="tr">
@@ -11400,10 +11539,15 @@ function buildReportHTML(stuId, preview=false) {
   .note-box{background:var(--tint);border-left:3px solid var(--brand);border-radius:0 10px 10px 0;padding:16px 18px;}
   .note-box .note-header{font-family:'Syne',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--brand);margin-bottom:8px;}
   .footer{margin-top:8px;padding-top:16px;border-top:1px solid var(--hair);display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-weight:500;}
+  /* "Sade" şablon stili — bkz. Rapor Şablonu paneli */
+  body.style-minimal .band{background:var(--brand);}
+  body.style-minimal .band::after{display:none;}
+  body.style-minimal .stat-box .ic{display:none;}
+  body.style-minimal .section-title .dot{display:none;}
   @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.no-print{display:none!important;}}
 </style>
 </head>
-<body>
+<body${bodyClass}>
 <div class="page">
   <!-- HEADER -->
   <div class="band">
@@ -11436,90 +11580,7 @@ function buildReportHTML(stuId, preview=false) {
       <div class="stu-target">${esc(stu.target)} · Genel ilerleme %${Math.round(ringPct)}</div>
     </div>
   </div>
-
-  <!-- ÖZET İSTATİSTİKLER -->
-  <div class="stats-grid">
-    <div class="stat-box"><div class="ic">📋</div><div class="val">${totalTasks}</div><div class="lbl">Toplam Görev</div></div>
-    <div class="stat-box"><div class="ic">✓</div><div class="val" style="color:var(--green)">${doneTasks}</div><div class="lbl">Tamamlanan</div></div>
-    <div class="stat-box"><div class="ic">%</div><div class="val">${pct}</div><div class="lbl">Tamamlanma</div></div>
-    <div class="stat-box"><div class="ic">⏱</div><div class="val">${Math.round(totalMin/60)}</div><div class="lbl">Çalışma (Saat)</div></div>
-  </div>
-
-  <!-- DERS BAZINDA ÇALIŞMA -->
-  ${Object.keys(bySubject).length > 0 ? `
-  <div class="section">
-    <div class="section-title"><span class="dot"></span>Ders Bazında Çalışma</div>
-    <table>
-      <thead><tr><th>Ders</th><th>Toplam</th><th>Tamamlanan</th><th>Oran</th><th style="width:110px"></th></tr></thead>
-      <tbody>
-        ${Object.entries(bySubject).sort((a,b)=>b[1].total-a[1].total).map(([subj,data])=>{
-          const pct2=Math.round((data.done/data.total)*100);
-          const badge=pct2>=80?'badge-green':pct2>=50?'badge-yellow':'badge-red';
-          return `<tr>
-            <td><strong>${esc(subj)}</strong></td>
-            <td>${data.total}</td>
-            <td>${data.done}</td>
-            <td><span class="badge ${badge}">%${pct2}</span></td>
-            <td><div class="prog-bar"><div class="prog-fill" style="width:${pct2}%"></div></div></td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-  </div>` : ''}
-
-  <!-- DENEMELER -->
-  ${myExams.length > 0 ? `
-  <div class="section">
-    <div class="section-title"><span class="dot"></span>Deneme Sonuçları</div>
-    ${examChartSVG ? `<div class="chart-card">${examChartSVG}<div class="chart-cap">${chartCaption}</div></div>` : ''}
-    <table>
-      <thead><tr><th>Sınav</th><th>Tarih</th><th>Tür</th>${(EXAM_DEFS[myExams[0]?.type]||[]).map(f=>`<th>${f}</th>`).join('')}<th>Toplam</th></tr></thead>
-      <tbody>
-        ${myExams.map(e=>{
-          const fields=EXAM_DEFS[e.type]||[];
-          const total=fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0).toFixed(1);
-          return `<tr>
-            <td><strong>${esc(e.name)}</strong></td>
-            <td>${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</td>
-            <td>${esc(e.type)}</td>
-            ${fields.map(f=>{
-              const v=Number(e.nets?.[f]||0);
-              const max=subjMax(e.type,f);
-              return `<td><span class="badge ${netBadgeClass(v,max)}">${v}${max?`<small>/${max}</small>`:''}</span></td>`;
-            }).join('')}
-            <td><strong>${total}</strong></td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-  </div>` : ''}
-
-  <!-- RANDEVULAR -->
-  ${myAppts.length > 0 ? `
-  <div class="section">
-    <div class="section-title"><span class="dot"></span>Görüşmeler</div>
-    <table>
-      <thead><tr><th>Tarih</th><th>Saat</th><th>Tür</th><th>Süre</th></tr></thead>
-      <tbody>
-        ${myAppts.map(a=>`<tr>
-          <td>${new Date(a.date+'T12:00').toLocaleDateString('tr-TR',{weekday:'short',day:'numeric',month:'short'})}</td>
-          <td>${a.time}</td>
-          <td>${esc(a.type)}</td>
-          <td>${a.duration} dk</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-  </div>` : ''}
-
-  <!-- KOÇ NOTU -->
-  ${coachNote ? `
-  <div class="section">
-    <div class="note-box">
-      <div class="note-header">Koç Değerlendirmesi</div>
-      <div style="font-size:13px;line-height:1.7;color:var(--ink)">${esc(coachNote).replace(/\n/g,'<br>')}</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--muted);font-weight:600">— ${esc(coachName)}</div>
-    </div>
-  </div>` : ''}
+  ${sectionsHTML}
 
   <!-- FOOTER -->
   <div class="footer">
@@ -11652,7 +11713,10 @@ function openWeeklyPDFModal(){
     modal = document.createElement('div'); modal.id='weeklyPDFModal'; modal.className='modal-bg';
     modal.innerHTML=`<div class="modal">
       <button class="modal-close" onclick="cm('weeklyPDFModal')">×</button>
-      <h2>🖨️ Haftalık Program PDF</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <h2 style="margin:0">🖨️ Haftalık Program PDF</h2>
+        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="openReportTemplateModal('weekly')">⚙️ Rapor Şablonu</button>
+      </div>
       <div class="field">
         <label>Koç Notu (isteğe bağlı)</label>
         <textarea id="pdfNote" placeholder="Bu haftaki programla ilgili notunuzu ekleyin..." style="min-height:90px"></textarea>
@@ -11676,11 +11740,14 @@ function generateWeeklyPDF(){
 function printWeeklyProgramWithNote(stuId, coachNote){
   const stu=S.students.find(s=>s.id===stuId);
   if(!stu) return;
+  const cfg=getActiveReportConfig('weekly');
+  const isMinimal=cfg.style==='minimal';
   const wsOff=stu?.weekStart??0;
   const wStart=getWeekStart(S.weekOffset,wsOff);
   const wEnd=addDays(wStart,6);
   const brandName=S.workspace?.brand_name||'Rostrum Akademi';
   const bc=S.workspace?.brand_color||'#E8613A';
+  const brandDark=shade(bc,-0.32);
   const DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
   const MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   const TC={deneme:'#f59e0b',soru:'#3b82f6',konu:'#10b981',diger:'#8b5cf6'};
@@ -11762,20 +11829,34 @@ function printWeeklyProgramWithNote(stuId, coachNote){
   }
 
   const statItems=[
-    {val:doneTasks,lbl:'Tamamlanan',col:'#22C55E'},
-    {val:totalTasks-doneTasks,lbl:'Bekleyen',col:'#C4C3D0'},
-    {val:Math.round(totalMin/60)+' sa',lbl:'Toplam Süre',col:bc},
-    {val:totalTasks,lbl:'Toplam Görev',col:'#C4C3D0'}
+    {val:doneTasks,lbl:'Tamamlanan',col:'#4ade80'},
+    {val:totalTasks-doneTasks,lbl:'Bekleyen',col:'#fff'},
+    {val:Math.round(totalMin/60)+' sa',lbl:'Toplam Süre',col:'#fff'},
+    {val:totalTasks,lbl:'Toplam Görev',col:'#fff'}
   ];
-  const statsHtml=statItems.map((s,i)=>`<div style="flex:1;${i>0?'border-left:1px solid rgba(255,255,255,.06);padding-left:16px;':''}padding-right:16px">
+  const statsHtml=statItems.map((s,i)=>`<div style="flex:1;${i>0?'border-left:1px solid rgba(255,255,255,.2);padding-left:16px;':''}padding-right:16px">
     <div style="font-size:18px;font-weight:800;color:${s.col};font-variant-numeric:tabular-nums">${s.val}</div>
-    <div style="font-size:8px;color:#6B6A7A;text-transform:uppercase;letter-spacing:.07em">${s.lbl}</div>
+    <div style="font-size:8px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.07em">${s.lbl}</div>
   </div>`).join('');
 
+  const sectionRenderers = {
+    statsBar: () => `<div style="display:flex;gap:0;margin-top:16px;border-top:1px solid rgba(255,255,255,.16);padding-top:14px">${statsHtml}</div>`,
+    dayTasks: () => activeDays.length===0?'<div style="text-align:center;color:#9998AA;padding:40px 0;font-size:13px">Bu hafta için görev bulunmuyor.</div>':dayHtml,
+    coachNote: () => coachNote ? `<div style="background:#fff;border-radius:8px;border:1px solid #E8E6DE;border-left:3px solid ${bc};padding:10px 14px;margin-top:4px">
+        <div style="font-size:8px;font-weight:800;color:${bc};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Koç Notu</div>
+        <div style="font-size:10px;color:#444;line-height:1.6">${esc(coachNote)}</div>
+      </div>` : '',
+  };
+  const showFooterQuote = cfg.sections.includes('footerQuote');
+  const headerBg = isMinimal ? bc : `linear-gradient(135deg,${bc},${brandDark})`;
+
   const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>${esc(stu.name)} — Haftalık Program</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#1A1920;padding:32px 20px 60px;min-height:100vh;}
+    body{font-family:'Inter',Arial,sans-serif;background:#1A1920;padding:32px 20px 60px;min-height:100vh;font-variant-numeric:tabular-nums;}
     .page{background:#fff;max-width:780px;margin:0 auto;border-radius:8px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.6);}
     @media print{
       body{background:#fff;padding:0;}
@@ -11786,42 +11867,39 @@ function printWeeklyProgramWithNote(stuId, coachNote){
   </style>
   </head><body>
   <div class="page">
-    <div style="background:#111118;padding:24px 28px 20px;position:relative;overflow:hidden">
-      <div style="position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:${bc};opacity:.07;pointer-events:none"></div>
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px">
+    <div style="background:${headerBg};padding:24px 28px 20px;position:relative;overflow:hidden">
+      ${isMinimal?'':`<div style="position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none"></div>`}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;position:relative">
         <div>
-          <div style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:${bc};margin-bottom:6px">${esc(brandName)} · Haftalık Program</div>
-          <div style="font-size:24px;font-weight:800;color:#F0EFF8;letter-spacing:-.5px;line-height:1.1">${esc(stu.name)}</div>
-          ${stu.target?`<div style="font-size:11px;color:#8B8A99;margin-top:4px">🎯 ${esc(stu.target)}</div>`:''}
+          <div style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:6px">${esc(brandName)} · Haftalık Program</div>
+          <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1.1">${esc(stu.name)}</div>
+          ${stu.target?`<div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:4px">🎯 ${esc(stu.target)}</div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
           <div style="position:relative;width:64px;height:64px">
             <svg width="64" height="64" viewBox="0 0 64 64" style="transform:rotate(-90deg)">
-              <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="5"/>
-              <circle cx="32" cy="32" r="26" fill="none" stroke="${bc}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${ringOffset}"/>
+              <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="5"/>
+              <circle cx="32" cy="32" r="26" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${ringOffset}"/>
             </svg>
             <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
-              <div style="font-size:14px;font-weight:800;color:#F0EFF8;line-height:1">%${pct}</div>
-              <div style="font-size:7px;color:#6B6A7A;text-transform:uppercase;letter-spacing:.05em;margin-top:1px">hafta</div>
+              <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#fff;line-height:1">%${pct}</div>
+              <div style="font-size:7px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.05em;margin-top:1px">hafta</div>
             </div>
           </div>
           <div style="text-align:right">
-            <div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6B6A7A">Hafta</div>
-            <div style="font-size:12px;font-weight:700;color:#C4C3D0;margin-top:1px">${wStart.getDate()} – ${wEnd.getDate()} ${MONTHS[wEnd.getMonth()]} ${wEnd.getFullYear()}</div>
+            <div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.65)">Hafta</div>
+            <div style="font-size:12px;font-weight:700;color:#fff;margin-top:1px">${wStart.getDate()} – ${wEnd.getDate()} ${MONTHS[wEnd.getMonth()]} ${wEnd.getFullYear()}</div>
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:0;margin-top:16px;border-top:1px solid rgba(255,255,255,.06);padding-top:14px">${statsHtml}</div>
+      ${sectionRenderers.statsBar()}
     </div>
     <div style="background:#F7F6F2;padding:18px 24px 20px">
-      ${activeDays.length===0?'<div style="text-align:center;color:#9998AA;padding:40px 0;font-size:13px">Bu hafta için görev bulunmuyor.</div>':dayHtml}
-      ${coachNote?`<div style="background:#fff;border-radius:8px;border:1px solid #E8E6DE;border-left:3px solid ${bc};padding:10px 14px;margin-top:4px">
-        <div style="font-size:8px;font-weight:800;color:${bc};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Koç Notu</div>
-        <div style="font-size:10px;color:#444;line-height:1.6">${esc(coachNote)}</div>
-      </div>`:''}
+      ${sectionRenderers.dayTasks()}
+      ${cfg.sections.includes('coachNote') ? sectionRenderers.coachNote() : ''}
     </div>
     <div style="background:#111118;padding:14px 28px;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:10px;font-style:italic;color:#6B6A7A;max-width:380px;line-height:1.5">"Bugün emek harcadığın her dakika, sınav gününde sana geri döner."</div>
+      ${showFooterQuote?`<div style="font-size:10px;font-style:italic;color:#6B6A7A;max-width:380px;line-height:1.5">"Bugün emek harcadığın her dakika, sınav gününde sana geri döner."</div>`:'<div></div>'}
       <div style="font-size:9px;font-weight:700;color:#3D3C4A;text-align:right;text-transform:uppercase;letter-spacing:.08em">${esc(brandName)}</div>
     </div>
     <div class="no-print" style="padding:10px 14px;display:flex;align-items:center;gap:12px;background:#F7F6F2;border-top:1px solid #E8E6DE">
@@ -13652,6 +13730,168 @@ async function applyTemplateToWeek() {
   om('applyTemplateModal');
 }
 
+// ═══════════════════════════════════════════════
+// RAPOR ŞABLONU PANELİ (Performans Raporu + Haftalık Program PDF)
+// ═══════════════════════════════════════════════
+let _rtCurrentType = 'performance';
+
+function openReportTemplateModal(reportType) {
+  _rtCurrentType = reportType;
+  let modal = document.getElementById('reportTemplateModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'reportTemplateModal';
+    modal.className = 'modal-bg';
+    modal.innerHTML = `<div class="modal">
+      <button class="modal-close" onclick="cm('reportTemplateModal')">×</button>
+      <h2>⚙️ Rapor Şablonu</h2>
+      <div class="field"><label>Hazır Şablonlar</label>
+        <div id="rtPresetChips" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+      <div class="field"><label>Görünecek Bölümler ve Sırası</label>
+        <div id="rtSectionList" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+      <div class="field"><label>Stil</label>
+        <div style="display:flex;gap:14px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+            <input type="radio" name="rtStyle" value="default" onchange="setReportStyle('default')"> Standart Görünüm
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+            <input type="radio" name="rtStyle" value="minimal" onchange="setReportStyle('minimal')"> Sade Görünüm
+          </label>
+        </div>
+      </div>
+      <div class="field"><label>Kayıtlı Şablonlarım</label>
+        <div style="display:flex;gap:8px">
+          <select id="rtSavedSelect" style="flex:1"></select>
+          <button class="btn btn-ghost btn-sm" onclick="applyReportTemplate()">Yükle</button>
+        </div>
+      </div>
+      <div class="field"><label>Bu Ayarları Şablon Olarak Kaydet</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="rtSaveName" placeholder="Şablon adı (ör. Kısa Rapor)" style="flex:1">
+          <button class="btn btn-accent btn-sm" onclick="saveReportTemplate()">Kaydet</button>
+        </div>
+      </div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="cm('reportTemplateModal')">Kapat ve Kullan</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e=>{ if(e.target===modal) modal.classList.remove('open'); });
+  }
+  window._reportWorkingConfig = window._reportWorkingConfig || {};
+  window._reportWorkingConfig[reportType] = getActiveReportConfig(reportType);
+  document.getElementById('rtSaveName').value = '';
+  renderReportTemplateModal();
+  om('reportTemplateModal');
+}
+
+function _rtSectionRowHTML(def, enabled, i, total) {
+  const locked = !!def.locked;
+  return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border-radius:8px;${enabled?'':'opacity:.55'}">
+    <input type="checkbox" ${enabled?'checked':''} ${locked?'disabled':''} onchange="toggleReportSection('${def.key}')" style="cursor:${locked?'not-allowed':'pointer'}">
+    <span style="flex:1;font-size:13px;font-weight:600">${esc(def.label)}${locked?' <span style="font-size:10px;color:var(--text-dim);font-weight:500">(zorunlu)</span>':''}</span>
+    ${enabled?`<button class="btn btn-ghost btn-xs" ${i===0?'disabled':''} onclick="moveReportSection('${def.key}',-1)">↑</button>
+    <button class="btn btn-ghost btn-xs" ${i===total-1?'disabled':''} onclick="moveReportSection('${def.key}',1)">↓</button>`:''}
+  </div>`;
+}
+
+function renderReportTemplateModal() {
+  const reportType = _rtCurrentType;
+  const cfg = window._reportWorkingConfig[reportType];
+  const defs = REPORT_SECTION_DEFS[reportType];
+
+  const chipsEl = document.getElementById('rtPresetChips');
+  chipsEl.innerHTML = REPORT_PRESETS[reportType].map(p => {
+    const active = JSON.stringify(p.config.sections)===JSON.stringify(cfg.sections) && p.config.style===cfg.style;
+    return `<button class="btn btn-xs ${active?'btn-accent':'btn-ghost'}" onclick="applyReportPreset('${p.key}')">${esc(p.name)}</button>`;
+  }).join('');
+
+  const disabledDefs = defs.filter(d => !cfg.sections.includes(d.key));
+  const rows = [
+    ...cfg.sections.map((key,i) => {
+      const def = defs.find(d=>d.key===key) || { key, label:key };
+      return _rtSectionRowHTML(def, true, i, cfg.sections.length);
+    }),
+    ...disabledDefs.map(def => _rtSectionRowHTML(def, false, null, null))
+  ];
+  document.getElementById('rtSectionList').innerHTML = rows.join('');
+
+  document.querySelectorAll('input[name="rtStyle"]').forEach(r => r.checked = (r.value === cfg.style));
+
+  const saved = (S.reportTemplates||[]).filter(t=>t.reportType===reportType);
+  const selEl = document.getElementById('rtSavedSelect');
+  selEl.innerHTML = saved.length===0
+    ? `<option value="">Henüz kayıtlı şablonunuz yok</option>`
+    : saved.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+}
+
+function _rtPersistWorkingConfig() {
+  setActiveReport(_rtCurrentType, { config: window._reportWorkingConfig[_rtCurrentType] });
+}
+
+function applyReportPreset(presetKey) {
+  const preset = REPORT_PRESETS[_rtCurrentType].find(p=>p.key===presetKey);
+  if (!preset) return;
+  window._reportWorkingConfig[_rtCurrentType] = JSON.parse(JSON.stringify(preset.config));
+  setActiveReport(_rtCurrentType, { presetKey });
+  renderReportTemplateModal();
+}
+
+function toggleReportSection(key) {
+  const cfg = window._reportWorkingConfig[_rtCurrentType];
+  const def = (REPORT_SECTION_DEFS[_rtCurrentType]||[]).find(d=>d.key===key);
+  if (def?.locked) return;
+  const idx = cfg.sections.indexOf(key);
+  if (idx >= 0) cfg.sections.splice(idx,1);
+  else cfg.sections.push(key);
+  _rtPersistWorkingConfig();
+  renderReportTemplateModal();
+}
+
+function moveReportSection(key, dir) {
+  const cfg = window._reportWorkingConfig[_rtCurrentType];
+  const idx = cfg.sections.indexOf(key);
+  const newIdx = idx + dir;
+  if (idx<0 || newIdx<0 || newIdx>=cfg.sections.length) return;
+  [cfg.sections[idx], cfg.sections[newIdx]] = [cfg.sections[newIdx], cfg.sections[idx]];
+  _rtPersistWorkingConfig();
+  renderReportTemplateModal();
+}
+
+function setReportStyle(style) {
+  window._reportWorkingConfig[_rtCurrentType].style = style;
+  _rtPersistWorkingConfig();
+  renderReportTemplateModal();
+}
+
+async function saveReportTemplate() {
+  const name = document.getElementById('rtSaveName').value.trim();
+  if (!name) return showToast('Şablon adı girin.');
+  const reportType = _rtCurrentType;
+  const config = window._reportWorkingConfig[reportType];
+  showLoading(true);
+  const { data, error } = await db.from('report_templates').insert({
+    coach_id: session.coachId, name, report_type: reportType, config
+  }).select().single();
+  showLoading(false);
+  if (error) return showToast('Şablon kaydedilemedi: ' + error.message);
+  S.reportTemplates.push({ id:data.id, name, reportType, config: data.config });
+  setActiveReport(reportType, { templateId: data.id });
+  document.getElementById('rtSaveName').value = '';
+  renderReportTemplateModal();
+  showToast('Rapor şablonu kaydedildi ✓');
+}
+
+function applyReportTemplate() {
+  const templateId = document.getElementById('rtSavedSelect').value;
+  const t = (S.reportTemplates||[]).find(x=>x.id===templateId);
+  if (!t) return;
+  window._reportWorkingConfig[_rtCurrentType] = JSON.parse(JSON.stringify(t.config));
+  setActiveReport(_rtCurrentType, { templateId: t.id });
+  renderReportTemplateModal();
+  showToast(`"${t.name}" şablonu uygulandı ✓`);
+}
+
 async function openWeeklyReportModal() {
   const stu = S.students.find(s=>s.id===S.activeStuId);
   if(!stu) return showToast('Öğrenci bulunamadı.');
@@ -14670,6 +14910,13 @@ window.getTestStatus = getTestStatus;
 window.openCoachTaskEdit = openCoachTaskEdit;
 window.saveWeekAsTemplate = saveWeekAsTemplate;
 window.applyTemplateToWeek = applyTemplateToWeek;
+window.openReportTemplateModal = openReportTemplateModal;
+window.applyReportPreset = applyReportPreset;
+window.toggleReportSection = toggleReportSection;
+window.moveReportSection = moveReportSection;
+window.setReportStyle = setReportStyle;
+window.saveReportTemplate = saveReportTemplate;
+window.applyReportTemplate = applyReportTemplate;
 window.downloadICS = downloadICS;
 window.confirmApplyTemplate = confirmApplyTemplate;
 window.copyTaskToClipboard = copyTaskToClipboard;
