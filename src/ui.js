@@ -2885,6 +2885,27 @@ document.getElementById('tmExam')?.addEventListener('change', scheduleSmartBadge
 document.getElementById('tmSubjectSel')?.addEventListener('change', scheduleSmartBadge);
 document.getElementById('tmSubjectFree')?.addEventListener('input', scheduleSmartBadge);
 
+// Seçilen test/video isimlerinin kısa özetini üretir (görev notu için).
+// Tek tek isimleri sabit uzunlukta keserken, ortak bir önekten dolayı
+// birbirinden ayırt edilemez hâle gelenleri ("Temel Kavraml…, Temel Kavraml…,
+// Temel Kavraml…" gibi anlamsız tekrar) tek satırda sayaçla birleştirir.
+function _summarizeLabels(labels, kind) {
+  const SHORT_LEN = 16;
+  const short = l => l.length > SHORT_LEN ? l.slice(0, SHORT_LEN-1)+'…' : l;
+  const shown = labels.slice(0,5).map(short);
+  const counts = {};
+  shown.forEach(s => { counts[s] = (counts[s]||0) + 1; });
+  const seen = new Set();
+  const uniqueDisplay = [];
+  shown.forEach(s => {
+    if (seen.has(s)) return;
+    seen.add(s);
+    uniqueDisplay.push(counts[s] > 1 ? `${s} (×${counts[s]})` : s);
+  });
+  const extra = labels.length > 5 ? ` +${labels.length-5}` : '';
+  return `${labels.length} ${kind}: ${uniqueDisplay.join(', ')}${extra}`;
+}
+
 let _savingTask = false;
 async function saveTask(){
   if (_savingTask) return;
@@ -2961,13 +2982,7 @@ async function saveTask(){
         const t=_selectedBook.testler[parseInt(cb.value)];
         return {label:t?.label||t||'', url:t?.url||'', soru:t?.soru||0};
       });
-      if(isPlaylist){
-        const _vShort = l => l.length > 14 ? l.slice(0,13)+'…' : l;
-        note=`${labels.length} video: ${labels.slice(0,5).map(_vShort).join(', ')}${labels.length>5?` +${labels.length-5}`:''}`;
-      } else {
-        const _tShort = l => l.length > 14 ? l.slice(0,13)+'…' : l;
-        note=`${labels.length} test: ${labels.slice(0,5).map(_tShort).join(', ')}${labels.length>5?` +${labels.length-5}`:''}`;
-      }
+      note = _summarizeLabels(labels, isPlaylist ? 'video' : 'test');
     }
 
     const payload={
@@ -11806,7 +11821,7 @@ function printWeeklyProgramWithNote(stuId, coachNote){
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
             ${checkIcon(isDone)}
-            <span style="font-size:11px;font-weight:800;color:${isDone?'#9998AA':'#111118'};${isDone?'text-decoration:line-through':''}">${esc(t.subject)}</span>
+            <span style="font-size:11px;font-weight:800;color:${isDone?'#6B6A7A':'#111118'}">${esc(t.subject)}</span>
             <span style="font-size:8px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px;margin-left:2px">${lbl}${t.exam?' · '+esc(t.exam):''}</span>
           </div>
           ${t.note?`<div style="font-size:9px;color:#6B6A7A;margin-left:21px;line-height:1.4;margin-bottom:2px">${esc(t.note)}</div>`:''}
