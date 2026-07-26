@@ -11199,86 +11199,7 @@ async function saveStudentNote(stuId) {
 // PDF RAPOR SİSTEMİ
 // ═══════════════════════════════════════════════
 function openReportModal(stuId) {
-  let modal = document.getElementById('reportModal');
-  if(!modal) {
-    modal = document.createElement('div');
-    modal.id = 'reportModal';
-    modal.className = 'modal-bg';
-    modal.innerHTML = `<div class="modal">
-      <button class="modal-close" onclick="cm('reportModal')">×</button>
-      <h2 style="margin:0 0 12px">📄 Performans Raporu</h2>
-      <div class="field"><label>Rapor Türü</label>
-        <div id="rpTypeChips" style="display:flex;gap:8px"></div>
-      </div>
-      <div style="display:flex;justify-content:flex-end;margin:-6px 0 4px">
-        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="toggleReportPanel('performance')">⚙️ Gelişmiş Görünüm Ayarları</button>
-      </div>
-      <div id="rtPanel_performance" class="rt-panel" style="display:none"></div>
-      <input type="hidden" id="rpStuId">
-      <div class="field"><label>Dönem</label>
-        <select id="rpPeriod">
-          <option value="weekly">Bu Hafta</option>
-          <option value="monthly" selected>Bu Ay</option>
-          <option value="custom">Tarih Aralığı</option>
-        </select>
-      </div>
-      <div id="rpCustomDates" style="display:none">
-        <div class="field-row">
-          <div class="field"><label>Başlangıç</label><input type="date" id="rpStart"></div>
-          <div class="field"><label>Bitiş</label><input type="date" id="rpEnd"></div>
-        </div>
-      </div>
-      <div class="field"><label>Koç Notu <span id="rpNoteLbl">(isteğe bağlı)</span></label>
-        <textarea id="rpNote" placeholder="Bu dönem için genel değerlendirmenizi yazın..." style="min-height:90px"></textarea>
-      </div>
-      <div id="rpPremiumFields" style="display:none">
-        <div class="field"><label>Bu Haftanın Özeti (Sayfa 1)</label>
-          <textarea id="prSummary" placeholder="Bu hafta genel olarak nasıl geçti..." style="min-height:70px"></textarea>
-        </div>
-        <div style="display:flex;justify-content:flex-end;margin:-6px 0 10px">
-          <button type="button" id="prAiDraftBtn" class="btn btn-ghost btn-xs" style="font-size:11px" onclick="generateReportDraftAI(document.getElementById('rpStuId').value)">✨ AI ile Taslak Oluştur</button>
-        </div>
-        <div class="field"><label>Güçlü Yönler <span style="font-weight:400;color:var(--text-dim)">(her satır bir madde)</span></label>
-          <textarea id="prStrengths" placeholder="Düzenli çalışma&#10;Görev tamamlama" style="min-height:70px"></textarea>
-        </div>
-        <div class="field"><label>Gelişim Alanları <span style="font-weight:400;color:var(--text-dim)">(her satır bir madde)</span></label>
-          <textarea id="prGrowth" placeholder="Zaman yönetimi&#10;Konu tekrarları" style="min-height:70px"></textarea>
-        </div>
-        <div class="field"><label>Gelecek Hafta Hedefleri <span style="font-weight:400;color:var(--text-dim)">(her satır bir madde)</span></label>
-          <textarea id="prGoals" placeholder="Haftada 2 deneme çöz&#10;Geometri konu tekrarı yap" style="min-height:70px"></textarea>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="previewReport()">👁 Önizle</button>
-          <button class="btn btn-accent" style="flex:1;justify-content:center" onclick="generatePDF()">⬇️ PDF İndir</button>
-        </div>
-        <button class="btn btn-ghost" style="width:100%;justify-content:center;background:#25d366;color:#fff;border:none;gap:6px" onclick="sendWhatsAppReport()">💬 Veliye WhatsApp Gönder</button>
-        <button class="btn btn-ghost" style="width:100%;justify-content:center;background:#0d9488;color:#fff;border:none;gap:6px" onclick="sendParentEmailReport()">✉️ Veliye E-Posta Gönder</button>
-        <button class="btn btn-ghost" style="width:100%;justify-content:center;background:var(--surface3);color:var(--text);border:1px solid var(--border);gap:6px" onclick="archivePerformanceReport()">💾 Raporu Sisteme Kaydet (Arşivle)</button>
-      </div>
-    </div>`;
-    document.body.appendChild(modal);
-    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
-    document.getElementById('rpPeriod').addEventListener('change',function(){
-      document.getElementById('rpCustomDates').style.display=this.value==='custom'?'':'none';
-    });
-  }
-  document.getElementById('rpStuId').value = stuId;
-  // Default tarihler
-  const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  document.getElementById('rpStart').value = fmtDate(firstDay);
-  document.getElementById('rpEnd').value = fmtDate(now);
-  document.getElementById('rpNote').value = '';
-  ['prSummary','prStrengths','prGrowth','prGoals'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  // Rapor Türü çiplerini ve (Premium ise) ek alanların görünürlüğünü modal
-  // her açıldığında senkronla — "Gelişmiş Görünüm" paneli hiç açılmasa bile.
-  _rtCurrentType = 'performance';
-  window._reportWorkingConfig = window._reportWorkingConfig || {};
-  window._reportWorkingConfig.performance = getActiveReportConfig('performance');
-  _rtSyncUI('performance');
-  om('reportModal');
+  openReportStudio('performance', stuId);
 }
 
 function getReportDates() {
@@ -12142,7 +12063,7 @@ function generatePDF() {
     win.print();
     // print dialog açılır, "PDF olarak kaydet" seçilir
   }, 500);
-  cm('reportModal');
+  closeReportStudio();
   showToast('PDF oluşturuluyor — "PDF olarak kaydet" seçin');
 }
 
@@ -12157,7 +12078,7 @@ async function sendWhatsAppReport() {
   const encodedText = encodeURIComponent(message);
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
   window.open(whatsappUrl, '_blank');
-  cm('reportModal');
+  closeReportStudio();
   showToast('WhatsApp yönlendirmesi açıldı ✓');
   window._obMarkDone?.('report');
 }
@@ -12221,7 +12142,7 @@ async function sendParentEmailReport() {
     if (!resp.ok) throw new Error(d.error || 'Gönderim başarısız.');
 
     showToast('Veli performans raporu başarıyla e-posta olarak gönderildi ✓');
-    cm('reportModal');
+    closeReportStudio();
     window._obMarkDone?.('report');
   } catch (err) {
     console.error('[sendParentEmailReport Error]', err);
@@ -12236,35 +12157,7 @@ async function sendParentEmailReport() {
 
 
 function openWeeklyPDFModal(){
-  let modal = document.getElementById('weeklyPDFModal');
-  if(!modal){
-    modal = document.createElement('div'); modal.id='weeklyPDFModal'; modal.className='modal-bg';
-    modal.innerHTML=`<div class="modal">
-      <button class="modal-close" onclick="cm('weeklyPDFModal')">×</button>
-      <h2 style="margin:0 0 12px">🖨️ Haftalık Program PDF</h2>
-      <div class="field"><label>Rapor Türü</label>
-        <div id="rpTypeChips_weekly" style="display:flex;gap:8px"></div>
-      </div>
-      <div style="display:flex;justify-content:flex-end;margin:-6px 0 4px">
-        <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="toggleReportPanel('weekly')">⚙️ Gelişmiş Görünüm Ayarları</button>
-      </div>
-      <div id="rtPanel_weekly" class="rt-panel" style="display:none"></div>
-      <div class="field">
-        <label>Koç Notu (isteğe bağlı)</label>
-        <textarea id="pdfNote" placeholder="Bu haftaki programla ilgili notunuzu ekleyin..." style="min-height:90px"></textarea>
-      </div>
-      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="generateWeeklyPDF()">PDF Oluştur →</button>
-      <button class="btn btn-ghost btn-xs" style="width:100%;justify-content:center;margin-top:8px;font-size:11px" onclick="repairTaskNoteSummaries()">🔧 Eski Test/Video İsimlerini Onar</button>
-    </div>`;
-    document.body.appendChild(modal);
-    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
-  }
-  document.getElementById('pdfNote').value='';
-  _rtCurrentType = 'weekly';
-  window._reportWorkingConfig = window._reportWorkingConfig || {};
-  window._reportWorkingConfig.weekly = getActiveReportConfig('weekly');
-  _rtSyncUI('weekly');
-  om('weeklyPDFModal');
+  openReportStudio('weekly', S.activeStuId);
 }
 
 // Geçmişte oluşturulmuş görev notlarını (o zamanki sabit-13-karakter kesme
@@ -12315,14 +12208,13 @@ async function repairTaskNoteSummaries() {
 
 function generateWeeklyPDF(){
   const note = document.getElementById('pdfNote').value.trim();
-  // Geçici olarak rapor modalındaki note alanını kullan
-  cm('weeklyPDFModal');
+  closeReportStudio();
   printWeeklyProgramWithNote(S.activeStuId, note);
 }
 
-function printWeeklyProgramWithNote(stuId, coachNote){
+function buildWeeklyReportHTML(stuId, coachNote){
   const stu=S.students.find(s=>s.id===stuId);
-  if(!stu) return;
+  if(!stu) return '';
   const cfg=getActiveReportConfig('weekly');
   const isMinimal=cfg.style==='minimal';
   const wsOff=stu?.weekStart??0;
@@ -12492,6 +12384,12 @@ function printWeeklyProgramWithNote(stuId, coachNote){
   </div>
   </body></html>`;
 
+  return html;
+}
+
+function printWeeklyProgramWithNote(stuId, coachNote){
+  const html = buildWeeklyReportHTML(stuId, coachNote);
+  if (!html) return;
   const win=window.open('','_blank','width=1000,height=850');
   win.document.write(html); win.document.close();
   setTimeout(()=>win.focus(),300);
@@ -14314,117 +14212,301 @@ async function applyTemplateToWeek() {
 }
 
 // ═══════════════════════════════════════════════
-// RAPOR GÖRÜNÜMÜ PANELİ (Performans Raporu + Haftalık Program PDF)
-// Ana rapor modalının İÇİNDE aç/kapa bir panel olarak çalışır — koçun asıl
-// işini (raporu gönderme) kesmesin diye ayrı bir modal-üstü-modal AÇMAZ.
+// RAPOR STUDIO — tam ekran, canlı önizlemeli rapor düzenleyici
+// (Performans Raporu + Haftalık Program PDF)
+// Öğrenci bazlı, bağlamsal açılan tam ekran bir overlay (Odaklanma Modu'nun
+// .focus-overlay deseniyle aynı felsefe) — switchTab/URL hash sistemine
+// girmez, kapanınca coach'un bulunduğu ekrana döner.
 // "Hazır Stiller" (kod içi presetler) ve "Benim Stillerim" (coach'un kaydettiği
 // report_templates satırları) kasıtlı olarak ayrı iki kavram olarak adlandırıldı.
 // ═══════════════════════════════════════════════
 let _rtCurrentType = 'performance';
 const _rtShowReorder = {};
+let _rstResizeTimer = null;
+let _rstDebounceTimer = null;
 
-function _rtContainer() { return document.getElementById(`rtPanel_${_rtCurrentType}`); }
+function _rtContainer() { return document.getElementById(`rstPanel_${_rtCurrentType}`); }
 
-function toggleReportPanel(reportType) {
-  _rtCurrentType = reportType;
-  const container = document.getElementById(`rtPanel_${reportType}`);
-  if (!container) return;
-  const opening = container.style.display === 'none' || !container.style.display;
-  if (!opening) { container.style.display = 'none'; return; }
-  window._reportWorkingConfig = window._reportWorkingConfig || {};
-  window._reportWorkingConfig[reportType] = getActiveReportConfig(reportType);
-  if (!container.dataset.built) {
-    container.innerHTML = _rtPanelInnerHTML(reportType);
-    container.dataset.built = '1';
-  }
-  _rtSyncUI(reportType);
-  container.style.display = 'block';
+function _rstBuildOverlay() {
+  if (document.getElementById('reportStudioOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'reportStudioOverlay';
+  overlay.className = 'rst-overlay';
+  overlay.innerHTML = `
+    <div class="rst-header">
+      <button class="rst-back" onclick="closeReportStudio()">←</button>
+      <div>
+        <div class="rst-header-title" id="rstHeaderTitle">Rapor Studio</div>
+        <div class="rst-header-sub" id="rstHeaderSub"></div>
+      </div>
+    </div>
+    <div class="rst-body">
+      <div class="rst-panel" id="rstPanel_performance"></div>
+      <div class="rst-panel" id="rstPanel_weekly"></div>
+      <div class="rst-preview">
+        <div class="rst-preview-toolbar">
+          <button class="btn btn-ghost btn-xs" onclick="_rstOpenInNewTab()">↗ Yeni sekmede aç</button>
+        </div>
+        <div class="rst-preview-viewport" id="rstPreviewViewport">
+          <div class="rst-preview-scaler" id="rstPreviewScaler">
+            <iframe class="rst-preview-frame" id="rstPreviewFrame"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('rstPreviewFrame').onload = _rstFitPreview;
+  window.addEventListener('resize', () => {
+    if (!overlay.classList.contains('open')) return;
+    clearTimeout(_rstResizeTimer);
+    _rstResizeTimer = setTimeout(_rstFitPreview, 150);
+  });
 }
 
-function _rtPanelInnerHTML(reportType) {
+function openReportStudio(reportType, stuId) {
+  _rstBuildOverlay();
+  const overlay = document.getElementById('reportStudioOverlay');
+  _rtCurrentType = reportType;
+  window._reportWorkingConfig = window._reportWorkingConfig || {};
+  window._reportWorkingConfig[reportType] = getActiveReportConfig(reportType);
+
+  const stu = S.students.find(s => s.id === stuId);
+  document.getElementById('rstHeaderTitle').textContent = reportType === 'performance' ? '📄 Performans Raporu' : '🖨️ Haftalık Program PDF';
+  document.getElementById('rstHeaderSub').textContent = stu ? stu.name : '';
+
+  document.querySelectorAll('.rst-panel').forEach(p => p.classList.remove('active'));
+  const container = document.getElementById(`rstPanel_${reportType}`);
+  if (!container.dataset.built) {
+    container.innerHTML = _rstPanelInnerHTML(reportType);
+    container.dataset.built = '1';
+    _rstWireInputs(container, reportType);
+  }
+  container.classList.add('active');
+
+  if (reportType === 'performance') {
+    document.getElementById('rpStuId').value = stuId;
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    document.getElementById('rpStart').value = fmtDate(firstDay);
+    document.getElementById('rpEnd').value = fmtDate(now);
+    document.getElementById('rpNote').value = '';
+    ['prSummary','prStrengths','prGrowth','prGoals'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  } else {
+    document.getElementById('pdfNote').value = '';
+  }
+
+  _rtSyncUI(reportType);
+  overlay.classList.add('open');
+}
+
+function closeReportStudio() {
+  const overlay = document.getElementById('reportStudioOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+// Önizleme araç çubuğundaki "Yeni sekmede aç" — mevcut, değişmeyen
+// previewReport()/printWeeklyProgramWithNote() akışlarını olduğu gibi kullanır.
+function _rstOpenInNewTab() {
+  if (_rtCurrentType === 'performance') previewReport();
+  else printWeeklyProgramWithNote(S.activeStuId, document.getElementById('pdfNote')?.value.trim() || '');
+}
+
+function _rstPanelInnerHTML(reportType) {
+  const isPerf = reportType === 'performance';
   return `
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin:4px 0 12px">
-      <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🎨 Rapor Görünümü</div>
+    <div class="rst-card">
+      <div class="rst-card-title">Rapor Türü</div>
+      <div class="rst-preset-row"></div>
+      <div class="rst-preset-caption"></div>
+    </div>
 
-      <div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">Hazır Stiller</div>
-      <div class="rt-preset-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px"></div>
-      <div class="rt-preset-caption" style="font-size:11px;color:var(--text-dim);margin-bottom:14px;line-height:1.5"></div>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-size:11px;font-weight:700;color:var(--text-mid)">Görünecek Bölümler</div>
-        <button type="button" class="rt-reorder-toggle" style="font-size:10px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;padding:0" onclick="toggleReorderMode()">🔀 Sıralamayı Düzenle</button>
+    <div class="rst-card rst-sections-card">
+      <div class="rst-card-title-row">
+        <div class="rst-card-title">Görünecek Bölümler</div>
+        <button type="button" class="rst-reorder-toggle" onclick="toggleReorderMode()">🔀 Sıralamayı Düzenle</button>
       </div>
-      <div class="rt-section-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+      <div class="rst-section-group-lbl">Sabit Bölümler</div>
+      <div class="rst-section-list rst-section-list-locked"></div>
+      <div class="rst-section-group-lbl">Opsiyonel Bölümler</div>
+      <div class="rst-section-list rst-section-list-optional"></div>
+    </div>
+    <div class="rst-card rst-premium-note" style="display:none">
+      <div class="rst-card-title">Bölümler</div>
+      <div style="font-size:12px;color:var(--text-mid);line-height:1.6">Premium raporun bölümleri sabittir (Güçlü Yönler · Gelişim Alanları · Koç Notu · Gelecek Hafta Hedefleri).</div>
+    </div>
 
-      <div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">Stil</div>
-      <div style="display:flex;gap:14px;margin-bottom:14px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
-          <input type="radio" name="rtStyle_${reportType}" class="rt-style-radio" value="default" onchange="setReportStyle('default')"> Standart Görünüm
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
-          <input type="radio" name="rtStyle_${reportType}" class="rt-style-radio" value="minimal" onchange="setReportStyle('minimal')"> Sade Görünüm
-        </label>
+    <div class="rst-card rst-style-card" style="display:none">
+      <div class="rst-card-title">Stil</div>
+      <div class="rst-style-toggle">
+        <button type="button" class="rst-style-btn" data-style="default" onclick="setReportStyle('default')">Standart Görünüm</button>
+        <button type="button" class="rst-style-btn" data-style="minimal" onclick="setReportStyle('minimal')">Sade Görünüm</button>
       </div>
+    </div>
 
-      <div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">Benim Stillerim</div>
-      <div style="display:flex;gap:8px;margin-bottom:14px">
+    <div class="rst-card">
+      <div class="rst-card-title">Şablonlarım</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
         <select class="rt-saved-select" style="flex:1"></select>
         <button type="button" class="btn btn-ghost btn-xs" onclick="applyReportTemplate()">Yükle</button>
       </div>
-
-      <div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">Bu Görünümü Kaydet</div>
       <div style="display:flex;gap:8px">
         <input type="text" class="rt-save-name" placeholder="İsim ver (ör. Kısa Rapor)" style="flex:1">
         <button type="button" class="btn btn-accent btn-xs" onclick="saveReportTemplate()">Kaydet</button>
       </div>
+    </div>
+
+    ${isPerf ? `
+    <div class="rst-card">
+      <div class="rst-card-title">Dönem</div>
+      <select id="rpPeriod">
+        <option value="weekly">Bu Hafta</option>
+        <option value="monthly" selected>Bu Ay</option>
+        <option value="custom">Tarih Aralığı</option>
+      </select>
+      <div id="rpCustomDates" style="display:none;margin-top:10px">
+        <div class="field-row">
+          <div class="field"><label>Başlangıç</label><input type="date" id="rpStart"></div>
+          <div class="field"><label>Bitiş</label><input type="date" id="rpEnd"></div>
+        </div>
+      </div>
+    </div>
+    <input type="hidden" id="rpStuId">` : ''}
+
+    <div class="rst-card">
+      <div class="rst-card-title">Koç Notu <span id="rpNoteLbl" style="text-transform:none;letter-spacing:0;font-weight:500">(isteğe bağlı)</span></div>
+      <textarea id="${isPerf?'rpNote':'pdfNote'}" placeholder="${isPerf?'Bu dönem için genel değerlendirmenizi yazın...':'Bu haftaki programla ilgili notunuzu ekleyin...'}" style="min-height:90px;width:100%"></textarea>
+    </div>
+
+    ${isPerf ? `
+    <div class="rst-card" id="rpPremiumFields" style="display:none">
+      <div class="rst-card-title">Bu Haftanın Özeti (Sayfa 1)</div>
+      <textarea id="prSummary" placeholder="Bu hafta genel olarak nasıl geçti..." style="min-height:70px;width:100%;margin-bottom:8px"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button type="button" id="prAiDraftBtn" class="btn btn-ghost btn-xs" onclick="generateReportDraftAI(document.getElementById('rpStuId').value)">✨ AI ile Taslak Oluştur</button>
+      </div>
+      <div class="rst-card-title">Güçlü Yönler <span style="text-transform:none;font-weight:500;color:var(--text-dim)">(her satır bir madde)</span></div>
+      <textarea id="prStrengths" placeholder="Düzenli çalışma&#10;Görev tamamlama" style="min-height:60px;width:100%;margin-bottom:12px"></textarea>
+      <div class="rst-card-title">Gelişim Alanları <span style="text-transform:none;font-weight:500;color:var(--text-dim)">(her satır bir madde)</span></div>
+      <textarea id="prGrowth" placeholder="Zaman yönetimi&#10;Konu tekrarları" style="min-height:60px;width:100%;margin-bottom:12px"></textarea>
+      <div class="rst-card-title">Gelecek Hafta Hedefleri <span style="text-transform:none;font-weight:500;color:var(--text-dim)">(her satır bir madde)</span></div>
+      <textarea id="prGoals" placeholder="Haftada 2 deneme çöz&#10;Geometri konu tekrarı yap" style="min-height:60px;width:100%"></textarea>
+    </div>` : `
+    <button type="button" class="btn btn-ghost btn-xs" style="align-self:flex-start" onclick="repairTaskNoteSummaries()">🔧 Eski Test/Video İsimlerini Onar</button>`}
+
+    <div class="rst-actions">
+      ${isPerf ? `
+      <button class="btn btn-accent" style="width:100%;justify-content:center" onclick="generatePDF()">⬇️ PDF İndir</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;background:#25d366;color:#fff;border:none;gap:6px" onclick="sendWhatsAppReport()">💬 Veliye WhatsApp Gönder</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;background:#0d9488;color:#fff;border:none;gap:6px" onclick="sendParentEmailReport()">✉️ Veliye E-Posta Gönder</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;background:var(--surface3);color:var(--text);border:1px solid var(--border);gap:6px" onclick="archivePerformanceReport()">💾 Raporu Sisteme Kaydet (Arşivle)</button>` : `
+      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="generateWeeklyPDF()">PDF Oluştur →</button>`}
     </div>`;
 }
 
+// Not/özet/premium metin alanlarında her tuş vuruşunda değil, ~250ms
+// duraksamada önizlemeyi yeniler; Dönem/tarih alanları ayrık seçim olduğu
+// için anında yeniler.
+function _rstDebouncedRefresh() {
+  clearTimeout(_rstDebounceTimer);
+  _rstDebounceTimer = setTimeout(() => _rstRefreshPreview(_rtCurrentType), 250);
+}
+
+function _rstWireInputs(container, reportType) {
+  ['rpNote','pdfNote','prSummary','prStrengths','prGrowth','prGoals'].forEach(id => {
+    const el = container.querySelector('#'+id);
+    if (el) el.addEventListener('input', _rstDebouncedRefresh);
+  });
+  const periodEl = container.querySelector('#rpPeriod');
+  if (periodEl) {
+    periodEl.addEventListener('change', function(){
+      const cd = container.querySelector('#rpCustomDates');
+      if (cd) cd.style.display = this.value==='custom' ? '' : 'none';
+      _rstRefreshPreview(reportType);
+    });
+  }
+  ['rpStart','rpEnd'].forEach(id => {
+    const el = container.querySelector('#'+id);
+    if (el) el.addEventListener('change', () => _rstRefreshPreview(reportType));
+  });
+}
+
 function _rtSectionRowHTML(def, enabled, i, total, showReorder) {
-  const locked = !!def.locked;
+  if (def.locked) {
+    return `<div class="rst-section-row locked">
+      <span class="rst-section-row-label">${esc(def.label)}</span>
+      <span class="rst-lock-badge">🔒 Sabit</span>
+    </div>`;
+  }
   const arrows = (enabled && showReorder) ? `
-    <button type="button" class="btn btn-ghost btn-xs" ${i===0?'disabled':''} onclick="moveReportSection('${def.key}',-1)">↑</button>
-    <button type="button" class="btn btn-ghost btn-xs" ${i===total-1?'disabled':''} onclick="moveReportSection('${def.key}',1)">↓</button>` : '';
-  return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface3);border-radius:8px;${enabled?'':'opacity:.55'}">
-    <input type="checkbox" ${enabled?'checked':''} ${locked?'disabled':''} onchange="toggleReportSection('${def.key}')" style="cursor:${locked?'not-allowed':'pointer'}">
-    <span style="flex:1;font-size:13px;font-weight:600">${esc(def.label)}${locked?' <span style="font-size:10px;color:var(--text-dim);font-weight:500">(zorunlu)</span>':''}</span>
+    <div class="rst-reorder-arrows">
+      <button type="button" ${i===0?'disabled':''} onclick="moveReportSection('${def.key}',-1)">↑</button>
+      <button type="button" ${i===total-1?'disabled':''} onclick="moveReportSection('${def.key}',1)">↓</button>
+    </div>` : '';
+  return `<div class="rst-section-row${enabled?'':' disabled'}">
+    <span class="rst-section-row-label">${esc(def.label)}</span>
     ${arrows}
+    <label class="switch">
+      <input type="checkbox" ${enabled?'checked':''} onchange="toggleReportSection('${def.key}')">
+      <span class="switch-track"></span>
+    </label>
   </div>`;
 }
 
 function renderReportPanel(container, reportType) {
   const cfg = window._reportWorkingConfig[reportType];
   const defs = REPORT_SECTION_DEFS[reportType];
+  const isPremium = cfg.style === 'premium';
 
-  // Hazır Stiller — aktif olan vurgulanır, altına o stilin kapsadığı bölümlerin
-  // kısa özeti yazılır (isimden anlaşılmayan farkı somutlaştırmak için).
-  const chipsEl = container.querySelector('.rt-preset-chips');
-  chipsEl.innerHTML = REPORT_PRESETS[reportType].map(p => {
+  // Rapor Türü — tek preset satırı (eskiden modal üstünde + panel içinde
+  // ikişer kez sorulan seçim burada TEK yerde).
+  const presetRow = container.querySelector('.rst-preset-row');
+  presetRow.innerHTML = REPORT_PRESETS[reportType].map(p => {
     const active = JSON.stringify(p.config.sections)===JSON.stringify(cfg.sections) && p.config.style===cfg.style;
-    return `<button type="button" class="btn btn-xs ${active?'btn-accent':'btn-ghost'}" onclick="applyReportPreset('${p.key}')">${esc(p.name)}</button>`;
+    return `<button type="button" class="btn btn-sm rst-preset-chip ${active?'btn-accent':'btn-ghost'}" onclick="applyReportPreset('${p.key}')">${p.key==='premium'?'✨ ':''}${esc(p.name)}</button>`;
   }).join('');
   const activePreset = REPORT_PRESETS[reportType].find(p => JSON.stringify(p.config.sections)===JSON.stringify(cfg.sections) && p.config.style===cfg.style);
   const labels = cfg.sections.map(k => esc((defs.find(d=>d.key===k)||{label:k}).label));
-  container.querySelector('.rt-preset-caption').innerHTML = activePreset
+  container.querySelector('.rst-preset-caption').innerHTML = activePreset
     ? `<b>${esc(activePreset.name)}:</b> ${labels.join(' · ')}`
     : `<b>Özel görünüm:</b> ${labels.join(' · ')}`;
 
-  // Bölüm listesi — etkin olanlar üstte (kendi sırasında), kapalı olanlar altta
-  const showReorder = !!_rtShowReorder[reportType];
-  const disabledDefs = defs.filter(d => !cfg.sections.includes(d.key));
-  const rows = [
-    ...cfg.sections.map((key,i) => {
-      const def = defs.find(d=>d.key===key) || { key, label:key };
-      return _rtSectionRowHTML(def, true, i, cfg.sections.length, showReorder);
-    }),
-    ...disabledDefs.map(def => _rtSectionRowHTML(def, false, null, null, showReorder))
-  ];
-  container.querySelector('.rt-section-list').innerHTML = rows.join('');
+  // Premium'da bölüm seçiminin gerçek PDF'e hiçbir etkisi yok
+  // (buildPremiumReportHTML cfg.sections'ı okumuyor) — checklist yerine
+  // açıklama gösterilir ki koç yanlışlıkla "çalışmıyor" sanmasın.
+  const sectionsCard = container.querySelector('.rst-sections-card');
+  const premiumNote = container.querySelector('.rst-premium-note');
+  if (sectionsCard) sectionsCard.style.display = isPremium ? 'none' : 'block';
+  if (premiumNote) premiumNote.style.display = isPremium ? 'block' : 'none';
 
-  const toggleBtn = container.querySelector('.rt-reorder-toggle');
-  if (toggleBtn) toggleBtn.textContent = showReorder ? '✓ Sıralama Açık' : '🔀 Sıralamayı Düzenle';
+  if (!isPremium) {
+    const showReorder = !!_rtShowReorder[reportType];
+    const lockedDefs = defs.filter(d => d.locked);
+    const lockedKeys = new Set(lockedDefs.map(d=>d.key));
+    const optionalEnabled = cfg.sections.filter(k => !lockedKeys.has(k));
+    const optionalDisabled = defs.filter(d => !d.locked && !cfg.sections.includes(d.key));
+    container.querySelector('.rst-section-list-locked').innerHTML = lockedDefs.map(def => _rtSectionRowHTML(def, true, null, null, false)).join('');
+    const optionalRows = [
+      ...optionalEnabled.map((key,i) => {
+        const def = defs.find(d=>d.key===key) || { key, label:key };
+        return _rtSectionRowHTML(def, true, i, optionalEnabled.length, showReorder);
+      }),
+      ...optionalDisabled.map(def => _rtSectionRowHTML(def, false, null, null, showReorder))
+    ];
+    container.querySelector('.rst-section-list-optional').innerHTML = optionalRows.join('');
+    const toggleBtn = container.querySelector('.rst-reorder-toggle');
+    if (toggleBtn) toggleBtn.textContent = showReorder ? '✓ Sıralama Açık' : '🔀 Sıralamayı Düzenle';
+  }
 
-  container.querySelectorAll('.rt-style-radio').forEach(r => r.checked = (r.value === cfg.style));
+  // Stil — sadece aktif config hiçbir preset'e tam uymuyorsa (özel/kaydedilmemiş
+  // bir görünümse) gösterilir. Premium'a manuel geçiş burada YOK: rastgele bir
+  // bölüm setiyle premium'a geçmek, bölümlerin sessizce yok olduğu bir deneyime
+  // yol açar — Premium'a giden tek yol preset çipi veya style:'premium' ile
+  // kaydedilmiş bir şablon.
+  const styleCard = container.querySelector('.rst-style-card');
+  if (styleCard) {
+    styleCard.style.display = (!activePreset && !isPremium) ? 'block' : 'none';
+    container.querySelectorAll('.rst-style-btn').forEach(b => b.classList.toggle('active', b.dataset.style === cfg.style));
+  }
 
   const saved = (S.reportTemplates||[]).filter(t=>t.reportType===reportType);
   const selEl = container.querySelector('.rt-saved-select');
@@ -14433,21 +14515,8 @@ function renderReportPanel(container, reportType) {
     : saved.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
 }
 
-// Rapor Türü seçimi (Standart/Sade/Premium) sadece gizli "Gelişmiş Görünüm"
-// panelinin içinde değil, modalın en üstünde HER ZAMAN görünür — gerçek
-// kullanıcı testinde küçük/ikincil "🎨 Görünüm" butonunun fark edilmediği
-// (özellikle Premium'un keşfedilemediği) tespit edildi. Bu fonksiyon hem bu
-// üstteki çipleri hem (açıksa) gelişmiş paneli hem premium alan görünürlüğünü
-// TEK yerden senkron tutar.
 function _rtSyncUI(reportType) {
   const cfg = (window._reportWorkingConfig && window._reportWorkingConfig[reportType]) || getActiveReportConfig(reportType);
-  const chipsEl = document.getElementById(reportType === 'performance' ? 'rpTypeChips' : `rpTypeChips_${reportType}`);
-  if (chipsEl) {
-    chipsEl.innerHTML = REPORT_PRESETS[reportType].map(p => {
-      const active = JSON.stringify(p.config.sections)===JSON.stringify(cfg.sections) && p.config.style===cfg.style;
-      return `<button type="button" class="btn btn-sm ${active?'btn-accent':'btn-ghost'}" style="flex:1;justify-content:center" onclick="applyReportPreset('${p.key}')">${p.key==='premium'?'✨ ':''}${esc(p.name)}</button>`;
-    }).join('');
-  }
   if (reportType === 'performance') {
     const premiumFields = document.getElementById('rpPremiumFields');
     const noteLbl = document.getElementById('rpNoteLbl');
@@ -14455,8 +14524,48 @@ function _rtSyncUI(reportType) {
     if (premiumFields) premiumFields.style.display = isPremium ? 'block' : 'none';
     if (noteLbl) noteLbl.textContent = isPremium ? '(Koç Yorumu — Sayfa 3)' : '(isteğe bağlı)';
   }
-  const container = document.getElementById(`rtPanel_${reportType}`);
+  const container = document.getElementById(`rstPanel_${reportType}`);
   if (container && container.dataset.built) renderReportPanel(container, reportType);
+  _rstRefreshPreview(reportType);
+}
+
+// Canlı önizleme: aktif config'e göre mevcut, değişmemiş HTML üreticileri
+// (buildReportHTML/buildPremiumReportHTML/buildWeeklyReportHTML) çağırıp
+// sonucu iframe'in srcdoc'una yazar — yeni pencere/document.write yok.
+function _rstRefreshPreview(reportType) {
+  if (reportType !== _rtCurrentType) return;
+  const frame = document.getElementById('rstPreviewFrame');
+  if (!frame) return;
+  const cfg = window._reportWorkingConfig[reportType];
+  let html = '';
+  if (reportType === 'performance') {
+    const stuId = document.getElementById('rpStuId')?.value;
+    if (!stuId) return;
+    html = cfg.style === 'premium' ? buildPremiumReportHTML(stuId, true) : buildReportHTML(stuId, true);
+  } else {
+    const note = document.getElementById('pdfNote')?.value.trim() || '';
+    html = buildWeeklyReportHTML(S.activeStuId, note);
+  }
+  frame.srcdoc = html;
+}
+
+// Üretilen raporlar sabit/yakın-sabit baskı genişliğinde (~780-820px) —
+// iframe'i doğal genişliğinde tutup panel genişliğine göre ölçekler,
+// gerçek render yüksekliğini ölçüp ölü scroll alanını önler.
+function _rstFitPreview() {
+  const viewport = document.getElementById('rstPreviewViewport');
+  const scaler = document.getElementById('rstPreviewScaler');
+  const frame = document.getElementById('rstPreviewFrame');
+  if (!viewport || !scaler || !frame) return;
+  const NATURAL_W = 820;
+  frame.style.width = NATURAL_W + 'px';
+  const scale = Math.min(1, (viewport.clientWidth - 48) / NATURAL_W);
+  scaler.style.transform = `scale(${scale})`;
+  let h = 1123;
+  try { h = frame.contentDocument?.documentElement?.scrollHeight || h; } catch(e) {}
+  frame.style.height = h + 'px';
+  scaler.style.width = NATURAL_W + 'px';
+  scaler.style.height = (h * scale) + 'px';
 }
 
 function toggleReorderMode() {
@@ -14488,12 +14597,20 @@ function toggleReportSection(key) {
   _rtSyncUI(_rtCurrentType);
 }
 
+// Sadece Opsiyonel grup içinde sıralama yapar — Sabit bölümlerin mutlak
+// konumu hep korunur, böylece oklar asla zorunlu bir bölümü yerinden oynatamaz.
 function moveReportSection(key, dir) {
   const cfg = window._reportWorkingConfig[_rtCurrentType];
-  const idx = cfg.sections.indexOf(key);
+  const defs = REPORT_SECTION_DEFS[_rtCurrentType] || [];
+  const isLocked = k => !!defs.find(d=>d.key===k)?.locked;
+  if (isLocked(key)) return;
+  const optionalKeys = cfg.sections.filter(k => !isLocked(k));
+  const idx = optionalKeys.indexOf(key);
   const newIdx = idx + dir;
-  if (idx<0 || newIdx<0 || newIdx>=cfg.sections.length) return;
-  [cfg.sections[idx], cfg.sections[newIdx]] = [cfg.sections[newIdx], cfg.sections[idx]];
+  if (idx<0 || newIdx<0 || newIdx>=optionalKeys.length) return;
+  [optionalKeys[idx], optionalKeys[newIdx]] = [optionalKeys[newIdx], optionalKeys[idx]];
+  let oi = 0;
+  cfg.sections = cfg.sections.map(k => isLocked(k) ? k : optionalKeys[oi++]);
   _rtPersistWorkingConfig();
   _rtSyncUI(_rtCurrentType);
 }
@@ -15568,7 +15685,8 @@ window.getTestStatus = getTestStatus;
 window.openCoachTaskEdit = openCoachTaskEdit;
 window.saveWeekAsTemplate = saveWeekAsTemplate;
 window.applyTemplateToWeek = applyTemplateToWeek;
-window.toggleReportPanel = toggleReportPanel;
+window.closeReportStudio = closeReportStudio;
+window._rstOpenInNewTab = _rstOpenInNewTab;
 window.toggleReorderMode = toggleReorderMode;
 window.applyReportPreset = applyReportPreset;
 window.toggleReportSection = toggleReportSection;
@@ -15660,7 +15778,7 @@ async function archivePerformanceReport() {
     showToast('Rapor kaydedilirken hata oluştu: ' + error.message);
   } else {
     showToast('Rapor başarıyla geçmişe kaydedildi! ✓');
-    cm('reportModal');
+    closeReportStudio();
     window._obMarkDone?.('report');
   }
 }
