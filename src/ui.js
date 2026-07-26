@@ -10340,13 +10340,15 @@ function updateProfilePreview() {
     subHeadline = headline || 'YKS Başarı & Rehberlik Koçu 🚀';
   }
 
-  // Stat Rozetleri
+  // Stat Rozetleri (Sadece doldurulduğunda gösterilir — Sahte rozet yok)
   const stats = [];
   if (yksRank) stats.push({ ico: '🏆', t: `YKS: ${yksRank}`, hl: true });
   if (profession) stats.push({ ico: '💼', t: profession, hl: true });
   if (university) stats.push({ ico: '🎓', t: university.slice(0, 24) });
   if (pricing_text) stats.push({ ico: '🏷️', t: pricing_text });
-  if (capacity_left !== '') stats.push({ ico: '⚡', t: `Son ${capacity_left} Kontenjan`, scarce: true });
+  if (capacity_left !== '' && parseInt(capacity_left) > 0) {
+    stats.push({ ico: '⚡', t: `Son ${capacity_left} Öğrenci Kontenjanı`, scarce: true });
+  }
 
   const statsHtml = stats.map(s => `
     <div style="flex-shrink:0; display:inline-flex; align-items:center; gap:4px; background:${s.hl ? 'rgba(240,98,54,0.12)' : s.scarce ? 'rgba(239,68,68,0.1)' : '#121215'}; border:1px solid ${s.hl ? 'rgba(240,98,54,0.35)' : s.scarce ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.08)'}; border-radius:10px; padding:5px 9px; font-size:10px; font-weight:700; color:${s.scarce ? '#EF4444' : s.hl ? '#F06236' : '#FAFAFA'};">
@@ -10355,20 +10357,28 @@ function updateProfilePreview() {
     </div>
   `).join('');
 
-  // Live reviews
-  const reviews = Array.from(document.querySelectorAll('#cpReviewsContainer .cp-review-item')).map(el => ({
+  // Live reviews fallback
+  const customReviews = Array.from(document.querySelectorAll('#cpReviewsContainer .cp-review-item')).map(el => ({
     name: el.querySelector('.cpr-name')?.value.trim() || '',
     role: el.querySelector('.cpr-role')?.value.trim() || '',
     text: el.querySelector('.cpr-text')?.value.trim() || ''
   })).filter(r => r.name || r.text);
 
-  // Live faqs
-  const faqs = Array.from(document.querySelectorAll('#cpFaqContainer .cp-faq-item')).map(el => ({
+  const displayReviews = customReviews.length ? customReviews : [
+    { name: 'YKS Öğrencisi', role: 'Derece Takip', text: 'Birebir haftalık görüşmeler ve kişisel çalışma programı ile eksiklerimi hızla kapattım.' }
+  ];
+
+  // Live faqs fallback
+  const customFaqs = Array.from(document.querySelectorAll('#cpFaqContainer .cp-faq-item')).map(el => ({
     q: el.querySelector('.cpf-q')?.value.trim() || '',
     a: el.querySelector('.cpf-a')?.value.trim() || ''
   })).filter(f => f.q && f.a);
 
-  // Live Block Order
+  const displayFaqs = customFaqs.length ? customFaqs : [
+    { q: 'Görüşmeler nasıl yapılıyor?', a: 'Haftalık 1-e-1 online seanslar (Meet/Zoom) ile gerçekleşir.' }
+  ];
+
+  // Live Block Order (Koç biyografisi platform reklamının önündedir)
   const activeBlockElements = Array.from(document.querySelectorAll('#cpBlocksContainer .cp-block-row'));
   const activeBlocks = activeBlockElements.length ? activeBlockElements.map(el => ({
     id: el.dataset.id,
@@ -10376,9 +10386,9 @@ function updateProfilePreview() {
   })) : [
     { id: 'hero', enabled: true },
     { id: 'stats', enabled: true },
-    { id: 'value_props', enabled: true },
     { id: 'tabs_about', enabled: true },
     { id: 'reviews', enabled: true },
+    { id: 'value_props', enabled: true },
     { id: 'faq', enabled: true },
     { id: 'sticky_cta', enabled: true }
   ];
@@ -10390,7 +10400,7 @@ function updateProfilePreview() {
         <div style="min-width:0; flex:1;">
           <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
             <b style="font-size:14px; font-weight:800; color:#FAFAFA;">${esc(name)}</b>
-            <span style="font-size:8.5px; background:#10B981; color:#fff; font-weight:800; padding:1px 5px; border-radius:99px;">${esc(archetypeBadge || '✓ Onaylı')}</span>
+            <span style="font-size:8.5px; background:#10B981; color:#fff; font-weight:800; padding:1px 5px; border-radius:99px;">${esc(archetypeBadge || '🟢 Aktif Koç')}</span>
           </div>
           <div style="font-size:10.5px; color:#A1A1AA; margin-top:2px; line-height:1.3;">${esc(subHeadline)}</div>
           <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
@@ -10404,12 +10414,12 @@ function updateProfilePreview() {
 
     value_props: () => `
       <div style="background:#121215; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; margin-bottom:10px;">
-        <b style="font-size:10.5px; font-weight:800; color:#FAFAFA; display:block; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.3px;">Neden ${esc(name.split(' ')[0])}?</b>
+        <b style="font-size:10.5px; font-weight:800; color:#FAFAFA; display:block; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.3px;">Platform Ayrıcalıkları</b>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">🎯 <b>Kişiye Özel Plan</b></div>
-          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">📊 <b>Gelişim Takibi</b></div>
-          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">🤖 <b>7/24 AI Asistanı</b></div>
-          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">💬 <b>Birebir Görüşme</b></div>
+          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">📋 <b>Kişisel Program</b></div>
+          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">📊 <b>Net Takibi</b></div>
+          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">📄 <b>Veli Raporları</b></div>
+          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px; font-size:9.5px; color:#FAFAFA;">💬 <b>1-e-1 İletişim</b></div>
         </div>
       </div>`,
 
@@ -10419,32 +10429,32 @@ function updateProfilePreview() {
         <div style="color:#FAFAFA;">${esc(bio || 'Biyografi henüz girilmedi.').replace(/\n/g, '<br>')}</div>
       </div>`,
 
-    reviews: () => reviews.length ? `
+    reviews: () => `
       <div style="background:#121215; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; margin-bottom:10px;">
-        <b style="font-size:10.5px; font-weight:800; color:#FAFAFA; display:block; margin-bottom:8px;">Danışan Görüşleri</b>
-        ${reviews.map(r => `
-          <div style="background:#18181B; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px; margin-bottom:6px; font-size:10px;">
-            <div style="color:#f0a500; font-size:8.5px;">★★★★★</div>
-            <div style="font-style:italic; margin:2px 0; color:#FAFAFA;">"${esc(r.text)}"</div>
-            <div style="font-weight:800; color:#F06236; font-size:9px;">🎓 ${esc(r.name)} ${r.role ? `· ${esc(r.role)}` : ''}</div>
+        <b style="font-size:10.5px; font-weight:800; color:#FAFAFA; display:block; margin-bottom:6px;">Öğrenci Görüşleri</b>
+        ${displayReviews.map(r => `
+          <div style="font-size:10px; color:#A1A1AA; background:#18181B; border-radius:8px; padding:7px; margin-bottom:4px;">
+            <div>"${esc(r.text)}"</div>
+            <div style="font-weight:700; color:#F06236; margin-top:2px;">🎓 ${esc(r.name)}</div>
           </div>
         `).join('')}
-      </div>` : '',
+      </div>`,
 
-    faq: () => faqs.length ? `
+    faq: () => `
       <div style="background:#121215; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; margin-bottom:10px;">
-        <b style="font-size:10.5px; font-weight:800; color:#FAFAFA; display:block; margin-bottom:8px;">Sıkça Sorulan Sorular</b>
-        ${faqs.map(f => `
-          <div style="border-bottom:1px solid rgba(255,255,255,0.05); padding:4px 0; font-size:10px;">
-            <b style="color:#FAFAFA; display:block;">📌 ${esc(f.q)}</b>
-            <div style="color:#A1A1AA; font-size:9.5px; margin-top:2px;">${esc(f.a)}</div>
+        <b style="font-size:10.5px; font-weight:800; color:#FAFAFA; display:block; margin-bottom:6px;">Sıkça Sorulan Sorular</b>
+        ${displayFaqs.map(f => `
+          <div style="font-size:10px; color:#FAFAFA; background:#18181B; border-radius:8px; padding:6px 8px; margin-bottom:4px;">
+            <b>${esc(f.q)}</b>
           </div>
         `).join('')}
-      </div>` : '',
+      </div>`,
 
     sticky_cta: () => `
-      <div style="background:linear-gradient(135deg, #F06236, #FF7547); color:#fff; font-weight:800; font-size:11.5px; text-align:center; padding:10px; border-radius:12px; box-shadow:0 4px 16px rgba(240,98,54,0.45);">
-        🔥 Ücretsiz Tanışma &amp; Başvuru Yap →
+      <div style="margin-top:12px; text-align:center;">
+        <div style="background:#F06236; color:#fff; font-weight:800; font-size:12px; padding:10px 14px; border-radius:12px; box-shadow:0 4px 12px rgba(240,98,54,0.35);">
+          💬 Ücretsiz 1-e-1 Ön Görüşme İste →
+        </div>
       </div>`
   };
 
