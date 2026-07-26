@@ -938,18 +938,18 @@
               <div class="sc-rev-user">🎓 ${esc(r.name)}${r.role ? ` · ${esc(r.role)}` : ''}</div>
             </div>
           `).join('')}
-        </div>` : '',
+        </div>`,
 
-      faq: () => customFaqs.length ? `
+      faq: () => `
         <div class="sc-faq">
           <div class="sc-sec-title">Sıkça Sorulan <span>Sorular</span></div>
-          ${customFaqs.map(f => `
+          ${displayFaqs.map(f => `
             <div class="sc-faq-item" onclick="this.classList.toggle('open')">
               <div class="sc-faq-q"><span>${esc(f.q)}</span> <span>▾</span></div>
               <div class="sc-faq-a">${esc(f.a)}</div>
             </div>
           `).join('')}
-        </div>` : '',
+        </div>`,
 
       sticky_cta: () => `
         <div class="sc-cta-wrap">
