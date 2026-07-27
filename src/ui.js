@@ -14248,8 +14248,10 @@ function _rstBuildOverlay() {
           <button class="btn btn-ghost btn-xs" onclick="_rstOpenInNewTab()">↗ Yeni sekmede aç</button>
         </div>
         <div class="rst-preview-viewport" id="rstPreviewViewport">
-          <div class="rst-preview-scaler" id="rstPreviewScaler">
-            <iframe class="rst-preview-frame" id="rstPreviewFrame"></iframe>
+          <div class="rst-preview-spacer" id="rstPreviewSpacer">
+            <div class="rst-preview-scaler" id="rstPreviewScaler">
+              <iframe class="rst-preview-frame" id="rstPreviewFrame"></iframe>
+            </div>
           </div>
         </div>
       </div>
@@ -14550,22 +14552,29 @@ function _rstRefreshPreview(reportType) {
 }
 
 // Üretilen raporlar sabit/yakın-sabit baskı genişliğinde (~780-820px) —
-// iframe'i doğal genişliğinde tutup panel genişliğine göre ölçekler,
-// gerçek render yüksekliğini ölçüp ölü scroll alanını önler.
+// iframe'i doğal genişliğinde tutup panel genişliğine göre ölçekler.
+// .rst-preview-scaler DOĞAL boyutunda kalır ve transform:scale ile küçültülür;
+// etrafındaki .rst-preview-spacer'a ÖLÇEKLENMİŞ boyut verilir ki
+// .rst-preview-viewport (overflow:auto) doğru scroll alanını ayırsın —
+// scale'i AYNI elemente hem transform hem boyut olarak uygulamak (eski hata)
+// yüksekliği iki kez küçültüp önizlemeyi (özellikle dar/mobil ekranlarda,
+// scale<1 olduğunda) anlamsızca sıkıştırıyordu.
 function _rstFitPreview() {
   const viewport = document.getElementById('rstPreviewViewport');
+  const spacer = document.getElementById('rstPreviewSpacer');
   const scaler = document.getElementById('rstPreviewScaler');
   const frame = document.getElementById('rstPreviewFrame');
-  if (!viewport || !scaler || !frame) return;
+  if (!viewport || !spacer || !scaler || !frame) return;
   const NATURAL_W = 820;
   frame.style.width = NATURAL_W + 'px';
   const scale = Math.min(1, (viewport.clientWidth - 48) / NATURAL_W);
-  scaler.style.transform = `scale(${scale})`;
   let h = 1123;
   try { h = frame.contentDocument?.documentElement?.scrollHeight || h; } catch(e) {}
   frame.style.height = h + 'px';
   scaler.style.width = NATURAL_W + 'px';
-  scaler.style.height = (h * scale) + 'px';
+  scaler.style.transform = `scale(${scale})`;
+  spacer.style.width = (NATURAL_W * scale) + 'px';
+  spacer.style.height = (h * scale) + 'px';
 }
 
 function toggleReorderMode() {
