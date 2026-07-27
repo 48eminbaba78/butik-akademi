@@ -12271,8 +12271,11 @@ function buildWeeklyReportHTML(stuId, coachNote){
     ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#22C55E;flex-shrink:0"><svg width="8" height="6" viewBox="0 0 8 6"><path d="M1 3L3 5L7 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>`
     :`<span style="display:inline-block;width:15px;height:15px;border-radius:50%;border:1.5px solid #D1D0DC;flex-shrink:0"></span>`;
 
-  // ── Salt-görüntüleme (fillable KAPALI) — mevcut davranış, DEĞİŞMEDİ ──
-  // (sadece renk kaynağı marka renginden tema accent'ine geçti)
+  // ── Salt-görüntüleme (fillable KAPALI) — "premium çalışma planı" tasarımı.
+  // Gün başına gerçek bir kart + görev başına ders (bucketSubject) rengiyle
+  // rozet. Bu SADECE görsel bir yükseltme — hiçbir performans/analiz verisi
+  // eklenmiyor (checkIcon zaten var olan yapıldı/yapılmadı çentiği, rapor
+  // değil, bir yapılacaklar listesinin doğal parçası).
   function buildReadonlyDayHtml(){
     let dayHtml='';
     for(const {d,tasks,dayName} of activeDays){
@@ -12281,43 +12284,46 @@ function buildWeeklyReportHTML(stuId, coachNote){
         const color=TC[t.type]||'#94a3b8';
         const lbl=TL[t.type]||'Diğer';
         const isDone=t.done;
+        const subjBucket=bucketSubject(t.subject);
+        const subjColor=PREMIUM_SUBJECT_PALETTE[subjBucket];
         const res=t.student_result||null;
         const fb=t.student_feedback||null;
         const dybHtml=res&&(res.dogru!=null||res.yanlis!=null||res.bos!=null)?`
-          <div style="display:flex;gap:4px;margin-top:5px;margin-left:21px">
+          <div style="display:flex;gap:4px;margin-top:5px;margin-left:22px">
             <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#DCFCE7;color:#15803D">✓ ${res.dogru??0}</span>
             <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#FEE2E2;color:#B91C1C">✗ ${res.yanlis??0}</span>
             <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#F1F5F9;color:#64748B">— ${res.bos??0}</span>
           </div>`:'';
-        const noteHtml=t.student_note?`<div style="font-size:9px;color:#9998AA;font-style:italic;margin-top:4px;margin-left:21px;line-height:1.4">"${esc(t.student_note)}"</div>`:'';
+        const noteHtml=t.student_note?`<div style="font-size:9px;color:#9998AA;font-style:italic;margin-top:4px;margin-left:22px;line-height:1.4">"${esc(t.student_note)}"</div>`:'';
         const fbHtml=fb&&(fb.difficulty||fb.focus)?`
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;margin-top:6px">
             ${fb.difficulty?`<div style="white-space:nowrap"><span style="font-size:8px;color:#C4C3D0">Zorluk </span>${dots(fb.difficulty)}</div>`:''}
             ${fb.focus?`<div style="white-space:nowrap"><span style="font-size:8px;color:#C4C3D0">Odak </span>${dots(fb.focus)}</div>`:''}
           </div>`:'';
-        return `<div class="task-block" style="background:#fff;border-radius:8px;border:1px solid #E8E6DE;border-left:3px solid ${color};margin-bottom:6px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        return `<div class="task-block" style="background:#fff;border-radius:10px;border:1px solid #EDEBE3;margin-bottom:8px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
           <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap">
               ${checkIcon(isDone)}
-              <span style="font-size:11px;font-weight:800;color:${isDone?'#6B6A7A':'#111118'}">${esc(t.subject)}</span>
-              <span style="font-size:8px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px;margin-left:2px">${lbl}${t.exam?' · '+esc(t.exam):''}</span>
+              <span style="font-size:12px;font-weight:800;color:${isDone?'#9998AA':'#111118'}">${esc(t.subject)}</span>
+              <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:${subjColor}1A;color:${subjColor}">${esc(subjBucket)}</span>
+              <span style="font-size:8px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">${lbl}${t.exam?' · '+esc(t.exam):''}</span>
             </div>
-            ${t.note?`<div style="font-size:9px;color:#6B6A7A;margin-left:21px;line-height:1.4;margin-bottom:2px">${esc(t.note)}</div>`:''}
+            ${t.note?`<div style="font-size:9.5px;color:#8B889A;margin-left:22px;line-height:1.4;margin-bottom:2px">${esc(t.note)}</div>`:''}
             ${dybHtml}
             ${noteHtml}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
-            <span style="font-size:10px;font-weight:600;color:#9998AA;background:#F7F6F2;padding:2px 8px;border-radius:99px;white-space:nowrap">${t.duration} dk</span>
+            <span style="font-size:10px;font-weight:700;color:#9998AA;background:#F7F6F2;padding:3px 9px;border-radius:99px;white-space:nowrap">${t.duration} dk</span>
             ${fbHtml}
           </div>
         </div>`;
       }).join('');
-      dayHtml+=`<div style="margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
-          <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#111118">${dayName}</span>
-          <span style="font-size:10px;color:#6B6A7A">${d.getDate()} ${MONTHS[d.getMonth()]}</span>
-          <div style="flex:1;height:1px;background:#E8E6DE"></div>
-          <span style="font-size:9px;color:#9998AA">${tasks.length} görev · ${dayMin} dk</span>
+      dayHtml+=`<div style="background:#FBFAF9;border:1px solid #EDEBE3;border-radius:12px;padding:16px 16px 12px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#111118">${dayName}</span>
+          <span style="font-size:11px;color:#8B889A">${d.getDate()} ${MONTHS[d.getMonth()]}</span>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;font-weight:700;color:#6B6A7A;background:#fff;border:1px solid #EDEBE3;padding:3px 10px;border-radius:99px;white-space:nowrap">${tasks.length} görev · ${dayMin} dk</span>
         </div>
         ${taskCards}
       </div>`;
@@ -12374,29 +12380,23 @@ function buildWeeklyReportHTML(stuId, coachNote){
 
   const dayHtml = fillable ? buildFillableDayHtml() : buildReadonlyDayHtml();
 
+  // ── İşaretlenebilir Mod'un kendi (değişmeyen) başlık/altbilgi/istatistik
+  // çubuğu — sadece fillable=true iken kullanılır, hiç dokunulmadı. ──
   const roleColor = (role) => role==='success' ? (useDarkChrome?'#4ade80':'#059669') : (useDarkChrome?'#fff':'#111118');
-  const statItems=[
+  const legacyStatItems=[
     {val:doneTasks,lbl:'Tamamlanan',role:'success'},
     {val:totalTasks-doneTasks,lbl:'Bekleyen',role:'neutral'},
     {val:Math.round(totalMin/60)+' sa',lbl:'Toplam Süre',role:'neutral'},
     {val:totalTasks,lbl:'Toplam Görev',role:'neutral'}
   ];
-  const statsHtml=statItems.map((s,i)=>`<div style="flex:1;${i>0?`border-left:1px solid ${useDarkChrome?'rgba(255,255,255,.2)':'#EDEBE3'};padding-left:16px;`:''}padding-right:16px">
+  const legacyStatsHtml=legacyStatItems.map((s,i)=>`<div style="flex:1;${i>0?`border-left:1px solid ${useDarkChrome?'rgba(255,255,255,.2)':'#EDEBE3'};padding-left:16px;`:''}padding-right:16px">
     <div style="font-size:18px;font-weight:800;color:${roleColor(s.role)};font-variant-numeric:tabular-nums">${s.val}</div>
     <div style="font-size:8px;color:${useDarkChrome?'rgba(255,255,255,.7)':'#9998AA'};text-transform:uppercase;letter-spacing:.07em">${s.lbl}</div>
   </div>`).join('');
-  const statsBarHtml = `<div style="display:flex;gap:0;margin-top:16px;border-top:1px solid ${useDarkChrome?'rgba(255,255,255,.16)':'#EDEBE3'};padding-top:14px">${statsHtml}</div>`;
-
-  const coachNoteHtml = coachNote ? `<div style="background:#fff;border-radius:8px;border:1px solid #E8E6DE;border-left:3px solid ${accent};padding:10px 14px;margin-top:4px">
-      <div style="font-size:8px;font-weight:800;color:${accent};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Koç Notu</div>
-      <div style="font-size:10px;color:#444;line-height:1.6">${esc(coachNote)}</div>
-    </div>` : '';
-
-  // Motivasyon Sözü: dokümanda geçmiyor ama küçük, zararsız bir kalite
-  // dokunuşu olduğu için üç temada da sabit korunuyor.
+  const legacyStatsBarHtml = `<div style="display:flex;gap:0;margin-top:16px;border-top:1px solid ${useDarkChrome?'rgba(255,255,255,.16)':'#EDEBE3'};padding-top:14px">${legacyStatsHtml}</div>`;
   const footerQuoteHtml = `<div style="font-size:10px;font-style:italic;color:${useDarkChrome?'#6B6A7A':'#9998AA'};max-width:380px;line-height:1.5">"Bugün emek harcadığın her dakika, sınav gününde sana geri döner."</div>`;
 
-  const headerHtml = useDarkChrome ? `
+  const legacyHeaderHtml = useDarkChrome ? `
     <div style="background:${theme.headerBg};padding:24px 28px 20px;position:relative;overflow:hidden">
       <div style="position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none"></div>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;position:relative">
@@ -12422,7 +12422,7 @@ function buildWeeklyReportHTML(stuId, coachNote){
           </div>
         </div>
       </div>
-      ${statsBarHtml}
+      ${legacyStatsBarHtml}
     </div>` : `
     <div style="background:#fff;padding:22px 28px 18px;border-bottom:3px solid ${accent}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px">
@@ -12448,10 +12448,10 @@ function buildWeeklyReportHTML(stuId, coachNote){
           </div>
         </div>
       </div>
-      ${statsBarHtml}
+      ${legacyStatsBarHtml}
     </div>`;
 
-  const footerHtml = useDarkChrome ? `
+  const legacyFooterHtml = useDarkChrome ? `
     <div style="background:#111118;padding:14px 28px;display:flex;align-items:center;justify-content:space-between">
       ${footerQuoteHtml}
       <div style="font-size:9px;font-weight:700;color:#3D3C4A;text-align:right;text-transform:uppercase;letter-spacing:.08em">${esc(brandName)}</div>
@@ -12460,6 +12460,101 @@ function buildWeeklyReportHTML(stuId, coachNote){
       ${footerQuoteHtml}
       <div style="font-size:9px;font-weight:700;color:#B9B7C4;text-align:right;text-transform:uppercase;letter-spacing:.08em">${esc(brandName)}</div>
     </div>`;
+
+  // ── Premium çalışma planı başlığı (fillable=false) — bu bir rapor DEĞİL,
+  // haftanın planı. Tamamlanma yüzdesi/halkası yerine sabit "HEDEF %100"
+  // rozeti; Tamamlanan/Bekleyen yerine sadece ileriye dönük plan özeti. ──
+  const targetLine = (stu.target_university || stu.target_department)
+    ? [stu.target_university, stu.target_department].filter(Boolean).join(' · ')
+    : (stu.target || '');
+  const totalDays = activeDays.length;
+  const focusAreas = (() => {
+    const byBucket = {};
+    activeDays.forEach(({tasks}) => tasks.forEach(t => {
+      const b = bucketSubject(t.subject);
+      byBucket[b] = (byBucket[b]||0) + Number(t.duration||0);
+    }));
+    return Object.entries(byBucket).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([b])=>b);
+  })();
+  const planHours = Math.round(totalMin/60);
+  const planStatsHtml = `<div style="display:flex;align-items:baseline;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid ${useDarkChrome?'rgba(255,255,255,.16)':'#EDEBE3'};font-size:13px;font-weight:700;color:${useDarkChrome?'#fff':'#111118'}">
+    <span style="font-variant-numeric:tabular-nums">${planHours} Saat Çalışma</span>
+    <span style="color:${useDarkChrome?'rgba(255,255,255,.35)':'#D8D5CC'}">·</span>
+    <span style="font-variant-numeric:tabular-nums">${totalTasks} Görev</span>
+    <span style="color:${useDarkChrome?'rgba(255,255,255,.35)':'#D8D5CC'}">·</span>
+    <span style="font-variant-numeric:tabular-nums">${totalDays} Günlük Plan</span>
+  </div>`;
+  const goalBadgeHtml = `<div style="flex-shrink:0;text-align:center;padding:10px 18px;border-radius:14px;background:${useDarkChrome?'rgba(255,255,255,.1)':accent+'14'};border:1.5px solid ${useDarkChrome?'rgba(255,255,255,.3)':accent}">
+    <div style="font-size:8px;font-weight:800;letter-spacing:.12em;color:${useDarkChrome?'rgba(255,255,255,.75)':accent};margin-bottom:2px">HEDEF</div>
+    <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;line-height:1;color:${useDarkChrome?'#fff':'#111118'}">%100</div>
+    <div style="font-size:8px;font-weight:700;letter-spacing:.08em;color:${useDarkChrome?'rgba(255,255,255,.6)':'#6B6A7A'};margin-top:2px">TAMAMLAMA</div>
+  </div>`;
+  const brandMonogram = (S.workspace?.logo_url)
+    ? `<img src="${esc(S.workspace.logo_url)}" alt="" style="width:18px;height:18px;border-radius:5px;object-fit:cover;flex-shrink:0">`
+    : `<div style="width:18px;height:18px;border-radius:5px;background:${accent};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${esc((brandName[0]||'R').toUpperCase())}</div>`;
+  const siteDomain = (S.workspace?.site_domain || 'rostrumakademi.com');
+  const brandStripHtml = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid ${useDarkChrome?'rgba(255,255,255,.14)':'#EDEBE3'}">
+    ${brandMonogram}
+    <span style="font-size:10.5px;font-weight:700;color:${useDarkChrome?'rgba(255,255,255,.8)':'#111118'}">${esc(brandName)}</span>
+    <span style="font-size:10px;color:${useDarkChrome?'rgba(255,255,255,.4)':'#D8D5CC'}">·</span>
+    <span style="font-size:10px;color:${useDarkChrome?'rgba(255,255,255,.55)':'#9998AA'}">${esc(siteDomain)}</span>
+  </div>`;
+  const focusCardHtml = focusAreas.length>0 ? `<div style="margin-top:14px;padding:14px 16px;background:${useDarkChrome?'rgba(255,255,255,.06)':accent+'0D'};border:1px solid ${useDarkChrome?'rgba(255,255,255,.14)':accent+'30'};border-radius:10px">
+    <div style="font-size:9px;font-weight:800;letter-spacing:.1em;color:${useDarkChrome?'rgba(255,255,255,.7)':accent};margin-bottom:6px">BU HAFTA ODAK</div>
+    <div style="font-size:12px;font-weight:600;color:${useDarkChrome?'#fff':'#111118'};line-height:1.8">${focusAreas.map(f=>`• ${esc(f)}`).join('&nbsp;&nbsp;&nbsp;')}</div>
+  </div>` : '';
+
+  const premiumHeaderHtml = useDarkChrome ? `
+    <div style="background:${theme.headerBg};padding:22px 28px 20px;position:relative;overflow:hidden">
+      <div style="position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none"></div>
+      <div style="position:relative">
+        ${brandStripHtml}
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px">
+          <div style="min-width:0">
+            <div style="font-family:'Syne',sans-serif;font-size:25px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1.1">${esc(stu.name)}</div>
+            ${targetLine?`<div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:5px">🎯 ${esc(targetLine)}</div>`:''}
+            <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:3px">${wStart.getDate()} – ${wEnd.getDate()} ${MONTHS[wEnd.getMonth()]} ${wEnd.getFullYear()}</div>
+          </div>
+          ${goalBadgeHtml}
+        </div>
+        ${planStatsHtml}
+        ${focusCardHtml}
+      </div>
+    </div>` : `
+    <div style="background:#fff;padding:22px 28px 18px;border-bottom:3px solid ${accent}">
+      ${brandStripHtml}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px">
+        <div style="min-width:0">
+          <div style="font-family:'Syne',sans-serif;font-size:25px;font-weight:800;color:#111118;letter-spacing:-.5px;line-height:1.1">${esc(stu.name)}</div>
+          ${targetLine?`<div style="font-size:11.5px;color:#6B6A7A;margin-top:5px">🎯 ${esc(targetLine)}</div>`:''}
+          <div style="font-size:11px;color:#9998AA;margin-top:3px">${wStart.getDate()} – ${wEnd.getDate()} ${MONTHS[wEnd.getMonth()]} ${wEnd.getFullYear()}</div>
+        </div>
+        ${goalBadgeHtml}
+      </div>
+      ${planStatsHtml}
+      ${focusCardHtml}
+    </div>`;
+
+  // Sayfa numarası: bu belge TEK AKAN döküman (önceden bilinen sayfa sayısı
+  // yok), Chrome'un @page margin-box counter(page) desteği güvenilir değil —
+  // bu yüzden burada sadece deneyerek eklenen, garantisi olmayan bir bonus
+  // (destekleyen tarayıcıda görünür, desteklemeyende sessizce hiç görünmez).
+  const premiumFooterHtml = `<div style="padding:12px 28px;display:flex;align-items:center;justify-content:flex-end;border-top:1px solid #EDEBE3">
+    <span style="font-size:9px;font-weight:700;color:#B9B7C4;text-transform:uppercase;letter-spacing:.08em">${esc(brandName)} · ${esc(siteDomain)}</span>
+  </div>`;
+
+  const motivationCardHtml = `<div style="margin-top:6px;padding:16px 18px;background:#fff;border:1px solid #EDEBE3;border-left:3px solid ${accent};border-radius:10px">
+    <div style="font-size:9px;font-weight:800;letter-spacing:.1em;color:${accent};margin-bottom:6px">HAFTANIN MESAJI</div>
+    <div style="font-size:12.5px;font-style:italic;color:#3A3840;line-height:1.6">"Bugün harcadığın her dakika, hedefine attığın bir adımdır."</div>
+  </div>`;
+
+  const headerHtml = fillable ? legacyHeaderHtml : premiumHeaderHtml;
+  const footerHtml = fillable ? legacyFooterHtml : premiumFooterHtml;
+
+  const coachNoteHtml = coachNote ? `<div style="background:#fff;border-radius:8px;border:1px solid #E8E6DE;border-left:3px solid ${accent};padding:10px 14px;margin-top:10px">
+      <div style="font-size:8px;font-weight:800;color:${accent};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Koç Notu</div>
+      <div style="font-size:10px;color:#444;line-height:1.6">${esc(coachNote)}</div>
+    </div>` : '';
 
   const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="color-scheme" content="light only"><title>${esc(stu.name)} — Haftalık Program</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12477,7 +12572,7 @@ function buildWeeklyReportHTML(stuId, coachNote){
       .page{box-shadow:none;max-width:none;border-radius:0;}
       .no-print{display:none!important;}
       .task-block{break-inside:avoid;page-break-inside:avoid;}
-      @page{size:A4 portrait;margin:8mm;}
+      @page{size:A4 portrait;margin:8mm;@bottom-right{content:counter(page) " / " counter(pages);font-size:8px;color:#9998AA;}}
     }
   </style>
   </head><body>
@@ -12487,6 +12582,7 @@ function buildWeeklyReportHTML(stuId, coachNote){
       <tbody><tr><td>
         <div style="background:${useDarkChrome?'#F7F6F2':'#fff'};padding:18px 24px 20px">
           ${activeDays.length===0?'<div style="text-align:center;color:#9998AA;padding:40px 0;font-size:13px">Bu hafta için görev bulunmuyor.</div>':dayHtml}
+          ${!fillable ? motivationCardHtml : ''}
           ${coachNoteHtml}
         </div>
       </td></tr></tbody>
