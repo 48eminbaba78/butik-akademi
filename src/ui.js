@@ -1588,59 +1588,72 @@ async function openStudentKaynaklar(stuId) {
   if (!s) return;
   S.activeStuId = stuId;
   if (currentTab !== 'student-detail') switchTab('student-detail');
-  const el = document.getElementById('view-student-detail');
-  el.innerHTML = `<button class="back-link" onclick="openStudentDetail('${stuId}')">← ${esc(s.name)}</button>
-    <div style="padding:20px;color:var(--text-dim);font-size:13px">Yükleniyor…</div>`;
-  if (!_sbBooks[stuId]) {
-    const { data } = await db.from('student_books').select('*').eq('student_id', stuId).order('created_at', { ascending: true });
-    _sbBooks[stuId] = data || [];
-  }
   _renderKaynaklar(stuId);
+}
+
+// Programa (haftalık görevlere) eklenen kaynakları TARAYARAK otomatik hesaplar
+// — elle kaynak ekleme/güncelleme YOK. Görev oluşturulurken kaynak seçildiğinde
+// t.subject "{ders} - {kaynak adı}" biçiminde kaydediliyor (bkz. openCoachTaskEdit,
+// aynı " - " ayrıştırma deseni burada da kullanılıyor). Sadece soru bankası
+// tipi (t.type==='soru') görevler sayılıyor — konu anlatımı/video görevlerinde
+// aynı `item.soru` alanı dakika taşıyor, soru sayısıyla toplanamaz.
+function _computeAutoKaynaklar(stuId) {
+  const byKaynak = {}; // kaynakAdı -> {name, ders, totalSoru, doneSoru}
+  Object.entries(S.tasks).forEach(([key, tasks]) => {
+    if (!key.startsWith(stuId + '_')) return;
+    (tasks || []).forEach(t => {
+      if (t.type !== 'soru') return;
+      if (!t.subject || !t.subject.includes(' - ')) return;
+      if (!Array.isArray(t.task_items) || t.task_items.length === 0) return;
+      const parts = t.subject.split(' - ');
+      const ders = parts[0].trim();
+      const kaynakAdi = parts.slice(1).join(' - ').trim();
+      if (!kaynakAdi) return;
+      const itemSoru = t.task_items.reduce((s, it) => s + (Number(it.soru) || 0), 0);
+      if (!byKaynak[kaynakAdi]) byKaynak[kaynakAdi] = { name: kaynakAdi, ders, totalSoru: 0, doneSoru: 0 };
+      byKaynak[kaynakAdi].totalSoru += itemSoru;
+      if (t.done) byKaynak[kaynakAdi].doneSoru += itemSoru;
+    });
+  });
+  return Object.values(byKaynak).sort((a,b) => a.name.localeCompare(b.name, 'tr'));
 }
 
 function _renderKaynaklar(stuId) {
   const s = S.students.find(x => x.id === stuId);
-  const books = _sbBooks[stuId] || [];
+  const kaynaklar = _computeAutoKaynaklar(stuId);
   const el = document.getElementById('view-student-detail');
-  const isCoach = session.role === 'coach' || session.role === 'developer';
-  const totalTests = books.reduce((s,b) => s+b.total_tests, 0);
-  const doneTests  = books.reduce((s,b) => s+b.completed_tests, 0);
-  const overallPct = totalTests > 0 ? Math.round((doneTests/totalTests)*100) : 0;
+  const totalSoru = kaynaklar.reduce((s,k) => s+k.totalSoru, 0);
+  const doneSoru  = kaynaklar.reduce((s,k) => s+k.doneSoru, 0);
+  const overallPct = totalSoru > 0 ? Math.round((doneSoru/totalSoru)*100) : 0;
   const pctColor   = overallPct >= 75 ? 'var(--green)' : overallPct >= 40 ? 'var(--accent)' : 'var(--red)';
 
-  const booksHtml = books.length ? books.map(b => {
-    const pct = b.total_tests > 0 ? Math.min(100, Math.round((b.completed_tests / b.total_tests) * 100)) : 0;
+  const booksHtml = kaynaklar.length ? kaynaklar.map(k => {
+    const pct = k.totalSoru > 0 ? Math.min(100, Math.round((k.doneSoru / k.totalSoru) * 100)) : 0;
     const bc  = pct >= 75 ? 'var(--green)' : pct >= 40 ? 'var(--accent)' : 'var(--red)';
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;margin-bottom:7px">${esc(b.name)}</div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="flex:1;height:7px;background:var(--surface3);border-radius:99px;overflow:hidden">
-              <div style="height:100%;width:${pct}%;background:${bc};border-radius:99px;transition:width .4s"></div>
-            </div>
-            <span style="font-size:12px;font-weight:800;color:${bc};white-space:nowrap;min-width:36px;text-align:right">%${pct}</span>
-          </div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:4px">${b.completed_tests} / ${b.total_tests} test tamamlandı</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:7px">
+          <div style="font-size:13px;font-weight:700">${esc(k.name)}</div>
+          <div style="font-size:11px;color:var(--text-dim)">${esc(k.ders)}</div>
         </div>
-        ${isCoach ? `<div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn btn-ghost btn-xs" onclick="editStudentBook('${stuId}','${b.id}')">✏️</button>
-          <button class="btn btn-danger btn-xs" onclick="deleteStudentBook('${stuId}','${b.id}')" style="opacity:.4" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.4">🗑</button>
-        </div>` : ''}
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;height:7px;background:var(--surface3);border-radius:99px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${bc};border-radius:99px;transition:width .4s"></div>
+          </div>
+          <span style="font-size:12px;font-weight:800;color:${bc};white-space:nowrap;min-width:36px;text-align:right">%${pct}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">${k.doneSoru} / ${k.totalSoru} soru tamamlandı</div>
       </div>
     </div>`;
-  }).join('') : `<div class="empty"><p>Henüz kaynak eklenmemiş.</p></div>`;
+  }).join('') : `<div class="empty"><p>Henüz programa soru bankası tipi bir kaynak eklenmemiş.</p></div>`;
 
   el.innerHTML = `
     <button class="back-link" onclick="openStudentDetail('${stuId}')">← ${esc(s.name)}</button>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div>
-        <div style="font-size:18px;font-weight:800;letter-spacing:-.2px">${esc(s.name)} — Kaynaklar</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${books.length} kaynak · ${doneTests}/${totalTests} test tamamlandı</div>
-      </div>
-      ${isCoach ? `<button class="btn btn-accent btn-sm" onclick="addStudentBook('${stuId}')">+ Kaynak Ekle</button>` : ''}
+    <div style="margin-bottom:16px">
+      <div style="font-size:18px;font-weight:800;letter-spacing:-.2px">${esc(s.name)} — Kaynaklar</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${kaynaklar.length} kaynak · ${doneSoru}/${totalSoru} soru tamamlandı · programdan otomatik hesaplanır</div>
     </div>
-    ${books.length > 1 ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
+    ${kaynaklar.length > 1 ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
       <div style="flex:1">
         <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Genel İlerleme</div>
         <div style="display:flex;align-items:center;gap:10px">
