@@ -11875,7 +11875,7 @@ function buildPremiumReportHTML(stuId, preview=false, metricsOnly=false) {
   .prem-footer{margin-top:auto;padding:14px 44px;border-top:1px solid var(--hair);display:flex;justify-content:space-between;font-size:9.5px;color:var(--dim);font-weight:600;}
 
   @media print{
-    body{background:#fff;}
+    body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .pdf-page{width:auto;min-height:auto;box-shadow:none;margin-bottom:0;page-break-after:always;}
     .pdf-page:last-child{page-break-after:auto;}
     @page{size:A4 portrait;margin:0;}
@@ -12468,7 +12468,7 @@ function buildWeeklyReportHTML(stuId, coachNote){
     table.rp-doc{width:100%;border-collapse:collapse}
     table.rp-doc td{padding:0}
     @media print{
-      body{background:#fff;padding:0;}
+      body{background:#fff;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
       .page{box-shadow:none;max-width:none;border-radius:0;}
       .no-print{display:none!important;}
       .task-block{break-inside:avoid;page-break-inside:avoid;}
@@ -12489,7 +12489,6 @@ function buildWeeklyReportHTML(stuId, coachNote){
     ${footerHtml}
     <div class="no-print" style="padding:10px 14px;display:flex;align-items:center;gap:12px;background:#F7F6F2;border-top:1px solid #E8E6DE">
       <button onclick="window.print()" style="background:${accent};color:#fff;border:none;padding:9px 24px;border-radius:7px;font-size:12px;font-weight:800;cursor:pointer">🖨️ PDF İndir / Yazdır</button>
-      <span style="font-size:10px;color:#9998AA">Tarayıcı ayarlarından "Arka plan grafikleri"ni aktif edin</span>
     </div>
   </div>
   </body></html>`;
