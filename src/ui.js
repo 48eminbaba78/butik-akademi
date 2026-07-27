@@ -1588,7 +1588,11 @@ async function openStudentKaynaklar(stuId) {
   if (!s) return;
   S.activeStuId = stuId;
   if (currentTab !== 'student-detail') switchTab('student-detail');
-  _renderKaynaklar(stuId);
+  const el = document.getElementById('view-student-detail');
+  el.innerHTML = `<button class="back-link" onclick="openStudentDetail('${stuId}')">← ${esc(s.name)}</button>
+    <div style="padding:20px;color:var(--text-dim);font-size:13px">Yükleniyor…</div>`;
+  const kaynaklar = await _computeAutoKaynaklar(stuId);
+  _renderKaynaklar(stuId, kaynaklar);
 }
 
 // Programa (haftalık görevlere) eklenen kaynakları TARAYARAK otomatik hesaplar
@@ -1597,8 +1601,15 @@ async function openStudentKaynaklar(stuId) {
 // aynı " - " ayrıştırma deseni burada da kullanılıyor). Sadece soru bankası
 // tipi (t.type==='soru') görevler sayılıyor — konu anlatımı/video görevlerinde
 // aynı `item.soru` alanı dakika taşıyor, soru sayısıyla toplanamaz.
-function _computeAutoKaynaklar(stuId) {
-  const byKaynak = {}; // kaynakAdı -> {name, ders, totalSoru, doneSoru}
+//
+// TOPLAM soru sayısı kitabın kendisinden gelir (resources.tests[].soru
+// toplamı) — programa o ana kadar GİRİLMİŞ testlerin toplamı değil, kitabın
+// TAMAMININ soru sayısı. TAMAMLANAN soru sayısı ise hâlâ programdan: sadece
+// öğrenciye atanmış VE tamamlanmış (t.done) görevlerin soru toplamı.
+// Kataloğa tam adıyla eşleşmeyen (elle girilmiş, özel) kaynaklar için kitap
+// toplamı bilinemez — o durumda atanan toplam bir yaklaşık değer olarak kalır.
+async function _computeAutoKaynaklar(stuId) {
+  const byKaynak = {}; // kaynakAdı -> {name, ders, assignedSoru, doneSoru}
   Object.entries(S.tasks).forEach(([key, tasks]) => {
     if (!key.startsWith(stuId + '_')) return;
     (tasks || []).forEach(t => {
@@ -1610,17 +1621,34 @@ function _computeAutoKaynaklar(stuId) {
       const kaynakAdi = parts.slice(1).join(' - ').trim();
       if (!kaynakAdi) return;
       const itemSoru = t.task_items.reduce((s, it) => s + (Number(it.soru) || 0), 0);
-      if (!byKaynak[kaynakAdi]) byKaynak[kaynakAdi] = { name: kaynakAdi, ders, totalSoru: 0, doneSoru: 0 };
-      byKaynak[kaynakAdi].totalSoru += itemSoru;
+      if (!byKaynak[kaynakAdi]) byKaynak[kaynakAdi] = { name: kaynakAdi, ders, assignedSoru: 0, doneSoru: 0 };
+      byKaynak[kaynakAdi].assignedSoru += itemSoru;
       if (t.done) byKaynak[kaynakAdi].doneSoru += itemSoru;
     });
   });
-  return Object.values(byKaynak).sort((a,b) => a.name.localeCompare(b.name, 'tr'));
+  const kaynaklar = Object.values(byKaynak);
+  if (kaynaklar.length === 0) return [];
+
+  const names = kaynaklar.map(k => k.name);
+  let catalogByName = {};
+  try {
+    const { data } = await db.from('resources').select('name,tests').in('name', names);
+    (data || []).forEach(r => {
+      const total = (Array.isArray(r.tests) ? r.tests : []).reduce((s, t) => s + (Number(t.soru) || 0), 0);
+      catalogByName[r.name] = total;
+    });
+  } catch (e) { console.error('[_computeAutoKaynaklar] kaynak kataloğu okunamadı', e); }
+
+  kaynaklar.forEach(k => {
+    // Kataloğa gerçek bir soru sayısıyla kayıtlıysa kitabın TAMAMI; yoksa
+    // (özel/elle girilmiş kaynak) programa girilenin toplamına düş.
+    k.totalSoru = catalogByName[k.name] > 0 ? catalogByName[k.name] : k.assignedSoru;
+  });
+  return kaynaklar.sort((a,b) => a.name.localeCompare(b.name, 'tr'));
 }
 
-function _renderKaynaklar(stuId) {
+function _renderKaynaklar(stuId, kaynaklar) {
   const s = S.students.find(x => x.id === stuId);
-  const kaynaklar = _computeAutoKaynaklar(stuId);
   const el = document.getElementById('view-student-detail');
   const totalSoru = kaynaklar.reduce((s,k) => s+k.totalSoru, 0);
   const doneSoru  = kaynaklar.reduce((s,k) => s+k.doneSoru, 0);
@@ -1773,7 +1801,7 @@ async function saveStudentBook() {
     showToast('Kaynak eklendi ✓');
   }
   cm('sbModal');
-  _renderKaynaklar(stuId);
+  openStudentKaynaklar(stuId);
 }
 
 async function deleteStudentBook(stuId, id) {
@@ -1781,7 +1809,7 @@ async function deleteStudentBook(stuId, id) {
   const { error } = await db.from('student_books').delete().eq('id', id);
   if (error) return showToast('Hata: ' + error.message);
   _sbBooks[stuId] = (_sbBooks[stuId] || []).filter(b => b.id !== id);
-  _renderKaynaklar(stuId);
+  openStudentKaynaklar(stuId);
   showToast('Silindi ✓');
 }
 
