@@ -11229,12 +11229,6 @@ const REPORT_SECTION_DEFS = {
     { key:'strengths',    label:'Güçlü Yönler' },
     { key:'growth',       label:'Gelişim Alanları' },
     { key:'weeklyGoals',  label:'Gelecek Hafta Hedefleri' }
-  ],
-  weekly: [
-    { key:'statsBar',    label:'Özet Bar',              locked:true },
-    { key:'dayTasks',    label:'Günlük Görev Listesi',  locked:true },
-    { key:'coachNote',   label:'Koç Notu' },
-    { key:'footerQuote', label:'Motivasyon Sözü' }
   ]
 };
 const REPORT_PRESETS = {
@@ -11242,12 +11236,20 @@ const REPORT_PRESETS = {
     { key:'standart', name:'Standart', config:{ sections:['statsGrid','bySubject','exams','appointments','coachNote'], style:'default' } },
     { key:'sade',     name:'Sade',     config:{ sections:['statsGrid','exams','coachNote'], style:'minimal' } },
     { key:'premium',  name:'Premium',  config:{ sections:['strengths','growth','coachNote','weeklyGoals'], style:'premium' } }
-  ],
-  weekly: [
-    { key:'standart', name:'Standart', config:{ sections:['statsBar','dayTasks','coachNote','footerQuote'], style:'default' } },
-    { key:'sade',     name:'Sade',     config:{ sections:['statsBar','dayTasks'], style:'minimal' } }
   ]
 };
+// Haftalık Program PDF — 3 kapalı tema. Koç sadece seçer; renk/font/spacing
+// değiştirilemez (kalite kontrolü tamamen platformda kalır). İşaretlenebilir
+// Mod (fillable) bundan bağımsız ikinci bir katman — bkz. buildWeeklyReportHTML.
+const WEEKLY_THEMES = [
+  { key:'gece',  name:'Gece',  badge:'Varsayılan', personality:'Ciddi, premium',
+    headerBlock:true,  headerBg:'linear-gradient(135deg,#16203D,#0A1024)', accent:'#5B6EF5' },
+  { key:'kagit', name:'Kağıt', personality:'Sade, baskı/veli dostu',
+    headerBlock:false, headerBg:null, accent:'#2B2B31' },
+  { key:'vurgu', name:'Vurgu', personality:'Genç, enerjik',
+    headerBlock:false, headerBg:null, accent:'#E8613A' }
+];
+const WEEKLY_DEFAULT_CONFIG = { theme:'gece', fillable:false };
 // Marka rengini koyulaştırıp header band'i için gradyan üretir (color-mix
 // yerine düz RGB hesabı — eski/print motorlarında da güvenilir çalışsın diye).
 // Hem buildReportHTML hem printWeeklyProgramWithNote ortak kullanır.
@@ -11261,6 +11263,13 @@ function shade(hex, pct) {
 }
 function _reportActiveKey(reportType) { return `ra_report_active_${reportType}_${session.coachId}`; }
 function getActiveReportConfig(reportType) {
+  if (reportType === 'weekly') {
+    try {
+      const saved = JSON.parse(localStorage.getItem(_reportActiveKey('weekly')) || 'null');
+      if (saved?.config) return { ...WEEKLY_DEFAULT_CONFIG, ...saved.config };
+    } catch(e) {}
+    return { ...WEEKLY_DEFAULT_CONFIG };
+  }
   try {
     const saved = JSON.parse(localStorage.getItem(_reportActiveKey(reportType)) || 'null');
     // Ham (kaydedilmemiş) özelleştirme — koç bir preset/şablonu isim vermeden
@@ -12216,13 +12225,17 @@ function buildWeeklyReportHTML(stuId, coachNote){
   const stu=S.students.find(s=>s.id===stuId);
   if(!stu) return '';
   const cfg=getActiveReportConfig('weekly');
-  const isMinimal=cfg.style==='minimal';
+  const theme = WEEKLY_THEMES.find(t=>t.key===cfg.theme) || WEEKLY_THEMES[0];
+  const fillable = !!cfg.fillable;
+  // Gece'nin koyu başlık bloğu SADECE fillable kapalıyken gösterilir — açıkken
+  // zemin zorunlu olarak açığa döner (mürekkep tasarrufu + koyu zemine kalemle
+  // yazılamaz). Kağıt/Vurgu zaten hep açık, bu bayrak onları etkilemez.
+  const useDarkChrome = theme.headerBlock && !fillable;
+  const accent = theme.accent;
   const wsOff=stu?.weekStart??0;
   const wStart=getWeekStart(S.weekOffset,wsOff);
   const wEnd=addDays(wStart,6);
   const brandName=S.workspace?.brand_name||'Rostrum Akademi';
-  const bc=S.workspace?.brand_color||'#E8613A';
-  const brandDark=shade(bc,-0.32);
   const DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
   const MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   const TC={deneme:'#f59e0b',soru:'#3b82f6',konu:'#10b981',diger:'#8b5cf6'};
@@ -12246,7 +12259,7 @@ function buildWeeklyReportHTML(stuId, coachNote){
 
   const dots=(n,max=5)=>{
     let h='';
-    for(let i=1;i<=max;i++) h+=`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:2px;background:${i<=n?bc:'#E8E6DE'}"></span>`;
+    for(let i=1;i<=max;i++) h+=`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:2px;background:${i<=n?accent:'#E8E6DE'}"></span>`;
     return h;
   };
 
@@ -12254,96 +12267,134 @@ function buildWeeklyReportHTML(stuId, coachNote){
     ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#22C55E;flex-shrink:0"><svg width="8" height="6" viewBox="0 0 8 6"><path d="M1 3L3 5L7 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>`
     :`<span style="display:inline-block;width:15px;height:15px;border-radius:50%;border:1.5px solid #D1D0DC;flex-shrink:0"></span>`;
 
-  let dayHtml='';
-  for(const {d,tasks,dayName} of activeDays){
-    const dayMin=tasks.reduce((s,t)=>s+Number(t.duration||0),0);
-    const taskCards=tasks.map(t=>{
-      const color=TC[t.type]||'#94a3b8';
-      const lbl=TL[t.type]||'Diğer';
-      const isDone=t.done;
-      const res=t.student_result||null;
-      const fb=t.student_feedback||null;
-      const dybHtml=res&&(res.dogru!=null||res.yanlis!=null||res.bos!=null)?`
-        <div style="display:flex;gap:4px;margin-top:5px;margin-left:21px">
-          <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#DCFCE7;color:#15803D">✓ ${res.dogru??0}</span>
-          <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#FEE2E2;color:#B91C1C">✗ ${res.yanlis??0}</span>
-          <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#F1F5F9;color:#64748B">— ${res.bos??0}</span>
-        </div>`:'';
-      const noteHtml=t.student_note?`<div style="font-size:9px;color:#9998AA;font-style:italic;margin-top:4px;margin-left:21px;line-height:1.4">"${esc(t.student_note)}"</div>`:'';
-      const fbHtml=fb&&(fb.difficulty||fb.focus)?`
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;margin-top:6px">
-          ${fb.difficulty?`<div style="white-space:nowrap"><span style="font-size:8px;color:#C4C3D0">Zorluk </span>${dots(fb.difficulty)}</div>`:''}
-          ${fb.focus?`<div style="white-space:nowrap"><span style="font-size:8px;color:#C4C3D0">Odak </span>${dots(fb.focus)}</div>`:''}
-        </div>`:'';
-      return `<div style="background:#fff;border-radius:8px;border:1px solid #E8E6DE;border-left:3px solid ${color};margin-bottom:6px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-            ${checkIcon(isDone)}
-            <span style="font-size:11px;font-weight:800;color:${isDone?'#6B6A7A':'#111118'}">${esc(t.subject)}</span>
-            <span style="font-size:8px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px;margin-left:2px">${lbl}${t.exam?' · '+esc(t.exam):''}</span>
+  // ── Salt-görüntüleme (fillable KAPALI) — mevcut davranış, DEĞİŞMEDİ ──
+  // (sadece renk kaynağı marka renginden tema accent'ine geçti)
+  function buildReadonlyDayHtml(){
+    let dayHtml='';
+    for(const {d,tasks,dayName} of activeDays){
+      const dayMin=tasks.reduce((s,t)=>s+Number(t.duration||0),0);
+      const taskCards=tasks.map(t=>{
+        const color=TC[t.type]||'#94a3b8';
+        const lbl=TL[t.type]||'Diğer';
+        const isDone=t.done;
+        const res=t.student_result||null;
+        const fb=t.student_feedback||null;
+        const dybHtml=res&&(res.dogru!=null||res.yanlis!=null||res.bos!=null)?`
+          <div style="display:flex;gap:4px;margin-top:5px;margin-left:21px">
+            <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#DCFCE7;color:#15803D">✓ ${res.dogru??0}</span>
+            <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#FEE2E2;color:#B91C1C">✗ ${res.yanlis??0}</span>
+            <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#F1F5F9;color:#64748B">— ${res.bos??0}</span>
+          </div>`:'';
+        const noteHtml=t.student_note?`<div style="font-size:9px;color:#9998AA;font-style:italic;margin-top:4px;margin-left:21px;line-height:1.4">"${esc(t.student_note)}"</div>`:'';
+        const fbHtml=fb&&(fb.difficulty||fb.focus)?`
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;margin-top:6px">
+            ${fb.difficulty?`<div style="white-space:nowrap"><span style="font-size:8px;color:#C4C3D0">Zorluk </span>${dots(fb.difficulty)}</div>`:''}
+            ${fb.focus?`<div style="white-space:nowrap"><span style="font-size:8px;color:#C4C3D0">Odak </span>${dots(fb.focus)}</div>`:''}
+          </div>`:'';
+        return `<div class="task-block" style="background:#fff;border-radius:8px;border:1px solid #E8E6DE;border-left:3px solid ${color};margin-bottom:6px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+              ${checkIcon(isDone)}
+              <span style="font-size:11px;font-weight:800;color:${isDone?'#6B6A7A':'#111118'}">${esc(t.subject)}</span>
+              <span style="font-size:8px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px;margin-left:2px">${lbl}${t.exam?' · '+esc(t.exam):''}</span>
+            </div>
+            ${t.note?`<div style="font-size:9px;color:#6B6A7A;margin-left:21px;line-height:1.4;margin-bottom:2px">${esc(t.note)}</div>`:''}
+            ${dybHtml}
+            ${noteHtml}
           </div>
-          ${t.note?`<div style="font-size:9px;color:#6B6A7A;margin-left:21px;line-height:1.4;margin-bottom:2px">${esc(t.note)}</div>`:''}
-          ${dybHtml}
-          ${noteHtml}
+          <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
+            <span style="font-size:10px;font-weight:600;color:#9998AA;background:#F7F6F2;padding:2px 8px;border-radius:99px;white-space:nowrap">${t.duration} dk</span>
+            ${fbHtml}
+          </div>
+        </div>`;
+      }).join('');
+      dayHtml+=`<div style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+          <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#111118">${dayName}</span>
+          <span style="font-size:10px;color:#6B6A7A">${d.getDate()} ${MONTHS[d.getMonth()]}</span>
+          <div style="flex:1;height:1px;background:#E8E6DE"></div>
+          <span style="font-size:9px;color:#9998AA">${tasks.length} görev · ${dayMin} dk</span>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
-          <span style="font-size:10px;font-weight:600;color:#9998AA;background:#F7F6F2;padding:2px 8px;border-radius:99px;white-space:nowrap">${t.duration} dk</span>
-          ${fbHtml}
-        </div>
+        ${taskCards}
       </div>`;
-    }).join('');
-    dayHtml+=`<div style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
-        <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#111118">${dayName}</span>
-        <span style="font-size:10px;color:#6B6A7A">${d.getDate()} ${MONTHS[d.getMonth()]}</span>
-        <div style="flex:1;height:1px;background:#E8E6DE"></div>
-        <span style="font-size:9px;color:#9998AA">${tasks.length} görev · ${dayMin} dk</span>
-      </div>
-      ${taskCards}
-    </div>`;
+    }
+    return dayHtml;
   }
 
-  const statItems=[
-    {val:doneTasks,lbl:'Tamamlanan',col:'#4ade80'},
-    {val:totalTasks-doneTasks,lbl:'Bekleyen',col:'#fff'},
-    {val:Math.round(totalMin/60)+' sa',lbl:'Toplam Süre',col:'#fff'},
-    {val:totalTasks,lbl:'Toplam Görev',col:'#fff'}
-  ];
-  const statsHtml=statItems.map((s,i)=>`<div style="flex:1;${i>0?'border-left:1px solid rgba(255,255,255,.2);padding-left:16px;':''}padding-right:16px">
-    <div style="font-size:18px;font-weight:800;color:${s.col};font-variant-numeric:tabular-nums">${s.val}</div>
-    <div style="font-size:8px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.07em">${s.lbl}</div>
-  </div>`).join('');
-
-  const sectionRenderers = {
-    statsBar: () => `<div style="display:flex;gap:0;margin-top:16px;border-top:1px solid rgba(255,255,255,.16);padding-top:14px">${statsHtml}</div>`,
-    dayTasks: () => activeDays.length===0?'<div style="text-align:center;color:#9998AA;padding:40px 0;font-size:13px">Bu hafta için görev bulunmuyor.</div>':dayHtml,
-    coachNote: () => coachNote ? `<div style="background:#fff;border-radius:8px;border:1px solid #E8E6DE;border-left:3px solid ${bc};padding:10px 14px;margin-top:4px">
-        <div style="font-size:8px;font-weight:800;color:${bc};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Koç Notu</div>
-        <div style="font-size:10px;color:#444;line-height:1.6">${esc(coachNote)}</div>
-      </div>` : '',
-  };
-  const showFooterQuote = cfg.sections.includes('footerQuote');
-  const headerBg = isMinimal ? bc : `linear-gradient(135deg,${bc},${brandDark})`;
-
-  const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>${esc(stu.name)} — Haftalık Program</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:'Inter',Arial,sans-serif;background:#1A1920;padding:32px 20px 60px;min-height:100vh;font-variant-numeric:tabular-nums;}
-    .page{background:#fff;max-width:780px;margin:0 auto;border-radius:8px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.6);}
-    @media print{
-      body{background:#fff;padding:0;}
-      .page{box-shadow:none;max-width:none;border-radius:0;}
-      .no-print{display:none!important;}
-      @page{size:A4 portrait;margin:8mm;}
+  // ── İşaretlenebilir Mod (fillable AÇIK) — YENİ. Her test/video AYRI, TAM
+  // isimle, numaralı satır; net alanları test başına, boş, sadece sonuç
+  // girilebilir tiplerde (soru/deneme — mevcut "Sonucu Gir" kartıyla aynı
+  // tanım, src/ui.js:~5705). task_items'ı olmayan eski görevler tek, net
+  // alansız bir açıklama satırına düşer (kırılmaz, ama hassas veri iddia etmez).
+  function buildFillableDayHtml(){
+    let dayHtml='';
+    for(const {d,tasks,dayName} of activeDays){
+      const dayMin=tasks.reduce((s,t)=>s+Number(t.duration||0),0);
+      const taskBlocks=tasks.map(t=>{
+        const isResultType = t.type==='soru'||t.type==='deneme';
+        const lbl=TL[t.type]||'Diğer';
+        const items = Array.isArray(t.task_items) && t.task_items.length>0 ? t.task_items : null;
+        const subRows = items ? items.map((item,i)=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 0;${i>0?'border-top:1px dashed #E3E1D8;':''}">
+            <span style="font-size:11px;font-weight:700;color:#9998AA;width:16px;flex-shrink:0">${i+1}</span>
+            <span style="width:16px;height:16px;border:1.5px solid #9B98A8;border-radius:3px;flex-shrink:0"></span>
+            <span style="flex:1;font-size:11.5px;color:#26242E;line-height:1.4">${esc(item.label)}${isResultType && item.soru>0?` <span style="color:#9998AA">(${item.soru} soru)</span>`:''}</span>
+            ${isResultType?`
+            <span style="display:flex;gap:8px;font-size:10px;color:#6B6A7A;white-space:nowrap;flex-shrink:0">
+              <span>D:<span style="display:inline-block;width:24px;border-bottom:1px solid #26242E;margin-left:2px">&nbsp;</span></span>
+              <span>Y:<span style="display:inline-block;width:24px;border-bottom:1px solid #26242E;margin-left:2px">&nbsp;</span></span>
+              <span>B:<span style="display:inline-block;width:24px;border-bottom:1px solid #26242E;margin-left:2px">&nbsp;</span></span>
+            </span>`:''}
+          </div>`).join('') : `<div style="padding:7px 0;font-size:11px;color:#6B6A7A">${esc(t.note||t.subject||'')}</div>`;
+        return `<div class="task-block" style="background:#fff;border:1px solid #E3E1D8;border-radius:8px;margin-bottom:10px;padding:12px 16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:17px;height:17px;border:1.5px solid #26242E;border-radius:4px;flex-shrink:0"></span>
+            <span style="flex:1;font-size:13px;font-weight:800;color:#111118">${esc(t.subject)}</span>
+            <span style="font-size:9px;font-weight:700;color:#6B6A7A;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">${lbl}${t.exam?' · '+esc(t.exam):''}</span>
+          </div>
+          <div style="margin-left:27px">${subRows}</div>
+        </div>`;
+      }).join('');
+      dayHtml+=`<div style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#111118">${dayName}</span>
+          <span style="font-size:10px;color:#6B6A7A">${d.getDate()} ${MONTHS[d.getMonth()]}</span>
+          <div style="flex:1;height:1px;background:#E3E1D8"></div>
+          <span style="font-size:9px;color:#9998AA">${tasks.length} görev · ${dayMin} dk</span>
+        </div>
+        ${taskBlocks}
+      </div>`;
     }
-  </style>
-  </head><body>
-  <div class="page">
-    <div style="background:${headerBg};padding:24px 28px 20px;position:relative;overflow:hidden">
-      ${isMinimal?'':`<div style="position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none"></div>`}
+    return dayHtml;
+  }
+
+  const dayHtml = fillable ? buildFillableDayHtml() : buildReadonlyDayHtml();
+
+  const roleColor = (role) => role==='success' ? (useDarkChrome?'#4ade80':'#059669') : (useDarkChrome?'#fff':'#111118');
+  const statItems=[
+    {val:doneTasks,lbl:'Tamamlanan',role:'success'},
+    {val:totalTasks-doneTasks,lbl:'Bekleyen',role:'neutral'},
+    {val:Math.round(totalMin/60)+' sa',lbl:'Toplam Süre',role:'neutral'},
+    {val:totalTasks,lbl:'Toplam Görev',role:'neutral'}
+  ];
+  const statsHtml=statItems.map((s,i)=>`<div style="flex:1;${i>0?`border-left:1px solid ${useDarkChrome?'rgba(255,255,255,.2)':'#EDEBE3'};padding-left:16px;`:''}padding-right:16px">
+    <div style="font-size:18px;font-weight:800;color:${roleColor(s.role)};font-variant-numeric:tabular-nums">${s.val}</div>
+    <div style="font-size:8px;color:${useDarkChrome?'rgba(255,255,255,.7)':'#9998AA'};text-transform:uppercase;letter-spacing:.07em">${s.lbl}</div>
+  </div>`).join('');
+  const statsBarHtml = `<div style="display:flex;gap:0;margin-top:16px;border-top:1px solid ${useDarkChrome?'rgba(255,255,255,.16)':'#EDEBE3'};padding-top:14px">${statsHtml}</div>`;
+
+  const coachNoteHtml = coachNote ? `<div style="background:#fff;border-radius:8px;border:1px solid #E8E6DE;border-left:3px solid ${accent};padding:10px 14px;margin-top:4px">
+      <div style="font-size:8px;font-weight:800;color:${accent};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Koç Notu</div>
+      <div style="font-size:10px;color:#444;line-height:1.6">${esc(coachNote)}</div>
+    </div>` : '';
+
+  // Motivasyon Sözü: dokümanda geçmiyor ama küçük, zararsız bir kalite
+  // dokunuşu olduğu için üç temada da sabit korunuyor.
+  const footerQuoteHtml = `<div style="font-size:10px;font-style:italic;color:${useDarkChrome?'#6B6A7A':'#9998AA'};max-width:380px;line-height:1.5">"Bugün emek harcadığın her dakika, sınav gününde sana geri döner."</div>`;
+
+  const headerHtml = useDarkChrome ? `
+    <div style="background:${theme.headerBg};padding:24px 28px 20px;position:relative;overflow:hidden">
+      <div style="position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none"></div>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;position:relative">
         <div>
           <div style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:6px">${esc(brandName)} · Haftalık Program</div>
@@ -12367,18 +12418,77 @@ function buildWeeklyReportHTML(stuId, coachNote){
           </div>
         </div>
       </div>
-      ${sectionRenderers.statsBar()}
-    </div>
-    <div style="background:#F7F6F2;padding:18px 24px 20px">
-      ${sectionRenderers.dayTasks()}
-      ${cfg.sections.includes('coachNote') ? sectionRenderers.coachNote() : ''}
-    </div>
+      ${statsBarHtml}
+    </div>` : `
+    <div style="background:#fff;padding:22px 28px 18px;border-bottom:3px solid ${accent}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px">
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:${accent};margin-bottom:6px">${esc(brandName)} · Haftalık Program</div>
+          <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#111118;letter-spacing:-.5px;line-height:1.1">${esc(stu.name)}</div>
+          ${stu.target?`<div style="font-size:11px;color:#6B6A7A;margin-top:4px">🎯 ${esc(stu.target)}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
+          <div style="position:relative;width:60px;height:60px">
+            <svg width="60" height="60" viewBox="0 0 64 64" style="transform:rotate(-90deg)">
+              <circle cx="32" cy="32" r="26" fill="none" stroke="#EDEBE3" stroke-width="5"/>
+              <circle cx="32" cy="32" r="26" fill="none" stroke="${accent}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${ringOffset}"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#111118;line-height:1">%${pct}</div>
+              <div style="font-size:7px;color:#9998AA;text-transform:uppercase;letter-spacing:.05em;margin-top:1px">hafta</div>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9998AA">Hafta</div>
+            <div style="font-size:12px;font-weight:700;color:#111118;margin-top:1px">${wStart.getDate()} – ${wEnd.getDate()} ${MONTHS[wEnd.getMonth()]} ${wEnd.getFullYear()}</div>
+          </div>
+        </div>
+      </div>
+      ${statsBarHtml}
+    </div>`;
+
+  const footerHtml = useDarkChrome ? `
     <div style="background:#111118;padding:14px 28px;display:flex;align-items:center;justify-content:space-between">
-      ${showFooterQuote?`<div style="font-size:10px;font-style:italic;color:#6B6A7A;max-width:380px;line-height:1.5">"Bugün emek harcadığın her dakika, sınav gününde sana geri döner."</div>`:'<div></div>'}
+      ${footerQuoteHtml}
       <div style="font-size:9px;font-weight:700;color:#3D3C4A;text-align:right;text-transform:uppercase;letter-spacing:.08em">${esc(brandName)}</div>
-    </div>
+    </div>` : `
+    <div style="padding:14px 28px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #EDEBE3">
+      ${footerQuoteHtml}
+      <div style="font-size:9px;font-weight:700;color:#B9B7C4;text-align:right;text-transform:uppercase;letter-spacing:.08em">${esc(brandName)}</div>
+    </div>`;
+
+  const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>${esc(stu.name)} — Haftalık Program</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Inter',Arial,sans-serif;background:#1A1920;padding:32px 20px 60px;min-height:100vh;font-variant-numeric:tabular-nums;}
+    .page{background:#fff;max-width:780px;margin:0 auto;border-radius:8px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.6);}
+    table.rp-doc{width:100%;border-collapse:collapse}
+    table.rp-doc td{padding:0}
+    @media print{
+      body{background:#fff;padding:0;}
+      .page{box-shadow:none;max-width:none;border-radius:0;}
+      .no-print{display:none!important;}
+      .task-block{break-inside:avoid;page-break-inside:avoid;}
+      @page{size:A4 portrait;margin:8mm;}
+    }
+  </style>
+  </head><body>
+  <div class="page">
+    <table class="rp-doc">
+      <thead><tr><td>${headerHtml}</td></tr></thead>
+      <tbody><tr><td>
+        <div style="background:${useDarkChrome?'#F7F6F2':'#fff'};padding:18px 24px 20px">
+          ${activeDays.length===0?'<div style="text-align:center;color:#9998AA;padding:40px 0;font-size:13px">Bu hafta için görev bulunmuyor.</div>':dayHtml}
+          ${coachNoteHtml}
+        </div>
+      </td></tr></tbody>
+    </table>
+    ${footerHtml}
     <div class="no-print" style="padding:10px 14px;display:flex;align-items:center;gap:12px;background:#F7F6F2;border-top:1px solid #E8E6DE">
-      <button onclick="window.print()" style="background:${bc};color:#fff;border:none;padding:9px 24px;border-radius:7px;font-size:12px;font-weight:800;cursor:pointer">🖨️ PDF İndir / Yazdır</button>
+      <button onclick="window.print()" style="background:${accent};color:#fff;border:none;padding:9px 24px;border-radius:7px;font-size:12px;font-weight:800;cursor:pointer">🖨️ PDF İndir / Yazdır</button>
       <span style="font-size:10px;color:#9998AA">Tarayıcı ayarlarından "Arka plan grafikleri"ni aktif edin</span>
     </div>
   </div>
@@ -14314,7 +14424,8 @@ function _rstOpenInNewTab() {
 }
 
 function _rstPanelInnerHTML(reportType) {
-  const isPerf = reportType === 'performance';
+  if (reportType === 'weekly') return _rstWeeklyPanelInnerHTML();
+
   return `
     <div class="rst-card">
       <div class="rst-card-title">Rapor Türü</div>
@@ -14357,7 +14468,6 @@ function _rstPanelInnerHTML(reportType) {
       </div>
     </div>
 
-    ${isPerf ? `
     <div class="rst-card">
       <div class="rst-card-title">Dönem</div>
       <select id="rpPeriod">
@@ -14372,14 +14482,13 @@ function _rstPanelInnerHTML(reportType) {
         </div>
       </div>
     </div>
-    <input type="hidden" id="rpStuId">` : ''}
+    <input type="hidden" id="rpStuId">
 
     <div class="rst-card">
       <div class="rst-card-title">Koç Notu <span id="rpNoteLbl" style="text-transform:none;letter-spacing:0;font-weight:500">(isteğe bağlı)</span></div>
-      <textarea id="${isPerf?'rpNote':'pdfNote'}" placeholder="${isPerf?'Bu dönem için genel değerlendirmenizi yazın...':'Bu haftaki programla ilgili notunuzu ekleyin...'}" style="min-height:90px;width:100%"></textarea>
+      <textarea id="rpNote" placeholder="Bu dönem için genel değerlendirmenizi yazın..." style="min-height:90px;width:100%"></textarea>
     </div>
 
-    ${isPerf ? `
     <div class="rst-card" id="rpPremiumFields" style="display:none">
       <div class="rst-card-title">Bu Haftanın Özeti (Sayfa 1)</div>
       <textarea id="prSummary" placeholder="Bu hafta genel olarak nasıl geçti..." style="min-height:70px;width:100%;margin-bottom:8px"></textarea>
@@ -14392,16 +14501,48 @@ function _rstPanelInnerHTML(reportType) {
       <textarea id="prGrowth" placeholder="Zaman yönetimi&#10;Konu tekrarları" style="min-height:60px;width:100%;margin-bottom:12px"></textarea>
       <div class="rst-card-title">Gelecek Hafta Hedefleri <span style="text-transform:none;font-weight:500;color:var(--text-dim)">(her satır bir madde)</span></div>
       <textarea id="prGoals" placeholder="Haftada 2 deneme çöz&#10;Geometri konu tekrarı yap" style="min-height:60px;width:100%"></textarea>
-    </div>` : `
-    <button type="button" class="btn btn-ghost btn-xs" style="align-self:flex-start" onclick="repairTaskNoteSummaries()">🔧 Eski Test/Video İsimlerini Onar</button>`}
+    </div>
 
     <div class="rst-actions">
-      ${isPerf ? `
       <button class="btn btn-accent" style="width:100%;justify-content:center" onclick="generatePDF()">⬇️ PDF İndir</button>
       <button class="btn btn-ghost" style="width:100%;justify-content:center;background:#25d366;color:#fff;border:none;gap:6px" onclick="sendWhatsAppReport()">💬 Veliye WhatsApp Gönder</button>
       <button class="btn btn-ghost" style="width:100%;justify-content:center;background:#0d9488;color:#fff;border:none;gap:6px" onclick="sendParentEmailReport()">✉️ Veliye E-Posta Gönder</button>
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;background:var(--surface3);color:var(--text);border:1px solid var(--border);gap:6px" onclick="archivePerformanceReport()">💾 Raporu Sisteme Kaydet (Arşivle)</button>` : `
-      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="generateWeeklyPDF()">PDF Oluştur →</button>`}
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;background:var(--surface3);color:var(--text);border:1px solid var(--border);gap:6px" onclick="archivePerformanceReport()">💾 Raporu Sisteme Kaydet (Arşivle)</button>
+    </div>`;
+}
+
+// Haftalık Program PDF paneli — "Görünecek Bölümler"/"Stil"/"Şablonlarım"
+// tamamen kalkıyor: koç sadece 3 kapalı temadan birini seçer + İşaretlenebilir
+// Modu açar/kapar. Bkz. WEEKLY_THEMES / buildWeeklyReportHTML.
+function _rstWeeklyPanelInnerHTML() {
+  return `
+    <div class="rst-card">
+      <div class="rst-card-title">Tema</div>
+      <div class="rst-theme-grid"></div>
+    </div>
+
+    <div class="rst-card">
+      <div class="setting-item">
+        <div>
+          <div class="setting-item-lbl">Öğrenci İşaretlesin</div>
+          <div class="setting-item-sub" style="font-size:11px;line-height:1.5;margin-top:2px">Kağıt elle doldurulabilir hale gelir: her test/video ayrı, numaralı, kendi çentiği ve (soru bankası/deneme görevlerinde) boş net alanlarıyla basılır.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" class="rst-fillable-toggle" onchange="setWeeklyFillable(this.checked)">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="rst-card">
+      <div class="rst-card-title">Koç Notu <span style="text-transform:none;letter-spacing:0;font-weight:500">(isteğe bağlı)</span></div>
+      <textarea id="pdfNote" placeholder="Bu haftaki programla ilgili notunuzu ekleyin..." style="min-height:90px;width:100%"></textarea>
+    </div>
+
+    <button type="button" class="btn btn-ghost btn-xs" style="align-self:flex-start" onclick="repairTaskNoteSummaries()">🔧 Eski Test/Video İsimlerini Onar</button>
+
+    <div class="rst-actions">
+      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" onclick="generateWeeklyPDF()">PDF Oluştur →</button>
     </div>`;
 }
 
@@ -14455,6 +14596,8 @@ function _rtSectionRowHTML(def, enabled, i, total, showReorder) {
 }
 
 function renderReportPanel(container, reportType) {
+  if (reportType === 'weekly') return renderWeeklyPanel(container, window._reportWorkingConfig.weekly);
+
   const cfg = window._reportWorkingConfig[reportType];
   const defs = REPORT_SECTION_DEFS[reportType];
   const isPremium = cfg.style === 'premium';
@@ -14515,6 +14658,33 @@ function renderReportPanel(container, reportType) {
   selEl.innerHTML = saved.length===0
     ? `<option value="">Henüz kaydedilmiş bir stiliniz yok</option>`
     : saved.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+}
+
+// Haftalık Program PDF — 3 kapalı tema kartı (küçük CSS-only statik önizleme,
+// gerçek görsel asset gerekmez) + İşaretlenebilir Mod toggle. Koç burada renk/
+// font/spacing seçmiyor, sadece WEEKLY_THEMES'ten birini seçiyor.
+function _rstThemeThumbHTML(theme) {
+  const showBlock = theme.headerBlock;
+  return `<div style="width:100%;height:52px;border-radius:6px;overflow:hidden;border:1px solid var(--border2);background:#fff">
+    <div style="height:${showBlock?'46%':'22%'};background:${showBlock?theme.headerBg:theme.accent}"></div>
+    <div style="padding:5px 7px;display:flex;flex-direction:column;gap:3px">
+      <div style="width:60%;height:4px;border-radius:2px;background:#D8D5CC"></div>
+      <div style="width:80%;height:4px;border-radius:2px;background:#E8E6DE"></div>
+    </div>
+  </div>`;
+}
+function renderWeeklyPanel(container, cfg) {
+  const grid = container.querySelector('.rst-theme-grid');
+  grid.innerHTML = WEEKLY_THEMES.map(theme => {
+    const active = cfg.theme === theme.key;
+    return `<div class="rst-theme-card${active?' active':''}" onclick="setWeeklyTheme('${theme.key}')">
+      ${_rstThemeThumbHTML(theme)}
+      <div class="rst-theme-name">${esc(theme.name)}${theme.badge?` <span class="rst-theme-badge">${esc(theme.badge)}</span>`:''}</div>
+      <div class="rst-theme-personality">${esc(theme.personality)}</div>
+    </div>`;
+  }).join('');
+  const toggle = container.querySelector('.rst-fillable-toggle');
+  if (toggle) toggle.checked = !!cfg.fillable;
 }
 
 function _rtSyncUI(reportType) {
@@ -14628,6 +14798,18 @@ function setReportStyle(style) {
   window._reportWorkingConfig[_rtCurrentType].style = style;
   _rtPersistWorkingConfig();
   _rtSyncUI(_rtCurrentType);
+}
+
+function setWeeklyTheme(themeKey) {
+  window._reportWorkingConfig.weekly.theme = themeKey;
+  setActiveReport('weekly', { config: window._reportWorkingConfig.weekly });
+  _rtSyncUI('weekly');
+}
+
+function setWeeklyFillable(on) {
+  window._reportWorkingConfig.weekly.fillable = !!on;
+  setActiveReport('weekly', { config: window._reportWorkingConfig.weekly });
+  _rtSyncUI('weekly');
 }
 
 async function saveReportTemplate() {
@@ -15701,6 +15883,8 @@ window.applyReportPreset = applyReportPreset;
 window.toggleReportSection = toggleReportSection;
 window.moveReportSection = moveReportSection;
 window.setReportStyle = setReportStyle;
+window.setWeeklyTheme = setWeeklyTheme;
+window.setWeeklyFillable = setWeeklyFillable;
 window.saveReportTemplate = saveReportTemplate;
 window.applyReportTemplate = applyReportTemplate;
 window.generateReportDraftAI = generateReportDraftAI;

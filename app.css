@@ -1128,6 +1128,13 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 .rst-style-toggle{display:flex;gap:8px}
 .rst-style-btn{flex:1;padding:8px 10px;border-radius:9px;border:1px solid var(--border2);background:var(--surface);color:var(--text-mid);font-size:12px;font-weight:700;cursor:pointer}
 .rst-style-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.rst-theme-grid{display:flex;flex-direction:column;gap:8px}
+.rst-theme-card{display:flex;flex-direction:column;gap:6px;padding:10px;border:1.5px solid var(--border2);border-radius:10px;cursor:pointer;transition:border-color .15s,background .15s}
+.rst-theme-card:hover{border-color:var(--accent)}
+.rst-theme-card.active{border-color:var(--accent);background:var(--accent-dim)}
+.rst-theme-name{font-size:12.5px;font-weight:700;color:var(--text)}
+.rst-theme-badge{font-size:9px;font-weight:700;color:var(--accent);background:var(--accent-dim);padding:1px 6px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em}
+.rst-theme-personality{font-size:10.5px;color:var(--text-dim)}
 .rst-actions{padding:14px 16px;border-top:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;gap:8px;position:sticky;bottom:0}
 .rst-preview{display:flex;flex-direction:column;min-width:0;background:var(--surface3)}
 .rst-preview-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
