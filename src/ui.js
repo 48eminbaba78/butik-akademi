@@ -11496,12 +11496,14 @@ function buildReportHTML(stuId, preview=false) {
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
+<meta name="color-scheme" content="light only">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
   :root{
+    color-scheme: light only;
     --brand:${brandColor};
     --ink:#16151a;
     --muted:#6b6a72;
@@ -11816,12 +11818,14 @@ function buildPremiumReportHTML(stuId, preview=false, metricsOnly=false) {
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
+<meta name="color-scheme" content="light only">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
   :root{
+    color-scheme: light only;
     --brand:${brandColor}; --brand-dark:${brandDark};
     --ink:#0b0b0b; --muted:#52514e; --dim:#898781; --hair:#e1e0d9;
     --tint:${brandColor}0F; --tint2:${brandColor}1F;
@@ -12457,12 +12461,13 @@ function buildWeeklyReportHTML(stuId, coachNote){
       <div style="font-size:9px;font-weight:700;color:#B9B7C4;text-align:right;text-transform:uppercase;letter-spacing:.08em">${esc(brandName)}</div>
     </div>`;
 
-  const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>${esc(stu.name)} — Haftalık Program</title>
+  const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="color-scheme" content="light only"><title>${esc(stu.name)} — Haftalık Program</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
+    :root{color-scheme:light only;}
     body{font-family:'Inter',Arial,sans-serif;background:#1A1920;padding:32px 20px 60px;min-height:100vh;font-variant-numeric:tabular-nums;}
     .page{background:#fff;max-width:780px;margin:0 auto;border-radius:8px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.6);}
     table.rp-doc{width:100%;border-collapse:collapse}
