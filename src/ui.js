@@ -292,11 +292,9 @@ window.showSubscriptionBanner = showSubscriptionBanner;
 const coachTabs=[
   {id:'home',lbl:'🏠',name:'Ana Sayfa'},
   {id:'students',lbl:'👤',name:'Öğrencilerim'},
-  {id:'messages',lbl:'💬',name:'Mesajlar'},
-  {id:'todolist',lbl:'📅',name:'Ajanda'},
-  {id:'coach-notes',lbl:'📝',name:'Notlarım'},
-  {id:'coach-applications',lbl:'📩',name:'Başvurular'},
+  {id:'todolist',lbl:'📅',name:'Takvim'},
   {id:'coach-resources',lbl:'📚',name:'Kaynaklarım'},
+  {id:'coach-applications',lbl:'📩',name:'Başvurular'},
 ];
 const stuTabs=[
   {id:'portal',lbl:'🏠',name:'Ana Sayfa'},
@@ -316,8 +314,7 @@ const parentTabs=[
   {id:'parent-ai',lbl:'🤖',name:'AI Asistan'},
 ];
 const MOBILE_TAB_IDS = {
-  coach: ['home','students','messages','todolist','coach-notes','coach-applications','coach-resources'],
-  developer: ['home','students','messages','todolist','coach-notes','dev-dashboard','dev-tickets'],
+  developer: ['home','students','todolist','dev-dashboard','dev-tickets'],
 };
 
 function toggleSidebar(){
@@ -346,9 +343,9 @@ function setupShell(){
       <span>${t.name}</span>
     </div>`).join('');
 
-  // Mobile nav — rol için tanımlı mobil sekmeler varsa onu, yoksa tüm sekmeleri kullan
+  // Mobile nav — rol için özel öncelik listesi varsa onu, yoksa ilk 5 sekmeyi kullan
   const mobileIds = MOBILE_TAB_IDS[session.role];
-  const mobileTabs = mobileIds ? mobileIds.map(id=>allTabs.find(t=>t.id===id)).filter(Boolean) : tabs;
+  const mobileTabs = mobileIds ? mobileIds.map(id=>allTabs.find(t=>t.id===id)).filter(Boolean) : tabs.slice(0,5);
   document.getElementById('mobileNav').innerHTML = mobileTabs.map(t=>`
     <button class="mnav-btn" id="mntab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}<span style="font-size:9px;display:block">${t.name}</span></button>`).join('');
 
@@ -854,16 +851,16 @@ function renderHome(){
     </div>
 
     <!-- HIZLI ERİŞİM -->
-    <div style="display:flex;gap:8px;max-width:900px;margin:0 auto 4px;justify-content:center">
+    <div style="display:flex;gap:8px;max-width:900px;margin:0 auto 6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 2px 8px 2px" class="home-quick-cards-scroll">
       ${[
         {tab:'messages',icon:'💬',label:'Mesajlar',sub:unread>0?unread+' okunmamış':'Temiz'},
         {tab:'coach-notes',icon:'📝',label:'Notlarım',sub:'Kişisel notlar'},
         {tab:'todolist',icon:'📅',label:'Ajanda',sub:'Tüm randevular'},
         {tab:'coach-applications',icon:'📩',label:'Başvurular',sub:'Eşleşme talepleri'},
       ].map(({tab,icon,label,sub})=>`
-        <div onclick="switchTab('${tab}')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;transition:border-color .15s;flex:1;justify-content:center" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-          <span style="font-size:16px">${icon}</span>
-          <div><div style="font-size:12px;font-weight:700">${label}</div><div style="font-size:10px;color:var(--text-dim)">${sub}</div></div>
+        <div onclick="switchTab('${tab}')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;white-space:nowrap;transition:all .15s;flex:1 0 auto;min-width:138px;box-shadow:var(--shadow)" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <span style="font-size:18px">${icon}</span>
+          <div><div style="font-size:12.5px;font-weight:700;color:var(--text)">${label}</div><div style="font-size:10px;color:var(--text-dim);margin-top:1px">${sub}</div></div>
         </div>`).join('')}
     </div>`;
   _obRefreshWidget();
