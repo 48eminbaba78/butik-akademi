@@ -11521,12 +11521,18 @@ function computeReportMetrics(stuId) {
   });
 
   // Denemeler
-  const myExams = S.exams.filter(e=>e.studentId===stuId && e.date>=start && e.date<=end)
+  let myExams = S.exams.filter(e=>e.studentId===stuId && e.date>=start && e.date<=end)
     .sort((a,b)=>a.date.localeCompare(b.date));
+  if (myExams.length === 0) {
+    myExams = S.exams.filter(e=>e.studentId===stuId).sort((a,b)=>a.date.localeCompare(b.date));
+  }
 
   // Randevular
-  const myAppts = S.appointments.filter(a=>a.studentId===stuId && a.date>=start && a.date<=end)
+  let myAppts = S.appointments.filter(a=>a.studentId===stuId && a.date>=start && a.date<=end)
     .sort((a,b)=>a.date.localeCompare(b.date));
+  if (myAppts.length === 0) {
+    myAppts = S.appointments.filter(a=>a.studentId===stuId).sort((a,b)=>a.date.localeCompare(b.date));
+  }
 
   const periodLabel = `${new Date(start+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})} – ${new Date(end+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}`;
   // Header'da yer kazanmak için aynı ay/yıl içindeyse kısa biçim kullanılır
@@ -11642,11 +11648,16 @@ function buildReportHTML(stuId, preview=false) {
     <div class="section-title"><span class="dot"></span>Deneme Sonuçları</div>
     ${examChartSVG ? `<div class="chart-card">${examChartSVG}<div class="chart-cap">${chartCaption}</div></div>` : ''}
     <table>
-      <thead><tr><th>Sınav</th><th>Tarih</th><th>Tür</th>${(EXAM_DEFS[myExams[0]?.type]||[]).map(f=>`<th>${f}</th>`).join('')}<th>Toplam</th></tr></thead>
+      <thead><tr><th>Sınav</th><th>Tarih</th><th>Tür</th>${(EXAM_DEFS[myExams[0]?.type]||['Matematik','Fen','Türkçe','Sosyal']).map(f=>`<th>${f}</th>`).join('')}<th>Toplam Net</th></tr></thead>
       <tbody>
         ${myExams.map(e=>{
-          const fields=EXAM_DEFS[e.type]||[];
-          const total=fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0).toFixed(1);
+          const fields=EXAM_DEFS[e.type]||Object.keys(e.nets||{});
+          let total = 0;
+          if(e.totalNet) total = Number(e.totalNet);
+          else if(e.total_net) total = Number(e.total_net);
+          else if(e.nets && typeof e.nets === 'object') total = Object.values(e.nets).reduce((a,b)=>a+Number(b||0),0);
+          else total = fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0);
+          
           return `<tr>
             <td><strong>${esc(e.name)}</strong></td>
             <td>${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</td>
@@ -11656,7 +11667,7 @@ function buildReportHTML(stuId, preview=false) {
               const max=subjMax(e.type,f);
               return `<td><span class="badge ${netBadgeClass(v,max)}">${v}${max?`<small>/${max}</small>`:''}</span></td>`;
             }).join('')}
-            <td><strong>${total}</strong></td>
+            <td><strong style="color:var(--brand);font-size:14px">${total.toFixed(1)}</strong></td>
           </tr>`;
         }).join('')}
       </tbody>
