@@ -4692,7 +4692,9 @@ function _krRenderBody() {
   const isTypeMatch = (t, kr) => {
     if (!t) return false;
     if (t === kr) return true;
-    if (kr === 'AYT-SAY' && (t === 'AYT' || t === 'AYT-SAY' || t === 'YKS')) return true;
+    if (kr === 'AYT-SAY' && (t === 'AYT' || t === 'AYT-SAY' || t === 'AYT_SAY' || t === 'YKS')) return true;
+    if (kr === 'AYT-EA' && (t === 'AYT-EA' || t === 'AYT_EA')) return true;
+    if (kr === 'AYT-SOZ' && (t === 'AYT-SOZ' || t === 'AYT_SOZ' || t === 'AYT-SÖZ')) return true;
     if (kr === 'TYT' && (t === 'TYT' || t === 'YKS')) return true;
     return false;
   };
@@ -4703,7 +4705,7 @@ function _krRenderBody() {
     const details = e.examDetails || e.exam_details || e.wrong_topics;
     if (details && typeof details === 'object') {
       Object.entries(details).forEach(([ders, d]) => {
-        const topics = Array.isArray(d) ? d : (d.yanlis_konular || d.wrong_topics || []);
+        const topics = Array.isArray(d) ? d : (d?.yanlis_konular || d?.wrong_topics || []);
         topics.forEach(k => {
           const key = ders + '§' + k;
           counts[key] = (counts[key] || 0) + 1;
@@ -4716,9 +4718,14 @@ function _krRenderBody() {
   if (Object.keys(counts).length === 0 && _krStuId) {
     const stuMastery = S.konuMastery[_krStuId] || {};
     Object.entries(stuMastery).forEach(([ders, topics]) => {
-      const isDersMatch = (_krType === 'TYT' && (ders.includes('TYT') || ders.includes('Dil') || ders.includes('Tarih') || ders.includes('Coğrafya') || ders.includes('Felsefe'))) ||
-                          (_krType === 'AYT-SAY' && (ders.includes('AYT') || ders.includes('Fizik') || ders.includes('Kimya') || ders.includes('Biyoloji') || ders.includes('Matematik')));
-      if (isDersMatch) {
+      const checkDers = (dersName, kr) => {
+        if (kr === 'TYT') return dersName.includes('TYT') || dersName.includes('Dil') || dersName.includes('Tarih') || dersName.includes('Coğrafya') || dersName.includes('Felsefe');
+        if (kr === 'AYT-SAY') return dersName.includes('AYT') || dersName.includes('Fizik') || dersName.includes('Kimya') || dersName.includes('Biyoloji') || dersName.includes('Matematik');
+        if (kr === 'AYT-EA') return dersName.includes('Edebiyat') || dersName.includes('Tarih') || dersName.includes('Coğrafya') || dersName.includes('Matematik');
+        if (kr === 'AYT-SOZ') return dersName.includes('Edebiyat') || dersName.includes('Tarih') || dersName.includes('Coğrafya') || dersName.includes('Felsefe');
+        return true;
+      };
+      if (checkDers(ders, _krType)) {
         Object.entries(topics).forEach(([konu, m]) => {
           if (m.status === 'active' || (m.stars !== undefined && m.stars < 6)) {
             const key = ders + '§' + konu;
