@@ -4759,7 +4759,7 @@ function _krRenderBody() {
     });
 
   const tabs = _krTypes.map(t =>
-    `<button onclick="window._krType='${t}';_krRenderBody()" style="padding:8px 16px;border-radius:12px;border:1px solid ${t===_krType?'var(--accent)':'var(--border)'};background:${t===_krType?'var(--accent)':'var(--surface2)'};color:${t===_krType?'#ffffff':'var(--text-mid)'};font-size:12.5px;cursor:pointer;font-weight:${t===_krType?700:600};box-shadow:${t===_krType?'0 4px 12px rgba(232,97,58,0.3)':'none'}">${t}</button>`
+    `<button onclick="setKrType('${t}')" style="padding:8px 16px;border-radius:12px;border:1px solid ${t===_krType?'var(--accent)':'var(--border)'};background:${t===_krType?'var(--accent)':'var(--surface2)'};color:${t===_krType?'#ffffff':'var(--text-mid)'};font-size:12.5px;cursor:pointer;font-weight:${t===_krType?700:600};box-shadow:${t===_krType?'0 4px 12px rgba(232,97,58,0.3)':'none'}">${t}</button>`
   ).join('');
 
   const tableHtml = rows.length
@@ -4785,11 +4785,22 @@ function _krRenderBody() {
 }
 window._krRenderBody = _krRenderBody;
 
+function setKrType(t) {
+  _krType = t;
+  _krRenderBody();
+}
+window.setKrType = setKrType;
+
 function openKonuRaporu(stuId) {
   _krStuId = stuId;
-  const firstWithData = S.exams.find(e => e.studentId === stuId);
-  _krType = firstWithData?.type || 'TYT';
-  if (_krType === 'AYT') _krType = 'AYT-SAY';
+  const s = S.students.find(x => x.id === stuId);
+  const area = s?.yksArea || s?.yks_area || 'SAY';
+
+  if (area === 'SAY') _krType = 'AYT-SAY';
+  else if (area === 'EA') _krType = 'AYT-EA';
+  else if (area === 'SOZ' || area === 'SÖZ') _krType = 'AYT-SOZ';
+  else _krType = 'TYT';
+
   _krRenderBody();
   om('konuRaporuModal');
 }
