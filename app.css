@@ -109,9 +109,11 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
 }
 
 /* AI CHAT BUBBLE & PANEL */
-#aiChatBubble{position:fixed;bottom:80px;right:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;z-index:500;box-shadow:0 4px 20px rgba(232,97,58,.4);transition:all .3s;animation:aiPulse 3s ease-in-out infinite;}
-#aiChatBubble:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(232,97,58,.5);}
-@keyframes aiPulse{0%,100%{box-shadow:0 4px 20px rgba(232,97,58,.4)}50%{box-shadow:0 4px 30px rgba(232,97,58,.6)}}
+#aiChatBubble{position:fixed;bottom:80px;right:20px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#e8613a,#ff8c42,#7c3aed);background-size:200% 200%;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:500;box-shadow:0 6px 24px rgba(232,97,58,.45),0 0 0 2px rgba(255,255,255,.25);transition:all .25s cubic-bezier(.4,0,.2,1);animation:aiGradient 4s ease infinite,aiPulse 3s ease-in-out infinite;}
+#aiChatBubble:hover{transform:scale(1.1) rotate(5deg);box-shadow:0 8px 32px rgba(232,97,58,.6),0 0 0 3px rgba(255,255,255,.4);}
+@keyframes aiGradient{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+@keyframes aiPulse{0%,100%{box-shadow:0 4px 20px rgba(232,97,58,.45)}50%{box-shadow:0 6px 30px rgba(124,58,237,.5)}}
+@media(max-width:520px){.stu-detail-stats-grid{grid-template-columns:repeat(2,1fr) !important;}}
 #aiChatPanel{position:fixed;bottom:80px;right:20px;width:380px;max-width:calc(100vw - 40px);height:520px;max-height:calc(100vh - 160px);background:var(--surface);border:1px solid var(--border);border-radius:18px;z-index:501;display:none;flex-direction:column;box-shadow:var(--shadow-lg);overflow:hidden;animation:fadeUp .3s ease;}
 #aiChatPanel.open{display:flex;}
 .ai-header{padding:16px 20px;background:linear-gradient(135deg,rgba(232,97,58,.1),rgba(232,98,42,.05));border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}

@@ -1003,22 +1003,38 @@ function openStudentDetail(stuId){
   el.innerHTML=`
     <button class="back-link" onclick="switchTab('students')">← Öğrencilerim</button>
 
-    <!-- Öğrenci başlık -->
-    <div style="display:flex;align-items:flex-start;gap:18px;padding-bottom:24px;border-bottom:1px solid var(--border);margin-bottom:0">
-      <div style="width:52px;height:52px;border-radius:12px;background:${s.color};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0">${s.name[0]}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:20px;font-weight:800;letter-spacing:-.3px;line-height:1.2">${esc(s.name)}</div>
-        <div style="font-size:13px;color:var(--text-mid);margin-top:3px">${esc(s.target||'Hedef belirtilmemiş')}</div>
-        <div style="display:flex;gap:28px;margin-top:14px;flex-wrap:wrap">
-          <div><div style="font-size:22px;font-weight:800;color:var(--accent);line-height:1;letter-spacing:-.5px">${wTotal}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;font-weight:600">Bu Hafta</div></div>
-          <div><div style="font-size:22px;font-weight:800;color:var(--green);line-height:1;letter-spacing:-.5px">${wDone}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;font-weight:600">Tamamlanan</div></div>
-          <div><div style="font-size:22px;font-weight:800;color:${pctColor};line-height:1;letter-spacing:-.5px">%${wPct}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;font-weight:600">Oran</div></div>
-          <div><div style="font-size:22px;font-weight:800;color:var(--blue);line-height:1;letter-spacing:-.5px">${Math.round(wMin/60)}s</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;font-weight:600">Çalışma</div></div>
+    <!-- Öğrenci başlık kartı -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:20px;box-shadow:var(--shadow)">
+      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px">
+        <div style="width:52px;height:52px;border-radius:14px;background:${s.color};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,.15)">${s.name[0]}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:20px;font-weight:800;letter-spacing:-.3px;line-height:1.2">${esc(s.name)}</div>
+          <div style="font-size:12.5px;color:var(--text-mid);margin-top:4px;line-height:1.3">${esc(s.target||'Hedef belirtilmemiş')}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="switchTab('messages');setTimeout(()=>selectThread('${s.id}'),100)" style="gap:5px;padding:6px 12px;font-size:12px;border-radius:8px">💬 Mesaj</button>
+          <button class="btn btn-ghost btn-sm" onclick="openStudentModal('${s.id}')" style="gap:5px;padding:6px 12px;font-size:12px;border-radius:8px">✏️ Düzenle</button>
         </div>
       </div>
-      <div style="display:flex;gap:8px;flex-shrink:0;padding-top:4px">
-        <button class="btn btn-ghost btn-sm" onclick="switchTab('messages');setTimeout(()=>selectThread('${s.id}'),100)" style="gap:5px">💬 Mesaj</button>
-        <button class="btn btn-ghost btn-sm" onclick="openStudentModal('${s.id}')" style="gap:5px">✏️ Düzenle</button>
+
+      <!-- 4 İstatistik Kartı Gridi -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" class="stu-detail-stats-grid">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--accent);line-height:1.1">${wTotal}</div>
+          <div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:.4px">Bu Hafta</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--green);line-height:1.1">${wDone}</div>
+          <div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:.4px">Tamamlanan</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:${pctColor};line-height:1.1">%${wPct}</div>
+          <div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:.4px">Başarı Oranı</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--blue);line-height:1.1">${Math.round(wMin/60)}s</div>
+          <div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:.4px">Çalışma Süresi</div>
+        </div>
       </div>
     </div>
 
