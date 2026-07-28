@@ -292,9 +292,11 @@ window.showSubscriptionBanner = showSubscriptionBanner;
 const coachTabs=[
   {id:'home',lbl:'🏠',name:'Ana Sayfa'},
   {id:'students',lbl:'👤',name:'Öğrencilerim'},
-  {id:'todolist',lbl:'📅',name:'Takvim'},
-  {id:'coach-resources',lbl:'📚',name:'Kaynaklarım'},
+  {id:'messages',lbl:'💬',name:'Mesajlar'},
+  {id:'todolist',lbl:'📅',name:'Ajanda'},
+  {id:'coach-notes',lbl:'📝',name:'Notlarım'},
   {id:'coach-applications',lbl:'📩',name:'Başvurular'},
+  {id:'coach-resources',lbl:'📚',name:'Kaynaklarım'},
 ];
 const stuTabs=[
   {id:'portal',lbl:'🏠',name:'Ana Sayfa'},
@@ -313,10 +315,9 @@ const parentTabs=[
   {id:'parent-messages',lbl:'💬',name:'Koça Yaz'},
   {id:'parent-ai',lbl:'🤖',name:'AI Asistan'},
 ];
-// coach/student/parent dizileri zaten ≤5 kalemle mobil nav'a bire bir uyuyor;
-// developer dizisi (coachTabs+devTabs=7) taşıyor, mobil bar için ayrıca öncelik listesi lazım.
 const MOBILE_TAB_IDS = {
-  developer: ['home','students','todolist','dev-dashboard','dev-tickets'],
+  coach: ['home','students','messages','todolist','coach-notes','coach-applications','coach-resources'],
+  developer: ['home','students','messages','todolist','coach-notes','dev-dashboard','dev-tickets'],
 };
 
 function toggleSidebar(){
@@ -345,9 +346,9 @@ function setupShell(){
       <span>${t.name}</span>
     </div>`).join('');
 
-  // Mobile nav — rol için özel öncelik listesi varsa onu, yoksa ilk 5 sekmeyi kullan
+  // Mobile nav — rol için tanımlı mobil sekmeler varsa onu, yoksa tüm sekmeleri kullan
   const mobileIds = MOBILE_TAB_IDS[session.role];
-  const mobileTabs = mobileIds ? mobileIds.map(id=>allTabs.find(t=>t.id===id)).filter(Boolean) : tabs.slice(0,5);
+  const mobileTabs = mobileIds ? mobileIds.map(id=>allTabs.find(t=>t.id===id)).filter(Boolean) : tabs;
   document.getElementById('mobileNav').innerHTML = mobileTabs.map(t=>`
     <button class="mnav-btn" id="mntab_${t.id}" onclick="switchTab('${t.id}')">${t.lbl}<span style="font-size:9px;display:block">${t.name}</span></button>`).join('');
 
@@ -15805,9 +15806,18 @@ async function _saveCoachNotesToDB() {
 
 // ── AUTO REGISTRATION ON WINDOW FOR INLINE HTML HANDLERS ──
 function updateMsgBadge() {
-  if (session.role !== 'student') return;
-  const unread = (S.messages[session.studentId]||[]).filter(m=>m.from==='coach'&&!m.read).length;
-  ['sbi_smessages','mntab_smessages'].forEach(id => {
+  let unread = 0;
+  let targetTabIds = [];
+  if (session.role === 'student') {
+    unread = (S.messages[session.studentId]||[]).filter(m=>m.from==='coach'&&!m.read).length;
+    targetTabIds = ['sbi_smessages','mntab_smessages'];
+  } else if (session.role === 'coach' || session.role === 'developer') {
+    Object.values(S.messages||{}).forEach(msgs => {
+      unread += (msgs||[]).filter(m=>m.from==='student'&&!m.read).length;
+    });
+    targetTabIds = ['sbi_messages','mntab_messages'];
+  }
+  targetTabIds.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.style.position = 'relative';
@@ -15816,8 +15826,8 @@ function updateMsgBadge() {
     if (unread > 0) {
       const badge = document.createElement('span');
       badge.className = 'msg-nav-badge';
-      badge.style.cssText = 'position:absolute;top:3px;right:3px;background:#ef4444;color:#fff;border-radius:100px;min-width:14px;height:14px;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 3px;pointer-events:none;line-height:1';
-      badge.textContent = unread > 9 ? '9+' : unread;
+      badge.style.cssText = 'position:absolute;top:2px;right:4px;background:#ef4444;color:#fff;border-radius:100px;min-width:15px;height:15px;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 3px;pointer-events:none;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.3)';
+      badge.textContent = unread > 99 ? '99+' : unread;
       el.appendChild(badge);
     }
   });
