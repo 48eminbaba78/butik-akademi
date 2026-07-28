@@ -572,33 +572,70 @@
   </div>
 </div>
 
-<!-- APPOINTMENT MODAL -->
+<!-- APPOINTMENT MODAL (SENIOR PRODUCT DESIGNER REDESIGN) -->
 <div class="modal-bg" id="apptModal">
-  <div class="modal">
-    <button class="modal-close" onclick="cm('apptModal')">×</button>
-    <h2 id="amTitle">Yeni Randevu</h2>
-    <input type="hidden" id="amId">
-    <div class="field"><label>Öğrenci</label><select id="amStudent"></select></div>
-    <div class="field-row">
-      <div class="field"><label>Tarih</label><input type="date" id="amDate"></div>
-      <div class="field"><label>Saat</label><input type="time" id="amTime"></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Süre (dk)</label><input type="number" id="amDuration" value="45"></div>
-      <div class="field"><label>Tür</label>
-        <select id="amType">
-          <option>Haftalık Değerlendirme</option><option>Deneme Analizi</option>
-          <option>Konu Planlaması</option><option>Genel Görüşme</option>
-        </select>
+  <div class="modal appt-modal-redesign" style="max-width:540px;border-radius:20px;padding:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(232,97,58,.12);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px">🗓️</div>
+        <div>
+          <h2 id="amTitle" style="margin:0;font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--text)">Yeni Randevu</h2>
+          <div style="font-size:12px;color:var(--text-dim);margin-top:2px">Öğrenci ile 1-on-1 koçluk görüşmesi planlayın</div>
+        </div>
       </div>
+      <button class="modal-close" onclick="cm('apptModal')" style="position:static">×</button>
     </div>
-    <div class="field"><label>Not</label><textarea id="amNote" placeholder="Randevu notları..."></textarea></div>
-    <div class="field">
-      <label>Toplantı Linki (opsiyonel)</label>
-      <input id="amMeetLink" placeholder="Google Meet / Zoom linkinizi yapıştırın">
-      <div style="font-size:11px;color:var(--text-dim);margin-top:5px">Meet veya Zoom'da toplantıyı oluşturup linkini buraya yapıştırın — öğrenci tek tıkla katılır.</div>
+    <input type="hidden" id="amId">
+    
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="field" style="margin:0">
+        <label style="font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:6px;display:flex;align-items:center;gap:6px"><span>👤</span> ÖĞRENCİ</label>
+        <select id="amStudent" style="width:100%;padding:11px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;font-size:13.5px;color:var(--text);outline:none;font-family:inherit;box-sizing:border-box"></select>
+      </div>
+
+      <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field" style="margin:0">
+          <label style="font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:6px;display:flex;align-items:center;gap:6px"><span>📅</span> TARİH</label>
+          <input type="date" id="amDate" style="width:100%;padding:11px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;font-size:13.5px;color:var(--text);outline:none;font-family:inherit;box-sizing:border-box">
+        </div>
+        <div class="field" style="margin:0">
+          <label style="font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:6px;display:flex;align-items:center;gap:6px"><span>⏰</span> SAAT</label>
+          <input type="time" id="amTime" style="width:100%;padding:11px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;font-size:13.5px;color:var(--text);outline:none;font-family:inherit;box-sizing:border-box">
+        </div>
+      </div>
+
+      <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field" style="margin:0">
+          <label style="font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:6px;display:flex;align-items:center;gap:6px"><span>⏱️</span> SÜRE (DAKİKA)</label>
+          <input type="number" id="amDuration" value="45" style="width:100%;padding:11px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;font-size:13.5px;color:var(--text);outline:none;font-family:inherit;box-sizing:border-box">
+        </div>
+        <div class="field" style="margin:0">
+          <label style="font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:6px;display:flex;align-items:center;gap:6px"><span>🏷️</span> GÖRÜŞME TÜRÜ</label>
+          <select id="amType" style="width:100%;padding:11px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;font-size:13.5px;color:var(--text);outline:none;font-family:inherit;box-sizing:border-box">
+            <option>Haftalık Değerlendirme</option>
+            <option>Deneme Analizi</option>
+            <option>Konu Planlaması</option>
+            <option>Genel Görüşme</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field" style="margin:0">
+        <label style="font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:6px;display:flex;align-items:center;gap:6px"><span>📝</span> NOT (OPSİYONEL)</label>
+        <textarea id="amNote" placeholder="Randevu notları, odaklanılacak konular..." style="width:100%;min-height:75px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;font-size:13px;color:var(--text);outline:none;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea>
+      </div>
+
+      <div style="background:rgba(232,97,58,.05);border:1.5px dashed rgba(232,97,58,.3);border-radius:14px;padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label style="font-size:12px;font-weight:700;color:var(--text);margin:0;display:flex;align-items:center;gap:6px"><span>🌐</span> TOPLANTI LİNKİ (OPSİONEL)</label>
+          <span style="font-size:10px;font-weight:800;color:var(--accent);background:rgba(232,97,58,.12);padding:2px 8px;border-radius:99px">Tek Tıkla Katılım</span>
+        </div>
+        <input id="amMeetLink" placeholder="Google Meet / Zoom linkinizi yapıştırın" style="width:100%;padding:10px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--text);outline:none;font-family:inherit;box-sizing:border-box">
+        <div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.4">Google Meet veya Zoom linki eklediğinizde öğrenci Yolculuğum ve Takvim ekranlarında tek tıkla canlı görüşmeye katılır.</div>
+      </div>
+
+      <button class="btn btn-accent" style="width:100%;justify-content:center;padding:13px;font-size:14px;font-weight:700;border-radius:12px;margin-top:4px;box-shadow:0 4px 16px rgba(232,97,58,.3)" onclick="saveAppt()">🗓️ Randevuyu Kaydet</button>
     </div>
-    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveAppt()">Kaydet</button>
   </div>
 </div>
 

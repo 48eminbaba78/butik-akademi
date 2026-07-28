@@ -1913,28 +1913,39 @@ img, svg, video, canvas { max-width: 100%; }
 
 .stu-more-menu {
   position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+  top: calc(100% + 8px);
+  left: 0;
+  right: auto;
   background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
-  min-width: 170px;
-  z-index: 200;
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.06);
+  min-width: 190px;
+  z-index: 600;
   overflow: hidden;
-  padding: 4px;
+  padding: 6px;
+  animation: popoverFadeIn .2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes popoverFadeIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .stu-more-menu div {
-  padding: 9px 14px;
-  font-size: 12.5px;
+  padding: 10px 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
   cursor: pointer;
-  border-radius: 8px;
-  transition: background .15s;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background .15s, color .15s;
 }
 .stu-more-menu div:hover {
-  background: var(--surface2);
+  background: var(--accent-dim);
   color: var(--accent);
 }
 
