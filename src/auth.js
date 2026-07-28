@@ -174,7 +174,16 @@ export async function checkOAuthSession() {
     if (profile) {
       if (profile.role === 'coach') {
         const { data: ws } = await db.from('workspaces').select('*').eq('coach_id', profile.id).maybeSingle();
-        if (!ws || !ws.onboarding_done) needsOnboarding = true;
+        if (!ws) {
+          await db.from('workspaces').upsert({
+            coach_id: profile.id,
+            brand_name: (profile.full_name || 'Koç') + ' Akademi',
+            brand_color: '#E8613A',
+            onboarding_done: true
+          }, { onConflict: 'coach_id' });
+        } else if (!ws.onboarding_done) {
+          await db.from('workspaces').update({ onboarding_done: true }).eq('coach_id', profile.id);
+        }
       }
     } else {
       needsOnboarding = true;
@@ -236,6 +245,15 @@ export async function completeOnboarding() {
     document.getElementById('onbErr').style.display = 'block';
     return;
   }
+
+  // Workspaces kaydını onboarding_done: true olarak ekle/güncelle
+  await db.from('workspaces').upsert({
+    coach_id: user.id,
+    brand_name: name + ' Akademi',
+    brand_color: '#E8613A',
+    onboarding_done: true
+  }, { onConflict: 'coach_id' });
+
   document.getElementById('newUserOnboarding').style.display = 'none';
   await finishLogin(newProfile);
 }
