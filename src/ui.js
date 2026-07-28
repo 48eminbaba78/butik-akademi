@@ -1327,6 +1327,45 @@ async function openKonuHaritasi(stuId) {
   let activeSub = subjects[0];
   let activeView = 'mastery'; // 'mastery' | 'tekrar'
 
+  // Default topic mastery initialization for SAY demo students (e.g. Nikola Tesla)
+  if (!S.konuMastery[stuId] || Object.keys(S.konuMastery[stuId]).length === 0) {
+    S.konuMastery[stuId] = {
+      'TYT Fizik': {
+        'Fizik Bilimine Giriş': { stars: 7, status: 'td' },
+        'Vektörler ve Kuvvet': { stars: 7, status: 'td' },
+        'Elektrik ve Manyetizma': { stars: 7, status: 'td' },
+        'Optik ve Dalgalar': { stars: 7, status: 'td' }
+      },
+      'AYT Fizik': {
+        'Modern Fizik ve Görelilik': { stars: 7, status: 'td' },
+        'İtme ve Momentum': { stars: 7, status: 'td' },
+        'Düzgün Çembersel Hareket': { stars: 7, status: 'td' }
+      },
+      'AYT Matematik': {
+        'Türev ve Uygulamaları': { stars: 7, status: 'td' },
+        'İntegral ve Alan Hesabı': { stars: 7, status: 'td' },
+        'Trigonometri': { stars: 7, status: 'td' }
+      },
+      'Dil Bilgisi': {
+        'Paragrafta Anlatım Teknikleri & Sözel Mantık': { stars: 2, status: 'active' },
+        'Cümlenin Ögeleri & Yazım Kuralları': { stars: 3, status: 'active' },
+        'Ses Bilgisi & Noktalama İşaretleri': { stars: 2, status: 'active' }
+      },
+      'Tarih (TYT-AYT)': {
+        'Osmanlı Gerileme ve Dağılma Dönemi': { stars: 2, status: 'active' },
+        'Millî Mücadele ve İnkılap Tarihi': { stars: 3, status: 'active' }
+      },
+      'Coğrafya (TYT-AYT)': {
+        'Dünya İklim Tipleri ve Harita Okuma': { stars: 3, status: 'active' },
+        'Nüfus ve Yerleşme': { stars: 2, status: 'active' }
+      },
+      'Felsefe Grubu & Din': {
+        'Klasik Mantık ve Bilgi Felsefesi': { stars: 2, status: 'active' },
+        'Ahlak ve Siyaset Felsefesi': { stars: 3, status: 'active' }
+      }
+    };
+  }
+
   // Mastery verisini S'den al (api.js'de yüklendi)
   // { subject: { konu: row } }
   function getMastery(subject, konu) {
