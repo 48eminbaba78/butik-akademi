@@ -997,77 +997,181 @@ function openStudentDetail(stuId){
     wMin+=tasks.reduce((sum,t)=>sum+Number(t.duration||0),0);
   }
   const wPct=wTotal>0?Math.round((wDone/wTotal)*100):0;
-  const pctColor=wPct>=80?'var(--green)':wPct>=50?'var(--accent)':'var(--red)';
+  const pctColor=wPct>=70?'var(--green)':wPct>=40?'#f59e0b':'var(--red)';
+
+  // Geçen hafta istatistikleri ve trend
+  const lastWs = addDays(ws, -7);
+  let lastTotal = 0, lastDone = 0;
+  for (let i = 0; i < 7; i++) {
+    const tasks = S.tasks[`${s.id}_${fmtDate(addDays(lastWs, i))}`] || [];
+    lastTotal += tasks.length;
+    lastDone += tasks.filter(t => t.done).length;
+  }
+  const lastPct = lastTotal > 0 ? Math.round((lastDone / lastTotal) * 100) : 0;
+  const pctDiff = wPct - lastPct;
+  const trendText = pctDiff >= 0 ? `↑ Geçen haftaya göre +${pctDiff}%` : `↓ Geçen haftaya göre ${pctDiff}%`;
+  const trendClass = pctDiff >= 0 ? 'trend-up' : 'trend-down';
+
+  // Durum Etiketi
+  let statusBadge = { label: '🟢 Aktif', class: 'status-active', color: '#3ecf8e', bg: 'rgba(62,207,142,.12)', border: 'rgba(62,207,142,.25)' };
+  let insightText = `Harika tempo! Bu hafta tanımlanan ${wTotal} görevin ${wDone}'i (%${wPct}) başarıyla tamamlandı. Öğrenci yüksek motivasyon ve istikrarla hedefine doğru ilerliyor.`;
+  let insightClass = 'success';
+
+  if (wPct < 40) {
+    statusBadge = { label: '🔴 Riskli', class: 'status-risk', color: '#ef4444', bg: 'rgba(239,68,68,.12)', border: 'rgba(239,68,68,.25)' };
+    insightText = `Bu hafta tanımlanan ${wTotal} görevin yalnızca ${wDone}'ü (%${wPct}) tamamlandı. Öğrenci hedeflenen haftalık performansın altında seyrediyor. Aksayan konuları tespit etmek için 1-on-1 görüşme önerilir.`;
+    insightClass = 'risk';
+  } else if (wPct < 70) {
+    statusBadge = { label: '🟡 Takip Gerekli', class: 'status-warning', color: '#f59e0b', bg: 'rgba(245,158,11,.12)', border: 'rgba(245,158,11,.25)' };
+    insightText = `Bu hafta görevlerin %${wPct}'si tamamlandı. Temposunu koruması ve eksik olduğu derslerin konu tekrarına ağırlık vermesi tavsiye edilir.`;
+    insightClass = 'warning';
+  }
 
   const el=document.getElementById('view-student-detail');
   el.innerHTML=`
     <button class="back-link" onclick="switchTab('students')">← Öğrencilerim</button>
 
-    <!-- Öğrenci başlık kartı -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:20px;box-shadow:var(--shadow)">
-      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px">
-        <div style="width:52px;height:52px;border-radius:14px;background:${s.color};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,.15)">${s.name[0]}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:20px;font-weight:800;letter-spacing:-.3px;line-height:1.2">${esc(s.name)}</div>
-          <div style="font-size:12.5px;color:var(--text-mid);margin-top:4px;line-height:1.3">${esc(s.target||'Hedef belirtilmemiş')}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm" onclick="switchTab('messages');setTimeout(()=>selectThread('${s.id}'),100)" style="gap:5px;padding:6px 12px;font-size:12px;border-radius:8px">💬 Mesaj</button>
-          <button class="btn btn-ghost btn-sm" onclick="openStudentModal('${s.id}')" style="gap:5px;padding:6px 12px;font-size:12px;border-radius:8px">✏️ Düzenle</button>
+    <!-- 1. ÖĞRENCİ ÖZET KARTI -->
+    <div class="stu-hero-card">
+      <div class="stu-hero-top">
+        <div class="stu-avatar" style="background:${s.color}">${s.name[0]}</div>
+        <div class="stu-hero-info">
+          <div class="stu-hero-name-row">
+            <h2 class="stu-hero-name">${esc(s.name)}</h2>
+            <span class="stu-status-badge" style="background:${statusBadge.bg};color:${statusBadge.color};border:1px solid ${statusBadge.border}">
+              ${statusBadge.label}
+            </span>
+          </div>
+          <div class="stu-hero-target">
+            <span>🎯 <b>Hedef:</b> ${esc(s.target||'Hedef belirtilmemiş')}</span>
+          </div>
         </div>
       </div>
 
-      <!-- 4 İstatistik Kartı Gridi -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" class="stu-detail-stats-grid">
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
-          <div style="font-size:18px;font-weight:800;color:var(--accent);line-height:1.1">${wTotal}</div>
-          <div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:.4px">Bu Hafta</div>
+      <div class="stu-hero-progress-wrap">
+        <div class="stu-hero-progress-label">
+          <span class="stu-progress-pct" style="color:${pctColor}">%${wPct} Haftalık İlerleme</span>
+          <span class="stu-progress-counts">${wDone} görev tamamlandı · ${wTotal - wDone} kaldı</span>
         </div>
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
-          <div style="font-size:18px;font-weight:800;color:var(--green);line-height:1.1">${wDone}</div>
-          <div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:.4px">Tamamlanan</div>
+        <div class="stu-hero-progress-bar">
+          <div class="stu-hero-progress-fill" style="width:${wPct}%;background:${pctColor}"></div>
         </div>
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
-          <div style="font-size:18px;font-weight:800;color:${pctColor};line-height:1.1">%${wPct}</div>
-          <div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:.4px">Başarı Oranı</div>
-        </div>
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
-          <div style="font-size:18px;font-weight:800;color:var(--blue);line-height:1.1">${Math.round(wMin/60)}s</div>
-          <div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:.4px">Çalışma Süresi</div>
+      </div>
+
+      <div class="stu-hero-actions">
+        <button class="btn btn-accent stu-action-btn-primary" onclick="switchTab('messages');setTimeout(()=>selectThread('${s.id}'),100)">
+          💬 Mesaj Gönder
+        </button>
+        <button class="btn stu-action-btn" onclick="openStudentModal('${s.id}')">
+          ✏️ Düzenle
+        </button>
+        <div style="position:relative;display:inline-block">
+          <button class="btn stu-action-btn" onclick="toggleStuMoreMenu(event, '${s.id}')">
+            ⋯ Daha Fazla
+          </button>
+          <div id="stuMoreMenu_${s.id}" class="stu-more-menu" style="display:none">
+            <div onclick="openReportModal('${s.id}')">📄 Rapor Oluştur</div>
+            <div onclick="openSpeedModal('${s.id}')">⚡ Hız Seviyesi</div>
+            <div onclick="openKonuHaritasi('${s.id}')">🗺️ Konu Haritası</div>
+            <div onclick="openPastReports('${s.id}')">🗂️ Geçmiş Raporlar</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Sekme navigasyonu -->
-    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:24px;overflow-x:auto">
-      ${[
-        {label:'Program', icon:'📋', fn:`openStudentProgram('${s.id}')`},
-        {label:'Denemeler', icon:'📊', fn:`openStudentExams('${s.id}')`},
-        {label:'Randevular', icon:'📅', fn:`openStudentAppointments('${s.id}')`},
-        {label:'Notlar', icon:'📝', fn:`openStudentNotes('${s.id}')`},
-        {label:'Kaynak İlerlemesi', icon:'📖', fn:`openStudentKaynaklar('${s.id}')`},
-        {label:'Konu Haritası', icon:'🗺️', fn:`openKonuHaritasi('${s.id}')`},
-        {label:'Hız', icon:'⚡', fn:`openSpeedModal('${s.id}')`},
-        {label:'Rapor', icon:'📄', fn:`openReportModal('${s.id}')`},
-        {label:'Geçmiş Raporlar', icon:'🗂️', fn:`openPastReports('${s.id}')`},
-      ].map(t=>`<button onclick="${t.fn}" style="display:flex;align-items:center;gap:6px;padding:14px 18px;background:none;border:none;border-bottom:2px solid transparent;font-size:13px;font-weight:600;color:var(--text-mid);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s" onmouseover="this.style.color='var(--text)';this.style.borderBottomColor='var(--border2)'" onmouseout="this.style.color='var(--text-mid)';this.style.borderBottomColor='transparent'">${t.icon} ${t.label}</button>`).join('')}
+    <!-- 2. 2x2 KPI İSTATİSTİK KARTLARI -->
+    <div class="stu-kpi-grid">
+      <div class="stu-kpi-card">
+        <div class="stu-kpi-header">
+          <div class="stu-kpi-icon-wrap" style="background:rgba(232,97,58,.12);color:var(--accent)">📋</div>
+          <span class="stu-kpi-badge">Görev</span>
+        </div>
+        <div class="stu-kpi-value" style="color:var(--accent)">${wTotal}</div>
+        <div class="stu-kpi-label">Bu Hafta</div>
+      </div>
+
+      <div class="stu-kpi-card">
+        <div class="stu-kpi-header">
+          <div class="stu-kpi-icon-wrap" style="background:rgba(62,207,142,.12);color:var(--green)">✅</div>
+          <span class="stu-kpi-badge" style="background:rgba(62,207,142,.15);color:var(--green)">Biten</span>
+        </div>
+        <div class="stu-kpi-value" style="color:var(--green)">${wDone}</div>
+        <div class="stu-kpi-label">Tamamlanan</div>
+      </div>
+
+      <div class="stu-kpi-card">
+        <div class="stu-kpi-header">
+          <div class="stu-kpi-icon-wrap" style="background:rgba(77,166,255,.12);color:var(--blue)">🎯</div>
+          <span class="stu-kpi-badge" style="background:rgba(77,166,255,.15);color:var(--blue)">Skor</span>
+        </div>
+        <div class="stu-kpi-value" style="color:${pctColor}">%${wPct}</div>
+        <div class="stu-kpi-label">Başarı Oranı</div>
+      </div>
+
+      <div class="stu-kpi-card">
+        <div class="stu-kpi-header">
+          <div class="stu-kpi-icon-wrap" style="background:rgba(192,132,252,.12);color:#c084fc">⏱️</div>
+          <span class="stu-kpi-badge" style="background:rgba(192,132,252,.15);color:#c084fc">Süre</span>
+        </div>
+        <div class="stu-kpi-value" style="color:#c084fc">${Math.round(wMin/60)} Saat</div>
+        <div class="stu-kpi-label">Çalışma Süresi</div>
+      </div>
     </div>
 
-    <!-- Haftalık ilerleme -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:16px;box-shadow:var(--shadow)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <!-- 3. KOÇ İÇGÖRÜSÜ KARTI -->
+    <div class="stu-insight-card ${insightClass}">
+      <div class="stu-insight-header">
+        <div class="stu-insight-title">
+          <span class="stu-insight-flash">⚡</span> Koç Analizi
+        </div>
+        <span class="stu-status-badge" style="background:${statusBadge.bg};color:${statusBadge.color};border:1px solid ${statusBadge.border}">
+          ${statusBadge.label}
+        </span>
+      </div>
+      <p class="stu-insight-text">${insightText}</p>
+      <div class="stu-insight-footer">
+        <button class="btn btn-accent btn-sm" onclick="generateAICopilotDraft('${s.id}')" style="gap:6px">
+          ✨ AI Analiz Raporunu Al
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="openStudentAppointments('${s.id}')" style="gap:6px;background:var(--surface2)">
+          📅 Görüşme Planla
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. MODERN SEKMELİ YAPI -->
+    <div class="stu-segmented-tabs-wrap">
+      <div class="stu-segmented-tabs">
+        <button class="stu-seg-btn active" id="stutab_program" onclick="openStudentProgram('${s.id}');setStuActiveSeg(this)">📋 Program</button>
+        <button class="stu-seg-btn" id="stutab_exams" onclick="openStudentExams('${s.id}');setStuActiveSeg(this)">📊 Denemeler</button>
+        <button class="stu-seg-btn" id="stutab_appts" onclick="openStudentAppointments('${s.id}');setStuActiveSeg(this)">📅 Randevular</button>
+        <button class="stu-seg-btn" id="stutab_notes" onclick="openStudentNotes('${s.id}');setStuActiveSeg(this)">📝 Notlar</button>
+        <button class="stu-seg-btn" id="stutab_kaynak" onclick="openStudentKaynaklar('${s.id}');setStuActiveSeg(this)">📖 Kaynaklar</button>
+        <button class="stu-seg-btn" id="stutab_konu" onclick="openKonuHaritasi('${s.id}');setStuActiveSeg(this)">🗺️ Konu Haritası</button>
+        <button class="stu-seg-btn" id="stutab_hiz" onclick="openSpeedModal('${s.id}');setStuActiveSeg(this)">⚡ Hız</button>
+        <button class="stu-seg-btn" id="stutab_rapor" onclick="openReportModal('${s.id}');setStuActiveSeg(this)">📄 Rapor</button>
+      </div>
+    </div>
+
+    <!-- 5. HAFTALIK İLERLEME VE TREND KARTI -->
+    <div class="stu-progress-card">
+      <div class="stu-progress-card-header">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">Haftalık İlerleme</div>
-          <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${wDone} tamamlandı · ${wTotal - wDone} kaldı · ${Math.round(wMin/60)} saat</div>
+          <div class="stu-progress-card-title">Haftalık İlerleme</div>
+          <div class="stu-progress-card-sub">${wDone} tamamlandı · ${wTotal - wDone} kaldı · ${Math.round(wMin/60)} saat çalışma</div>
         </div>
-        <div style="font-size:28px;font-weight:800;color:${pctColor};letter-spacing:-.5px">%${wPct}</div>
+        <div class="stu-progress-card-right">
+          <div class="stu-progress-card-pct" style="color:${pctColor}">%${wPct}</div>
+          <div class="stu-trend-badge ${trendClass}">${trendText}</div>
+        </div>
       </div>
-      <div style="height:8px;background:var(--surface3);border-radius:99px;overflow:hidden">
-        <div style="height:100%;width:${wPct}%;background:${pctColor};border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1)"></div>
+      <div class="stu-progress-bar-track">
+        <div class="stu-progress-bar-fill" style="width:${wPct}%;background:${pctColor}"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-top:10px">
-        <span style="font-size:11px;color:var(--text-dim)">0%</span>
-        <span style="font-size:11px;color:var(--text-dim)">100%</span>
+      <div class="stu-progress-pills">
+        <span class="stu-pill green">✅ ${wDone} Tamamlandı</span>
+        <span class="stu-pill orange">📋 ${wTotal - wDone} Kaldı</span>
+        <span class="stu-pill blue">⏱️ ${Math.round(wMin/60)} Saat</span>
       </div>
     </div>
 
@@ -1120,6 +1224,23 @@ function openStudentDetail(stuId){
   const _tt1=document.getElementById('tbarTitle'); if(_tt1) _tt1.textContent = s.name;
   _loadCoachNoteForStudent(stuId);
 }
+
+function toggleStuMoreMenu(e, stuId) {
+  if (e) e.stopPropagation();
+  const el = document.getElementById(`stuMoreMenu_${stuId}`);
+  if (el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+window.toggleStuMoreMenu = toggleStuMoreMenu;
+
+function setStuActiveSeg(btn) {
+  document.querySelectorAll('.stu-seg-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+window.setStuActiveSeg = setStuActiveSeg;
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.stu-more-menu').forEach(m => m.style.display = 'none');
+});
 
 // Not: bu, öğrencinin Yolculuğum sayfasında göreceği kişisel mesaj — koçun
 // kendi özel not defteri olan openStudentNotes/saveCoachNote(idx) ile karışmasın diye
