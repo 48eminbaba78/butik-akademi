@@ -377,12 +377,21 @@
         inviteData = data;
 
         // Set inputs
-        document.getElementById('email').value = data.email;
+        const inviteEmail = (data.email || '').trim();
+        const emailInput = document.getElementById('email');
+        emailInput.value = inviteEmail;
+        if (!inviteEmail) {
+          emailInput.disabled = false;
+          emailInput.placeholder = 'ornek@email.com';
+        } else {
+          emailInput.disabled = true;
+        }
+
         if (data.student_name) {
           document.getElementById('fullName').value = data.student_name;
         }
         // Kullanıcı adı: her zaman e-postadan/verilen değerden otomatik (öğrenci görmez)
-        const emailPrefix = data.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+        const emailPrefix = inviteEmail ? inviteEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') : (data.student_name || 'ogrenci').toLowerCase().replace(/[^a-z0-9]/g, '');
         document.getElementById('username').value = data.username || emailPrefix;
 
         // Koç adı + fotoğrafı (halo etkisi)
@@ -476,6 +485,13 @@
       const weekStart = 0; // Hafta başlangıcı öğrenciye sorulmaz — koç panelinden yönetir (varsayılan Pazartesi)
       const color = document.querySelector('#colorPick .color-opt.sel')?.dataset.c || '#e8622a';
 
+      const studentEmail = (inviteData?.email || document.getElementById('email')?.value || '').trim();
+      if (!studentEmail || !studentEmail.includes('@')) {
+        msgBox.textContent = 'Lütfen geçerli bir e-posta adresi girin.';
+        msgBox.style.display = 'block';
+        return;
+      }
+
       if (password.length < 8) {
         msgBox.textContent = 'Şifreniz en az 8 karakter olmalıdır.';
         msgBox.style.display = 'block';
@@ -487,7 +503,7 @@
 
       try {
         const { data: authData, error: signUpErr } = await db.auth.signUp({
-          email: inviteData.email,
+          email: studentEmail,
           password: password,
           options: {
             data: {
@@ -510,7 +526,7 @@
             username: usernameInput,
             password_hash: 'supabase_managed',
             role: 'student',
-            email: inviteData.email,
+            email: studentEmail,
             coach_id: inviteData.coach_id,
             color: color,
             target: target,
@@ -527,7 +543,7 @@
           .from('student_profiles')
           .upsert({
             id: userId,
-            student_email: inviteData.email,
+            student_email: studentEmail,
             onboarding_done: false
           });
 

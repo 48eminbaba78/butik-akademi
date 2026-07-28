@@ -3655,7 +3655,7 @@ function openStudentModal(id){
   const progField = document.getElementById('smProgField');
   const submitBtn = document.querySelector('#studentModal .btn-accent');
 
-  if (emailField) emailField.style.display = isEdit ? 'none' : 'block';
+  if (emailField) emailField.style.display = 'none';
   if (targetField) targetField.style.display = isEdit ? 'block' : 'none';
   if (inviteRow) inviteRow.style.display = isEdit ? 'flex' : 'none';
   if (yksRow) yksRow.style.display = isEdit ? 'flex' : 'none';
@@ -3680,7 +3680,7 @@ function openStudentModal(id){
   }
 
   if (submitBtn) {
-    submitBtn.textContent = isEdit ? 'Kaydet' : 'Davet Gönder';
+    submitBtn.textContent = isEdit ? 'Kaydet' : 'Öğrenci Davet Et';
     submitBtn.setAttribute('onclick', 'saveStudent()');
   }
 
@@ -3750,7 +3750,7 @@ document.getElementById('smProg').addEventListener('input',function(){document.g
 document.getElementById('smColorPick').addEventListener('click',function(e){const o=e.target.closest('.color-opt');if(!o)return;document.querySelectorAll('.color-opt').forEach(el=>el.classList.remove('sel'));o.classList.add('sel');});
 async function saveStudent(){
   const name=document.getElementById('smName').value.trim();
-  if(!name)return showToast('İsim girin!');
+  if(!name)return showToast('Lütfen öğrencinin adını ve soyadını girin!');
   const color=document.querySelector('.color-opt.sel')?.dataset.c||'#e8622a';
   const id=document.getElementById('smId').value;
   const uname=normalizeUsername(document.getElementById('smUsername').value.trim())||(normalizeUsername(name.split(' ')[0])+Math.floor(Math.random()*100));
@@ -3792,11 +3792,8 @@ async function saveStudent(){
     showToast('Güncellendi ✓');
     saveUI();cm('studentModal');renderStudentsSearch();
   } else {
-    const email = document.getElementById('smEmail')?.value.trim();
-    if (!email || !email.includes('@')) return showToast('Geçerli bir e-posta adresi girin!');
-
     const { data: { session: authSess } } = await db.auth.getSession();
-    showToast('Davet gönderiliyor...');
+    showToast('Davet oluşturuluyor...');
     try {
       const resp = await fetch('/api/invitation?action=create', {
         method: 'POST',
@@ -3806,26 +3803,25 @@ async function saveStudent(){
           'X-Coach-Id': session.dbUser?.id || '',
           'X-Coach-Hash': session.dbUser?.password_hash || ''
         },
-        body: JSON.stringify({ email, student_name: payload.full_name, username: uname })
+        body: JSON.stringify({ student_name: payload.full_name, username: uname })
       });
       const result = await resp.json();
       if (!resp.ok) return showToast('Hata: ' + result.error);
 
-      // Davet hazır — gönderim kanalını (e-posta / WhatsApp) koç modaldan seçer
       showToast('Davet oluşturuldu ✓');
       saveUI();cm('studentModal');
 
       const siteUrl = window.location.origin + window.location.pathname.replace('app.html','');
       const invitationLink = `${siteUrl}davet.html?token=${result.token}`;
 
-      showInviteInfo(payload.full_name, email, invitationLink, result.token);
+      showInviteInfo(payload.full_name, '', invitationLink, result.token);
     } catch (e) {
       console.error(e);
       showToast('İletişim hatası oluştu.');
     }
   }
 }
-// ── ÖĞRENCİ DAVET BİLGİSİ — kanal seçimi (e-posta / WhatsApp) koçta ──
+// ── ÖĞRENCİ DAVET BİLGİSİ — kanal seçimi (e-posta / WhatsApp / Link) koçta ──
 function showInviteInfo(name, email, inviteUrl, inviteToken){
   let modal = document.getElementById('inviteModal');
   if(!modal){
@@ -3837,37 +3833,51 @@ function showInviteInfo(name, email, inviteUrl, inviteToken){
   }
   const whatsappText = encodeURIComponent(`Merhaba ${name}! 🎓\n\nRostrum Akademi platformuna katılım davetin hazır. Aşağıdaki linke tıklayarak parolanı belirleyip hemen başlayabilirsin:\n\n🔗 Davet Linki: ${inviteUrl}`);
 
-  modal.innerHTML = `<div class="modal" style="max-width:480px">
+  modal.innerHTML = `<div class="modal" style="max-width:500px;padding:26px">
     <button class="modal-close" onclick="cm('inviteModal');renderStudentsSearch()">×</button>
     <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:40px;margin-bottom:8px">📬</div>
-      <h2>Davet Hazır!</h2>
-      <p style="font-size:13px;color:var(--text-mid);margin-top:6px">Daveti nasıl iletmek istersiniz?</p>
+      <div style="font-size:38px;margin-bottom:6px">🎓</div>
+      <h2>Davet Bağlantısı Hazır!</h2>
+      <p style="font-size:13px;color:var(--text-mid);margin-top:4px"><b style="color:var(--text)">${esc(name)}</b> için davet oluşturuldu. Daveti nasıl iletmek istersiniz?</p>
     </div>
 
-    <div style="display:flex;gap:10px;margin-bottom:16px">
-      <button class="btn" id="inviteMailBtn" onclick="sendInviteEmail('${inviteToken||''}')" style="flex:1;flex-direction:column;gap:6px;padding:18px 12px;justify-content:center;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px">
-        <span style="font-size:26px">📧</span>
-        <span style="font-size:13px;font-weight:700">E-posta ile Gönder</span>
-        <span style="font-size:10px;color:var(--text-dim)">${esc(email)}</span>
-      </button>
-      <a href="https://wa.me/?text=${whatsappText}" target="_blank" class="btn" style="flex:1;flex-direction:column;gap:6px;padding:18px 12px;justify-content:center;background:rgba(37,211,102,.1);border:1.5px solid rgba(37,211,102,.4);border-radius:12px;text-decoration:none;color:var(--text)">
-        <span style="font-size:26px">💬</span>
-        <span style="font-size:13px;font-weight:700">WhatsApp ile Gönder</span>
-        <span style="font-size:10px;color:var(--text-dim)">Kişi seçerek paylaş</span>
+    <!-- Davet Bağlantısı Kutusu -->
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🔗 Davet Bağlantısı <span style="font-weight:400;text-transform:none">(48 saat geçerli)</span></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" readonly value="${inviteUrl}" id="inviteUrlInput" style="flex:1;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--blue);font-family:monospace;overflow:hidden;text-overflow:ellipsis">
+        <button class="btn btn-accent btn-sm" onclick="copyStudentInviteLink('${inviteUrl}')" style="white-space:nowrap;padding:9px 14px;font-weight:600">📋 Kopyala</button>
+      </div>
+    </div>
+
+    <!-- Gönderim Kanalları -->
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+      <!-- WhatsApp ile Gönder -->
+      <a href="https://wa.me/?text=${whatsappText}" target="_blank" class="btn" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(37,211,102,.1);border:1.5px solid rgba(37,211,102,.35);border-radius:14px;text-decoration:none;color:var(--text);justify-content:flex-start">
+        <span style="font-size:24px;width:34px;text-align:center">💬</span>
+        <div style="flex:1;text-align:left">
+          <div style="font-size:13px;font-weight:700">WhatsApp ile Gönder</div>
+          <div style="font-size:11px;color:var(--text-mid)">Kişi veya grup seçerek hazırlanan mesajı iletin</div>
+        </div>
+        <span style="font-size:16px;color:var(--text-dim)">→</span>
       </a>
+
+      <!-- E-posta ile Gönder -->
+      <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:22px">📧</span>
+          <div style="font-size:13px;font-weight:700">E-posta ile Gönder</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <input type="email" id="inviteEmailInput" placeholder="öğrenci@email.com" value="${esc(email||'')}" style="flex:1;background:var(--dark);border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--text)">
+          <button class="btn btn-primary" id="inviteMailBtn" onclick="sendInviteEmail('${inviteToken||''}')" style="white-space:nowrap;padding:9px 16px;font-weight:600">Gönder 📩</button>
+        </div>
+      </div>
     </div>
 
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Davet Bağlantısı <span style="font-weight:400;text-transform:none">(48 saat geçerli)</span></div>
-      <div style="font-size:12px;color:var(--blue);word-break:break-all">${inviteUrl}</div>
-    </div>
-
-    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="copyStudentInviteLink('${inviteUrl}')">📋 Bağlantıyı Kopyala</button>
-
-    <div style="background:var(--focus-purple-dim);border:1px solid var(--focus-purple);border-radius:12px;padding:14px 16px;margin-top:14px;text-align:center">
+    <div style="background:var(--focus-purple-dim);border:1px solid var(--focus-purple);border-radius:12px;padding:12px 14px;text-align:center">
       <div style="font-size:12px;color:var(--focus-purple);font-weight:700">💡 Sırada ne var?</div>
-      <div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5">${esc(name)} daveti kabul edip ilk giriş yaptığında Öğrencilerim listende görünecek — o an haftalık programını hazırlayıp panelde hazır bulmasını sağlayabilirsin.</div>
+      <div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5">${esc(name)} davet bağlantısına tıklayıp şifresini belirlediğinde hesabınıza otomatik bağlanacaktır.</div>
     </div>
   </div>`;
   window._pendingInvite = { name, email, inviteUrl };
@@ -3877,21 +3887,31 @@ function showInviteInfo(name, email, inviteUrl, inviteToken){
 // Var olan davet için e-posta gönder (koç kanal olarak maili seçti)
 async function sendInviteEmail(token){
   if(!token) return showToast('Davet bilgisi eksik — bağlantıyı kopyalayıp iletebilirsiniz');
+  const emailInput = document.getElementById('inviteEmailInput');
+  const email = emailInput ? emailInput.value.trim() : '';
+  if (!email || !email.includes('@')) return showToast('Lütfen geçerli bir e-posta adresi girin!');
+
   const btn = document.getElementById('inviteMailBtn');
-  if(btn){ btn.disabled = true; btn.style.opacity = '.6'; }
+  if(btn){ btn.disabled = true; btn.style.opacity = '.6'; btn.textContent = 'Gönderiliyor...'; }
   try{
     const resp = await fetch('/api/invitation?action=send_email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token })
+      body: JSON.stringify({ token, email })
     });
     const out = await resp.json();
     if(!resp.ok) throw new Error(out.error || 'Gönderilemedi');
     showToast('Davet e-postası gönderildi ✓');
-    if(btn) btn.innerHTML = '<span style="font-size:26px">✅</span><span style="font-size:13px;font-weight:700">E-posta Gönderildi</span>';
+    if(btn){
+      btn.disabled = true;
+      btn.style.background = '#22c55e';
+      btn.style.borderColor = '#22c55e';
+      btn.style.opacity = '1';
+      btn.textContent = 'Gönderildi ✓';
+    }
   }catch(e){
     showToast('Hata: '+e.message);
-    if(btn){ btn.disabled = false; btn.style.opacity = '1'; }
+    if(btn){ btn.disabled = false; btn.style.opacity = '1'; btn.textContent = 'Gönder 📩'; }
   }
 }
 window.sendInviteEmail = sendInviteEmail;

@@ -68,7 +68,9 @@ export default async function handler(req, res) {
     }
 
     const { email, student_name, username, send_email } = req.body;
-    if (!email) return res.status(400).json({ error: 'E-posta adresi zorunludur' });
+    if (!student_name || !student_name.trim()) {
+      return res.status(400).json({ error: 'Öğrencinin adı ve soyadı zorunludur' });
+    }
 
     const inviteToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
@@ -78,7 +80,7 @@ export default async function handler(req, res) {
       .insert({
         token: inviteToken,
         coach_id: coachId,
-        email: email.toLowerCase().trim(),
+        email: email ? email.toLowerCase().trim() : '',
         student_name: student_name ? student_name.trim() : null,
         username: username ? username.trim().toLowerCase() : null,
         expires_at: expiresAt
@@ -90,7 +92,7 @@ export default async function handler(req, res) {
     }
 
     // E-posta yalnız istenirse gider — koç kanalı (mail/WhatsApp) modaldan seçer
-    if (send_email) {
+    if (send_email && email) {
       try {
         await _sendInviteMail(req, { token: inviteToken, email, student_name, coachName });
       } catch (err) {
@@ -103,7 +105,7 @@ export default async function handler(req, res) {
 
   // ── ACTION: SEND_EMAIL (Mevcut davet için e-posta gönder) ──
   if (action === 'send_email') {
-    const { token } = req.body;
+    const { token, email: reqEmail } = req.body;
     if (!token) return res.status(400).json({ error: 'Token gereklidir' });
 
     const { data: invite } = await supabaseAdmin
@@ -115,13 +117,26 @@ export default async function handler(req, res) {
     if (invite.used_at) return res.status(400).json({ error: 'Bu davet zaten kullanılmış' });
     if (new Date(invite.expires_at) < new Date()) return res.status(400).json({ error: 'Davet süresi dolmuş' });
 
+    const targetEmail = reqEmail ? reqEmail.toLowerCase().trim() : invite.email;
+    if (!targetEmail || !targetEmail.includes('@')) {
+      return res.status(400).json({ error: 'Geçerli bir e-posta adresi girin' });
+    }
+
+    // E-posta adresi güncellendiyse davet kaydını güncelle
+    if (targetEmail !== invite.email) {
+      await supabaseAdmin
+        .from('student_invitations')
+        .update({ email: targetEmail })
+        .eq('token', token);
+    }
+
     const { data: coach } = await supabaseAdmin
       .from('users').select('full_name').eq('id', invite.coach_id).maybeSingle();
 
     try {
       await _sendInviteMail(req, {
         token: invite.token,
-        email: invite.email,
+        email: targetEmail,
         student_name: invite.student_name,
         coachName: coach?.full_name || 'Koçunuz'
       });
