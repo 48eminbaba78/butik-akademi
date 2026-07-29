@@ -104,6 +104,81 @@ function customConfirm(message) {
 }
 window.customConfirm = customConfirm;
 
+// Kalıcı silme gibi geri döndürülemez işlemler için: koç, onaylamak üzere
+// verilen metni (ör. öğrencinin tam adı) birebir yazmadan "Sil" butonu aktif
+// olmaz — yanlışlıkla tıklamaya karşı GitHub tarzı "type to confirm" deseni.
+function customConfirmTyped(message, requiredText, confirmLabel) {
+  return new Promise((resolve) => {
+    let modal = document.getElementById('customConfirmTypedModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'customConfirmTypedModal';
+      modal.className = 'modal-bg';
+      modal.style.zIndex = '999999';
+      modal.innerHTML = `
+        <div class="modal" style="max-width:380px;text-align:center;padding:24px 20px;border-radius:16px;background:var(--surface);border:1px solid var(--border)">
+          <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+          <div id="confirmTypedMessage" style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;line-height:1.5;white-space:pre-line"></div>
+          <input type="text" id="confirmTypedInput" autocomplete="off" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;text-align:center;margin-bottom:16px">
+          <div style="display:flex;gap:10px;justify-content:center">
+            <button class="btn btn-ghost" id="confirmTypedCancelBtn" style="flex:1;justify-content:center;padding:10px;border-radius:10px">İptal</button>
+            <button class="btn btn-accent" id="confirmTypedOkBtn" disabled style="flex:1;justify-content:center;padding:10px;border-radius:10px;background:#ef4444;border-color:#ef4444;color:#fff;opacity:.4;cursor:not-allowed">Tamam</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.addEventListener('click', e => {
+        if (e.target === modal) {
+          modal.classList.remove('open');
+          resolve(false);
+        }
+      });
+    }
+
+    modal.querySelector('#confirmTypedMessage').textContent = message;
+    const input = modal.querySelector('#confirmTypedInput');
+    input.placeholder = requiredText;
+    input.value = '';
+
+    const okBtn = modal.querySelector('#confirmTypedOkBtn');
+    const cancelBtn = modal.querySelector('#confirmTypedCancelBtn');
+    okBtn.textContent = confirmLabel || 'Tamam';
+
+    const newOkBtn = okBtn.cloneNode(true);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    const newInput = input.cloneNode(true);
+    okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    input.parentNode.replaceChild(newInput, input);
+
+    const setEnabled = (on) => {
+      newOkBtn.disabled = !on;
+      newOkBtn.style.opacity = on ? '1' : '.4';
+      newOkBtn.style.cursor = on ? 'pointer' : 'not-allowed';
+    };
+
+    newInput.addEventListener('input', () => setEnabled(newInput.value.trim() === requiredText));
+    newInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && newInput.value.trim() === requiredText) newOkBtn.click();
+    });
+
+    modal.classList.add('open');
+    setTimeout(() => newInput.focus(), 50);
+
+    newOkBtn.onclick = () => {
+      if (newInput.value.trim() !== requiredText) return;
+      modal.classList.remove('open');
+      resolve(true);
+    };
+
+    newCancelBtn.onclick = () => {
+      modal.classList.remove('open');
+      resolve(false);
+    };
+  });
+}
+window.customConfirmTyped = customConfirmTyped;
+
 // ═══════════════════════════════════════════════
 // PREMIUM DENEYİM — özellik toggle'ları (cihaz bazlı, localStorage)
 // ═══════════════════════════════════════════════
@@ -3896,7 +3971,8 @@ async function hardDeleteStudent(){
   const id = document.getElementById('smId').value;
   const s = S.students.find(x=>x.id===id);
   if(!s) return;
-  if(!await customConfirm(`"${s.name}" KALICI olarak silinsin mi?\n\nGörevler, denemeler, mesajlar ve hesap geri döndürülemez şekilde yok edilir. Verileri korumak istiyorsanız Pasifleştir'i kullanın.`)) return;
+  const confirmMsg = `"${s.name}" KALICI olarak silinsin mi?\n\nGörevler, denemeler, mesajlar ve hesap geri döndürülemez şekilde yok edilir. Verileri korumak istiyorsanız Pasifleştir'i kullanın.\n\nOnaylamak için öğrencinin adını yazın:`;
+  if(!await customConfirmTyped(confirmMsg, s.name, '🗑 Kalıcı Sil')) return;
   showLoading(true);
   try{
     const { data: { session: authSess } } = await db.auth.getSession();
@@ -3920,6 +3996,18 @@ async function hardDeleteStudent(){
   }
 }
 window.hardDeleteStudent = hardDeleteStudent;
+
+// Şifre alanı varsayılan olarak gizli (type=password) — koç isterse görebilir/
+// paylaşabilir ama ekranda açıkça durmuyor.
+function toggleSmPassVisibility(){
+  const inp = document.getElementById('smPass');
+  const btn = document.getElementById('smPassToggleBtn');
+  const showing = inp.type === 'text';
+  inp.type = showing ? 'password' : 'text';
+  btn.textContent = showing ? '👁' : '🙈';
+}
+window.toggleSmPassVisibility = toggleSmPassVisibility;
+
 document.getElementById('smProg').addEventListener('input',function(){document.getElementById('smProgVal').textContent=this.value+'%';});
 document.getElementById('smColorPick').addEventListener('click',function(e){const o=e.target.closest('.color-opt');if(!o)return;document.querySelectorAll('.color-opt').forEach(el=>el.classList.remove('sel'));o.classList.add('sel');});
 async function saveStudent(){
@@ -3948,7 +4036,7 @@ async function saveStudent(){
     });
     if(error)return showToast('Hata: '+error.message);
     const s=S.students.find(x=>x.id===id);
-    if(s)Object.assign(s,{name:payload.full_name,target:payload.target,color,progress:payload.progress,pass:payload.password_hash,weekStart:payload.week_start,username:uname,yksArea:payload.yks_area});
+    if(s)Object.assign(s,{name:payload.full_name,target:payload.target,color,progress:payload.progress,pass:passRaw,weekStart:payload.week_start,username:uname,yksArea:payload.yks_area});
 
     // İletişim & seviye → student_profiles (opsiyonel; boş alan gönderilmez)
     const _lvl=document.getElementById('smLevel')?.value||'';

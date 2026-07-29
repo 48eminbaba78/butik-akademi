@@ -503,7 +503,12 @@
     <div class="field" id="smTargetField"><label>Hedef / Program</label><input id="smTarget" placeholder="TYT / AYT Hedefli"></div>
     <div class="field-row" id="smInviteRow">
       <div class="field"><label>Kullanıcı Adı Önerisi</label><input id="smUsername" type="text" placeholder="muzaffer (boş bırakılırsa ad kullanılır)"></div>
-      <div class="field" id="smPassField"><label>Şifre</label><input id="smPass" type="text" placeholder="Yeni şifre belirle (düzenleme için)"></div>
+      <div class="field" id="smPassField"><label>Şifre</label>
+        <div style="position:relative">
+          <input id="smPass" type="password" placeholder="Yeni şifre belirle (düzenleme için)" style="padding-right:38px;width:100%;box-sizing:border-box">
+          <button type="button" id="smPassToggleBtn" onclick="toggleSmPassVisibility()" title="Şifreyi göster/gizle" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;padding:6px;color:var(--text-dim)">👁</button>
+        </div>
+      </div>
     </div>
     <div class="field-row" id="smYksRow">
       <div class="field"><label>Alan (YKS)</label>
