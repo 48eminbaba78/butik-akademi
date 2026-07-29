@@ -1293,6 +1293,15 @@ function openStudentDetail(stuId){
           <span id="aiCopilotEditWarning" style="color:var(--red); font-size:11px; font-weight:bold">Öğrenciye gönderebilmek için taslak üzerinde en az bir değişiklik yapmalısınız.</span>
         </div>
       </div>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--border)">
+        <button id="aiProgramBtn" class="btn btn-accent btn-sm" onclick="generateAIProgramDraft('${s.id}')" style="gap:6px;font-weight:700;padding:10px 18px;border-radius:10px">📋 Haftalık Program Taslağı Oluştur</button>
+        <div id="aiProgramResultArea" style="display:none;margin-top:14px">
+          <div style="font-size:11.5px;color:var(--text-dim);margin-bottom:10px">Öğrencinin zayıf konularından türetilen taslak — istediğiniz satırları kaldırın/düzenleyin, sonra onaylayın.</div>
+          <div id="aiProgramRows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+          <button id="aiProgramApproveBtn" class="btn btn-accent btn-sm" onclick="approveAIProgramDraft('${s.id}')" style="background:var(--green);border-color:var(--green);color:white;padding:10px 18px" disabled>✅ Seçilenleri Programa Ekle</button>
+        </div>
+      </div>
     </div>`;
 
   if(currentTab !== 'student-detail') switchTab('student-detail');
@@ -13859,6 +13868,163 @@ async function sendCopilotDraft(stuId) {
 }
 
 // ═══════════════════════════════════════════════
+// AI PROGRAM TASLAĞI — computeWeakTopics'ten (GERÇEK, uydurma olmayan konu
+// verisi) haftalık görev taslağı üretir; koç satırları düzenler/kaldırır,
+// onaylayınca saveTask() ile AYNI şekilde tasks'a toplu eklenir.
+// ═══════════════════════════════════════════════
+
+async function generateAIProgramDraft(stuId) {
+  const s = S.students.find(s=>s.id===stuId);
+  if (!s) return;
+
+  const btn = document.getElementById('aiProgramBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⌛ Taslak Hazırlanıyor...'; }
+
+  try {
+    const weakTopics = computeWeakTopics(stuId).slice(0, 10);
+    if (!weakTopics.length) {
+      showToast('Bu öğrenci için zayıf konu tespit edilmedi (Konu Haritası boş ya da tüm konular güçlü).');
+      return;
+    }
+
+    const { data: catalog } = await db.from('resources')
+      .select('name,subject,resource_type')
+      .eq('active', true).eq('coach_id', session.coachId)
+      .in('subject', [...new Set(weakTopics.map(t=>t.subject))])
+      .limit(40);
+
+    const prompt = `Aşağıdaki GERÇEK zayıf konu listesinden haftalık bir çalışma programı taslağı oluştur:
+ZAYIF KONULAR (yıldız düşük veya uzun süredir tekrar edilmemiş): ${JSON.stringify(weakTopics)}
+KOÇUN KAYNAK KATALOĞU (varsa öncelikle buradan seç): ${JSON.stringify(catalog||[])}
+
+KURALLAR:
+1. SADECE yukarıdaki zayıf konu listesinden konu seç — uydurma konu YASAK.
+2. Kaynak/kitap/kanal önerirken ÖNCE koçun kataloğuna bak; orada o dersten kaynak yoksa bilgi tabanındaki kaynak piramidinden seviyeye uygun kanal/kitap öner. Katalogda da piramitte de yoksa sadece konu adını yaz, kaynak uydurma.
+3. Konuları haftanın 7 gününe dengeli dağıt (her gün 1-3 görev, aşırı yükleme yapma).
+4. Süreyi (dakika) konunun zorluğuna göre makul belirle (30-90 arası tipik).
+5. Çıktıyı TAM OLARAK şu etiket altında, satır başına bir görev, pipe (|) ile ayrılmış 5 alan halinde ver, başka HİÇBİR açıklama yazma:
+[PROGRAM_TASLAĞI]
+GÜN|DERS|KONU_VEYA_KAYNAK|SÜRE_DK|NOT
+(GÜN değeri tam olarak şunlardan biri olmalı: Pazartesi, Salı, Çarşamba, Perşembe, Cuma, Cumartesi, Pazar)`;
+
+    let reply = '';
+    try {
+      const response = await fetch('/api/ai-chat', {
+        method: 'POST',
+        headers: await aiAuthHeaders(),
+        body: JSON.stringify({ messages: [{role:'user', content: prompt}], context: { studentName: s.name }, userRole: 'coach' })
+      });
+      if (response.ok) { const data = await response.json(); reply = data.reply; }
+    } catch(e) { console.warn('AI program draft error:', e); }
+
+    if (!reply) { showToast('Taslak üretilemedi, lütfen tekrar deneyin.'); return; }
+
+    const tagIdx = reply.indexOf('[PROGRAM_TASLAĞI]');
+    const body = tagIdx !== -1 ? reply.slice(tagIdx + '[PROGRAM_TASLAĞI]'.length) : reply;
+    const rows = body.split('\n').map(l=>l.trim())
+      .filter(l=>l && l.includes('|') && !l.toUpperCase().startsWith('GÜN|'))
+      .map(line => {
+        const [day, subject, topic, duration, note] = line.split('|').map(x=>(x||'').trim());
+        return {
+          day: DAYS_TR.includes(day) ? day : DAYS_TR[0],
+          subject: subject||'', topic: topic||'', duration: parseInt(duration)||45, note: note||''
+        };
+      });
+
+    if (!rows.length) { showToast('Yapay zeka geçerli bir taslak üretmedi, lütfen tekrar deneyin.'); return; }
+
+    _renderAIProgramRows(rows);
+    const resArea = document.getElementById('aiProgramResultArea');
+    if (resArea) { resArea.style.display = 'block'; setTimeout(()=>resArea.scrollIntoView({behavior:'smooth',block:'nearest'}), 100); }
+    showToast('📋 Program taslağı hazırlandı ✓');
+  } catch(e) {
+    console.error('generateAIProgramDraft error:', e);
+    showToast('Hata: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📋 Haftalık Program Taslağı Oluştur'; }
+  }
+}
+
+const _AI_PROGRAM_INPUT_STYLE = 'font-size:12px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)';
+
+function _renderAIProgramRows(rows) {
+  const wrap = document.getElementById('aiProgramRows');
+  if (!wrap) return;
+  wrap.innerHTML = rows.map((r) => `
+    <div class="ai-program-row" style="display:flex;gap:8px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 10px;flex-wrap:wrap">
+      <input type="checkbox" checked onchange="_checkAIProgramRows()" style="width:16px;height:16px;flex-shrink:0">
+      <select class="ai-program-day" style="${_AI_PROGRAM_INPUT_STYLE};width:110px">
+        ${DAYS_TR.map(d=>`<option ${d===r.day?'selected':''}>${d}</option>`).join('')}
+      </select>
+      <input type="text" class="ai-program-subject" value="${esc(r.subject)}" placeholder="Ders" style="${_AI_PROGRAM_INPUT_STYLE};width:110px">
+      <input type="text" class="ai-program-topic" value="${esc(r.topic)}" placeholder="Konu / Kaynak" style="${_AI_PROGRAM_INPUT_STYLE};flex:1;min-width:160px">
+      <input type="number" class="ai-program-duration" value="${r.duration}" min="10" step="5" style="${_AI_PROGRAM_INPUT_STYLE};width:64px">
+      <span style="font-size:10px;color:var(--text-dim)">dk</span>
+    </div>
+  `).join('');
+  _checkAIProgramRows();
+}
+
+function _checkAIProgramRows() {
+  const anyChecked = !!document.querySelector('#aiProgramRows .ai-program-row input[type=checkbox]:checked');
+  const btn = document.getElementById('aiProgramApproveBtn');
+  if (btn) btn.disabled = !anyChecked;
+}
+
+async function approveAIProgramDraft(stuId) {
+  const s = S.students.find(s=>s.id===stuId);
+  if (!s) return;
+  const rows = [...document.querySelectorAll('#aiProgramRows .ai-program-row')]
+    .filter(row => row.querySelector('input[type=checkbox]').checked)
+    .map(row => ({
+      day: row.querySelector('.ai-program-day').value,
+      subject: row.querySelector('.ai-program-subject').value.trim(),
+      topic: row.querySelector('.ai-program-topic').value.trim(),
+      duration: parseInt(row.querySelector('.ai-program-duration').value) || 45
+    }))
+    .filter(r => r.subject && r.topic);
+
+  if (!rows.length) return showToast('Eklenecek satır kalmadı.');
+
+  const btn = document.getElementById('aiProgramApproveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Ekleniyor...'; }
+
+  try {
+    const ws = getWeekStart(0, s.weekStart||0);
+    const examType = (s.yksArea || s.yks_area || 'SAY');
+    const payloads = rows.map(r => {
+      const dayIdx = DAYS_TR.indexOf(r.day);
+      const date = fmtDate(addDays(ws, dayIdx >= 0 ? dayIdx : 0));
+      return {
+        student_id: stuId, coach_id: session.coachId, date,
+        type: 'konu', exam_type: examType,
+        subject: `${r.subject} - ${r.topic}`,
+        duration: r.duration, note: 'AI program taslağı ile eklendi', done: false
+      };
+    });
+
+    const { error } = await db.from('tasks').insert(payloads);
+    if (error) throw error;
+
+    payloads.forEach(p => {
+      const key = `${stuId}_${p.date}`;
+      if (!S.tasks[key]) S.tasks[key] = [];
+      S.tasks[key].push({ type:p.type, exam:p.exam_type, subject:p.subject, duration:p.duration, note:p.note, done:false });
+    });
+
+    document.getElementById('aiProgramResultArea').style.display = 'none';
+    document.getElementById('aiProgramRows').innerHTML = '';
+    if (document.getElementById('view-program')) renderProgram();
+    showToast(`✓ ${payloads.length} görev programa eklendi`);
+  } catch(e) {
+    console.error('approveAIProgramDraft error:', e);
+    showToast('Hata: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Seçilenleri Programa Ekle'; }
+  }
+}
+
+// ═══════════════════════════════════════════════
 // VELİ DASHBOARD
 // ═══════════════════════════════════════════════
 function renderParentHome(){
@@ -16508,6 +16674,9 @@ window.shareCopilotWhatsApp = shareCopilotWhatsApp;
 window.assignResourceAsTask = assignResourceAsTask;
 window.confirmAssignResource = confirmAssignResource;
 window.sendCopilotDraft = sendCopilotDraft;
+window.generateAIProgramDraft = generateAIProgramDraft;
+window.approveAIProgramDraft = approveAIProgramDraft;
+window._checkAIProgramRows = _checkAIProgramRows;
 window.renderParentHome = renderParentHome;
 window.renderParentProgress = renderParentProgress;
 window.renderParentAI = renderParentAI;

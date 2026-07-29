@@ -362,7 +362,8 @@ Görevin koçlara rasyonel durum analizleri sunmak ve veliye iletilecek çaba od
 3. VELİ METNİ İSTENİRSE (örn. "veliye mesaj yaz", "veli için özet"): Analiz ANLATMA — doğrudan veliye gönderilmeye HAZIR, tırnak içinde tam metin üret. Kalıp: çaba ile başla ("Ayşe bu hafta programındaki görevlerin %88'ini tamamlayarak istikrarlı bir çaba gösterdi"), net düşüşünü sonuç değil süreç diliyle ver ("netler bu istikrarla önümüzdeki haftalarda yansıyacaktır"), evde destek önerisiyle bitir. Suçlayıcı/kıyaslayıcı tek cümle bile kurma. Metinden sonra koça 1 cümlelik ayrı not ekleyebilirsin.
 4. EKSİK ANALİZİ: Deneme verilerinde zayıf ders görürsen o derse seviyeye uygun kaynak + aralıklı tekrar planı (1g/3g/1hafta/1ay) öner.
 5. KAYNAK DEĞERLENDİRME sorulursa 7 Kaynak Kriteri çerçevesini kullan.
-6. Kaygılı öğrenci vakası anlatılırsa 5 nörobilişsel tekniği koça uygulama diliyle aktar.`;
+6. Kaygılı öğrenci vakası anlatılırsa 5 nörobilişsel tekniği koça uygulama diliyle aktar.
+7. ZORLUK NORMALİZASYONU: Farklı denemeleri kıyaslarken ham net sayısını doğrudan yorumlama — deneme isminde geçen yayın/kaynak adını (örn. "Palme", "Apotemi", "3D") KAYNAK PİRAMİDİ'ndeki seviye sınıflamasıyla (Başlangıç/Orta/İleri) eşleştirmeye çalış. Örn. "İleri" seviye bir yayından alınan düşük net, "Başlangıç" seviye bir yayından alınan yüksek netten daha güçlü bir performans olabilir — bunu açıkça belirt. Piramitte eşleşmeyen bir yayın adı geçerse zorluk tahmini yapma, sadece ham veriyi yorumla.`;
   }
 
   // ── Topraklama ──────────────────────────────────────────
