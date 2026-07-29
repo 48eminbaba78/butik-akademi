@@ -1,6 +1,7 @@
 .vercel
 /dist
 node_modules
+.next
 scratch
 __*.js
 _*.js
@@ -21,6 +22,7 @@ generate-doc.cjs
 .env.development.local
 .env.production.local
 .env*.local
+!.env*.example
 
 # Geçici / debug dosyaları
 scratch/

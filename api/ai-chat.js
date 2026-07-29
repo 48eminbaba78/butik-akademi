@@ -14,7 +14,7 @@ const db = createClient(SB_URL, SB_KEY);
 // Client'ın gönderdiği context'e GÜVENİLMEZ. Çağıranın JWT'siyle (RLS altında)
 // gerçek öğrenci listesi + son denemeler DB'den çekilir; model yalnızca bu
 // doğrulanmış veriye dayanır. Kayıtlı olmayan isim → analiz reddedilir.
-async function buildVerifiedContext(req) {
+async function buildVerifiedContext(req, mode) {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!token) return { verified: false, block: '' };
@@ -33,6 +33,17 @@ async function buildVerifiedContext(req) {
     if (!me) return { verified: false, block: '' };
 
     let block = `\n\n════ DOĞRULANMIŞ VERİTABANI KAYITLARI (TEK GERÇEK KAYNAK) ════`;
+
+    // Destek modunda koç ödeme/fiyat sorularını UYDURMADAN yanıtlayabilmesi için
+    // gerçek fiyat/IBAN bilgisi topraklamaya eklenir (db: service-scoped client,
+    // platform_settings zaten public-okuma tablosu).
+    if (mode === 'support' && (me.role === 'coach' || me.role === 'developer')) {
+      const { data: pay } = await db.from('platform_settings').select('value').eq('key', 'payment_settings').maybeSingle();
+      const ps = pay?.value;
+      if (ps) {
+        block += `\nÖDEME/FİYAT BİLGİSİ (GERÇEK — bunun dışında fiyat UYDURMA): Bireysel ${ps.price_bireysel ? ps.price_bireysel + '₺/ay' : 'ayarlanmadı'}, Profesyonel ${ps.price_profesyonel ? ps.price_profesyonel + '₺/ay' : 'ayarlanmadı'}, Banka: ${ps.bank_name || '—'}, IBAN: ${ps.iban || '—'}.`;
+      }
+    }
 
     if (me.role === 'coach' || me.role === 'developer') {
       // Koçun GERÇEK öğrenci listesi
@@ -106,7 +117,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { messages, context, userRole, imageBase64, mimeType, text } = req.body;
+    const { messages, context, userRole, imageBase64, mimeType, text, mode } = req.body;
 
     // ── Görsel varsa Gemini Vision kullan ───────────────────
     if (imageBase64) {
@@ -165,10 +176,10 @@ export default async function handler(req, res) {
     }
 
     // ── Sunucu taraflı topraklama: gerçek veriler DB'den ────
-    const grounding = await buildVerifiedContext(req);
+    const grounding = await buildVerifiedContext(req, mode);
 
     // ── Sistem Promptu ──────────────────────────────────────
-    const systemPrompt = buildSystemPrompt(context, userRole, grounding);
+    const systemPrompt = buildSystemPrompt(context, userRole, grounding, mode);
 
     // ── Groq API İsteği (OpenAI uyumlu) ─────────────────────
     const groqMessages = [{ role: 'system', content: systemPrompt }];
@@ -275,8 +286,46 @@ Her öneri SOMUT olmalı: kanal ADI + kitap ADI (yukarıdaki piramitten, öğren
 Bu bilgi tabanı dışından kanal/kitap UYDURMA. Seviye bilinmiyorsa net sayısını sor, sonra öner.
 ═══════════════════════════════════════════════════════════════════════`;
 
+// ── Destek Modu Sistem Promptu — platform kullanımı/ödeme, DERS İÇERİĞİ DEĞİL ──
+// Mevcut buildSystemPrompt'un ders/koçluk dalları burada YOK — destek sohbeti
+// (openSupportChat) tamamen ayrı bir amaç (platformu nasıl kullanırım, ödeme nasıl
+// yapılır) taşıdığı için ayrı bir fonksiyon; ders promptlarına hiç dokunulmaz.
+function buildSupportSystemPrompt(userRole, grounding) {
+  let base = `Sen "Rostrum Akademi Destek Asistanı"sın — bu bir ders/koçluk sohbeti DEĞİL, platformun NASIL KULLANILACAĞI konusunda yardımcı olan bir müşteri destek asistanısın.
+
+KURALLAR (KESİNLİKLE UYULMASI ZORUNLU):
+- YALNIZCA TÜRKÇE yanıt ver. Tek bir yabancı kelime bile yazma.
+- Sıcak ama profesyonel bir dil kullan; kısa ve öz yanıtlar ver.
+- SADECE platformun kullanımı, ödeme/abonelik akışı ve genel özellikler hakkında konuş. Ders sorusu/konu anlatımı istenirse: "Bu konuda sana Ders Asistanım yardımcı olabilir, buradan destek ekibine daha çok platform kullanımı ve hesap sorularında yardımcı oluyorum" diyerek yönlendir.
+- BİLMEDİĞİN, POLİTİKA/İSTİSNA gerektiren veya aşağıdaki bilgi tabanında YER ALMAYAN bir soru gelirse (iade, özel indirim, sözleşme, teknik hata/bug, hesap silme vb.) ASLA tahmin/uydurma cevap verme — "Bu konuda net bilgi veremem, ekrandaki 'WhatsApp'tan Kurucuya Ulaş' butonuyla doğrudan kurucumuz Emin'e ulaşabilirsin" de.
+
+【PLATFORM ÖZELLİKLERİ — bilgi tabanı】
+- Haftalık Program: koç, öğrencinin takvimine gün gün görev (konu/soru/deneme) ekler; öğrenci görevleri tamamladıkça işaretler.
+- Rapor Studio: koç, haftalık programı PDF olarak öğrenciye gönderebilir (Gece/Kağıt/Vurgu temaları + yazdırılabilir "İşaretlenebilir Mod").
+- Odaklanma Modu (Elit Çalışma Odası): öğrencinin ders çalışırken kullandığı zamanlayıcı/focus özelliği.
+- Kaynak İlerlemesi: öğrencinin kullandığı kitap/kaynakların bitirme yüzdesini otomatik takip eder.
+- Konu Analiz Raporu: TYT/AYT-SAY/AYT-EA/AYT-SOZ bazında konu/zayıflık analizi.
+- Deneme/Net Girişi: öğrenci veya koç deneme sonuçlarını (ders bazlı net) sisteme girer, grafiklerle takip edilir.
+- AI Ders Asistanı: öğrencinin Sokratik yöntemle soru çözdüğü ayrı bir yapay zeka sohbeti (bu destek sohbetinden farklı).
+- Ödeme: koçlar Rostrum Akademi'ye banka havalesiyle abone olur; her koçun kendine özel bir "RA-XXXX" referans kodu vardır, ödeme yapılırken açıklamaya bu kod yazılır, kurucu ödemeyi admin panelden onaylar.`;
+
+  if (userRole === 'coach' || userRole === 'developer') {
+    base += `\n\n[ROL: KOÇ] Ödeme/abonelik, referans kodu, öğrenci/panel limitleri gibi konularda net ve işlevsel yanıt ver.`;
+  } else if (userRole === 'parent') {
+    base += `\n\n[ROL: VELİ] Çocuklarının ilerlemesini nasıl takip edebilecekleri (raporlar, deneme netleri) konusunda yönlendir; ödeme bilgisi vermeye çalışma (ödeme koç-Rostrum arasındadır, veliyi ilgilendirmez) — bu soru gelirse koçuyla görüşmesini söyle.`;
+  } else {
+    base += `\n\n[ROL: ÖĞRENCİ] Programı/raporları/Odaklanma Modu'nu nasıl kullanacağı konusunda yönlendir; ödeme bilgisi vermeye çalışma — bu koç ile veli arasındaki bir konu, öğrenciyi ilgilendirmez.`;
+  }
+
+  if (grounding?.verified) base += grounding.block;
+
+  return base;
+}
+
 // ── Sistem Promptu Oluşturucu ─────────────────────────────
-function buildSystemPrompt(context, userRole, grounding) {
+function buildSystemPrompt(context, userRole, grounding, mode) {
+  if (mode === 'support') return buildSupportSystemPrompt(userRole, grounding);
+
   let base = `Sen "Rostrum Akademi Yapay Zeka Asistanı"sın. Türkiye'deki eğitim sistemine (YKS, LGS, KPSS, ALES) hakim, rolüne göre öğrencilere, velilere veya koçlara destek veren bir yapay zekasın.
 
 KURALLAR (KESİNLİKLE UYULMASI ZORUNLU):
