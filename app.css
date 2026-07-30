@@ -2213,49 +2213,11 @@ img, svg, video, canvas { max-width: 100%; }
   color: var(--text) !important;
 }
 
-.stu-more-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: auto;
-  background: var(--surface);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.06);
-  min-width: 190px;
-  z-index: 600;
-  overflow: hidden;
-  padding: 6px;
-  animation: popoverFadeIn .2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes popoverFadeIn {
-  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-.stu-more-menu div {
-  padding: 10px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  transition: background .15s, color .15s;
-}
-.stu-more-menu div:hover {
-  background: var(--accent-dim);
-  color: var(--accent);
-}
-
 .stu-kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 @media(max-width: 640px) {
   .stu-kpi-grid {
@@ -2265,8 +2227,8 @@ img, svg, video, canvas { max-width: 100%; }
 .stu-kpi-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 16px;
+  border-radius: 12px;
+  padding: 11px 12px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
   transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
@@ -2279,21 +2241,21 @@ img, svg, video, canvas { max-width: 100%; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 7px;
 }
 .stu-kpi-icon-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 13px;
 }
 .stu-kpi-badge {
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 2px 6px;
   border-radius: 99px;
   background: var(--surface2);
   color: var(--text-dim);
@@ -2301,14 +2263,14 @@ img, svg, video, canvas { max-width: 100%; }
   letter-spacing: .4px;
 }
 .stu-kpi-value {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.5px;
   line-height: 1.1;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .stu-kpi-label {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
   font-weight: 600;
   text-transform: uppercase;
@@ -2410,91 +2372,4 @@ img, svg, video, canvas { max-width: 100%; }
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(232, 97, 58, 0.3);
 }
-
-.stu-progress-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 22px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
-}
-.stu-progress-card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-.stu-progress-card-title {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--text);
-}
-.stu-progress-card-sub {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-top: 4px;
-}
-.stu-progress-card-right {
-  text-align: right;
-}
-.stu-progress-card-pct {
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: -1px;
-  line-height: 1;
-}
-.stu-trend-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 99px;
-  margin-top: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.stu-trend-badge.trend-up {
-  background: rgba(62, 207, 142, 0.12);
-  color: var(--green);
-  border: 1px solid rgba(62, 207, 142, 0.25);
-}
-.stu-trend-badge.trend-down {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--red);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-}
-
-.stu-progress-bar-track {
-  height: 10px;
-  background: var(--surface2);
-  border-radius: 99px;
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-.stu-progress-bar-fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width .6s cubic-bezier(.4, 0, .2, 1);
-}
-
-.stu-progress-pills {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.stu-pill {
-  font-size: 11.5px;
-  font-weight: 700;
-  padding: 5px 12px;
-  border-radius: 8px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-mid);
-}
-.stu-pill.green { color: var(--green); background: rgba(62,207,142,.08); border-color: rgba(62,207,142,.2); }
-.stu-pill.orange { color: var(--accent); background: rgba(232,97,58,.08); border-color: rgba(232,97,58,.2); }
-.stu-pill.blue { color: var(--blue); background: rgba(77,166,255,.08); border-color: rgba(77,166,255,.2); }
-
-
 

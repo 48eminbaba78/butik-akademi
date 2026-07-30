@@ -1074,19 +1074,6 @@ function openStudentDetail(stuId){
   const wPct=wTotal>0?Math.round((wDone/wTotal)*100):0;
   const pctColor=wPct>=70?'var(--green)':wPct>=40?'#f59e0b':'var(--red)';
 
-  // Geçen hafta istatistikleri ve trend
-  const lastWs = addDays(ws, -7);
-  let lastTotal = 0, lastDone = 0;
-  for (let i = 0; i < 7; i++) {
-    const tasks = S.tasks[`${s.id}_${fmtDate(addDays(lastWs, i))}`] || [];
-    lastTotal += tasks.length;
-    lastDone += tasks.filter(t => t.done).length;
-  }
-  const lastPct = lastTotal > 0 ? Math.round((lastDone / lastTotal) * 100) : 0;
-  const pctDiff = wPct - lastPct;
-  const trendText = pctDiff >= 0 ? `↑ Geçen haftaya göre +${pctDiff}%` : `↓ Geçen haftaya göre ${pctDiff}%`;
-  const trendClass = pctDiff >= 0 ? 'trend-up' : 'trend-down';
-
   // Durum Etiketi
   let statusBadge = { label: '🟢 Aktif', class: 'status-active', color: '#3ecf8e', bg: 'rgba(62,207,142,.12)', border: 'rgba(62,207,142,.25)' };
   let insightText = `Harika tempo! Bu hafta tanımlanan ${wTotal} görevin ${wDone}'i (%${wPct}) başarıyla tamamlandı. Öğrenci yüksek motivasyon ve istikrarla hedefine doğru ilerliyor.`;
@@ -1140,17 +1127,9 @@ function openStudentDetail(stuId){
         <button class="btn stu-action-btn" onclick="openStudentModal('${s.id}')">
           ✏️ Düzenle
         </button>
-        <div style="position:relative;display:inline-block">
-          <button class="btn stu-action-btn" onclick="toggleStuMoreMenu(event, '${s.id}')">
-            ⋯ Daha Fazla
-          </button>
-          <div id="stuMoreMenu_${s.id}" class="stu-more-menu" style="display:none">
-            <div onclick="openReportModal('${s.id}')">📄 Rapor Oluştur</div>
-            <div onclick="openSpeedModal('${s.id}')">⚡ Hız Seviyesi</div>
-            <div onclick="openKonuHaritasi('${s.id}')">🗺️ Konu Haritası</div>
-            <div onclick="openPastReports('${s.id}')">🗂️ Geçmiş Raporlar</div>
-          </div>
-        </div>
+        <button class="btn stu-action-btn" onclick="openPastReports('${s.id}')">
+          🗂️ Geçmiş Raporlar
+        </button>
       </div>
     </div>
 
@@ -1205,9 +1184,6 @@ function openStudentDetail(stuId){
       </div>
       <p class="stu-insight-text">${insightText}</p>
       <div class="stu-insight-footer">
-        <button class="btn btn-accent btn-sm" onclick="generateAICopilotDraft('${s.id}')" style="gap:6px">
-          ✨ AI Analiz Raporunu Al
-        </button>
         <button class="btn btn-ghost btn-sm" onclick="openStudentAppointments('${s.id}')" style="gap:6px;background:var(--surface2)">
           📅 Görüşme Planla
         </button>
@@ -1225,28 +1201,6 @@ function openStudentDetail(stuId){
         <button class="stu-seg-btn" id="stutab_konu" onclick="openKonuHaritasi('${s.id}');setStuActiveSeg(this)">🗺️ Konu Haritası</button>
         <button class="stu-seg-btn" id="stutab_hiz" onclick="openSpeedModal('${s.id}');setStuActiveSeg(this)">⚡ Hız</button>
         <button class="stu-seg-btn" id="stutab_rapor" onclick="openReportModal('${s.id}');setStuActiveSeg(this)">📄 Rapor</button>
-      </div>
-    </div>
-
-    <!-- 5. HAFTALIK İLERLEME VE TREND KARTI -->
-    <div class="stu-progress-card">
-      <div class="stu-progress-card-header">
-        <div>
-          <div class="stu-progress-card-title">Haftalık İlerleme</div>
-          <div class="stu-progress-card-sub">${wDone} tamamlandı · ${wTotal - wDone} kaldı · ${Math.round(wMin/60)} saat çalışma</div>
-        </div>
-        <div class="stu-progress-card-right">
-          <div class="stu-progress-card-pct" style="color:${pctColor}">%${wPct}</div>
-          <div class="stu-trend-badge ${trendClass}">${trendText}</div>
-        </div>
-      </div>
-      <div class="stu-progress-bar-track">
-        <div class="stu-progress-bar-fill" style="width:${wPct}%;background:${pctColor}"></div>
-      </div>
-      <div class="stu-progress-pills">
-        <span class="stu-pill green">✅ ${wDone} Tamamlandı</span>
-        <span class="stu-pill orange">📋 ${wTotal - wDone} Kaldı</span>
-        <span class="stu-pill blue">⏱️ ${Math.round(wMin/60)} Saat</span>
       </div>
     </div>
 
@@ -1309,22 +1263,11 @@ function openStudentDetail(stuId){
   _loadCoachNoteForStudent(stuId);
 }
 
-function toggleStuMoreMenu(e, stuId) {
-  if (e) e.stopPropagation();
-  const el = document.getElementById(`stuMoreMenu_${stuId}`);
-  if (el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
-}
-window.toggleStuMoreMenu = toggleStuMoreMenu;
-
 function setStuActiveSeg(btn) {
   document.querySelectorAll('.stu-seg-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
 }
 window.setStuActiveSeg = setStuActiveSeg;
-
-document.addEventListener('click', () => {
-  document.querySelectorAll('.stu-more-menu').forEach(m => m.style.display = 'none');
-});
 
 // Not: bu, öğrencinin Yolculuğum sayfasında göreceği kişisel mesaj — koçun
 // kendi özel not defteri olan openStudentNotes/saveCoachNote(idx) ile karışmasın diye
