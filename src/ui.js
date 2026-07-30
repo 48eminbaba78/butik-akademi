@@ -14777,20 +14777,7 @@ async function makeResourceGlobal(resId) {
 }
 window.makeResourceGlobal = makeResourceGlobal;
 
-async function deleteResourceCoach(id) {
-  const res = _crAllRes.find(r => r.id === id);
-  if (!confirm(`"${res?.name || 'Bu kaynak'}" silinecek. Emin misiniz?`)) return;
-  try {
-    const { error } = await db.from('resources').delete().eq('id', id);
-    if (error) throw error;
-    _crAllRes = _crAllRes.filter(r => r.id !== id);
-    showToast('Kaynak silindi');
-    renderCoachResources();
-  } catch(e) {
-    showToast('Silme hatası: ' + e.message);
-  }
-}
-window.deleteResourceCoach = deleteResourceCoach;
+// deleteResourceCoach is defined below
 
 function applyResFilter(all) {
   const q = _crFilter.search;
@@ -15121,7 +15108,7 @@ async function renderCoachResources() {
     else if(prevTabEl.id === 'crt-analytics') activeTab = 'analytics';
   }
 
-  const isDev = session.role === 'developer' || session.dbUser?.role === 'developer' || session.dbUser?.email === 'ceylanemin1928@gmail.com';
+  // isDev is already declared above
 
   el.innerHTML = `<div style="max-width:720px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
