@@ -326,3 +326,56 @@ export function togglePasswordVisibility(inputId, iconId) {
 }
 window.togglePasswordVisibility = togglePasswordVisibility;
 
+export function calculateStudentStreak(studentId) {
+  if (!studentId || !S.tasks) return 0;
+  let streak = 0;
+  let curr = new Date();
+  
+  for (let i = 0; i < 60; i++) {
+    const dStr = fmtDate(curr);
+    const key = `${studentId}_${dStr}`;
+    const tasks = S.tasks[key] || [];
+    
+    if (tasks.length > 0) {
+      const doneCount = tasks.filter(t => t.done).length;
+      if (doneCount > 0) {
+        streak++;
+      } else if (i === 0) {
+        // Bugün henüz başlanmamışsa seriyi dünden kontrol etmeye devam et
+      } else {
+        break;
+      }
+    } else if (i > 0) {
+      break;
+    }
+    curr.setDate(curr.getDate() - 1);
+  }
+  return streak;
+}
+window.calculateStudentStreak = calculateStudentStreak;
+
+export function triggerConfetti() {
+  const count = 35;
+  const colors = ['#E8613A', '#3ecf8e', '#4da6ff', '#f59e0b', '#c084fc'];
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-particle';
+    p.style.cssText = `
+      position: fixed;
+      z-index: 99999;
+      width: ${Math.floor(Math.random() * 8 + 6)}px;
+      height: ${Math.floor(Math.random() * 8 + 6)}px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      top: ${Math.floor(Math.random() * 30 + 35)}%;
+      left: ${Math.floor(Math.random() * 80 + 10)}%;
+      border-radius: ${Math.random() > 0.5 ? '50%' : '3px'};
+      pointer-events: none;
+      animation: confettiFall ${Math.random() * 1.2 + 0.8}s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    `;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 2000);
+  }
+}
+window.triggerConfetti = triggerConfetti;
+
+

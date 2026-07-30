@@ -1089,6 +1089,8 @@ function openStudentDetail(stuId){
     insightClass = 'warning';
   }
 
+  const streak = calculateStudentStreak(s.id);
+
   const el=document.getElementById('view-student-detail');
   el.innerHTML=`
     <button class="back-link" onclick="switchTab('students')">← Öğrencilerim</button>
@@ -1103,6 +1105,10 @@ function openStudentDetail(stuId){
             <span class="stu-status-badge" style="background:${statusBadge.bg};color:${statusBadge.color};border:1px solid ${statusBadge.border}">
               ${statusBadge.label}
             </span>
+            <div class="streak-badge" title="Üst üste aktif çalışma günü">
+              <span class="streak-flame">⚡</span>
+              <span class="streak-text">${streak > 0 ? streak + ' Gün Seri' : '⚡ Disiplin Başlat'}</span>
+            </div>
           </div>
           <div class="stu-hero-target">
             <span>🎯 <b>Hedef:</b> ${esc(s.target||'Hedef belirtilmemiş')}</span>
@@ -1189,6 +1195,14 @@ function openStudentDetail(stuId){
         <div class="stu-kpi-content">
           <div class="stu-kpi-value" style="color:#c084fc">${Math.round(wMin/60)} <span style="font-size:11px;font-weight:600">Saat</span></div>
           <div class="stu-kpi-label">Çalışma Süresi</div>
+        </div>
+      </div>
+
+      <div class="stu-kpi-card compact" style="background:linear-gradient(135deg, rgba(245,158,11,.08), var(--surface));border-color:rgba(245,158,11,.25)">
+        <div class="stu-kpi-icon-wrap" style="background:rgba(245,158,11,.15);color:#f59e0b">⚡</div>
+        <div class="stu-kpi-content">
+          <div class="stu-kpi-value" style="color:#f59e0b">${streak} <span style="font-size:11px;font-weight:600">Gün</span></div>
+          <div class="stu-kpi-label">Disiplin Serisi</div>
         </div>
       </div>
     </div>
