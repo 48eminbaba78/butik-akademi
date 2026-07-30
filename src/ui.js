@@ -1120,98 +1120,115 @@ function openStudentDetail(stuId){
         </div>
       </div>
 
-      <div class="stu-hero-actions">
+      <div class="stu-hero-actions" style="position:relative;">
         <button class="btn btn-accent stu-action-btn-primary" onclick="switchTab('messages');setTimeout(()=>selectThread('${s.id}'),100)">
           💬 Mesaj Gönder
         </button>
         <button class="btn stu-action-btn" onclick="openStudentModal('${s.id}')">
           ✏️ Düzenle
         </button>
-        <button class="btn stu-action-btn" onclick="openPastReports('${s.id}')">
-          🗂️ Geçmiş Raporlar
-        </button>
+
+        <!-- DAHA FAZLA DROPDOWN MENU -->
+        <div class="stu-dropdown-wrap" style="position:relative; display:inline-block;">
+          <button class="btn stu-action-btn" onclick="toggleStuMoreMenu(event)">
+            ⚙️ Daha Fazla ▾
+          </button>
+          <div id="stuMoreMenu" class="stu-more-menu" style="display:none; position:absolute; right:0; top:calc(100% + 6px); background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.35); z-index:100; min-width:180px; padding:6px 0; backdrop-filter:blur(10px);">
+            <button class="stu-dropdown-item" onclick="openSpeedModal('${s.id}');closeStuMoreMenu()">
+              ⚡ Hız
+            </button>
+            <button class="stu-dropdown-item" onclick="openKonuHaritasi('${s.id}');closeStuMoreMenu()">
+              🗺️ Konu Haritası
+            </button>
+            <button class="stu-dropdown-item" onclick="openStudentKaynaklar('${s.id}');closeStuMoreMenu()">
+              📖 Kaynaklar
+            </button>
+            <button class="stu-dropdown-item" onclick="openStudentNotes('${s.id}');closeStuMoreMenu()">
+              📝 Notlar
+            </button>
+            <button class="stu-dropdown-item" onclick="openReportModal('${s.id}');closeStuMoreMenu()">
+              📄 Rapor
+            </button>
+            <div style="height:1px; background:var(--border); margin:4px 0;"></div>
+            <button class="stu-dropdown-item" onclick="openPastReports('${s.id}');closeStuMoreMenu()">
+              🗂️ Geçmiş Raporlar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 2. 2x2 KPI İSTATİSTİK KARTLARI -->
-    <div class="stu-kpi-grid">
-      <div class="stu-kpi-card">
-        <div class="stu-kpi-header">
-          <div class="stu-kpi-icon-wrap" style="background:rgba(232,97,58,.12);color:var(--accent)">📋</div>
-          <span class="stu-kpi-badge">Görev</span>
+    <!-- 2. KÜÇÜLTÜLMÜŞ KOMPAKT KPI İSTATİSTİK KARTLARI -->
+    <div class="stu-kpi-grid compact">
+      <div class="stu-kpi-card compact">
+        <div class="stu-kpi-icon-wrap" style="background:rgba(232,97,58,.12);color:var(--accent)">📋</div>
+        <div class="stu-kpi-content">
+          <div class="stu-kpi-value" style="color:var(--accent)">${wTotal}</div>
+          <div class="stu-kpi-label">Bu Hafta Görev</div>
         </div>
-        <div class="stu-kpi-value" style="color:var(--accent)">${wTotal}</div>
-        <div class="stu-kpi-label">Bu Hafta</div>
       </div>
 
-      <div class="stu-kpi-card">
-        <div class="stu-kpi-header">
-          <div class="stu-kpi-icon-wrap" style="background:rgba(62,207,142,.12);color:var(--green)">✅</div>
-          <span class="stu-kpi-badge" style="background:rgba(62,207,142,.15);color:var(--green)">Biten</span>
+      <div class="stu-kpi-card compact">
+        <div class="stu-kpi-icon-wrap" style="background:rgba(62,207,142,.12);color:var(--green)">✅</div>
+        <div class="stu-kpi-content">
+          <div class="stu-kpi-value" style="color:var(--green)">${wDone}</div>
+          <div class="stu-kpi-label">Tamamlanan</div>
         </div>
-        <div class="stu-kpi-value" style="color:var(--green)">${wDone}</div>
-        <div class="stu-kpi-label">Tamamlanan</div>
       </div>
 
-      <div class="stu-kpi-card">
-        <div class="stu-kpi-header">
-          <div class="stu-kpi-icon-wrap" style="background:rgba(77,166,255,.12);color:var(--blue)">🎯</div>
-          <span class="stu-kpi-badge" style="background:rgba(77,166,255,.15);color:var(--blue)">Skor</span>
+      <div class="stu-kpi-card compact">
+        <div class="stu-kpi-icon-wrap" style="background:rgba(77,166,255,.12);color:var(--blue)">🎯</div>
+        <div class="stu-kpi-content">
+          <div class="stu-kpi-value" style="color:${pctColor}">%${wPct}</div>
+          <div class="stu-kpi-label">Başarı Oranı</div>
         </div>
-        <div class="stu-kpi-value" style="color:${pctColor}">%${wPct}</div>
-        <div class="stu-kpi-label">Başarı Oranı</div>
       </div>
 
-      <div class="stu-kpi-card">
-        <div class="stu-kpi-header">
-          <div class="stu-kpi-icon-wrap" style="background:rgba(192,132,252,.12);color:#c084fc">⏱️</div>
-          <span class="stu-kpi-badge" style="background:rgba(192,132,252,.15);color:#c084fc">Süre</span>
+      <div class="stu-kpi-card compact">
+        <div class="stu-kpi-icon-wrap" style="background:rgba(192,132,252,.12);color:#c084fc">⏱️</div>
+        <div class="stu-kpi-content">
+          <div class="stu-kpi-value" style="color:#c084fc">${Math.round(wMin/60)} <span style="font-size:11px;font-weight:600">Saat</span></div>
+          <div class="stu-kpi-label">Çalışma Süresi</div>
         </div>
-        <div class="stu-kpi-value" style="color:#c084fc">${Math.round(wMin/60)} Saat</div>
-        <div class="stu-kpi-label">Çalışma Süresi</div>
       </div>
     </div>
 
-    <!-- 3. KOÇ İÇGÖRÜSÜ KARTI -->
-    <div class="stu-insight-card ${insightClass}">
-      <div class="stu-insight-header">
-        <div class="stu-insight-title">
-          <span class="stu-insight-flash">⚡</span> Koç Analizi
-        </div>
-        <span class="stu-status-badge" style="background:${statusBadge.bg};color:${statusBadge.color};border:1px solid ${statusBadge.border}">
+    <!-- 3. ŞIK YENİ KOÇ ANALİZİ BAR -->
+    <div class="stu-insight-bar ${insightClass}">
+      <div class="stu-insight-left">
+        <span class="stu-insight-flash">⚡</span>
+        <span class="stu-insight-bar-title">Koç Analizi:</span>
+        <span class="stu-insight-bar-text">${insightText}</span>
+        <span class="stu-status-badge" style="background:${statusBadge.bg};color:${statusBadge.color};border:1px solid ${statusBadge.border};margin-left:4px;">
           ${statusBadge.label}
         </span>
       </div>
-      <p class="stu-insight-text">${insightText}</p>
-      <div class="stu-insight-footer">
-        <button class="btn btn-ghost btn-sm" onclick="openStudentAppointments('${s.id}')" style="gap:6px;background:var(--surface2)">
-          📅 Görüşme Planla
-        </button>
-      </div>
+      <button class="btn btn-accent btn-sm stu-insight-cta" onclick="openStudentAppointments('${s.id}')">
+        📅 Görüşme Planla
+      </button>
     </div>
 
-    <!-- 4. MODERN SEKMELİ YAPI -->
+    <!-- 4. MODERN SEKMELİ YAPI (ANA SEKMELER) -->
     <div class="stu-segmented-tabs-wrap">
       <div class="stu-segmented-tabs">
         <button class="stu-seg-btn active" id="stutab_program" onclick="openStudentProgram('${s.id}');setStuActiveSeg(this)">📋 Program</button>
         <button class="stu-seg-btn" id="stutab_exams" onclick="openStudentExams('${s.id}');setStuActiveSeg(this)">📊 Denemeler</button>
         <button class="stu-seg-btn" id="stutab_appts" onclick="openStudentAppointments('${s.id}');setStuActiveSeg(this)">📅 Randevular</button>
-        <button class="stu-seg-btn" id="stutab_notes" onclick="openStudentNotes('${s.id}');setStuActiveSeg(this)">📝 Notlar</button>
-        <button class="stu-seg-btn" id="stutab_kaynak" onclick="openStudentKaynaklar('${s.id}');setStuActiveSeg(this)">📖 Kaynaklar</button>
-        <button class="stu-seg-btn" id="stutab_konu" onclick="openKonuHaritasi('${s.id}');setStuActiveSeg(this)">🗺️ Konu Haritası</button>
-        <button class="stu-seg-btn" id="stutab_hiz" onclick="openSpeedModal('${s.id}');setStuActiveSeg(this)">⚡ Hız</button>
-        <button class="stu-seg-btn" id="stutab_rapor" onclick="openReportModal('${s.id}');setStuActiveSeg(this)">📄 Rapor</button>
       </div>
     </div>
 
-    <!-- ÖĞRENCİYE NOT -->
-    <div class="card" style="margin-bottom:16px;padding:18px 24px;border-radius:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:13px;font-weight:700;color:var(--text)">💌 Öğrenciye Notun</div>
+    <!-- 5. ÖĞRENCİYE NOT (KOMPAKT) -->
+    <div class="card" style="margin-bottom:14px;padding:12px 16px;border-radius:12px;background:var(--surface)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">
+          <span>💌</span> <span>Öğrenciye Notun</span>
+        </div>
         <span style="font-size:10px;color:var(--text-dim)">Yolculuğum sayfasında görünür</span>
       </div>
-      <textarea id="coachNoteInput" placeholder="Öğrenciye kişisel bir söz, motivasyon notu ya da hatırlatma yaz..." style="width:100%;min-height:70px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--text);outline:none;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea>
-      <button class="btn btn-accent btn-sm" style="margin-top:8px" onclick="saveCoachNoteForStudent('${s.id}')">Kaydet</button>
+      <div style="display:flex;gap:10px;align-items:center">
+        <textarea id="coachNoteInput" placeholder="Öğrenciye kişisel bir söz, motivasyon notu ya da hatırlatma yaz..." style="flex:1;min-height:42px;height:42px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none;resize:none;font-family:inherit;box-sizing:border-box"></textarea>
+        <button class="btn btn-accent btn-sm" style="height:42px;padding:0 16px;font-weight:700;border-radius:8px;flex-shrink:0" onclick="saveCoachNoteForStudent('${s.id}')">Kaydet</button>
+      </div>
     </div>
 
     <!-- AI COPILOT SECTION -->
@@ -1268,6 +1285,19 @@ function setStuActiveSeg(btn) {
   if (btn) btn.classList.add('active');
 }
 window.setStuActiveSeg = setStuActiveSeg;
+
+function toggleStuMoreMenu(e) {
+  if (e) e.stopPropagation();
+  const m = document.getElementById('stuMoreMenu');
+  if (m) m.style.display = m.style.display === 'block' ? 'none' : 'block';
+}
+function closeStuMoreMenu() {
+  const m = document.getElementById('stuMoreMenu');
+  if (m) m.style.display = 'none';
+}
+window.toggleStuMoreMenu = toggleStuMoreMenu;
+window.closeStuMoreMenu = closeStuMoreMenu;
+document.addEventListener('click', closeStuMoreMenu);
 
 // Not: bu, öğrencinin Yolculuğum sayfasında göreceği kişisel mesaj — koçun
 // kendi özel not defteri olan openStudentNotes/saveCoachNote(idx) ile karışmasın diye
