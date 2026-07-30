@@ -3061,7 +3061,6 @@ function updateTestSummary(){
   const checked=[...document.querySelectorAll('#tmTestList input[type=checkbox]:checked')];
   const summaryEl=document.getElementById('tmTestSummary');
   const summaryText=document.getElementById('tmTestSummaryText');
-  const suggestEl=document.getElementById('tmSuggestedDuration');
   const speedRow=document.getElementById('tmSpeedRow');
   const isPlaylist=_selectedBook.resource_type==='playlist';
 
@@ -3099,10 +3098,8 @@ function updateTestSummary(){
     if(speedRow) speedRow.style.display='none';
   }
 
-  suggestEl.style.display=suggestedMin>0?'':'none';
   _suggestedDuration=suggestedMin;
   _suggestedSoruCount=totalSoru;
-  suggestEl.setAttribute('data-dur',suggestedMin);
   summaryEl.style.display='';
   
   if(suggestedMin>0) document.getElementById('tmDuration').value=suggestedMin;
