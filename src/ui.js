@@ -10765,7 +10765,8 @@ function updateProfilePreview() {
 
   // Stat Rozetleri (Sadece doldurulduğunda gösterilir — Sahte rozet yok)
   const stats = [];
-  if (yksRank) stats.push({ ico: '🏆', t: `YKS: ${yksRank}`, hl: true });
+  const cleanRank = (yksRank || '').replace(/^(YKS\s*(Derecesi)?:?\s*)+/gi, '');
+  if (yksRank) stats.push({ ico: '🏆', t: `YKS Derecesi: ${cleanRank}`, hl: true });
   if (profession) stats.push({ ico: '💼', t: profession, hl: true });
   if (university) stats.push({ ico: '🎓', t: university.slice(0, 24) });
   if (pricing_text) stats.push({ ico: '🏷️', t: pricing_text });
@@ -10833,7 +10834,7 @@ function updateProfilePreview() {
         </div>
       </div>`,
 
-    stats: () => statsHtml ? `<div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; padding-bottom:2px;">${statsHtml}</div>` : '',
+    stats: () => statsHtml ? `<div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; padding-bottom:6px; -webkit-overflow-scrolling:touch; touch-action:pan-x; scrollbar-width:thin; scrollbar-color:rgba(240,98,54,0.4) transparent; cursor:grab; user-select:none;" onwheel="if(event.deltaY){this.scrollLeft += event.deltaY; event.preventDefault();}" onmousedown="this._isDown=true; this._startX=event.pageX-this.offsetLeft; this._scrollLeft=this.scrollLeft; this.style.cursor='grabbing';" onmouseleave="this._isDown=false; this.style.cursor='grab';" onmouseup="this._isDown=false; this.style.cursor='grab';" onmousemove="if(this._isDown){event.preventDefault(); const x=event.pageX-this.offsetLeft; const walk=(x-this._startX)*1.5; this.scrollLeft=this._scrollLeft-walk;}">${statsHtml}</div>` : '',
 
     value_props: () => `
       <div style="background:#121215; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; margin-bottom:10px;">
