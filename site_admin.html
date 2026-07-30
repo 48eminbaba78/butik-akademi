@@ -542,16 +542,6 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
           <button class="btn btn-acc btn-sm" style="margin-top:6px" onclick="savePaymentSettings()" id="psSaveBtn">Ayarları Kaydet</button>
         </div>
 
-        <!-- DESTEK AYARLARI (kurucu WhatsApp numarası — AI destek sohbetindeki "WhatsApp'tan Kurucuya Ulaş" devri için) -->
-        <div class="card" style="margin-bottom:16px;border-color:rgba(37,211,102,.25)">
-          <div style="font-size:13px;font-weight:700;margin-bottom:12px">💬 Destek Ayarları</div>
-          <div style="font-size:11.5px;color:var(--dim);margin-bottom:12px">Öğrenci/koç/veli panelindeki AI destek sohbetinde "WhatsApp'tan Kurucuya Ulaş" butonu bu numarayı kullanır. Boş bırakılırsa buton devre dışı kalır.</div>
-          <div class="field-row">
-            <div class="field"><label>Kurucu WhatsApp Numarası</label><input id="ssFounderWhatsapp" class="inp" placeholder="90XXXXXXXXXX (başında + veya 0 olmadan)" style="width:100%"></div>
-          </div>
-          <button class="btn btn-acc btn-sm" style="margin-top:6px" onclick="saveSupportSettings()" id="ssSaveBtn">Ayarları Kaydet</button>
-        </div>
-
         <div class="stats-grid">
           <div class="stat"><div class="stat-val" id="payMonthTotal">₺0</div><div class="stat-lbl">Bu Ay Tahsilat</div><div class="stat-delta" id="payMonthCount">0 ödeme</div></div>
           <div class="stat"><div class="stat-val" style="color:var(--acc3)" id="payAllTotal">₺0</div><div class="stat-lbl">Toplam Tahsilat</div><div class="stat-delta" id="payAllCount" style="color:var(--dim)">0 kayıt</div></div>
@@ -4886,7 +4876,6 @@ let _payments = null; // null: yüklenmedi, false: tablo yok, []: yüklendi
 let _payCoaches = [];
 let _payFilter = 'all'; // 'all' | 'pending'
 let _paymentSettings = null;
-let _supportSettings = null;
 
 async function loadPayments(){
   const {data,error} = await db.from('payments').select('*').order('created_at',{ascending:false});
@@ -4954,35 +4943,6 @@ async function savePaymentSettings(){
   }
 }
 
-async function loadSupportSettings(){
-  const {data} = await db.from('platform_settings').select('value').eq('key','support_settings').maybeSingle();
-  _supportSettings = data?.value || {founder_whatsapp:''};
-  return _supportSettings;
-}
-
-function fillSupportSettingsForm(){
-  if(!_supportSettings) return;
-  document.getElementById('ssFounderWhatsapp').value = _supportSettings.founder_whatsapp || '';
-}
-
-async function saveSupportSettings(){
-  const btn = document.getElementById('ssSaveBtn');
-  const value = {
-    founder_whatsapp: document.getElementById('ssFounderWhatsapp').value.trim().replace(/\D/g,'')
-  };
-  btn.disabled = true; btn.textContent = 'Kaydediliyor...';
-  try{
-    const {error} = await db.from('platform_settings').upsert({key:'support_settings', value}, {onConflict:'key'});
-    if(error) throw error;
-    _supportSettings = value;
-    showToast('Destek ayarları kaydedildi ✓');
-  }catch(e){
-    showToast('Kaydedilemedi: '+e.message,false);
-  }finally{
-    btn.disabled = false; btn.textContent = 'Ayarları Kaydet';
-  }
-}
-
 function setPayFilter(kind, el){
   _payFilter = kind;
   document.getElementById('payTabAll').classList.toggle('btn-acc', kind==='all');
@@ -4994,9 +4954,8 @@ function setPayFilter(kind, el){
 
 async function initPaymentsView(){
   document.getElementById('paymentsTable').innerHTML='<tr><td colspan="7" class="loading">Yükleniyor...</td></tr>';
-  await Promise.all([loadPayments(), loadPayCoaches(), loadPaymentSettings(), loadSupportSettings()]);
+  await Promise.all([loadPayments(), loadPayCoaches(), loadPaymentSettings()]);
   fillPaymentSettingsForm();
-  fillSupportSettingsForm();
   renderPayments();
 }
 

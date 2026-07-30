@@ -8176,13 +8176,6 @@ async function openSupportChat() {
           <span></span><span></span><span></span>
         </div>
 
-        <!-- WhatsApp devir -->
-        <div id="supportWhatsappBar" style="display:none;padding:8px 16px;border-top:1px solid var(--border);background:var(--surface2)">
-          <button type="button" onclick="handoffToWhatsApp()" style="width:100%;background:#25D36622;border:1px solid #25D36655;color:#1fae57;font-size:12px;font-weight:700;padding:8px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-            📱 WhatsApp'tan Kurucuya Ulaş
-          </button>
-        </div>
-
         <!-- Footer input bar -->
         <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;background:var(--surface2)">
           <textarea id="supportInput" placeholder="Mesajınızı yazın..." rows="1" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;font-family:inherit;color:var(--text);resize:none;max-height:80px;outline:none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendSupportMessage()}"></textarea>
@@ -8256,13 +8249,11 @@ async function refreshSupportMessages() {
       parsedMessages.push({ sender: 'emin', text: activeTicket.reply, time: activeTicket.updated_at });
     }
 
-    _setSupportWhatsappBarVisible(false);
     renderSupportMessagesList(parsedMessages);
   } else {
     if (_chatState === 'welcome') {
       const statusLabelEl = document.getElementById('supportStatusLabel');
       if (statusLabelEl) statusLabelEl.textContent = '● Çevrimiçi Asistan';
-      _setSupportWhatsappBarVisible(false);
 
       msgsContainer.innerHTML = `
         <div style="text-align:center;padding:40px 20px">
@@ -8284,15 +8275,9 @@ async function refreshSupportMessages() {
     } else if (_chatState === 'ai') {
       const statusLabelEl = document.getElementById('supportStatusLabel');
       if (statusLabelEl) statusLabelEl.textContent = '● Yapay Zeka';
-      _setSupportWhatsappBarVisible(true);
       renderSupportMessagesList(_supportMessagesList);
     }
   }
-}
-
-function _setSupportWhatsappBarVisible(show) {
-  const bar = document.getElementById('supportWhatsappBar');
-  if (bar) bar.style.display = show ? 'block' : 'none';
 }
 
 function renderSupportMessagesList(list) {
@@ -8333,13 +8318,11 @@ function startAISupportChat() {
     text: 'Merhaba! Ben Rostrum Akademi Yapay Zeka Asistanıyım. 🤖 Size nasıl yardımcı olabilirim?',
     time: new Date().toISOString()
   }];
-  _setSupportWhatsappBarVisible(true);
   renderSupportMessagesList(_supportMessagesList);
 }
 
 function startEminSupportChat() {
   _chatState = 'emin_start';
-  _setSupportWhatsappBarVisible(false);
   const msgsContainer = document.getElementById('supportMessages');
   if (msgsContainer) {
     msgsContainer.innerHTML = `
@@ -8481,46 +8464,6 @@ async function sendSupportMessage() {
       return;
     }
     await refreshSupportMessages();
-  }
-}
-
-// AI destek sohbetinden WhatsApp'a hızlı devir — mevcut ticket akışının (async,
-// admin panelden yanıtlanan) yanında, anlık/doğrudan bir devir seçeneği.
-async function handoffToWhatsApp() {
-  try {
-    const { data: row } = await db.from('platform_settings').select('value').eq('key', 'support_settings').maybeSingle();
-    const number = (row?.value?.founder_whatsapp || '').replace(/\D/g, '');
-    if (!number) { showToast('Kurucu WhatsApp numarası henüz ayarlanmamış.'); return; }
-
-    const name = session.dbUser?.full_name || 'Kullanıcı';
-    const roleLabel = session.role === 'coach' ? 'Koç' : session.role === 'developer' ? 'Koç' : session.role === 'parent' ? 'Veli' : 'Öğrenci';
-
-    let refCode = '';
-    if (session.role === 'coach' || session.role === 'developer') {
-      try { const { data: rc } = await db.rpc('ensure_payment_ref_code'); refCode = rc || ''; } catch (e) {}
-    }
-
-    const summary = (_supportMessagesList || [])
-      .slice(-4)
-      .map(m => `${m.sender === 'user' ? name : 'AI'}: ${m.text}`)
-      .join(' | ')
-      .slice(0, 300) || 'destek talebi';
-
-    const text = `Merhaba, ben ${roleLabel} ${name}${refCode ? ` (${refCode})` : ''}. ${summary} konusunda destek rica ediyorum.`;
-    window.open(`https://wa.me/${number}?text=${encodeURIComponent(text)}`, '_blank');
-
-    // Kurucunun site_admin'de de görebilmesi için mevcut ticket deseniyle bir kayıt bırak
-    try {
-      await db.from('tickets').insert({
-        user_id: session.dbUser?.id,
-        subject: 'WhatsApp Devri',
-        body: JSON.stringify([{ sender: 'user', text: `[WhatsApp'a yönlendirildi] ${summary}`, time: new Date().toISOString(), name }]),
-        category: 'whatsapp',
-        status: 'open'
-      });
-    } catch (e) {}
-  } catch (e) {
-    showToast('WhatsApp devri başarısız: ' + e.message);
   }
 }
 
@@ -16613,7 +16556,6 @@ window.startAISupportChat = startAISupportChat;
 window.startEminSupportChat = startEminSupportChat;
 window.submitEminInitialMessage = submitEminInitialMessage;
 window.sendSupportMessage = sendSupportMessage;
-window.handoffToWhatsApp = handoffToWhatsApp;
 window.openSupportChatDirect = openSupportChat;
 window.checkCoachSubscription = checkCoachSubscription;
 window.showTrialExpiredScreen = showTrialExpiredScreen;
