@@ -31,6 +31,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
       .then(reg => {
         console.log('Service Worker başarıyla kaydedildi ✓', reg.scope);
+        reg.update().catch(() => {});
       })
       .catch(err => {
         console.warn('Service Worker kaydı başarısız oldu:', err);

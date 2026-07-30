@@ -3,7 +3,7 @@
 // Push bildirimleri + Offline cache desteği
 // ═══════════════════════════════════════════════
 
-const CACHE_NAME = 'rostrum-v11';
+const CACHE_NAME = 'rostrum-v12';
 const OFFLINE_URL = '/app.html';
 
 // Uygulama kabuğu — bu dosyalar her zaman cache'lenir

@@ -15098,17 +15098,18 @@ async function renderCoachResources() {
   const el = document.getElementById('view-coach-resources');
   if(!el) return;
 
+  const isDev = session.role === 'developer' || session.dbUser?.role === 'developer' || session.dbUser?.email === 'ceylanemin1928@gmail.com';
+
   if(!_crAllRes.length) {
     el.innerHTML = `<div style="max-width:720px;margin:0 auto;padding:40px;text-align:center;color:var(--text-dim);font-size:13px">Kaynaklar yükleniyor…</div>`;
-    const isDev = session.role === 'developer' || session.dbUser?.role === 'developer' || session.dbUser?.email === 'ceylanemin1928@gmail.com';
-    let query = db.from('resources').select('*');
-    if (!isDev) {
-      query = query.or(`coach_id.eq.${session.coachId},coach_id.is.null`);
-    }
-    const { data: resources, error } = await query.order('resource_type,exam_type,subject,name');
-    if(error) console.error(error);
-    _crAllRes = resources || [];
   }
+  let query = db.from('resources').select('*');
+  if (!isDev) {
+    query = query.or(`coach_id.eq.${session.coachId},coach_id.is.null`);
+  }
+  const { data: resources, error } = await query.order('resource_type,exam_type,subject,name');
+  if(error) console.error(error);
+  _crAllRes = resources || [];
   _crFilter = { search: '', exam: '', subject: '' };
 
   let activeTab = 'books';
