@@ -14177,6 +14177,621 @@ function confirmAssignResource(){
   showToast('Kaynak hazır — test/video seçip ekleyin');
 }
 
+// ── FERNUS INTEGRATION GLOBALS ────────────────────
+const FERNUS_WORKER = 'https://claude-proxy.ceylanemin1928.workers.dev';
+const FERNUS_PUBLISHERS = [
+  { name: "345 (ÜçDörtBeş)", base: "https://ucdortbes.frns.in" },
+  { name: "Bilgi Sarmal", base: "https://bilgisarmal.frns.in" },
+  { name: "Çap Yayınları", base: "https://capyayinlari.frns.in" },
+  { name: "Apotemi", base: "https://apotemi.frns.in" },
+  { name: "Benim Hocam", base: "https://benimhocam.frns.in" },
+  { name: "Palme Yayıncılık", base: "https://palme.frns.in" },
+  { name: "Okyanus Yayınları", base: "https://okyanus.frns.in" },
+  { name: "Paraf Yayınları", base: "https://paraf.frns.in" },
+  { name: "Aydın Yayınları", base: "https://aydin.frns.in" },
+  { name: "Karekök Yayınları", base: "https://karekok.frns.in" },
+  { name: "Hız ve Renk", base: "https://hizrenk.frns.in" },
+  { name: "Hız Yayınları", base: "https://hizyayinlari.frns.in" },
+  { name: "Nitelik Yayınları", base: "https://nitelik.frns.in" },
+  { name: "Limit Yayınları", base: "https://limit.frns.in" },
+  { name: "Eis Yayınları", base: "https://eisyayinlari.frns.in" },
+  { name: "Sınav Yayınları", base: "https://sinavyayinlari.frns.in" },
+  { name: "Orijinal Yayınları", base: "https://orjinal.frns.in" },
+  { name: "Miray Yayınları", base: "https://miray.frns.in" },
+  { name: "Sadık Uygun", base: "https://sadikuygun.frns.in" },
+  { name: "Kafa Dengi", base: "https://kafadengi.frns.in" },
+  { name: "Puan Yayınları", base: "https://puan.frns.in" },
+  { name: "Mozaik Yayınları", base: "https://mozaik.frns.in" },
+  { name: "Yanıt Yayınları", base: "https://yanit.frns.in" },
+  { name: "Kurmay / Fenomen", base: "https://kurmay.frns.in" },
+  { name: "ENS / Edes", base: "https://edes.frns.in" },
+  { name: "Berkay Yayınları", base: "https://berkay.frns.in" },
+  { name: "5 Yıldız Yayınları", base: "https://besyildiz.frns.in" },
+  { name: "Günay Yayınları", base: "https://gunay.frns.in" },
+  { name: "Kırmızı Beyaz", base: "https://kirmizibeyaz.frns.in" },
+  { name: "Model Yayınları", base: "https://model.frns.in" },
+  { name: "Akademik Başarı", base: "https://akademikbasari.frns.in" },
+  { name: "Gizli Yayınlar", base: "https://gizli.frns.in" }
+];
+
+let fernusNavHistory = [];
+let fernusCountingActive = false;
+let fernusCurrentResult = null;
+let fernusCurrentSelectItems = [];
+let fernusBulkActive = false;
+
+function initFernusUI() {
+  const sel = document.getElementById('fernusPubSelect');
+  if (sel && sel.options.length <= 1) {
+    FERNUS_PUBLISHERS.forEach(pub => {
+      const opt = document.createElement('option');
+      opt.value = pub.base;
+      opt.textContent = pub.name;
+      sel.appendChild(opt);
+    });
+  }
+}
+window.initFernusUI = initFernusUI;
+
+async function callFernusWorker(path, body) {
+  const res = await fetch(FERNUS_WORKER + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+async function fetchFernusSourceList(base, id = '1') {
+  try {
+    const url = `${base}/mobile_solved/mobile_watch.php?action=source_list&id=${id}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.status || !data.sources) return [];
+    return data.sources.map(s => ({
+      id: s.id, nm: s.nm, base, parent: s.parent === 'true' || s.parent === true, pid: s.pid
+    }));
+  } catch (e) {
+    try {
+      const res = await callFernusWorker('/fernus-continue', { base, id, words: [] });
+      const items = res.categories || res.multiple || [];
+      return items.map(it => ({ id: it.id, nm: it.nm, base: it.base || base, parent: true }));
+    } catch (_) { return []; }
+  }
+}
+
+async function selectFernusPublisher() {
+  const base = document.getElementById('fernusPubSelect')?.value;
+  if (!base) return;
+  if (document.getElementById('fernusQuery')) document.getElementById('fernusQuery').value = '';
+  fernusNavHistory = [];
+  setFernusLoading(true, 'Yayınevi kategorileri çekiliyor...');
+  showFernusError(null);
+  if (document.getElementById('fernusResultPanel')) document.getElementById('fernusResultPanel').style.display = 'none';
+  if (document.getElementById('fernusSelectPanel')) document.getElementById('fernusSelectPanel').style.display = 'none';
+
+  try {
+    let items = await fetchFernusSourceList(base, '1');
+    if (!items.length) items = await fetchFernusSourceList(base, '5');
+    if (!items.length) items = await fetchFernusSourceList(base, '2');
+
+    if (items.length === 1 && items[0].parent) {
+      const subItems = await fetchFernusSourceList(base, items[0].id);
+      if (subItems.length > 0) items = subItems;
+    }
+
+    setFernusLoading(false);
+    if (!items.length) return showFernusError('Kategori bulunamadı');
+    showFernusSelect(items, true);
+  } catch(e) {
+    setFernusLoading(false);
+    showFernusError(e.message);
+  }
+}
+window.selectFernusPublisher = selectFernusPublisher;
+
+async function loadCustomFernusDomain() {
+  let base = (document.getElementById('fernusCustomBase')?.value || '').trim();
+  if (!base) return showToast('Lütfen Fernus adresi girin');
+  if (!base.startsWith('http')) base = 'https://' + base;
+  base = base.replace(/\/$/, '');
+
+  setFernusLoading(true, 'Özel yayınevi taranıyor...');
+  try {
+    let items = await fetchFernusSourceList(base, '1');
+    if (!items.length) items = await fetchFernusSourceList(base, '5');
+    setFernusLoading(false);
+    if (!items.length) return showFernusError('Kategori bulunamadı');
+    showFernusSelect(items, true);
+  } catch(e) {
+    setFernusLoading(false);
+    showFernusError(e.message);
+  }
+}
+window.loadCustomFernusDomain = loadCustomFernusDomain;
+
+async function startFernusSearch() {
+  const bookName = (document.getElementById('fernusQuery')?.value || '').trim();
+  if (!bookName) return;
+  if (document.getElementById('fernusPubSelect')) document.getElementById('fernusPubSelect').value = '';
+  fernusNavHistory = [];
+  setFernusLoading(true, "Fernus sisteminde aranıyor...");
+  showFernusError(null);
+
+  try {
+    const res = await callFernusWorker('/fernus-search', { bookName });
+    setFernusLoading(false);
+    if (res.single) loadFernusBook(res.single.base, res.single.id, res.single.nm);
+    else if (res.multiple) showFernusSelect(res.multiple);
+    else if (res.browse && res.categories) showFernusSelect(res.categories, true);
+    else showFernusError(res.reason || 'Sonuç bulunamadı');
+  } catch(e) {
+    setFernusLoading(false);
+    showFernusError(e.message);
+  }
+}
+window.startFernusSearch = startFernusSearch;
+
+async function resolveFernusNode(base, itemId, itemName) {
+  const subItems = await fetchFernusSourceList(base, itemId);
+  if (!subItems || subItems.length === 0) return { isBook: false, categories: [] };
+  const hasDirectTests = subItems.some(s => s.parent === false);
+  if (hasDirectTests) {
+    const testler = subItems.filter(t => t.parent === false).map(t => ({
+      testId: t.id, test: formatTestLabel(t.nm, itemName), bolum: itemName, soru: 0
+    }));
+    return { isBook: true, bookName: itemName, testler };
+  }
+
+  try {
+    const firstSub = subItems[0];
+    if (firstSub && firstSub.id) {
+      const grandSubs = await fetchFernusSourceList(base, firstSub.id);
+      if (grandSubs && grandSubs.some(g => g.parent === false)) {
+        let allTests = [];
+        for (let sec of subItems) {
+          const secTests = await fetchFernusSourceList(base, sec.id);
+          secTests.forEach(t => {
+            if (t.parent === false) {
+              allTests.push({ testId: t.id, test: formatTestLabel(t.nm, sec.nm), bolum: sec.nm, soru: 0 });
+            }
+          });
+        }
+        return { isBook: true, bookName: itemName, testler: allTests };
+      }
+    }
+  } catch (e) {}
+  return { isBook: false, categories: subItems };
+}
+
+async function loadFernusBook(base, bookId, bookName, fromItems, fromIsBrowse) {
+  if (fromItems) fernusNavHistory.push({ items: fromItems, isBrowse: fromIsBrowse });
+  setFernusLoading(true, `"${bookName}" içeriği taranıyor...`);
+  if (document.getElementById('fernusSelectPanel')) document.getElementById('fernusSelectPanel').style.display = 'none';
+  if (document.getElementById('fernusResultPanel')) document.getElementById('fernusResultPanel').style.display = 'none';
+
+  try {
+    const res = await resolveFernusNode(base, bookId, bookName);
+    setFernusLoading(false);
+    if (res.isBook && res.testler?.length) {
+      fernusCurrentResult = { testler: res.testler, bookName: res.bookName, base };
+      showFernusResult(res.testler, res.bookName, base);
+      loadFernusQuestionCounts(res.testler, base);
+    } else if (res.categories?.length) {
+      showFernusSelect(res.categories, true);
+    } else {
+      showFernusError('Test veya kitap içeriği bulunamadı');
+    }
+  } catch(e) {
+    setFernusLoading(false);
+    showFernusError(e.message);
+  }
+}
+window.loadFernusBook = loadFernusBook;
+
+function showFernusSelect(items, isBrowse) {
+  fernusCurrentSelectItems = items || [];
+  const panel = document.getElementById('fernusSelectPanel');
+  const list = document.getElementById('fernusSelectList');
+  if (!panel || !list) return;
+  if (document.getElementById('fernusResultPanel')) document.getElementById('fernusResultPanel').style.display = 'none';
+
+  const isSectionList = items.some(it => isSectionName(it.nm));
+  if (document.getElementById('fernusSelectDesc')) {
+    document.getElementById('fernusSelectDesc').textContent = isSectionList
+      ? 'Kitabın ünite/bölümleri bulundu. İsterseniz hepsini tek kitap olarak birleştirin:'
+      : 'Lütfen incelemek istediğiniz kitabı veya kategoriyi seçin:';
+  }
+
+  const backWrap = document.getElementById('fernusBackWrap');
+  if (backWrap) {
+    if (fernusNavHistory.length > 0) {
+      backWrap.innerHTML = `<button class="btn btn-ghost btn-xs" onclick="goFernusBack()">← Geri</button>`;
+    } else { backWrap.innerHTML = ''; }
+  }
+
+  let bannerHtml = '';
+  if (isSectionList) {
+    bannerHtml = `
+      <div style="background:rgba(232,97,58,0.12); border:1px solid var(--accent); border-radius:12px; padding:14px 18px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <div style="font-weight:800; font-size:13.5px; color:var(--text);">📚 Tüm Bölümleri Tek Kitap Olarak Birleştir</div>
+          <div style="font-size:11.5px; color:var(--text-dim);">Her bir bölümdeki testler tek parçada toplanır.</div>
+        </div>
+        <button class="btn btn-accent btn-sm" onclick="loadAllSectionsAsSingleBook()" style="font-weight:700">⚡ Tek Kitap Olarak Yükle →</button>
+      </div>`;
+  }
+
+  list.innerHTML = bannerHtml + items.map((it, i) => `
+    <div style="display:flex; align-items:center; gap:12px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; transition:all 0.2s">
+      <input type="checkbox" class="fernus-chk" data-i="${i}" onchange="updateFernusSelectCount()" style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer">
+      <div style="flex:1; min-width:0; cursor:pointer" onclick="loadFernusBook('${esc(it.base)}', '${esc(it.id)}', '${esc(it.nm)}', fernusCurrentSelectItems, ${isBrowse})">
+        <div style="font-weight:700; color:var(--text); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(it.nm)}</div>
+        <div style="font-size:11px; color:var(--text-dim); margin-top:1px">${it.parent ? '📁 Klasör / Kategori' : '📘 Kitap'}</div>
+      </div>
+      <button class="btn btn-ghost btn-xs" onclick="loadFernusBook('${esc(it.base)}', '${esc(it.id)}', '${esc(it.nm)}', fernusCurrentSelectItems, ${isBrowse})">İncele →</button>
+    </div>
+  `).join('');
+
+  updateFernusSelectCount();
+  panel.style.display = 'block';
+}
+
+function toggleFernusSelectAll(on) {
+  document.querySelectorAll('.fernus-chk').forEach(c => c.checked = on);
+  updateFernusSelectCount();
+}
+window.toggleFernusSelectAll = toggleFernusSelectAll;
+
+function updateFernusSelectCount() {
+  const count = document.querySelectorAll('.fernus-chk:checked').length;
+  if (document.getElementById('fernusSelCount')) document.getElementById('fernusSelCount').textContent = count;
+  if (document.getElementById('fernusBulkImportBtn')) document.getElementById('fernusBulkImportBtn').style.display = count > 0 ? 'inline-flex' : 'none';
+}
+window.updateFernusSelectCount = updateFernusSelectCount;
+
+function goFernusBack() {
+  const prev = fernusNavHistory.pop();
+  if (!prev) {
+    if (document.getElementById('fernusSelectPanel')) document.getElementById('fernusSelectPanel').style.display = 'none';
+    return;
+  }
+  showFernusSelect(prev.items, prev.isBrowse);
+}
+window.goFernusBack = goFernusBack;
+
+async function loadAllSectionsAsSingleBook() {
+  if (!fernusCurrentSelectItems.length) return;
+  const base = fernusCurrentSelectItems[0].base;
+  setFernusLoading(true, 'Tüm bölümler birleştiriliyor...');
+
+  try {
+    let combinedTests = [];
+    for (let sec of fernusCurrentSelectItems) {
+      const subs = await fetchFernusSourceList(base, sec.id);
+      for (let sub of subs) {
+        if (sub.parent) {
+          const secTests = await fetchFernusSourceList(base, sub.id);
+          secTests.forEach(t => {
+            combinedTests.push({ testId: t.id, test: formatTestLabel(t.nm, sub.nm), bolum: `${sec.nm} > ${sub.nm}`, soru: 0 });
+          });
+        } else {
+          combinedTests.push({ testId: sub.id, test: formatTestLabel(sub.nm, sec.nm), bolum: sec.nm, soru: 0 });
+        }
+      }
+    }
+    setFernusLoading(false);
+    if (!combinedTests.length) return showFernusError('Testler toplanamadı');
+    fernusCurrentResult = { testler: combinedTests, bookName: 'Soru Bankası', base };
+    showFernusResult(combinedTests, 'Soru Bankası', base);
+    loadFernusQuestionCounts(combinedTests, base);
+  } catch(e) {
+    setFernusLoading(false);
+    showFernusError(e.message);
+  }
+}
+window.loadAllSectionsAsSingleBook = loadAllSectionsAsSingleBook;
+
+function showFernusResult(testler, bookName, base) {
+  if (document.getElementById('fernusBookName')) document.getElementById('fernusBookName').value = bookName;
+  const pub = FERNUS_PUBLISHERS.find(p => p.base === base);
+  if (document.getElementById('fernusPublisher')) document.getElementById('fernusPublisher').value = pub ? pub.name.replace(/ \(.+\)/, '') : 'Fernus Yayınevi';
+  
+  const auto = autoDetectExamAndSubject(bookName);
+  if (document.getElementById('fernusExam')) document.getElementById('fernusExam').value = auto.exam_type;
+  if (document.getElementById('fernusSubject')) document.getElementById('fernusSubject').value = auto.subject;
+
+  if (document.getElementById('fernusStatTest')) document.getElementById('fernusStatTest').textContent = testler.length + ' test';
+  if (document.getElementById('fernusStatSoru')) document.getElementById('fernusStatSoru').textContent = 'Soru hesaplanıyor...';
+
+  if (document.getElementById('fernusTableBody')) {
+    document.getElementById('fernusTableBody').innerHTML = testler.map((row, i) => `
+      <div style="display:grid; grid-template-columns:40px 1fr 140px 90px; padding:8px 12px; border-bottom:1px solid var(--border); align-items:center; font-size:12px">
+        <span style="color:var(--text-dim); font-weight:700">${String(i+1).padStart(2,'0')}</span>
+        <span style="color:var(--text); font-weight:600">${esc(row.test)}</span>
+        <span style="color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(row.bolum||'')}</span>
+        <div id="soru-cell-${i}"><span style="display:inline-block; width:6px; height:6px; background:var(--accent); border-radius:50%; animation:pulse 1s infinite"></span></div>
+      </div>
+    `).join('');
+  }
+
+  if (document.getElementById('fernusResultPanel')) document.getElementById('fernusResultPanel').style.display = 'block';
+  if (document.getElementById('fernusBackBtn')) document.getElementById('fernusBackBtn').onclick = goFernusBack;
+}
+
+async function loadFernusQuestionCounts(testler, base) {
+  fernusCountingActive = true;
+  let totalSoru = 0;
+  for (let i = 0; i < testler.length; i++) {
+    if (!fernusCountingActive) break;
+    const t = testler[i];
+    try {
+      const res = await callFernusWorker('/fernus-count', { base, testId: t.testId });
+      if (res.soru != null) {
+        t.soru = res.soru;
+        totalSoru += res.soru;
+        const cell = document.getElementById(`soru-cell-${i}`);
+        if (cell) cell.innerHTML = `<span style="font-weight:700; color:var(--accent)">${res.soru} soru</span>`;
+        if (document.getElementById('fernusStatSoru')) document.getElementById('fernusStatSoru').textContent = `Soru: ${totalSoru}`;
+      }
+    } catch(e) {
+      const cell = document.getElementById(`soru-cell-${i}`);
+      if (cell) cell.innerHTML = `<span style="color:var(--text-dim)">-</span>`;
+    }
+    await new Promise(r => setTimeout(r, 80));
+  }
+}
+
+async function saveFernusBook() {
+  const name = (document.getElementById('fernusBookName')?.value || '').trim();
+  const publisher = (document.getElementById('fernusPublisher')?.value || '').trim();
+  const exam_type = document.getElementById('fernusExam')?.value || 'TYT';
+  const subject = document.getElementById('fernusSubject')?.value || 'Matematik';
+
+  if (!name || !publisher) return showToast('Yayınevi ve kitap adı zorunlu!');
+  if (!fernusCurrentResult?.testler?.length) return showToast('Test verisi yok!');
+
+  const btn = document.getElementById('fernusSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Kaydediliyor...'; }
+
+  const tests = fernusCurrentResult.testler.map(t => ({
+    label: formatTestLabel(t.test, t.bolum),
+    soru: t.soru || 0,
+    topic: t.bolum || ''
+  }));
+
+  try {
+    const { error } = await db.from('resources').insert({
+      exam_type, subject, publisher, name,
+      year: new Date().getFullYear(),
+      tests, active: true, resource_type: 'book',
+      coach_id: null // Globale eklendi — tüm koçlar ve öğrenciler erişebilir
+    });
+    if (error) throw error;
+    showToast(`✓ "${name}" sisteme kaydedildi — ${tests.length} test (Globale Eklendi)`);
+    if (document.getElementById('fernusResultPanel')) document.getElementById('fernusResultPanel').style.display = 'none';
+    _crAllRes = [];
+    renderCoachResources();
+  } catch(e) {
+    showToast('Hata: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Veritabanına Kaydet (Globale Ekle)'; }
+  }
+}
+window.saveFernusBook = saveFernusBook;
+
+function openFernusBookPreview() {
+  let modal = document.getElementById('fernusPreviewModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'fernusPreviewModal';
+    modal.className = 'modal-bg';
+    modal.innerHTML = `
+      <div class="modal modal-lg" style="max-width:600px">
+        <button class="modal-close" onclick="cm('fernusPreviewModal')">×</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border)">
+          <div>
+            <h3 style="font-family:'Inter',sans-serif; font-size:17px; font-weight:800; color:var(--text)">👁️ Canlı Uygulama Önizlemesi</h3>
+            <p style="font-size:11.5px; color:var(--text-dim)">Eklediğiniz kitap tüm koç ve öğrencilerin panelinde bu şekilde görünür.</p>
+          </div>
+        </div>
+        <div id="fernusPreviewModalBody"></div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  const body = document.getElementById('fernusPreviewModalBody');
+  const bookName = document.getElementById('fernusBookName')?.value || 'Kitap Adı';
+  const publisher = document.getElementById('fernusPublisher')?.value || 'Yayınevi';
+  const testler = fernusCurrentResult?.testler || [];
+
+  body.innerHTML = `
+    <div style="background:rgba(232,97,58,0.1); border:1px solid rgba(232,97,58,0.3); border-radius:12px; padding:16px; margin-bottom:14px">
+      <div style="font-size:11px; font-weight:800; color:var(--accent); text-transform:uppercase;">${esc(publisher)}</div>
+      <div style="font-size:17px; font-weight:800; color:var(--text); margin-top:2px">${esc(bookName)}</div>
+      <div style="margin-top:8px; display:flex; gap:12px; font-size:12px; color:var(--text-dim)">
+        <span>📚 ${testler.length} Test</span>
+        <span>✅ Soru Bankası Modu</span>
+      </div>
+    </div>
+    <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:12px">
+      <div style="font-size:11px; font-weight:700; color:var(--text-mid); margin-bottom:8px">TEST LİSTESİ MOCKUP</div>
+      <div style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px">
+        ${testler.map(t => `
+          <div style="display:flex; justify-content:space-between; padding:7px 10px; background:var(--surface); border-radius:6px; font-size:12px; border:1px solid var(--border)">
+            <span style="color:var(--text); font-weight:600">${esc(t.test)}</span>
+            <span style="color:var(--accent); font-weight:700">${t.soru||0} soru</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  om('fernusPreviewModal');
+}
+window.openFernusBookPreview = openFernusBookPreview;
+
+async function runFernusBulkImport() {
+  const chks = document.querySelectorAll('.fernus-chk:checked');
+  if (!chks.length) return showToast('Kitap seçin');
+  const selected = [];
+  chks.forEach(c => selected.push(fernusCurrentSelectItems[parseInt(c.getAttribute('data-i'))]));
+
+  if (document.getElementById('fernusSelectPanel')) document.getElementById('fernusSelectPanel').style.display = 'none';
+  if (document.getElementById('fernusBulkPanel')) document.getElementById('fernusBulkPanel').style.display = 'block';
+  const log = document.getElementById('fernusBulkLog');
+  if (log) log.innerHTML = '';
+  fernusBulkActive = true;
+
+  if (log) log.innerHTML += `<div style="color:var(--accent)">[${new Date().toLocaleTimeString()}] Toplu aktarım başlatıldı (${selected.length} öge)</div>`;
+
+  let done = 0;
+  for (let i = 0; i < selected.length; i++) {
+    if (!fernusBulkActive) break;
+    const it = selected[i];
+    const pct = Math.round(((i + 1) / selected.length) * 100);
+    if (document.getElementById('fernusProgressBar')) document.getElementById('fernusProgressBar').style.width = pct + '%';
+    if (document.getElementById('fernusBulkPercentTxt')) document.getElementById('fernusBulkPercentTxt').textContent = '%' + pct;
+    if (document.getElementById('fernusBulkStatusTxt')) document.getElementById('fernusBulkStatusTxt').textContent = `Aktarılıyor: ${it.nm}`;
+
+    try {
+      const subs = await fetchFernusSourceList(it.base, it.id);
+      const tests = subs.map(s => ({ label: formatTestLabel(s.nm, it.nm), soru: 0, topic: it.nm }));
+      const auto = autoDetectExamAndSubject(it.nm);
+      const pubObj = FERNUS_PUBLISHERS.find(p => p.base === it.base);
+
+      await db.from('resources').insert({
+        exam_type: auto.exam_type,
+        subject: auto.subject,
+        publisher: pubObj ? pubObj.name.replace(/ \(.+\)/, '') : 'Fernus',
+        name: it.nm,
+        year: new Date().getFullYear(),
+        tests, active: true, resource_type: 'book',
+        coach_id: null
+      });
+      done++;
+      if (log) log.innerHTML += `<div style="color:var(--green)">✓ Kaydedildi: "${it.nm}" (${tests.length} test)</div>`;
+    } catch(e) {
+      if (log) log.innerHTML += `<div style="color:var(--red)">✗ Hata (${it.nm}): ${e.message}</div>`;
+    }
+    if (log) log.scrollTop = log.scrollHeight;
+  }
+
+  if (document.getElementById('fernusBulkBadge')) {
+    document.getElementById('fernusBulkBadge').textContent = 'Tamamlandı ✓';
+    document.getElementById('fernusBulkBadge').className = 'tag tag-green';
+  }
+  showToast(`✓ Toplu aktarım tamamlandı (${done} kitap)`);
+  _crAllRes = [];
+  renderCoachResources();
+}
+window.runFernusBulkImport = runFernusBulkImport;
+
+function stopFernusBulkImport() {
+  fernusBulkActive = false;
+  if (document.getElementById('fernusBulkBadge')) {
+    document.getElementById('fernusBulkBadge').textContent = 'Durduruldu';
+    document.getElementById('fernusBulkBadge').className = 'tag tag-danger';
+  }
+}
+window.stopFernusBulkImport = stopFernusBulkImport;
+
+function trClean(str) {
+  if (!str) return '';
+  return str.replace(/İ/g, 'i').replace(/I/g, 'i').replace(/ı/g, 'i').replace(/Ö/g, 'o').replace(/ö/g, 'o')
+    .replace(/Ü/g, 'u').replace(/ü/g, 'u').replace(/Ş/g, 's').replace(/ş/g, 's').replace(/Ç/g, 'c').replace(/ç/g, 'c')
+    .toLowerCase().trim();
+}
+
+function isSectionName(name) {
+  if (!name) return false;
+  const c = trClean(name);
+  return c.includes('bolum') || c.includes('unite') || c.includes('konu') || /^\d+\./.test(c);
+}
+
+function formatTestLabel(testName, topicName) {
+  if (!testName) return '';
+  let cleanTest = testName.trim();
+  let cleanTopic = (topicName || '').trim();
+  if (!cleanTopic || cleanTopic === cleanTest) return cleanTest;
+  return `${cleanTopic} - ${cleanTest}`;
+}
+
+function autoDetectExamAndSubject(rawName = '') {
+  const c = trClean(rawName);
+  let exam_type = 'TYT';
+  if (c.includes('ayt')) {
+    if (c.includes('fizik') || c.includes('kimya') || c.includes('biyo') || c.includes('say')) exam_type = 'AYT-SAY';
+    else if (c.includes('edebiyat') || c.includes('ea')) exam_type = 'AYT-EA';
+    else if (c.includes('tarih') || c.includes('cog') || c.includes('soz')) exam_type = 'AYT-SOZ';
+    else exam_type = 'AYT-SAY';
+  }
+  let subject = 'Matematik';
+  if (c.includes('fizik')) subject = 'Fizik';
+  else if (c.includes('kimya')) subject = 'Kimya';
+  else if (c.includes('biyoloji') || c.includes('biyo')) subject = 'Biyoloji';
+  else if (c.includes('geometri') || c.includes('geom')) subject = 'Geometri';
+  else if (c.includes('turkce') || c.includes('paragraf')) subject = 'Türkçe';
+  else if (c.includes('edebiyat')) subject = 'Edebiyat';
+  else if (c.includes('tarih')) subject = 'Tarih';
+  else if (c.includes('cografya')) subject = 'Coğrafya';
+  else if (c.includes('felsefe')) subject = 'Felsefe';
+  return { exam_type, subject };
+}
+
+function setFernusLoading(on, msg='') {
+  const el = document.getElementById('fernusLoading');
+  if (!el) return;
+  if (on) {
+    el.style.display = 'flex';
+    if (document.getElementById('fernusLoadingTxt')) document.getElementById('fernusLoadingTxt').textContent = msg;
+  } else { el.style.display = 'none'; }
+}
+
+function showFernusError(msg) {
+  const el = document.getElementById('fernusErr');
+  if (!el) return;
+  if (msg) { el.textContent = '⚠️ ' + msg; el.style.display = 'block'; }
+  else { el.style.display = 'none'; }
+}
+
+async function makeResourceGlobal(resId) {
+  const res = _crAllRes.find(r => r.id === resId);
+  if (!res) return;
+  if (!confirm(`"${res.name}" kaynağını tüm koçlar ve öğrenciler için globale (herkese açık) almak istediğinize emin misiniz?`)) return;
+
+  try {
+    const { error } = await db.from('resources')
+      .update({ coach_id: null, active: true })
+      .eq('id', resId);
+    if (error) throw error;
+
+    res.coach_id = null;
+    res.active = true;
+    showToast(`✓ "${res.name}" başarıyla herkese açık (global) yapıldı!`);
+    renderCoachResources();
+  } catch(e) {
+    showToast('Hata: ' + e.message);
+  }
+}
+window.makeResourceGlobal = makeResourceGlobal;
+
+async function deleteResourceCoach(id) {
+  const res = _crAllRes.find(r => r.id === id);
+  if (!confirm(`"${res?.name || 'Bu kaynak'}" silinecek. Emin misiniz?`)) return;
+  try {
+    const { error } = await db.from('resources').delete().eq('id', id);
+    if (error) throw error;
+    _crAllRes = _crAllRes.filter(r => r.id !== id);
+    showToast('Kaynak silindi');
+    renderCoachResources();
+  } catch(e) {
+    showToast('Silme hatası: ' + e.message);
+  }
+}
+window.deleteResourceCoach = deleteResourceCoach;
+
 function applyResFilter(all) {
   const q = _crFilter.search;
   return all.filter(r => {
@@ -14194,9 +14809,16 @@ function updateCRFilter() {
   const contentEl = document.getElementById('cr-tab-content');
   if (!contentEl) return;
   const activeCls = document.querySelector('.cr-tab.active');
-  const tab = activeCls?.id === 'crt-playlists' ? 'playlists' : activeCls?.id === 'crt-analytics' ? 'analytics' : 'books';
+  let tab = 'books';
+  if (activeCls) {
+    if (activeCls.id === 'crt-playlists') tab = 'playlists';
+    else if (activeCls.id === 'crt-coach-contrib') tab = 'coach_contrib';
+    else if (activeCls.id === 'crt-fernus') tab = 'fernus';
+    else if (activeCls.id === 'crt-analytics') tab = 'analytics';
+  }
   const filtered = applyResFilter(_crAllRes);
   contentEl.innerHTML = buildCRContent(tab, filtered);
+  if (tab === 'fernus') initFernusUI();
 }
 
 function buildCRContent(activeTab, res) {
@@ -14283,6 +14905,172 @@ function buildCRContent(activeTab, res) {
         </div>
       </div>
       ${buildGroupedList(playlists, 'playlist')}`;
+  } else if (activeTab === 'coach_contrib') {
+    const coachRes = res.filter(r => r.coach_id != null);
+    if (!coachRes.length) {
+      return `<div style="text-align:center;padding:48px;color:var(--text-dim);font-size:13px;background:var(--surface);border-radius:16px;border:1px solid var(--border)">
+        <div style="font-size:32px;margin-bottom:8px">📚</div>
+        <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px">Henüz Özel Koç Kaynağı Bulunmuyor</div>
+        <p style="font-size:12px;color:var(--text-dim)">Koçlar kendi hesaplarına özel kaynak eklediklerinde burada listelenir ve tek tıkla herkese açık (global) yapılabilir.</p>
+      </div>`;
+    }
+    return `
+      <div style="margin-bottom:16px">
+        <h3 style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;margin-bottom:4px">🌐 Koç Katkıları ve Özel Kaynaklar</h3>
+        <p style="font-size:11.5px;color:var(--text-dim)">Koçların kendi hesaplarına eklediği özel kaynaklar. Uygun bulduklarınızı tek tıkla tüm koçlar ve öğrencilere açık (global) yapabilirsiniz.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${coachRes.map(r => `
+          <div style="display:flex;align-items:center;padding:12px 16px;border-radius:12px;background:var(--surface);border:1.5px solid var(--border);gap:14px;box-shadow:var(--shadow)">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(232,97,58,0.12);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0">
+              ${r.resource_type==='playlist'?'▶':'📚'}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:13.5px;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</span>
+                <span class="tag tag-accent" style="font-size:10px;padding:2px 7px">Özel Katkı</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:3px;flex-wrap:wrap">
+                <span style="font-size:11px;font-weight:700;color:var(--text-mid);background:var(--surface2);padding:1px 8px;border-radius:99px;border:1px solid var(--border)">${esc(r.publisher||'—')}</span>
+                <span style="font-size:11px;color:var(--text-dim)">${r.exam_type} · ${r.subject}</span>
+                <span style="font-size:11px;color:var(--text-dim)">• ${(r.tests||[]).length} ${r.resource_type==='playlist'?'video':'test'}</span>
+                <span style="font-size:10.5px;color:var(--accent);font-weight:600">👤 Koç ID: ${r.coach_id.slice(0,8)}...</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0">
+              <button class="btn btn-accent btn-sm" onclick="makeResourceGlobal('${r.id}')" style="font-weight:700;padding:8px 14px;border-radius:8px">
+                🌐 Globale Al
+              </button>
+              <button class="btn btn-ghost btn-xs" onclick="openResourceModalCoach('${r.id}','${r.resource_type||'book'}')">✏️</button>
+              <button class="btn btn-danger btn-xs" onclick="deleteResourceCoach('${r.id}')">🗑</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+  } else if (activeTab === 'fernus') {
+    return `
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow)">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px">
+          <div>
+            <h3 style="font-family:'Inter',sans-serif; font-size:18px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:8px">
+              <span>🦊</span> <span>Fernus Dijital Import</span>
+            </h3>
+            <p style="font-size:11.5px; color:var(--text-dim); margin-top:2px">Türkiye'nin önde gelen yayınevlerinin Fernus dijital soru bankası kütüphanesini tarayın ve sisteme aktarın.</p>
+          </div>
+          <span class="tag tag-accent" style="font-weight:700">⚡ Canlı Yayınevi Motoru</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px">
+          <div>
+            <label style="font-size:11.5px; font-weight:700; color:var(--text-mid); margin-bottom:4px; display:block">Yayınevi Seçin</label>
+            <select id="fernusPubSelect" onchange="selectFernusPublisher()" style="width:100%; height:40px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:0 12px; font-size:13px; color:var(--text)">
+              <option value="">-- Yayınevi Seçin --</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11.5px; font-weight:700; color:var(--text-mid); margin-bottom:4px; display:block">Kitap / Konu Arama</label>
+            <div style="display:flex; gap:6px">
+              <input id="fernusQuery" placeholder="örn: 345 AYT Fizik veya Bilgi Sarmal TYT..." onkeydown="if(event.key==='Enter')startFernusSearch()" style="flex:1; height:40px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:0 12px; font-size:13px; color:var(--text)">
+              <button class="btn btn-accent btn-sm" onclick="startFernusSearch()" style="height:40px; padding:0 14px; font-weight:700; border-radius:10px">ARA →</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:16px; display:flex; align-items:center; gap:10px">
+          <div style="font-size:12px; font-weight:700; color:var(--text); white-space:nowrap">🌐 Özel Fernus Adresi:</div>
+          <input id="fernusCustomBase" placeholder="https://domain.frns.in veya cozum.com" style="flex:1; height:34px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0 10px; font-size:12px; color:var(--text)">
+          <button class="btn btn-ghost btn-sm" onclick="loadCustomFernusDomain()" style="height:34px; font-size:11.5px; font-weight:700; border-radius:8px">Bağlan →</button>
+        </div>
+
+        <div id="fernusLoading" style="display:none; align-items:center; gap:12px; background:rgba(232,97,58,0.1); border:1px solid rgba(232,97,58,0.3); border-radius:12px; padding:14px 18px; margin-bottom:16px">
+          <div style="width:18px; height:18px; border:2px solid var(--accent); border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite"></div>
+          <span id="fernusLoadingTxt" style="font-size:13px; font-weight:700; color:var(--accent)">İşleniyor...</span>
+        </div>
+
+        <div id="fernusErr" style="display:none; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:12px; padding:14px 18px; color:var(--red); font-size:13px; margin-bottom:16px"></div>
+
+        <div id="fernusSelectPanel" style="display:none" class="fade-in">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+            <div id="fernusBackWrap"></div>
+            <div style="display:flex; gap:6px; align-items:center">
+              <button class="btn btn-ghost btn-xs" onclick="toggleFernusSelectAll(true)">☑️ Tümünü Seç</button>
+              <button class="btn btn-ghost btn-xs" onclick="toggleFernusSelectAll(false)">☐ Temizle</button>
+              <button class="btn btn-accent btn-sm" id="fernusBulkImportBtn" onclick="runFernusBulkImport()" style="display:none; font-weight:700">
+                🚀 Seçilenleri Toplu Aktar (<span id="fernusSelCount">0</span>)
+              </button>
+            </div>
+          </div>
+          <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px" id="fernusSelectDesc">Aşağıdaki içeriklerden seçim yapın:</p>
+          <div id="fernusSelectList" style="display:flex; flex-direction:column; gap:8px"></div>
+        </div>
+
+        <div id="fernusBulkPanel" style="display:none" class="fade-in">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+            <div style="display:flex; align-items:center; gap:8px">
+              <span style="font-size:14px; font-weight:800; color:var(--text)">Toplu Aktarım Süreci</span>
+              <span id="fernusBulkBadge" class="tag tag-accent">İşleniyor</span>
+            </div>
+            <button class="btn btn-danger btn-xs" onclick="stopFernusBulkImport()">⏹ Durdur</button>
+          </div>
+          <div style="height:8px; background:var(--surface2); border-radius:99px; overflow:hidden; margin-bottom:8px">
+            <div id="fernusProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent), var(--green)); transition:width 0.2s"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-dim); margin-bottom:10px">
+            <span id="fernusBulkStatusTxt">Başlatılıyor...</span>
+            <span id="fernusBulkPercentTxt" style="font-weight:700; color:var(--text)">%0</span>
+          </div>
+          <div id="fernusBulkLog" style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; max-height:200px; overflow-y:auto; font-family:monospace; font-size:11.5px; line-height:1.6; color:var(--text)"></div>
+        </div>
+
+        <div id="fernusResultPanel" style="display:none" class="fade-in">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px">
+            <div>
+              <label style="font-size:11px; font-weight:700; color:var(--text-dim); margin-bottom:4px; display:block">Sınav Tipi</label>
+              <select id="fernusExam" class="cr-filter-select" style="width:100%; height:38px">
+                <option value="TYT">TYT</option>
+                <option value="AYT-SAY">AYT Sayısal</option>
+                <option value="AYT-EA">AYT EA</option>
+                <option value="AYT-SOZ">AYT Sözel</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px; font-weight:700; color:var(--text-dim); margin-bottom:4px; display:block">Ders</label>
+              <select id="fernusSubject" class="cr-filter-select" style="width:100%; height:38px">
+                <option>Matematik</option><option>Fizik</option><option>Kimya</option><option>Biyoloji</option>
+                <option>Geometri</option><option>Türkçe</option><option>Edebiyat</option><option>Tarih</option>
+                <option>Coğrafya</option><option>Felsefe</option><option>Din</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px; font-weight:700; color:var(--text-dim); margin-bottom:4px; display:block">Yayınevi Adı</label>
+              <input id="fernusPublisher" style="width:100%; height:38px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0 10px; font-size:12.5px; color:var(--text)">
+            </div>
+            <div>
+              <label style="font-size:11px; font-weight:700; color:var(--text-dim); margin-bottom:4px; display:block">Kitap Adı</label>
+              <input id="fernusBookName" style="width:100%; height:38px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0 10px; font-size:12.5px; color:var(--text)">
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-bottom:16px">
+            <button class="btn btn-accent" id="fernusSaveBtn" onclick="saveFernusBook()" style="flex:2; height:42px; justify-content:center; font-weight:800">
+              ✅ Veritabanına Kaydet (Globale Ekle)
+            </button>
+            <button class="btn btn-ghost" onclick="openFernusBookPreview()" style="flex:1; height:42px; justify-content:center; font-weight:700; background:var(--surface2)">
+              👁️ Önizleme
+            </button>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+            <div style="display:flex; gap:8px">
+              <span id="fernusStatTest" class="tag tag-accent">0 test</span>
+              <span id="fernusStatSoru" class="tag tag-indigo">Soru: ...</span>
+            </div>
+            <button class="btn btn-ghost btn-xs" id="fernusBackBtn">← Geri</button>
+          </div>
+
+          <div id="fernusTableBody" style="max-height:360px; overflow-y:auto; border:1px solid var(--border); border-radius:12px; background:var(--surface2)"></div>
+        </div>
+      </div>`;
   } else {
     const stats = compileResourceStats(res);
     return `
@@ -14312,10 +15100,12 @@ async function renderCoachResources() {
 
   if(!_crAllRes.length) {
     el.innerHTML = `<div style="max-width:720px;margin:0 auto;padding:40px;text-align:center;color:var(--text-dim);font-size:13px">Kaynaklar yükleniyor…</div>`;
-    const { data: resources, error } = await db.from('resources')
-      .select('*')
-      .or(`coach_id.eq.${session.coachId},coach_id.is.null`)
-      .order('resource_type,exam_type,subject,name');
+    const isDev = session.role === 'developer' || session.dbUser?.role === 'developer' || session.dbUser?.email === 'ceylanemin1928@gmail.com';
+    let query = db.from('resources').select('*');
+    if (!isDev) {
+      query = query.or(`coach_id.eq.${session.coachId},coach_id.is.null`);
+    }
+    const { data: resources, error } = await query.order('resource_type,exam_type,subject,name');
     if(error) console.error(error);
     _crAllRes = resources || [];
   }
@@ -14325,20 +15115,28 @@ async function renderCoachResources() {
   const prevTabEl = document.querySelector('.cr-tab.active');
   if(prevTabEl) {
     if(prevTabEl.id === 'crt-playlists') activeTab = 'playlists';
+    else if(prevTabEl.id === 'crt-coach-contrib') activeTab = 'coach_contrib';
+    else if(prevTabEl.id === 'crt-fernus') activeTab = 'fernus';
     else if(prevTabEl.id === 'crt-analytics') activeTab = 'analytics';
   }
+
+  const isDev = session.role === 'developer' || session.dbUser?.role === 'developer' || session.dbUser?.email === 'ceylanemin1928@gmail.com';
 
   el.innerHTML = `<div style="max-width:720px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div>
-        <h2 style="font-family:'Inter',sans-serif;font-size:22px;font-weight:800">Kaynaklarım</h2>
-        <p style="font-size:12px;color:var(--text-mid);margin-top:2px">Soru bankaları, video listeleri ve kaynak analitiği.</p>
+        <h2 style="font-family:'Inter',sans-serif;font-size:22px;font-weight:800;display:flex;align-items:center;gap:8px">
+          <span>📚</span> <span>Kaynak Yönetim Merkezi</span>
+        </h2>
+        <p style="font-size:12px;color:var(--text-mid);margin-top:2px">Soru bankaları, oynatma listeleri, koç özel kaynakları ve Fernus Dijital Import.</p>
       </div>
     </div>
 
     <div class="cr-tabs">
       <button class="cr-tab ${activeTab==='books'?'active':''}" id="crt-books" onclick="switchCRTab('books')">Soru Bankaları</button>
       <button class="cr-tab ${activeTab==='playlists'?'active':''}" id="crt-playlists" onclick="switchCRTab('playlists')">Oynatma Listeleri</button>
+      <button class="cr-tab ${activeTab==='coach_contrib'?'active':''}" id="crt-coach-contrib" onclick="switchCRTab('coach_contrib')">🌐 Koç Katkıları</button>
+      <button class="cr-tab ${activeTab==='fernus'?'active':''}" id="crt-fernus" onclick="switchCRTab('fernus')">🦊 Fernus Import</button>
       <button class="cr-tab ${activeTab==='analytics'?'active':''}" id="crt-analytics" onclick="switchCRTab('analytics')">Kaynak Analizi</button>
     </div>
 
@@ -14366,13 +15164,20 @@ async function renderCoachResources() {
       ${buildCRContent(activeTab, _crAllRes)}
     </div>
   </div>`;
+
+  if (activeTab === 'fernus') {
+    initFernusUI();
+  }
 }
 
 function switchCRTab(tab) {
   document.querySelectorAll('.cr-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('crt-' + tab)?.classList.add('active');
+  document.getElementById('crt-' + tab.replace('_', '-'))?.classList.add('active');
   const filtered = applyResFilter(_crAllRes);
   document.getElementById('cr-tab-content').innerHTML = buildCRContent(tab, filtered);
+  if (tab === 'fernus') {
+    initFernusUI();
+  }
 }
 
 // Kaynak kullanım istatistiklerini hesaplama fonksiyonu
