@@ -11012,11 +11012,9 @@ window.renderCoachBlocksManager = function(blocks) {
 
     div.innerHTML = `
       <span style="color:var(--text-dim); cursor:grab; font-size:13px; padding-top:1px; flex-shrink:0;" title="Sürükleyerek sırala">⠿</span>
-      <div style="flex:1; min-width:0;">
-        <label style="display:flex; align-items:flex-start; gap:7px; font-weight:700; cursor:pointer; color:var(--text);" onclick="event.stopPropagation()">
-          <input type="checkbox" class="cp-block-toggle" ${b.enabled !== false ? 'checked' : ''} ${isRequired ? 'disabled title="Bu blok sayfanın iskeletidir, kapatılamaz"' : 'onchange="updateProfilePreview()"'} style="accent-color:var(--accent); margin-top:2px; flex-shrink:0;">
-          <span style="white-space:normal; word-break:break-word; line-height:1.35;">${esc(div.dataset.name)}</span>
-        </label>
+      <div style="flex:1; min-width:0; display:flex; align-items:flex-start; gap:7px; font-weight:700; color:var(--text);">
+        <input type="checkbox" class="cp-block-toggle" onclick="event.stopPropagation()" ${b.enabled !== false ? 'checked' : ''} ${isRequired ? 'disabled title="Bu blok sayfanın iskeletidir, kapatılamaz"' : 'onchange="updateProfilePreview()"'} style="accent-color:var(--accent); margin-top:2px; flex-shrink:0; cursor:pointer;">
+        <span style="white-space:normal; word-break:break-word; line-height:1.35; cursor:pointer;">${esc(div.dataset.name)}</span>
       </div>
       <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
         <button type="button" class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); moveCoachBlock('${b.id}', -1)" ${idx === 0 ? 'disabled' : ''} style="padding:2px 4px; font-size:10px;" title="Yukarı Taşı">▲</button>
