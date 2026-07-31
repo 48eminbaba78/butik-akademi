@@ -756,8 +756,13 @@
     }
     if (target) {
       // Slug ile gelen = kamu vitrini (tam ekran). ?coach=uuid eski yol = modal.
-      if (slugParam) renderCoachShowcase(target);
-      else viewCoachDetails(target.id);
+      try {
+        if (slugParam) renderCoachShowcase(target);
+        else viewCoachDetails(target.id);
+      } catch (err) {
+        console.error('renderCoachShowcase error:', err);
+        document.documentElement.classList.remove('deep-link-boot');
+      }
     } else if (slugParam) {
       // Profil bulunamadı — spinner'da asılı kalmasın, şık 404 ekranı ver
       document.documentElement.classList.remove('deep-link-boot');
@@ -827,6 +832,7 @@
     ];
     const activeBlocks = Array.isArray(p.blocks) && p.blocks.length ? p.blocks : defaultBlocks;
 
+    const stats = [];
     const cleanRank = (yksRank || '').replace(/^(YKS\s*(Derecesi)?:?\s*)+/gi, '');
     if (yksRank) stats.push({ ico: '🏆', t: `YKS Derecesi: ${cleanRank}`, highlight: true });
     if (profession) stats.push({ ico: '💼', t: profession, highlight: true });
