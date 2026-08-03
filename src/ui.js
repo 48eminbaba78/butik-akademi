@@ -17049,7 +17049,32 @@ async function renderCoachApplications() {
 async function updateApplication(appId, status, applicantEmail, applicantName) {
   const { error } = await db.from('match_requests').update({ status }).eq('id', appId);
   if (error) return showToast('Hata: ' + error.message);
+  
   showToast(status === 'accepted' ? '✓ Başvuru kabul edildi' : 'Başvuru reddedildi');
+
+  let inviteLink = null;
+  if (status === 'accepted' && applicantEmail && applicantEmail.includes('@')) {
+    try {
+      const invRes = await fetch('/api/invitation?action=create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coachId: S.user?.id || S.workspace?.id,
+          email: applicantEmail,
+          student_name: applicantName || ''
+        })
+      });
+      if (invRes.ok) {
+        const invData = await invRes.json();
+        if (invData.token) {
+          inviteLink = `${window.location.origin}/davet.html?token=${invData.token}`;
+        }
+      }
+    } catch(e) {
+      console.warn('[updateApplication] Auto-invite error:', e);
+    }
+  }
+
   if (applicantEmail && applicantEmail.includes('@')) {
     fetch('/api/mailer', {
       method: 'POST',
@@ -17059,7 +17084,8 @@ async function updateApplication(appId, status, applicantEmail, applicantName) {
         to: applicantEmail,
         student_name: applicantName || '',
         status,
-        coach_name: S.workspace?.brand_name || 'Koçunuz'
+        coach_name: S.workspace?.brand_name || 'Koçunuz',
+        invite_link: inviteLink
       })
     }).catch(e => console.warn('[updateApplication] mail error:', e.message));
   }

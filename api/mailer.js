@@ -432,6 +432,34 @@ function passwordResetEmail({ action_link }) {
 </td></tr>`);
 }
 
+function applicationEmail({ student_name, status, coach_name, invite_link }) {
+  const isAccepted = status === 'accepted';
+  const name = student_name || 'Öğrencimiz';
+  const coach = coach_name || 'Koçunuz';
+  const link = invite_link || `${SITE_URL}/kayit.html`;
+
+  return wrap(`
+<tr><td style="background:${isAccepted ? 'linear-gradient(135deg,#22c55e 0%,#16a34a 100%)' : '#1e293b'};padding:40px;text-align:center;border-bottom:4px solid ${isAccepted ? '#15803d' : '#E8613A'}">
+  <div style="font-size:48px;margin-bottom:12px">${isAccepted ? '🎉' : '📋'}</div>
+  <h1 style="color:#ffffff;font-size:24px;font-weight:800;margin:0 0 8px">${isAccepted ? 'Başvurunuz Kabul Edildi!' : 'Başvuru Bilgilendirmesi'}</h1>
+  <p style="color:rgba(255,255,255,.85);margin:0;font-size:14px">Rostrum Akademi</p>
+</td></tr>
+<tr><td style="padding:36px 40px">
+  <p style="margin:0 0 16px;font-size:15px;color:#1e293b">Merhaba <strong>${name}</strong>,</p>
+  <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.6">
+    ${isAccepted 
+      ? `<strong>${coach}</strong> ile yaptığınız ön görüşme başvurusu onaylandı! Artık koçunuzla birebir çalışmaya başlayabilirsiniz.` 
+      : `<strong>${coach}</strong> başvurunuzu inceledi. Detaylı bilgi için platform üzerinden veya koçunuzla iletişime geçebilirsiniz.`}
+  </p>
+  ${isAccepted ? `
+  <div style="text-align:center;margin-bottom:28px">
+    <a href="${link}" style="display:inline-block;background:#22c55e;color:#ffffff;padding:15px 40px;border-radius:10px;font-size:16px;font-weight:800;text-decoration:none;box-shadow:0 4px 14px rgba(34,197,94,.3)">Hesabını Oluştur &amp; Başla →</a>
+  </div>
+  ` : ''}
+  <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5">Herhangi bir sorunuz varsa bize bu e-postayı yanıtlayarak ulaşabilirsiniz.</p>
+</td></tr>`);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 

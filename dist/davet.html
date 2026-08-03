@@ -206,8 +206,8 @@
     .fade-in { animation: fade .3s ease both; }
     @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   </style>
+  <script src="/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" crossorigin src="/assets/config-UAWj5dXl-v10.js"></script>
 </head>
 <body>
 
@@ -320,8 +320,10 @@
   </main>
 
   <script>
-    // CONFIG is already loaded from config.js globally
-    const db = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+    // CONFIG is loaded from /config.js globally
+    const sbUrl = (typeof CONFIG !== 'undefined' && CONFIG.SUPABASE_URL) ? CONFIG.SUPABASE_URL : 'https://imyhenrwmsmyikpollur.supabase.co';
+    const sbKey = (typeof CONFIG !== 'undefined' && CONFIG.SUPABASE_KEY) ? CONFIG.SUPABASE_KEY : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
+    const db = supabase.createClient(sbUrl, sbKey);
 
     // Get token from URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -564,7 +566,7 @@
         document.getElementById('successContainer').style.display = 'block';
 
         // Auto login variables
-        sessionStorage.setItem('ra_new_coach_email', inviteData.email);
+        sessionStorage.setItem('ra_new_coach_email', studentEmail);
         sessionStorage.setItem('ra_new_coach_pass', password);
 
         setTimeout(() => {
