@@ -1,7 +1,11 @@
 -- ============================================================================
--- MIGRATION V45 — match_requests Tablosu RLS Güncellemesi
+-- MIGRATION V45 — match_requests Tablosu RLS & Constraint Güncellemesi
 -- Supabase SQL Editor'da çalıştırın.
 -- ============================================================================
+
+-- Check constraint güncellemesi (accepted, rejected durumlarına izin ver):
+ALTER TABLE public.match_requests DROP CONSTRAINT IF EXISTS match_requests_status_check;
+ALTER TABLE public.match_requests ADD CONSTRAINT match_requests_status_check CHECK (status IN ('pending', 'matched', 'completed', 'accepted', 'rejected'));
 
 -- Koçların kendilerine gelen başvuruları (match_requests) kabul/red durumuna güncelleyebilmesi için RLS kuralı:
 DROP POLICY IF EXISTS "Only developers can manage match requests" ON public.match_requests;

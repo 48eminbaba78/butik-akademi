@@ -147,18 +147,29 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── ACTION: UPDATE_APPLICATION (Başvuru durumunu günceller — RLS bypass) ──
+  // ── ACTION: UPDATE_APPLICATION (Başvuru durumunu günceller — RLS & Check Constraint Safe) ──
   if (action === 'update_application') {
     const { appId, status } = req.body;
     if (!appId || !status) return res.status(400).json({ error: 'Eksik parametre' });
 
+    // DB Check Constraint 'match_requests_status_check' ('matched' | 'accepted') uyumluluğu
+    const targetStatus = status === 'accepted' ? 'matched' : status;
+
     try {
-      const { error: updateErr } = await supabaseAdmin
+      let { error: updateErr } = await supabaseAdmin
         .from('match_requests')
-        .update({ status })
+        .update({ status: targetStatus })
         .eq('id', appId);
 
-      if (updateErr) throw updateErr;
+      if (updateErr && status === 'accepted') {
+        const { error: retryErr } = await supabaseAdmin
+          .from('match_requests')
+          .update({ status: 'matched' })
+          .eq('id', appId);
+        if (retryErr) throw updateErr;
+      } else if (updateErr) {
+        throw updateErr;
+      }
 
       return res.status(200).json({ success: true });
     } catch (err) {
