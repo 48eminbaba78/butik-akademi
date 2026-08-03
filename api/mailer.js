@@ -27,7 +27,12 @@ async function sendEmail(to, subject, html) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || 'Resend error ' + res.status);
+    const errMsg = err.message || ('Resend error ' + res.status);
+    console.error('[Resend Error]', errMsg);
+    if (errMsg.toLowerCase().includes('testing emails') || errMsg.toLowerCase().includes('verify a domain')) {
+      throw new Error('E-posta servisi (Resend) test modunda olduğu için sadece onaylı adrese mail atabilir. Davet linkini kopyalayıp WhatsApp/Mesaj ile iletebilirsiniz.');
+    }
+    throw new Error(err.message || 'E-posta gönderilemedi');
   }
   return res.json();
 }

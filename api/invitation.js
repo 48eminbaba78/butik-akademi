@@ -143,7 +143,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error('[Invitation Email Error]', err.message);
-      return res.status(500).json({ error: 'E-posta gönderilemedi' });
+      return res.status(400).json({ error: err.message || 'E-posta gönderilemedi. Davet bağlantısını kopyalayarak iletebilirsiniz.' });
     }
   }
 
