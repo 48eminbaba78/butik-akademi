@@ -4014,6 +4014,11 @@ async function saveStudent(){
   const yksArea = document.getElementById('smYksArea').value;
   const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'Hedef belirtilmemiş',color,progress:Number(document.getElementById('smProg').value),password_hash:pass,week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:'student',coach_id:session.coachId,yks_area:yksArea};
 
+  const _lvl=document.getElementById('smLevel')?.value||'';
+  const _sph=document.getElementById('smStudentPhone')?.value.trim()||'';
+  const _pem=document.getElementById('smParentEmail')?.value.trim()||'';
+  const _pph=document.getElementById('smParentPhone')?.value.trim()||'';
+
   if(id){
     const {error}=await db.rpc('update_student_profile', {
       p_student_id: id,
@@ -4032,10 +4037,6 @@ async function saveStudent(){
     if(s)Object.assign(s,{name:payload.full_name,target:payload.target,color,progress:payload.progress,pass:passRaw,weekStart:payload.week_start,username:uname,yksArea:payload.yks_area});
 
     // İletişim & seviye → student_profiles (opsiyonel; boş alan gönderilmez)
-    const _lvl=document.getElementById('smLevel')?.value||'';
-    const _sph=document.getElementById('smStudentPhone')?.value.trim()||'';
-    const _pem=document.getElementById('smParentEmail')?.value.trim()||'';
-    const _pph=document.getElementById('smParentPhone')?.value.trim()||'';
     if(_lvl||_sph||_pem||_pph){
       const prof={id};
       if(_lvl)prof.level=_lvl; if(_sph)prof.student_phone=_sph;
@@ -4069,7 +4070,7 @@ async function saveStudent(){
       const siteUrl = window.location.origin + window.location.pathname.replace('app.html','');
       const invitationLink = `${siteUrl}davet.html?token=${result.token}`;
 
-      showInviteInfo(payload.full_name, '', invitationLink, result.token);
+      showInviteInfo(payload.full_name, '', invitationLink, result.token, _sph);
     } catch (e) {
       console.error(e);
       showToast('İletişim hatası oluştu.');
@@ -4077,7 +4078,7 @@ async function saveStudent(){
   }
 }
 // ── ÖĞRENCİ DAVET BİLGİSİ — kanal seçimi (e-posta / WhatsApp / Link) koçta ──
-function showInviteInfo(name, email, inviteUrl, inviteToken){
+function showInviteInfo(name, email, inviteUrl, inviteToken, phone){
   let modal = document.getElementById('inviteModal');
   if(!modal){
     modal = document.createElement('div');
@@ -4086,7 +4087,20 @@ function showInviteInfo(name, email, inviteUrl, inviteToken){
     document.body.appendChild(modal);
     modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
   }
+
+  // Numarayı temizle ve WhatsApp formatına getir (Örn: 05321234567 -> 905321234567)
+  const rawPhone = (phone || '').replace(/\D/g, '');
+  let formattedPhone = '';
+  if (rawPhone) {
+    if (rawPhone.startsWith('90') && rawPhone.length === 12) formattedPhone = rawPhone;
+    else if (rawPhone.startsWith('0') && rawPhone.length === 11) formattedPhone = '9' + rawPhone;
+    else if (rawPhone.length === 10) formattedPhone = '90' + rawPhone;
+    else formattedPhone = rawPhone;
+  }
+
   const whatsappText = encodeURIComponent(`Merhaba ${name}! 🎓\n\nRostrum Akademi platformuna katılım davetin hazır. Aşağıdaki linke tıklayarak parolanı belirleyip hemen başlayabilirsin:\n\n🔗 Davet Linki: ${inviteUrl}`);
+  const whatsappHref = formattedPhone ? `https://wa.me/${formattedPhone}?text=${whatsappText}` : `https://wa.me/?text=${whatsappText}`;
+  const whatsappSub = formattedPhone ? `<b>${esc(phone)}</b> numarasıyla sohbeti doğrudan açar` : 'Kişi veya grup seçerek hazırlanan mesajı iletin';
 
   modal.innerHTML = `<div class="modal" style="max-width:500px;padding:26px">
     <button class="modal-close" onclick="cm('inviteModal');renderStudentsSearch()">×</button>
@@ -4108,11 +4122,11 @@ function showInviteInfo(name, email, inviteUrl, inviteToken){
     <!-- Gönderim Kanalları -->
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
       <!-- WhatsApp ile Gönder -->
-      <a href="https://wa.me/?text=${whatsappText}" target="_blank" class="btn" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(37,211,102,.1);border:1.5px solid rgba(37,211,102,.35);border-radius:14px;text-decoration:none;color:var(--text);justify-content:flex-start">
+      <a href="${whatsappHref}" target="_blank" class="btn" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(37,211,102,.1);border:1.5px solid rgba(37,211,102,.35);border-radius:14px;text-decoration:none;color:var(--text);justify-content:flex-start">
         <span style="font-size:24px;width:34px;text-align:center">💬</span>
         <div style="flex:1;text-align:left">
           <div style="font-size:13px;font-weight:700">WhatsApp ile Gönder</div>
-          <div style="font-size:11px;color:var(--text-mid)">Kişi veya grup seçerek hazırlanan mesajı iletin</div>
+          <div style="font-size:11px;color:var(--text-mid)">${whatsappSub}</div>
         </div>
         <span style="font-size:16px;color:var(--text-dim)">→</span>
       </a>
@@ -17026,8 +17040,8 @@ async function renderCoachApplications() {
       </div>
       ${a.status==='pending'?`
       <div style="display:flex;gap:8px">
-        <button onclick="updateApplication('${a.id}','accepted','${esc(a.email||'')}','${esc(a.student_name||'')}')" style="flex:1;padding:9px;background:rgba(62,207,142,.12);color:#3ecf8e;border:1px solid rgba(62,207,142,.25);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✓ Kabul Et</button>
-        <button onclick="updateApplication('${a.id}','rejected','${esc(a.email||'')}','${esc(a.student_name||'')}')" style="flex:1;padding:9px;background:rgba(255,92,122,.08);color:#ff5c7a;border:1px solid rgba(255,92,122,.2);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✗ Reddet</button>
+        <button onclick="updateApplication('${a.id}','accepted','${esc(a.email||'')}','${esc(a.student_name||'')}','${esc(a.phone||'')}')" style="flex:1;padding:9px;background:rgba(62,207,142,.12);color:#3ecf8e;border:1px solid rgba(62,207,142,.25);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✓ Kabul Et</button>
+        <button onclick="updateApplication('${a.id}','rejected','${esc(a.email||'')}','${esc(a.student_name||'')}','${esc(a.phone||'')}')" style="flex:1;padding:9px;background:rgba(255,92,122,.08);color:#ff5c7a;border:1px solid rgba(255,92,122,.2);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✗ Reddet</button>
       </div>`:''}
     </div>`).join('');
 
@@ -17046,28 +17060,32 @@ async function renderCoachApplications() {
   }
 }
 
-async function updateApplication(appId, status, applicantEmail, applicantName) {
+async function updateApplication(appId, status, applicantEmail, applicantName, applicantPhone) {
   const { error } = await db.from('match_requests').update({ status }).eq('id', appId);
   if (error) return showToast('Hata: ' + error.message);
   
   showToast(status === 'accepted' ? '✓ Başvuru kabul edildi' : 'Başvuru reddedildi');
 
   let inviteLink = null;
-  if (status === 'accepted' && applicantEmail && applicantEmail.includes('@')) {
+  let inviteToken = null;
+  if (status === 'accepted') {
     try {
       const invRes = await fetch('/api/invitation?action=create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           coachId: S.user?.id || S.workspace?.id,
-          email: applicantEmail,
+          email: applicantEmail || '',
           student_name: applicantName || ''
         })
       });
       if (invRes.ok) {
         const invData = await invRes.json();
         if (invData.token) {
+          inviteToken = invData.token;
           inviteLink = `${window.location.origin}/davet.html?token=${invData.token}`;
+          // Davet modallını öğrencinin telefon numarasıyla doğrudan WhatsApp açacak şekilde tetikle
+          showInviteInfo(applicantName || 'Öğrenci', applicantEmail || '', inviteLink, inviteToken, applicantPhone || '');
         }
       }
     } catch(e) {
