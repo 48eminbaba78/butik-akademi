@@ -17061,8 +17061,20 @@ async function renderCoachApplications() {
 }
 
 async function updateApplication(appId, status, applicantEmail, applicantName, applicantPhone) {
-  const { error } = await db.from('match_requests').update({ status }).eq('id', appId);
-  if (error) return showToast('Hata: ' + error.message);
+  let updateOk = false;
+  try {
+    const updateRes = await fetch('/api/invitation?action=update_application', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appId, status })
+    });
+    if (updateRes.ok) updateOk = true;
+  } catch(e) {}
+
+  if (!updateOk) {
+    const { error } = await db.from('match_requests').update({ status }).eq('id', appId);
+    if (error) return showToast('Hata: ' + error.message);
+  }
   
   showToast(status === 'accepted' ? '✓ Başvuru kabul edildi' : 'Başvuru reddedildi');
 

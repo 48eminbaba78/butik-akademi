@@ -147,6 +147,26 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── ACTION: UPDATE_APPLICATION (Başvuru durumunu günceller — RLS bypass) ──
+  if (action === 'update_application') {
+    const { appId, status } = req.body;
+    if (!appId || !status) return res.status(400).json({ error: 'Eksik parametre' });
+
+    try {
+      const { error: updateErr } = await supabaseAdmin
+        .from('match_requests')
+        .update({ status })
+        .eq('id', appId);
+
+      if (updateErr) throw updateErr;
+
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('[Update Application Error]', err.message);
+      return res.status(500).json({ error: 'Başvuru güncellenemedi: ' + err.message });
+    }
+  }
+
   // ── ACTION: ACCEPT (Davet Kabul Etme) ──
   if (action === 'accept') {
     const { token, userId } = req.body;
