@@ -5640,8 +5640,11 @@ async function fpGenerate(){
   try{
     let q = '?date='+d+'&type=feed' + (force?'&force=1':'') + (idea?'&idea='+encodeURIComponent(idea):'');
     const r = await rspFetch('/api/generate'+q);
-    if(r.skipped){ showToast(r.reason||'Bu tarihte içerik zaten var — üzerine yazmak için kutucuğu işaretleyin',false); }
-    else{
+    if(r.skipped){
+      showToast(r.reason||'Bu tarihte içerik zaten var — üzerine yazmak için kutucuğu işaretleyin',false);
+    }else if(r.ok === false || r.error){
+      showToast('Üretim hatası: ' + (r.error || 'İçerik ayrıştırılamadı'), false);
+    }else{
       showToast('Gönderi üretildi — Kuyruk & Onay sekmesinde sizi bekliyor');
       document.getElementById('fpIdea').value='';
       switchFpStudioTab('queue');

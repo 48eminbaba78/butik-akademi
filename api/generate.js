@@ -21,8 +21,8 @@ export default async function handler(req, res) {
         var result = await client
           .from('story_queue')
           .select('*')
-          .order('post_date', { ascending: false })
-          .limit(30);
+          .order('updated_at', { ascending: false })
+          .limit(100);
         if (result.error) throw result.error;
         return res.status(200).json({ posts: result.data });
       }
