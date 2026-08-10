@@ -1088,7 +1088,7 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
               <div style="flex:2;min-width:240px">
                 <label style="display:block;font-size:10px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Story Panel API Adresi</label>
-                <input id="rspUrl" class="inp" style="width:100%;padding:9px 12px" placeholder="https://rostrum-story-panel.vercel.app">
+                <input id="rspUrl" class="inp" style="width:100%;padding:9px 12px" placeholder="Otomatik (mevcut site adresi)">
               </div>
               <div style="flex:1;min-width:160px">
                 <label style="display:block;font-size:10px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Panel Şifresi</label>
@@ -5191,8 +5191,13 @@ const RSP_THEMES = {
 const RSP_TH = Object.fromEntries(Object.values(RSP_THEMES).map(t=>[t.key,t.name]));
 
 function rspCfg(){
+  let raw = (localStorage.getItem('rsp_url') || '').trim();
+  if (!raw || raw.includes('rostrum-story-panel.vercel.app')) {
+    raw = (typeof window !== 'undefined' ? window.location.origin : '');
+    try { localStorage.setItem('rsp_url', raw); } catch(e){}
+  }
   return {
-    url: (localStorage.getItem('rsp_url')||'https://rostrum-story-panel.vercel.app').trim().replace(/\/+$/,''),
+    url: raw.replace(/\/+$/,''),
     key: (localStorage.getItem('rsp_key')||'emin').trim()
   };
 }
