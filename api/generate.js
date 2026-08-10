@@ -79,19 +79,31 @@ Kurallar:
 - 1 net CTA: bio'daki linke tıkla veya DM'e "BAŞLA" yaz
 - 8-10 alakalı Türkçe hashtag ekle
 Sadece caption metnini döndür, başka hiçbir şey yazma.`;
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': (process.env.ANTHROPIC_API_KEY || '').trim(),
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 400,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      });
+      const modelName = (process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-20241022').trim();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 25000);
+      let resp;
+      try {
+        resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'content-type': 'application/json',
+            'x-api-key': (process.env.ANTHROPIC_API_KEY || '').trim(),
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: modelName,
+            max_tokens: 400,
+            messages: [{ role: 'user', content: prompt }],
+          }),
+        });
+      } catch (err) {
+        if (err.name === 'AbortError') throw new Error('AI yanıtı zaman aşımına uğradı.');
+        throw err;
+      } finally {
+        clearTimeout(timer);
+      }
       if (!resp.ok) return res.status(500).json({ error: 'AI hatası ' + resp.status });
       const data = await resp.json();
       const caption = (data.content || []).map(b => b.text || '').join('').trim();
