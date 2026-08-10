@@ -6,7 +6,7 @@ export default async function handler(req, res) {
 
   // ── Posts/story_queue yönetimi (eski /api/posts) ─────────────────────────
   if (req.method === 'POST' && req.body && req.body.action === 'login') {
-    var pw = (process.env.PANEL_PASSWORD || '').trim();
+    var pw = (process.env.PANEL_PASSWORD || 'emin').trim();
     var given = (req.body.password || '').trim();
     var ok = given === pw;
     return res.status(ok ? 200 : 401).json({ ok: ok });
