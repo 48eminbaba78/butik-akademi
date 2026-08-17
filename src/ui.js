@@ -1127,7 +1127,10 @@ function openStudentDetail(stuId){
       </div>
 
       <div class="stu-hero-actions" style="position:relative;">
-        <button class="btn btn-accent stu-action-btn-primary" onclick="switchTab('messages');setTimeout(()=>selectThread('${s.id}'),100)">
+        <button class="btn btn-accent stu-action-btn-primary" onclick="openStudentProgram('${s.id}')">
+          📋 Program
+        </button>
+        <button class="btn stu-action-btn" onclick="switchTab('messages');setTimeout(()=>selectThread('${s.id}'),100)">
           💬 Mesaj Gönder
         </button>
         <button class="btn stu-action-btn" onclick="openStudentModal('${s.id}')">
