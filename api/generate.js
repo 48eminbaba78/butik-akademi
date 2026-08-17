@@ -79,7 +79,9 @@ Kurallar:
 - 1 net CTA: bio'daki linke tıkla veya DM'e "BAŞLA" yaz
 - 8-10 alakalı Türkçe hashtag ekle
 Sadece caption metnini döndür, başka hiçbir şey yazma.`;
-      const modelName = (process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-20241022').trim();
+      // claude-3-5-haiku-20241022 Anthropic tarafından 19 Şubat 2026'da emekli edildi
+      // (404 not_found_error) — güncel karşılığı claude-haiku-4-5.
+      const modelName = (process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5').trim();
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 25000);
       let resp;

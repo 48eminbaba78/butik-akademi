@@ -194,7 +194,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${GROQ_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         messages: groqMessages,
         temperature: 0.5,
         max_tokens: 2048,
@@ -212,7 +212,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       reply,
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       timestamp: new Date().toISOString()
     });
 

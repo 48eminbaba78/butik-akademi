@@ -11,7 +11,7 @@ import Groq from 'groq-sdk';
 // analiz edebiliyor, modül kapsamındaki bir Groq() çağrısı bu durumda build'i kırar.
 function handle(req: NextRequest) {
   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  const serviceAdapter = new GroqAdapter({ groq, model: 'llama-3.3-70b-versatile' });
+  const serviceAdapter = new GroqAdapter({ groq, model: 'openai/gpt-oss-120b' });
   const runtime = new CopilotRuntime();
 
   return copilotRuntimeNextJSAppRouterEndpoint({
