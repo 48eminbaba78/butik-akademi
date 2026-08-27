@@ -101,7 +101,7 @@ export default async function handler(req, res) {
     // Fallback: Eski publish.js debug aracı
     if (req.query && req.query.debug === '1') {
       if (applyCors(req, res)) return;
-      if (!isAuthed(req)) return res.status(401).json({ error: 'Yetkisiz' });
+      if (!(await isAuthed(req))) return res.status(401).json({ error: 'Yetkisiz' });
       const cwd = process.cwd();
       const dirContents = (dir) => {
         try { return fs.readdirSync(dir); } catch (e) { return e.message; }
@@ -117,7 +117,7 @@ export default async function handler(req, res) {
     // Default GET: Zamanı gelenleri yayınla (eski publish.js işi)
     try {
       if (applyCors(req, res)) return;
-      if (!isAuthed(req)) return res.status(401).json({ error: 'Yetkisiz' });
+      if (!(await isAuthed(req))) return res.status(401).json({ error: 'Yetkisiz' });
       const id = req.query && req.query.id ? req.query.id : null;
       const results = await publishDue({ id: id });
       return res.status(200).json({ processed: results.length, results: results });

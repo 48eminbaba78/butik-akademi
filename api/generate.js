@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
   const isPosts = req.query && req.query._route === 'posts';
   if (isPosts) {
-    if (!isAuthed(req)) return res.status(401).json({ error: 'Yetkisiz' });
+    if (!(await isAuthed(req))) return res.status(401).json({ error: 'Yetkisiz' });
     var client = sb();
     try {
       if (req.method === 'GET') {
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
   // (ya da ?id= ile tek bir story'yi hemen) Instagram'a gönderir ────────────
   const isPublish = req.query && req.query._route === 'publish';
   if (isPublish) {
-    if (!isAuthed(req)) return res.status(401).json({ error: 'Yetkisiz' });
+    if (!(await isAuthed(req))) return res.status(401).json({ error: 'Yetkisiz' });
     try {
       var results = await publishDue({ id: req.query.id });
       var processed = results.filter(function (r) { return r.ok; }).length;
@@ -117,11 +117,11 @@ Sadece caption metnini döndür, başka hiçbir şey yazma.`;
 
   // Onboarding deneme/müsamaha e-postaları — eski /api/onboarding-cron (cron: ?job=onboarding)
   if (req.query && req.query.job === 'onboarding') {
-    if (!isAuthed(req)) return res.status(401).json({ error: 'Yetkisiz cron çağrısı' });
+    if (!(await isAuthed(req))) return res.status(401).json({ error: 'Yetkisiz cron çağrısı' });
     return runOnboardingCron(req, res);
   }
 
-  if (!isAuthed(req)) return res.status(401).json({ error: 'Yetkisiz' });
+  if (!(await isAuthed(req))) return res.status(401).json({ error: 'Yetkisiz' });
   try {
     var tomorrow = new Date(trNow().getTime() + 86400000);
     var dateStr = (req.query && req.query.date) || trDateStr(tomorrow);
