@@ -205,7 +205,9 @@ export default async function handler(req, res) {
                   }
 
                   const cleanDmText = (matchingRule.send_dm || '')
-                    .replace(/rostrumakademi\.app/g, 'rostrumakademi.com');
+                    .replace(/rostrumakademi\.app/g, 'rostrumakademi.com')
+                    .replace(/14\s*g[üu]nl[üu]k/gi, '7 günlük')
+                    .replace(/14\s*g[üu]n\s*ücretsiz/gi, '7 gün ücretsiz');
 
                   const dmRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/messages?access_token=${sendToken}`, {
                     method: 'POST',

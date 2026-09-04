@@ -1,4 +1,4 @@
-import { sb, isAuthed, generateForDate, generateTwoWeeksBatch, getFeedbackMemory, publishDue, trNow, trDateStr } from '../lib/core.js';
+import { sb, isAuthed, generateForDate, generateHookSuggestions, generateTwoWeeksBatch, getFeedbackMemory, publishDue, trNow, trDateStr } from '../lib/core.js';
 import { applyCors } from '../lib/cors.js';
 
 export default async function handler(req, res) {
@@ -132,7 +132,30 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true, caption: newCaption });
         }
 
-        // 5. 14 Günlük Toplu Üretim (Batch 14 Days)
+        // 5. Günlük Hook / Kanca Önerileri (Fast ~2s)
+        if (action === 'generate_hooks') {
+          var hookDate = req.body.date || trDateStr(new Date(Date.now() + 86400000));
+          var hooksRes = await generateHookSuggestions(hookDate, { idea: req.body.idea || '' });
+          return res.status(200).json(hooksRes);
+        }
+
+        // 6. Seçilen Kanca ve Tasarımla Tek Günlük Üretim (Zero Timeout ~10s)
+        if (action === 'generate_day_post') {
+          var postDate = req.body.date;
+          if (!postDate) return res.status(400).json({ error: 'date zorunludur' });
+          var postRes = await generateForDate(postDate, {
+            force: true,
+            type: req.body.type || 'feed',
+            hook: req.body.hook || '',
+            archetype: req.body.archetype || '',
+            lead_magnet_trigger: req.body.trigger || 'ROSTRUM',
+            status: req.body.status || 'draft',
+            idea: req.body.idea || ''
+          });
+          return res.status(200).json(postRes);
+        }
+
+        // 7. 14 Günlük Toplu Üretim (Legacy)
         if (action === 'batch_14days') {
           var startDate = req.body.startDate || req.query.startDate;
           var batchRes = await generateTwoWeeksBatch(startDate, { force: !!req.body.force });
