@@ -139,7 +139,24 @@ export default async function handler(req, res) {
         if (!accessToken) return res.status(200).json({ status: 'no_token' });
 
         const { data: rulesData } = await db.from('platform_settings').select('value').eq('key', 'instagram_automation_rules').maybeSingle();
-        const rules = (rulesData && rulesData.value) || [];
+        let rules = (rulesData && rulesData.value) || [];
+
+        // .app olan eski linkleri otomatik olarak çalışan .com ile düzelt
+        let rulesUpdated = false;
+        rules = rules.map(r => {
+          if (r.send_dm && r.send_dm.includes('rostrumakademi.app')) {
+            rulesUpdated = true;
+            return { ...r, send_dm: r.send_dm.replace(/rostrumakademi\.app/g, 'rostrumakademi.com') };
+          }
+          return r;
+        });
+        if (rulesUpdated) {
+          try {
+            await db.from('platform_settings').upsert({ key: 'instagram_automation_rules', value: rules }, { onConflict: 'key' });
+          } catch(uErr) {
+            console.warn('[Rule Auto-Update Warning]:', uErr.message);
+          }
+        }
 
         for (const entry of body.entry || []) {
           for (const change of entry.changes || []) {
