@@ -721,19 +721,17 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
         <!-- IG TAB BAR -->
         <div style="display:flex;background:#0D1117;border-bottom:0.5px solid rgba(255,255,255,0.08);flex-shrink:0;overflow-x:auto">
           <button id="tab-ig-review" onclick="switchIgPanelTab('review')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid #F4A261;color:#e6edf3;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✨ Onay Süzgeci &amp; 2 Hafta</button>
-          <button id="tab-ig-posts" onclick="switchIgPanelTab('posts')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">Gönderi Taslakları</button>
-          <button id="tab-ig-story" onclick="switchIgPanelTab('story')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">Story Otomasyon</button>
+            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid #F4A261;color:#e6edf3;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✨ 14 Günlük Plan &amp; Onay Merkezi</button>
           <button id="tab-ig-rules" onclick="switchIgPanelTab('rules')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">Otomasyon Kuralları</button>
+            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">⚙️ Otomasyon Kuralları</button>
           <button id="tab-ig-config" onclick="switchIgPanelTab('config')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">Bağlantı Ayarları</button>
+            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">🔗 Bağlantı Ayarları</button>
           <button id="tab-ig-reels" onclick="switchIgPanelTab('reels')"
             style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">🎥 Reels</button>
           <button id="tab-ig-manual" onclick="switchIgPanelTab('manual')"
             style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(244,162,97,0.7);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto;white-space:nowrap">✦ Manuel Post</button>
+          <button id="tab-ig-posts" onclick="switchIgPanelTab('posts')" style="display:none"></button>
+          <button id="tab-ig-story" onclick="switchIgPanelTab('story')" style="display:none"></button>
         </div>
 
         <!-- 0. ONAY SÜZGECİ & 2 HAFTALIK İÇERİK PLANI TABI -->
@@ -743,11 +741,11 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
           <div style="background:linear-gradient(135deg, rgba(240,165,0,0.1) 0%, rgba(192,132,252,0.08) 100%);border:1px solid rgba(240,165,0,0.3);border-radius:14px;padding:18px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
             <div>
               <div style="font-size:16px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
-                <span>✨ 2 Haftalık Viral İçerik Planı &amp; Onay Süzgeci</span>
+                <span>✨ 14 Günlük Viral İçerik Planı &amp; Onay Merkezi</span>
                 <span style="font-size:11px;background:rgba(240,165,0,0.2);color:var(--acc);padding:2px 8px;border-radius:99px;font-weight:700">Otomatik Kalite Öğrenimi Aktif</span>
               </div>
               <div style="font-size:12.5px;color:var(--mid);margin-top:4px;max-width:720px;line-height:1.5">
-                Önümüzdeki 14 gün için hazırlanan Gönderi ve Hikayeleri inceleyin. Reddedilen içeriklerin gerekçeleri <b>AI Kalite Hafızasına</b> yazılır; sistem siz kullandıkça tarzınızı ve beklentilerinizi öğrenir.
+                Önümüzdeki 14 günün içeriklerini kategorilerine göre inceleyin. Reddedilen içeriklerin gerekçeleri <b>AI Kalite Hafızasına</b> yazılır; yapay zeka tarzınızı öğrenir.
               </div>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
@@ -760,33 +758,54 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
             </div>
           </div>
 
-          <!-- İstatistik ve Filtre Çubuğu -->
-          <div style="display:flex;gap:12px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
-            <!-- Durum Filtresi -->
-            <div style="display:flex;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:3px;gap:2px">
-              <button class="btn btn-sm btn-acc" id="revFilt-all" onclick="setReviewStatusFilter('all')">Tümü (<span id="cntRevAll">0</span>)</button>
-              <button class="btn btn-sm btn-ghost" id="revFilt-draft" onclick="setReviewStatusFilter('draft')">⏳ Onay Bekleyenler (<span id="cntRevDraft">0</span>)</button>
-              <button class="btn btn-sm btn-ghost" id="revFilt-approved" onclick="setReviewStatusFilter('approved')">✅ Onaylananlar (<span id="cntRevApproved">0</span>)</button>
-              <button class="btn btn-sm btn-ghost" id="revFilt-rejected" onclick="setReviewStatusFilter('rejected')">❌ Reddedilenler (<span id="cntRevRejected">0</span>)</button>
-            </div>
+          <!-- ANA KATEGORİ SEKMELERİ (SEGMENTED TABS) -->
+          <div style="display:flex;gap:8px;border-bottom:1px solid var(--bd);padding-bottom:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-sm btn-acc" id="revCat-pending" onclick="setReviewCategoryView('pending')">
+              ⏳ Onay Bekleyenler (<span id="cntRevDraft">0</span>)
+            </button>
+            <button class="btn btn-sm btn-ghost" id="revCat-calendar" onclick="setReviewCategoryView('calendar')">
+              📅 14 Günlük Takvim (Gün Gün Akış) (<span id="cntRevCalendar">0</span>)
+            </button>
+            <button class="btn btn-sm btn-ghost" id="revCat-approved" onclick="setReviewCategoryView('approved')">
+              ✅ Yayına Hazır / Onaylılar (<span id="cntRevApproved">0</span>)
+            </button>
+            <button class="btn btn-sm btn-ghost" id="revCat-archive" onclick="setReviewCategoryView('archive')">
+              🚀 Yayınlananlar Arşivi (<span id="cntRevPublished">0</span>)
+            </button>
+            <button class="btn btn-sm btn-ghost" id="revCat-rejected" onclick="setReviewCategoryView('rejected')">
+              ❌ Reddedilenler (<span id="cntRevRejected">0</span>)
+            </button>
+          </div>
 
+          <!-- İkincil Filtre ve Toplu Eylemler Çubuğu -->
+          <div style="display:flex;gap:12px;margin-bottom:18px;align-items:center;flex-wrap:wrap;background:var(--s1);padding:10px 14px;border-radius:10px;border:1px solid var(--bd)">
             <!-- Tür Filtresi -->
-            <div style="display:flex;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:3px;gap:2px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12px;color:var(--dim);font-weight:600">Tür:</span>
               <button class="btn btn-sm btn-acc" id="revType-all" onclick="setReviewTypeFilter('all')">Tümü</button>
-              <button class="btn btn-sm btn-ghost" id="revType-feed" onclick="setReviewTypeFilter('feed')">📸 Postlar</button>
-              <button class="btn btn-sm btn-ghost" id="revType-story" onclick="setReviewTypeFilter('story')">📱 Hikayeler</button>
+              <button class="btn btn-sm btn-ghost" id="revType-feed" onclick="setReviewTypeFilter('feed')">📸 Sadece Postlar</button>
+              <button class="btn btn-sm btn-ghost" id="revType-story" onclick="setReviewTypeFilter('story')">📱 Sadece Hikayeler</button>
             </div>
 
             <!-- Arama ve Yenile -->
             <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
               <input id="revSearchInput" placeholder="Kanca veya metin ara..." class="ci-input" style="width:200px;padding:6px 10px;font-size:12px" oninput="renderReviewCards()">
-              <button class="btn btn-ghost btn-sm" onclick="loadReviewPosts()">↻ Yenile</button>
-              <button class="btn btn-green btn-sm" onclick="publishAllApprovedNow()">🚀 Onaylıları Şimdi Paylaş</button>
+              <button class="btn btn-ghost btn-sm" onclick="loadReviewPosts()" title="Yenile">↻</button>
+            </div>
+
+            <!-- Toplu Eylemler -->
+            <div style="display:flex;gap:8px" id="revBulkActionButtons">
+              <button class="btn btn-green btn-sm" onclick="approveAllPendingDrafts()" id="btnApproveAllDrafts" style="font-weight:700">
+                ⚡ Tüm Bekleyenleri Onayla
+              </button>
+              <button class="btn btn-acc btn-sm" onclick="publishAllApprovedNow()">
+                🚀 Onaylıları Şimdi Paylaş
+              </button>
             </div>
           </div>
 
-          <!-- Kartlar Izgarası (Cards Grid) -->
-          <div id="reviewCardsGrid" class="rsp-grid">
+          <!-- Kartlar Alanı -->
+          <div id="reviewCardsGrid">
             <div class="loading" style="grid-column:1/-1">İçerikler yükleniyor...</div>
           </div>
         </div>
@@ -3110,11 +3129,11 @@ let _selectedIgPanelDraftId = null;
 let _igRules = [];
 let _igConfig = { instagram_access_token: '', instagram_account_id: '', facebook_page_id: '' };
 
-// ── ONAY SÜZGECİ STATE ──
+// ── ONAY SÜZGECİ STATE & KATEGORİLEŞTİRME ──
 let _reviewPosts = [];
 let _reviewFeedbackMemory = [];
-let _reviewStatusFilter = 'all'; // 'all' | 'draft' | 'approved' | 'rejected'
-let _reviewTypeFilter = 'all';   // 'all' | 'feed' | 'story'
+let _reviewCategoryView = 'pending'; // 'pending' | 'calendar' | 'approved' | 'archive' | 'rejected'
+let _reviewTypeFilter = 'all';        // 'all' | 'feed' | 'story'
 
 function initReviewPanelTab() {
   loadReviewPosts();
@@ -3123,7 +3142,7 @@ function initReviewPanelTab() {
 async function loadReviewPosts() {
   const grid = document.getElementById('reviewCardsGrid');
   if (grid && !_reviewPosts.length) {
-    grid.innerHTML = '<div class="loading" style="grid-column:1/-1">İçerikler yükleniyor...</div>';
+    grid.innerHTML = '<div class="loading" style="padding:40px">İçerikler yükleniyor...</div>';
   }
   try {
     const res = await rspFetch('/api/generate?_route=posts');
@@ -3131,16 +3150,25 @@ async function loadReviewPosts() {
     _reviewPosts = raw;
     _reviewFeedbackMemory = res.feedback_memory || [];
 
-    // Sayaçları güncelle
-    const allCnt = _reviewPosts.length;
+    // Kategori sayaçlarını hesapla
     const draftCnt = _reviewPosts.filter(p => p.status === 'draft' || !p.status).length;
     const appCnt = _reviewPosts.filter(p => p.status === 'approved').length;
+    const pubCnt = _reviewPosts.filter(p => p.status === 'published').length;
     const rejCnt = _reviewPosts.filter(p => p.status === 'rejected').length;
+    const calCnt = _reviewPosts.filter(p => p.status !== 'rejected').length;
 
-    const elAll = document.getElementById('cntRevAll'); if (elAll) elAll.textContent = allCnt;
     const elDraft = document.getElementById('cntRevDraft'); if (elDraft) elDraft.textContent = draftCnt;
+    const elCal = document.getElementById('cntRevCalendar'); if (elCal) elCal.textContent = calCnt;
     const elApp = document.getElementById('cntRevApproved'); if (elApp) elApp.textContent = appCnt;
+    const elPub = document.getElementById('cntRevPublished'); if (elPub) elPub.textContent = pubCnt;
     const elRej = document.getElementById('cntRevRejected'); if (elRej) elRej.textContent = rejCnt;
+
+    // Toplu onayla butonundaki sayaç
+    const btnDraft = document.getElementById('btnApproveAllDrafts');
+    if (btnDraft) {
+      btnDraft.textContent = `⚡ Tüm Bekleyenleri Onayla (${draftCnt})`;
+      btnDraft.style.display = draftCnt > 0 ? 'inline-block' : 'none';
+    }
 
     const memBadge = document.getElementById('memRuleCount');
     if (memBadge) memBadge.textContent = _reviewFeedbackMemory.length;
@@ -3148,17 +3176,17 @@ async function loadReviewPosts() {
     renderReviewCards();
   } catch (err) {
     console.error('loadReviewPosts error:', err);
-    if (grid) grid.innerHTML = `<div class="loading" style="grid-column:1/-1;color:var(--red)">Hata: ${esc(err.message)}</div>`;
+    if (grid) grid.innerHTML = `<div class="loading" style="color:var(--red);padding:30px">Hata: ${esc(err.message)}</div>`;
   }
 }
 
-function setReviewStatusFilter(status) {
-  _reviewStatusFilter = status;
-  ['all', 'draft', 'approved', 'rejected'].forEach(s => {
-    const btn = document.getElementById('revFilt-' + s);
+function setReviewCategoryView(cat) {
+  _reviewCategoryView = cat;
+  ['pending', 'calendar', 'approved', 'archive', 'rejected'].forEach(c => {
+    const btn = document.getElementById('revCat-' + c);
     if (btn) {
-      btn.classList.toggle('btn-acc', s === status);
-      btn.classList.toggle('btn-ghost', s !== status);
+      btn.classList.toggle('btn-acc', c === cat);
+      btn.classList.toggle('btn-ghost', c !== cat);
     }
   });
   renderReviewCards();
@@ -3176,134 +3204,255 @@ function setReviewTypeFilter(type) {
   renderReviewCards();
 }
 
+function renderSingleReviewCard(p) {
+  const isFeed = (p.post_type === 'feed' || p.post_type === 'post');
+  const typeBadge = isFeed
+    ? '<span style="font-size:10px;font-weight:800;background:rgba(240,165,0,0.18);color:#f0a500;padding:2px 8px;border-radius:4px;border:1px solid rgba(240,165,0,0.35)">📸 FEED GÖNDERİSİ</span>'
+    : '<span style="font-size:10px;font-weight:800;background:rgba(192,132,252,0.18);color:#c084fc;padding:2px 8px;border-radius:4px;border:1px solid rgba(192,132,252,0.35)">📱 GÜNLÜK HİKAYE</span>';
+
+  const st = p.status || 'draft';
+  const statusBadges = {
+    draft: '<span class="status-badge" style="background:rgba(240,165,0,0.12);color:var(--acc);font-size:11px">⏳ Onay Bekliyor</span>',
+    approved: '<span class="status-badge" style="background:rgba(62,207,142,0.12);color:var(--acc3);font-size:11px">✅ Onaylandı</span>',
+    rejected: '<span class="status-badge" style="background:rgba(255,92,122,0.12);color:var(--red);font-size:11px">❌ Reddedildi</span>',
+    published: '<span class="status-badge" style="background:rgba(96,180,255,0.12);color:var(--acc4);font-size:11px">🚀 Yayınlandı</span>',
+    error: '<span class="status-badge" style="background:rgba(255,92,122,0.12);color:var(--red);font-size:11px">⚠️ Hata</span>'
+  };
+
+  const dateFormatted = new Date(p.post_date + 'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'short' });
+  const themeName = (typeof RSP_TH !== 'undefined' && RSP_TH[p.theme]) ? RSP_TH[p.theme] : (p.theme || 'Genel');
+  const virScore = p.virality_score || 88;
+
+  // A/B Kanca Butonları
+  let hooksHtml = '';
+  const hooks = Array.isArray(p.hooks) ? p.hooks : [];
+  if (hooks.length > 0) {
+    hooksHtml = `
+      <div style="margin:8px 0;background:rgba(0,0,0,0.25);border:1px solid var(--bd);border-radius:8px;padding:8px">
+        <div style="font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:4px">
+          <span>🎯 A/B KANCA VARYANTLARI (Başlığa aktarmak için tıkla):</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${hooks.map(h => `
+            <button type="button" onclick="switchPostHook('${p.id}', '${esc(h.text)}')" style="text-align:left;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text);cursor:pointer;transition:border .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)'">
+              <b style="color:var(--acc)">[${esc(h.label || h.type || 'Kanca')}]:</b> "${esc(h.text)}"
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Ret Gerekçesi Uyarısı
+  let rejBox = '';
+  if (st === 'rejected' && p.rejection_reason) {
+    rejBox = `
+      <div style="background:rgba(255,92,122,0.1);border:1px solid rgba(255,92,122,0.3);border-radius:8px;padding:7px 10px;font-size:11.5px;color:var(--red);margin:6px 0;line-height:1.4">
+        ⚠️ <b>Ret Gerekçesi:</b> "${esc(p.rejection_reason)}"
+      </div>
+    `;
+  }
+
+  // Lead Magnet Rozeti (Post vs Story ayrımı)
+  const leadTrigger = p.lead_magnet_trigger || 'ROSTRUM';
+  const tagBadge = isFeed
+    ? `<span style="font-size:10.5px;font-weight:600;color:var(--acc4);background:rgba(96,180,255,0.08);border:1px solid rgba(96,180,255,0.2);border-radius:5px;padding:2px 6px">
+         💬 Yoruma "${esc(leadTrigger)}" Yaz → DM Otomasyonu
+       </span>`
+    : `<span style="font-size:10.5px;font-weight:600;color:#c084fc;background:rgba(192,132,252,0.08);border:1px solid rgba(192,132,252,0.2);border-radius:5px;padding:2px 6px">
+         📊 İnteraktif Çıkartma &amp; Hikaye
+       </span>`;
+
+  // Aksiyon Butonları (Duruma Göre Temiz Ayrım)
+  let actions = '';
+  if (st === 'published') {
+    actions = `
+      <div style="background:rgba(96,180,255,0.08);border:1px solid rgba(96,180,255,0.25);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--acc4);display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto">
+        <span>✓ Bu içerik Instagram'da başarıyla yayınlandı.</span>
+        <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px" onclick="saveReviewCaption('${p.id}')">Metni Kaydet</button>
+      </div>
+    `;
+  } else if (st === 'approved') {
+    actions = `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:8px;align-items:center">
+        <span style="font-size:11.5px;color:var(--acc3);font-weight:700;margin-right:auto">✅ Yayına Hazır</span>
+        <button class="btn btn-danger btn-sm" onclick="openRejectFeedbackModal('${p.id}')">❌ Vazgeç / Reddet</button>
+        <button class="btn btn-green btn-sm" onclick="publishReviewSingle('${p.id}')">🚀 Hemen Paylaş</button>
+        <button class="btn btn-ghost btn-sm" onclick="saveReviewCaption('${p.id}')">💾 Kaydet</button>
+      </div>
+    `;
+  } else if (st === 'rejected') {
+    actions = `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:8px">
+        <button class="btn btn-acc btn-sm" onclick="regenReviewPost('${p.id}')" style="font-weight:700">↺ Düzelt &amp; Yeniden Üret</button>
+        <button class="btn btn-green btn-sm" onclick="approveReviewPost('${p.id}')">✅ Yine de Onayla</button>
+        <button class="btn btn-ghost btn-sm" onclick="saveReviewCaption('${p.id}')">💾 Kaydet</button>
+      </div>
+    `;
+  } else {
+    // draft (Onay Bekliyor)
+    actions = `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:8px">
+        <button class="btn btn-green btn-sm" onclick="approveReviewPost('${p.id}')" style="font-weight:700">✅ Onayla</button>
+        <button class="btn btn-danger btn-sm" onclick="openRejectFeedbackModal('${p.id}')">❌ Reddet &amp; Neden Yaz</button>
+        <button class="btn btn-acc btn-sm" onclick="regenReviewPost('${p.id}')">↺ Yeniden Üret</button>
+        <button class="btn btn-ghost btn-sm" onclick="saveReviewCaption('${p.id}')">💾 Kaydet</button>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="rsp-card" id="revCard-${p.id}">
+      <div class="${isFeed ? 'fp-phone' : 'rsp-phone'}">
+        <div class="${isFeed ? 'fp-scr' : 'rsp-scr'}">
+          ${p.svg || '<span style="font-size:11px;color:var(--dim)">Görsel yok</span>'}
+        </div>
+      </div>
+      <div class="rsp-meta">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          ${typeBadge}
+          <span style="font-weight:700;font-size:13px;color:var(--text)">${dateFormatted}</span>
+          <span class="chip-method" style="color:var(--acc2)">${esc(themeName)}</span>
+          <span style="margin-left:auto">${statusBadges[st] || st}</span>
+        </div>
+
+        <!-- Viralite & Etkileşim Göstergesi -->
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:3px 0">
+          <span style="font-size:10.5px;font-weight:700;color:var(--acc);background:rgba(240,165,0,0.1);border:1px solid rgba(240,165,0,0.25);border-radius:5px;padding:2px 6px">
+            🔥 %${virScore} Virallik Skoru
+          </span>
+          ${tagBadge}
+        </div>
+
+        ${rejBox}
+        ${hooksHtml}
+
+        <textarea class="rsp-cap" id="revCap-${p.id}" style="min-height:75px">${esc(p.caption || '')}</textarea>
+        ${actions}
+      </div>
+    </div>
+  `;
+}
+
 function renderReviewCards() {
   const grid = document.getElementById('reviewCardsGrid');
   if (!grid) return;
 
   const q = (document.getElementById('revSearchInput')?.value || '').toLowerCase();
 
+  // 1. Kategori görünüm filtresi
   let list = _reviewPosts.filter(p => {
-    // 1. Status filtresi
-    if (_reviewStatusFilter === 'draft' && p.status !== 'draft' && p.status) return false;
-    if (_reviewStatusFilter === 'approved' && p.status !== 'approved') return false;
-    if (_reviewStatusFilter === 'rejected' && p.status !== 'rejected') return false;
-
-    // 2. Type filtresi
-    const isFeed = (p.post_type === 'feed' || p.post_type === 'post');
-    if (_reviewTypeFilter === 'feed' && !isFeed) return false;
-    if (_reviewTypeFilter === 'story' && isFeed) return false;
-
-    // 3. Arama filtresi
-    if (q) {
-      const txt = (p.caption || '') + ' ' + (p.rejection_reason || '') + ' ' + (p.theme || '');
-      if (!txt.toLowerCase().includes(q)) return false;
-    }
-
+    const st = p.status || 'draft';
+    if (_reviewCategoryView === 'pending') return st === 'draft';
+    if (_reviewCategoryView === 'approved') return st === 'approved';
+    if (_reviewCategoryView === 'archive') return st === 'published';
+    if (_reviewCategoryView === 'rejected') return st === 'rejected';
+    if (_reviewCategoryView === 'calendar') return true; // takvimde hepsi tarihe göre gösterilir
     return true;
   });
 
+  // 2. Tür filtresi
+  list = list.filter(p => {
+    const isFeed = (p.post_type === 'feed' || p.post_type === 'post');
+    if (_reviewTypeFilter === 'feed' && !isFeed) return false;
+    if (_reviewTypeFilter === 'story' && isFeed) return false;
+    return true;
+  });
+
+  // 3. Arama filtresi
+  if (q) {
+    list = list.filter(p => {
+      const txt = (p.caption || '') + ' ' + (p.rejection_reason || '') + ' ' + (p.theme || '') + ' ' + (p.post_date || '');
+      return txt.toLowerCase().includes(q);
+    });
+  }
+
   if (!list.length) {
-    grid.innerHTML = '<div class="loading" style="grid-column:1/-1;padding:40px">Seçilen filtreye uygun içerik bulunamadı. "⚡ 2 Haftalık Planı Üret" butonuyla yeni içerikler oluşturabilirsiniz.</div>';
+    const emptyMsgs = {
+      pending: '🎉 Harika! İncelenmeyi bekleyen onay taslağı kalmadı. Tüm içerikler onaylanmış veya yayınlanmış.',
+      calendar: 'Takvimde listelenecek içerik bulunamadı.',
+      approved: 'Henüz onaylanmış ve yayına hazır içerik yok. "Onay Bekleyenler" sekmesinden beğendiklerinizi onaylayın.',
+      archive: 'Henüz yayınlanmış bir içerik arşivi bulunmuyor.',
+      rejected: 'Reddedilmiş bir içerik yok.'
+    };
+    grid.innerHTML = `<div class="loading" style="padding:40px">${emptyMsgs[_reviewCategoryView] || 'Seçilen filtreye uygun içerik bulunamadı.'}</div>`;
     return;
   }
 
-  grid.innerHTML = list.map(p => {
-    const isFeed = (p.post_type === 'feed' || p.post_type === 'post');
-    const typeBadge = isFeed
-      ? '<span style="font-size:10px;font-weight:800;background:rgba(240,165,0,0.15);color:#f0a500;padding:2px 7px;border-radius:4px;border:1px solid rgba(240,165,0,0.3)">📸 GÖNDERİ</span>'
-      : '<span style="font-size:10px;font-weight:800;background:rgba(192,132,252,0.15);color:#c084fc;padding:2px 7px;border-radius:4px;border:1px solid rgba(192,132,252,0.3)">📱 HİKAYE</span>';
+  // 4. TAKVİM GÖRÜNÜMÜ: Gün Gün Paketler
+  if (_reviewCategoryView === 'calendar') {
+    list.sort((a, b) => (a.post_date || '').localeCompare(b.post_date || ''));
 
-    const st = p.status || 'draft';
-    const statusBadges = {
-      draft: '<span class="status-badge" style="background:rgba(240,165,0,0.12);color:var(--acc);font-size:11px">⏳ Onay Bekliyor</span>',
-      approved: '<span class="status-badge" style="background:rgba(62,207,142,0.12);color:var(--acc3);font-size:11px">✅ Onaylandı</span>',
-      rejected: '<span class="status-badge" style="background:rgba(255,92,122,0.12);color:var(--red);font-size:11px">❌ Reddedildi</span>',
-      published: '<span class="status-badge" style="background:rgba(96,180,255,0.12);color:var(--acc4);font-size:11px">🚀 Yayınlandı</span>',
-      error: '<span class="status-badge" style="background:rgba(255,92,122,0.12);color:var(--red);font-size:11px">⚠️ Hata</span>'
-    };
+    const dateMap = {};
+    list.forEach(p => {
+      const d = p.post_date || 'Tarihsiz';
+      if (!dateMap[d]) dateMap[d] = [];
+      dateMap[d].push(p);
+    });
 
-    const dateFormatted = new Date(p.post_date + 'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'short' });
-    const themeName = (typeof RSP_TH !== 'undefined' && RSP_TH[p.theme]) ? RSP_TH[p.theme] : (p.theme || 'Genel');
-    const virScore = p.virality_score || 88;
+    const dates = Object.keys(dateMap);
+    grid.innerHTML = dates.map(dStr => {
+      const dayItems = dateMap[dStr];
+      const dObj = new Date(dStr + 'T12:00:00');
+      const dayName = dObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' });
 
-    // A/B Kanca Butonları
-    let hooksHtml = '';
-    const hooks = Array.isArray(p.hooks) ? p.hooks : [];
-    if (hooks.length > 0) {
-      hooksHtml = `
-        <div style="margin:8px 0;background:rgba(0,0,0,0.25);border:1px solid var(--bd);border-radius:8px;padding:8px">
-          <div style="font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:4px">
-            <span>🎯 A/B KANCA VARYANTLARI (Başlığa aktarmak için tıkla):</span>
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const target = new Date(dStr + 'T00:00:00');
+      const diffDays = Math.round((target - now) / 86400000);
+      let relBadge = '';
+      if (diffDays === 0) relBadge = '<span style="background:#238636;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px">BUGÜN</span>';
+      else if (diffDays === 1) relBadge = '<span style="background:rgba(240,165,0,0.25);color:var(--acc);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px">YARIN</span>';
+      else if (diffDays > 1) relBadge = `<span style="background:rgba(255,255,255,0.08);color:var(--mid);font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px">${diffDays} gün sonra</span>`;
+      else relBadge = `<span style="background:rgba(255,255,255,0.05);color:var(--dim);font-size:11px;padding:2px 8px;border-radius:99px">Geçmiş</span>`;
+
+      const feedItems = dayItems.filter(x => x.post_type === 'feed' || x.post_type === 'post');
+      const storyItems = dayItems.filter(x => x.post_type !== 'feed' && x.post_type !== 'post');
+
+      return `
+        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--bd);border-radius:14px;padding:16px 20px;margin-bottom:24px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:10px;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:800;color:var(--text)">📅 ${dayName}</span>
+            ${relBadge}
+            <div style="margin-left:auto;display:flex;gap:8px;font-size:12px;color:var(--dim)">
+              <span style="color:${feedItems.length ? 'var(--acc)' : 'var(--dim)'}">📸 ${feedItems.length} Post</span>
+              <span>·</span>
+              <span style="color:${storyItems.length ? 'var(--acc2)' : 'var(--dim)'}">📱 ${storyItems.length} Hikaye</span>
+            </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            ${hooks.map(h => `
-              <button type="button" onclick="switchPostHook('${p.id}', '${esc(h.text)}')" style="text-align:left;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text);cursor:pointer;transition:border .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)'">
-                <b style="color:var(--acc)">[${esc(h.label || h.type || 'Kanca')}]:</b> "${esc(h.text)}"
-              </button>
-            `).join('')}
+          <div class="rsp-grid">
+            ${dayItems.map(renderSingleReviewCard).join('')}
           </div>
         </div>
       `;
+    }).join('');
+    return;
+  }
+
+  // Standart Görünüm (Bekleyenler, Onaylananlar, Arşiv veya Reddedilenler)
+  grid.innerHTML = `<div class="rsp-grid">${list.map(renderSingleReviewCard).join('')}</div>`;
+}
+
+async function approveAllPendingDrafts() {
+  const drafts = _reviewPosts.filter(p => p.status === 'draft' || !p.status);
+  if (!drafts.length) {
+    showToast('Onay bekleyen içerik bulunamadı.', false);
+    return;
+  }
+  if (!(await customConfirm(`${drafts.length} adet onay bekleyen içeriğin tümünü onaylamak istiyor musunuz?`, 'Tümünü Onayla'))) return;
+  showToast('Tüm bekleyen içerikler onaylanıyor...');
+  try {
+    for (const d of drafts) {
+      await rspFetch('/api/generate?_route=posts', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'approve', id: d.id })
+      });
     }
-
-    // Ret Gerekçesi Uyarısı
-    let rejBox = '';
-    if (st === 'rejected' && p.rejection_reason) {
-      rejBox = `
-        <div style="background:rgba(255,92,122,0.1);border:1px solid rgba(255,92,122,0.3);border-radius:8px;padding:7px 10px;font-size:11.5px;color:var(--red);margin:6px 0;line-height:1.4">
-          ⚠️ <b>Ret Gerekçesi:</b> "${esc(p.rejection_reason)}"
-        </div>
-      `;
-    }
-
-    // Lead Magnet Rozeti
-    const leadTrigger = p.lead_magnet_trigger || 'ROSTRUM';
-
-    // Aksiyon Butonları
-    const actions = `
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:8px">
-        ${st !== 'approved' && st !== 'published' ? `<button class="btn btn-green btn-sm" onclick="approveReviewPost('${p.id}')">✅ Onayla</button>` : ''}
-        <button class="btn btn-danger btn-sm" onclick="openRejectFeedbackModal('${p.id}')">❌ Reddet &amp; Neden Yaz</button>
-        <button class="btn btn-acc btn-sm" onclick="regenReviewPost('${p.id}')">↺ Yeniden Üret</button>
-        ${st === 'approved' ? `<button class="btn btn-green btn-sm" onclick="publishReviewSingle('${p.id}')">🚀 Hemen Paylaş</button>` : ''}
-        <button class="btn btn-ghost btn-sm" onclick="saveReviewCaption('${p.id}')">💾 Kaydet</button>
-      </div>
-    `;
-
-    return `
-      <div class="rsp-card" id="revCard-${p.id}">
-        <div class="${isFeed ? 'fp-phone' : 'rsp-phone'}">
-          <div class="${isFeed ? 'fp-scr' : 'rsp-scr'}">
-            ${p.svg || '<span style="font-size:11px;color:var(--dim)">Görsel yok</span>'}
-          </div>
-        </div>
-        <div class="rsp-meta">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            ${typeBadge}
-            <span style="font-weight:700;font-size:13px;color:var(--text)">${dateFormatted}</span>
-            <span class="chip-method" style="color:var(--acc2)">${esc(themeName)}</span>
-            <span style="margin-left:auto">${statusBadges[st] || st}</span>
-          </div>
-
-          <!-- Viralite & Lead Magnet Göstergesi -->
-          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:3px 0">
-            <span style="font-size:10.5px;font-weight:700;color:var(--acc);background:rgba(240,165,0,0.1);border:1px solid rgba(240,165,0,0.25);border-radius:5px;padding:2px 6px">
-              🔥 %${virScore} Virallik Skoru
-            </span>
-            <span style="font-size:10.5px;font-weight:600;color:var(--acc4);background:rgba(96,180,255,0.08);border:1px solid rgba(96,180,255,0.2);border-radius:5px;padding:2px 6px">
-              💬 Yoruma "${esc(leadTrigger)}" Yaz → DM Otomasyonu
-            </span>
-          </div>
-
-          ${rejBox}
-          ${hooksHtml}
-
-          <textarea class="rsp-cap" id="revCap-${p.id}" style="min-height:75px">${esc(p.caption || '')}</textarea>
-          ${actions}
-        </div>
-      </div>
-    `;
-  }).join('');
+    showToast(`🎉 ${drafts.length} içerik başarıyla onaylandı! ✓`);
+    await loadReviewPosts();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  }
 }
 
 async function approveReviewPost(id) {
