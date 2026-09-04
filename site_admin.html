@@ -719,19 +719,76 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
         </div>
 
         <!-- IG TAB BAR -->
-        <div style="display:flex;background:#0D1117;border-bottom:0.5px solid rgba(255,255,255,0.08);flex-shrink:0">
+        <div style="display:flex;background:#0D1117;border-bottom:0.5px solid rgba(255,255,255,0.08);flex-shrink:0;overflow-x:auto">
+          <button id="tab-ig-review" onclick="switchIgPanelTab('review')"
+            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid #F4A261;color:#e6edf3;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✨ Onay Süzgeci &amp; 2 Hafta</button>
           <button id="tab-ig-posts" onclick="switchIgPanelTab('posts')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid #F4A261;color:#e6edf3;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Gönderi Taslakları</button>
-          <button id="tab-ig-rules" onclick="switchIgPanelTab('rules')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Otomasyon Kuralları</button>
-          <button id="tab-ig-config" onclick="switchIgPanelTab('config')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Bağlantı Ayarları</button>
+            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">Gönderi Taslakları</button>
           <button id="tab-ig-story" onclick="switchIgPanelTab('story')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Story Otomasyon</button>
+            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">Story Otomasyon</button>
+          <button id="tab-ig-rules" onclick="switchIgPanelTab('rules')"
+            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">Otomasyon Kuralları</button>
+          <button id="tab-ig-config" onclick="switchIgPanelTab('config')"
+            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">Bağlantı Ayarları</button>
           <button id="tab-ig-reels" onclick="switchIgPanelTab('reels')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">🎥 Reels</button>
+            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(230,237,243,0.4);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap">🎥 Reels</button>
           <button id="tab-ig-manual" onclick="switchIgPanelTab('manual')"
-            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(244,162,97,0.7);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto">✦ Manuel Post</button>
+            style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(244,162,97,0.7);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto;white-space:nowrap">✦ Manuel Post</button>
+        </div>
+
+        <!-- 0. ONAY SÜZGECİ & 2 HAFTALIK İÇERİK PLANI TABI -->
+        <div id="ig-review-section" style="display:block;padding:20px 24px;overflow-y:auto;flex:1;background:var(--bg)">
+
+          <!-- Üst Bilgi ve Eylem Kartı -->
+          <div style="background:linear-gradient(135deg, rgba(240,165,0,0.1) 0%, rgba(192,132,252,0.08) 100%);border:1px solid rgba(240,165,0,0.3);border-radius:14px;padding:18px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+            <div>
+              <div style="font-size:16px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+                <span>✨ 2 Haftalık Viral İçerik Planı &amp; Onay Süzgeci</span>
+                <span style="font-size:11px;background:rgba(240,165,0,0.2);color:var(--acc);padding:2px 8px;border-radius:99px;font-weight:700">Otomatik Kalite Öğrenimi Aktif</span>
+              </div>
+              <div style="font-size:12.5px;color:var(--mid);margin-top:4px;max-width:720px;line-height:1.5">
+                Önümüzdeki 14 gün için hazırlanan Gönderi ve Hikayeleri inceleyin. Reddedilen içeriklerin gerekçeleri <b>AI Kalite Hafızasına</b> yazılır; sistem siz kullandıkça tarzınızı ve beklentilerinizi öğrenir.
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-ghost btn-sm" onclick="openFeedbackMemoryModal()" id="btnMemoryBadge" style="border-color:rgba(192,132,252,0.4);color:var(--acc2)">
+                🧠 AI Kalite Hafızası (<span id="memRuleCount">0</span> Kural)
+              </button>
+              <button class="btn btn-acc" onclick="startTwoWeeksBatchGen()" id="btnBatchGen14" style="font-weight:700">
+                ⚡ 2 Haftalık İçerik Planını Üret (14 Gün Post + Story)
+              </button>
+            </div>
+          </div>
+
+          <!-- İstatistik ve Filtre Çubuğu -->
+          <div style="display:flex;gap:12px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
+            <!-- Durum Filtresi -->
+            <div style="display:flex;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:3px;gap:2px">
+              <button class="btn btn-sm btn-acc" id="revFilt-all" onclick="setReviewStatusFilter('all')">Tümü (<span id="cntRevAll">0</span>)</button>
+              <button class="btn btn-sm btn-ghost" id="revFilt-draft" onclick="setReviewStatusFilter('draft')">⏳ Onay Bekleyenler (<span id="cntRevDraft">0</span>)</button>
+              <button class="btn btn-sm btn-ghost" id="revFilt-approved" onclick="setReviewStatusFilter('approved')">✅ Onaylananlar (<span id="cntRevApproved">0</span>)</button>
+              <button class="btn btn-sm btn-ghost" id="revFilt-rejected" onclick="setReviewStatusFilter('rejected')">❌ Reddedilenler (<span id="cntRevRejected">0</span>)</button>
+            </div>
+
+            <!-- Tür Filtresi -->
+            <div style="display:flex;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:3px;gap:2px">
+              <button class="btn btn-sm btn-acc" id="revType-all" onclick="setReviewTypeFilter('all')">Tümü</button>
+              <button class="btn btn-sm btn-ghost" id="revType-feed" onclick="setReviewTypeFilter('feed')">📸 Postlar</button>
+              <button class="btn btn-sm btn-ghost" id="revType-story" onclick="setReviewTypeFilter('story')">📱 Hikayeler</button>
+            </div>
+
+            <!-- Arama ve Yenile -->
+            <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+              <input id="revSearchInput" placeholder="Kanca veya metin ara..." class="ci-input" style="width:200px;padding:6px 10px;font-size:12px" oninput="renderReviewCards()">
+              <button class="btn btn-ghost btn-sm" onclick="loadReviewPosts()">↻ Yenile</button>
+              <button class="btn btn-green btn-sm" onclick="publishAllApprovedNow()">🚀 Onaylıları Şimdi Paylaş</button>
+            </div>
+          </div>
+
+          <!-- Kartlar Izgarası (Cards Grid) -->
+          <div id="reviewCardsGrid" class="rsp-grid">
+            <div class="loading" style="grid-column:1/-1">İçerikler yükleniyor...</div>
+          </div>
         </div>
 
         <!-- 1. GÖNDERİLER TABI (Story Otomasyon ile aynı motor — rostrum-story-panel, type=feed) -->
@@ -1335,6 +1392,100 @@ create policy "auth_all_payments" on payments for all to authenticated using (tr
       <div class="field"><label>Link Metni</label><input id="amLinkText" placeholder="Detaylar →"></div>
     </div>
     <button class="btn btn-acc" style="width:100%;justify-content:center;padding:12px" onclick="saveAnnounce()">Kaydet</button>
+  </div>
+</div>
+
+<!-- 1. RET VE KALİTE GERİ BİLDİRİMİ MODAL -->
+<div class="modal-bg" id="rejectFeedbackModal">
+  <div class="modal" style="max-width:540px">
+    <button class="modal-close" onclick="closeModal('rejectFeedbackModal')">×</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <span style="font-size:24px">❌</span>
+      <h2 style="margin:0;font-size:18px">İçeriği Reddet &amp; Kalite Geri Bildirimi</h2>
+    </div>
+    <div style="font-size:12.5px;color:var(--mid);line-height:1.5;margin-bottom:14px">
+      Yazdığınız ret gerekçesi <b>AI Kalite Hafızasına</b> kaydedilecek ve sonraki üretimlerde aynı hatayı yapmaması için prompt'a eklenecektir.
+    </div>
+
+    <input type="hidden" id="rfPostId">
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px">
+      <div style="color:var(--dim);font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:4px">Reddedilen İçerik:</div>
+      <div id="rfPostSummary" style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+    </div>
+
+    <!-- Hızlı Etiketler (Tıklanabilir) -->
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Hızlı Neden Seçimi:</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px" id="rfPresetChips">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="appendRfTag('Klişe pazarlama dili kullanılmış, daha samimi ve mesleki konuş')">📌 Klişe Dil</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="appendRfTag('Metin çok uzun, ilk 2 satırda kaydırmayı durduran kanca olmalı')">📌 Metin Çok Uzun</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="appendRfTag('Görsel karmaşık, tipografi sade ve yüksek kontrastlı olmalı')">📌 Görsel Karmaşık</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="appendRfTag('Öğrenciye değil bağımsız koçun zaman ve veli acısına odaklanmalı')">📌 Koç Acısına Odaklan</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="appendRfTag('CTA çok zayıf, net bir eylem çağrısı veya yoruma davet olmalı')">📌 CTA Zayıf</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="appendRfTag('Kanca merak uyandırmıyor, şok edici veya karşı-sezgisel bir gerçekle başla')">📌 Zayıf Kanca</button>
+      </div>
+    </div>
+
+    <!-- Detaylı Açıklama -->
+    <div class="field" style="margin-bottom:18px">
+      <label style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px">Ret Gerekçeniz &amp; Beklentiniz *</label>
+      <textarea id="rfCustomReason" class="ci-input" style="min-height:85px;resize:vertical;font-size:12.5px;line-height:1.5" placeholder="Örn: Bu görselde kağıt programlar yerine koçun Excel ile kaybettiği saatlere vurgu yap, başlık daha provokatif olsun..."></textarea>
+    </div>
+
+    <!-- Aksiyon Butonları -->
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="closeModal('rejectFeedbackModal')">Vazgeç</button>
+      <button class="btn btn-danger" onclick="submitRejectOnly()" id="btnSubmitReject">Sadece Reddet</button>
+      <button class="btn btn-acc" onclick="submitRejectAndRegen()" id="btnSubmitRejectRegen">✨ Reddet &amp; Hemen Yeniden Üret ↺</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. AI KALİTE HAFIZASI & ÖĞRENİLMİŞ KURALLAR MODAL -->
+<div class="modal-bg" id="feedbackMemoryModal">
+  <div class="modal" style="max-width:580px">
+    <button class="modal-close" onclick="closeModal('feedbackMemoryModal')">×</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <span style="font-size:24px">🧠</span>
+      <h2 style="margin:0;font-size:18px">AI Kalite Hafızası &amp; Kurallar</h2>
+    </div>
+    <div style="font-size:12.5px;color:var(--mid);line-height:1.5;margin-bottom:16px">
+      Reddettiğiniz içeriklerde belirttiğiniz gerekçeler burada toplanır. Yapay zeka sonraki her üretimde bu kuralları prompt'a ekleyerek kalitesini artırır.
+    </div>
+
+    <!-- Yeni Kural Ekleme -->
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input id="newRuleInput" class="ci-input" placeholder="Yeni bir kalite kuralı yaz (örn: Fiyat rakamı yazma)..." style="flex:1">
+      <button class="btn btn-acc btn-sm" onclick="addFeedbackRuleManual()">+ Kural Ekle</button>
+    </div>
+
+    <!-- Kurallar Listesi -->
+    <div style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px" id="memoryRulesList">
+      <div class="loading">Kurallar yükleniyor...</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;border-top:1px solid var(--bd);padding-top:12px">
+      <span style="font-size:11px;color:var(--dim)" id="memStatsText">0 kural aktif</span>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('feedbackMemoryModal')">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. TOPLU 14 GÜNLÜK ÜRETİM İLERLEME MODAL -->
+<div class="modal-bg" id="batchProgressModal">
+  <div class="modal" style="max-width:480px;text-align:center;padding:30px 24px">
+    <div style="font-size:36px;margin-bottom:10px">⚡</div>
+    <h2 style="font-size:18px;margin-bottom:8px" id="bpTitle">2 Haftalık Plan Hazırlanıyor</h2>
+    <div style="font-size:13px;color:var(--mid);line-height:1.6;margin-bottom:20px" id="bpSubtitle">
+      Yapay zeka 14 günlük Gönderi ve Hikaye içeriklerini, A/B kancalarını ve görsel tasarımlarını oluşturuyor. Lütfen bekleyin...
+    </div>
+
+    <div class="gen-progress-track" style="height:6px;margin-bottom:14px">
+      <div class="gen-progress-fill" id="bpBarFill" style="width:100%"></div>
+    </div>
+
+    <div style="font-size:12px;font-weight:600;color:var(--acc);margin-bottom:6px" id="bpStepText">Başlatılıyor...</div>
+    <div style="font-size:11px;color:var(--dim)" id="bpSubStepText">14 Gün · 28 İçerik</div>
   </div>
 </div>
 
@@ -2953,11 +3104,440 @@ function customConfirm(message, okLabel){
   });
 }
 
-// ── INSTAGRAM PANEL LOGIC ──────────────────────
-let _activeIgPanelTab = 'posts';
+// ── INSTAGRAM PANEL LOGIC & ONAY SÜZGECİ (ADAPTIVE QUALITY ENGINE) ──────
+let _activeIgPanelTab = 'review';
 let _selectedIgPanelDraftId = null;
 let _igRules = [];
 let _igConfig = { instagram_access_token: '', instagram_account_id: '', facebook_page_id: '' };
+
+// ── ONAY SÜZGECİ STATE ──
+let _reviewPosts = [];
+let _reviewFeedbackMemory = [];
+let _reviewStatusFilter = 'all'; // 'all' | 'draft' | 'approved' | 'rejected'
+let _reviewTypeFilter = 'all';   // 'all' | 'feed' | 'story'
+
+function initReviewPanelTab() {
+  loadReviewPosts();
+}
+
+async function loadReviewPosts() {
+  const grid = document.getElementById('reviewCardsGrid');
+  if (grid && !_reviewPosts.length) {
+    grid.innerHTML = '<div class="loading" style="grid-column:1/-1">İçerikler yükleniyor...</div>';
+  }
+  try {
+    const res = await rspFetch('/api/generate?_route=posts');
+    const raw = Array.isArray(res) ? res : (res.posts || res.data || []);
+    _reviewPosts = raw;
+    _reviewFeedbackMemory = res.feedback_memory || [];
+
+    // Sayaçları güncelle
+    const allCnt = _reviewPosts.length;
+    const draftCnt = _reviewPosts.filter(p => p.status === 'draft' || !p.status).length;
+    const appCnt = _reviewPosts.filter(p => p.status === 'approved').length;
+    const rejCnt = _reviewPosts.filter(p => p.status === 'rejected').length;
+
+    const elAll = document.getElementById('cntRevAll'); if (elAll) elAll.textContent = allCnt;
+    const elDraft = document.getElementById('cntRevDraft'); if (elDraft) elDraft.textContent = draftCnt;
+    const elApp = document.getElementById('cntRevApproved'); if (elApp) elApp.textContent = appCnt;
+    const elRej = document.getElementById('cntRevRejected'); if (elRej) elRej.textContent = rejCnt;
+
+    const memBadge = document.getElementById('memRuleCount');
+    if (memBadge) memBadge.textContent = _reviewFeedbackMemory.length;
+
+    renderReviewCards();
+  } catch (err) {
+    console.error('loadReviewPosts error:', err);
+    if (grid) grid.innerHTML = `<div class="loading" style="grid-column:1/-1;color:var(--red)">Hata: ${esc(err.message)}</div>`;
+  }
+}
+
+function setReviewStatusFilter(status) {
+  _reviewStatusFilter = status;
+  ['all', 'draft', 'approved', 'rejected'].forEach(s => {
+    const btn = document.getElementById('revFilt-' + s);
+    if (btn) {
+      btn.classList.toggle('btn-acc', s === status);
+      btn.classList.toggle('btn-ghost', s !== status);
+    }
+  });
+  renderReviewCards();
+}
+
+function setReviewTypeFilter(type) {
+  _reviewTypeFilter = type;
+  ['all', 'feed', 'story'].forEach(t => {
+    const btn = document.getElementById('revType-' + t);
+    if (btn) {
+      btn.classList.toggle('btn-acc', t === type);
+      btn.classList.toggle('btn-ghost', t !== type);
+    }
+  });
+  renderReviewCards();
+}
+
+function renderReviewCards() {
+  const grid = document.getElementById('reviewCardsGrid');
+  if (!grid) return;
+
+  const q = (document.getElementById('revSearchInput')?.value || '').toLowerCase();
+
+  let list = _reviewPosts.filter(p => {
+    // 1. Status filtresi
+    if (_reviewStatusFilter === 'draft' && p.status !== 'draft' && p.status) return false;
+    if (_reviewStatusFilter === 'approved' && p.status !== 'approved') return false;
+    if (_reviewStatusFilter === 'rejected' && p.status !== 'rejected') return false;
+
+    // 2. Type filtresi
+    const isFeed = (p.post_type === 'feed' || p.post_type === 'post');
+    if (_reviewTypeFilter === 'feed' && !isFeed) return false;
+    if (_reviewTypeFilter === 'story' && isFeed) return false;
+
+    // 3. Arama filtresi
+    if (q) {
+      const txt = (p.caption || '') + ' ' + (p.rejection_reason || '') + ' ' + (p.theme || '');
+      if (!txt.toLowerCase().includes(q)) return false;
+    }
+
+    return true;
+  });
+
+  if (!list.length) {
+    grid.innerHTML = '<div class="loading" style="grid-column:1/-1;padding:40px">Seçilen filtreye uygun içerik bulunamadı. "⚡ 2 Haftalık Planı Üret" butonuyla yeni içerikler oluşturabilirsiniz.</div>';
+    return;
+  }
+
+  grid.innerHTML = list.map(p => {
+    const isFeed = (p.post_type === 'feed' || p.post_type === 'post');
+    const typeBadge = isFeed
+      ? '<span style="font-size:10px;font-weight:800;background:rgba(240,165,0,0.15);color:#f0a500;padding:2px 7px;border-radius:4px;border:1px solid rgba(240,165,0,0.3)">📸 GÖNDERİ</span>'
+      : '<span style="font-size:10px;font-weight:800;background:rgba(192,132,252,0.15);color:#c084fc;padding:2px 7px;border-radius:4px;border:1px solid rgba(192,132,252,0.3)">📱 HİKAYE</span>';
+
+    const st = p.status || 'draft';
+    const statusBadges = {
+      draft: '<span class="status-badge" style="background:rgba(240,165,0,0.12);color:var(--acc);font-size:11px">⏳ Onay Bekliyor</span>',
+      approved: '<span class="status-badge" style="background:rgba(62,207,142,0.12);color:var(--acc3);font-size:11px">✅ Onaylandı</span>',
+      rejected: '<span class="status-badge" style="background:rgba(255,92,122,0.12);color:var(--red);font-size:11px">❌ Reddedildi</span>',
+      published: '<span class="status-badge" style="background:rgba(96,180,255,0.12);color:var(--acc4);font-size:11px">🚀 Yayınlandı</span>',
+      error: '<span class="status-badge" style="background:rgba(255,92,122,0.12);color:var(--red);font-size:11px">⚠️ Hata</span>'
+    };
+
+    const dateFormatted = new Date(p.post_date + 'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'short' });
+    const themeName = (typeof RSP_TH !== 'undefined' && RSP_TH[p.theme]) ? RSP_TH[p.theme] : (p.theme || 'Genel');
+    const virScore = p.virality_score || 88;
+
+    // A/B Kanca Butonları
+    let hooksHtml = '';
+    const hooks = Array.isArray(p.hooks) ? p.hooks : [];
+    if (hooks.length > 0) {
+      hooksHtml = `
+        <div style="margin:8px 0;background:rgba(0,0,0,0.25);border:1px solid var(--bd);border-radius:8px;padding:8px">
+          <div style="font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:4px">
+            <span>🎯 A/B KANCA VARYANTLARI (Başlığa aktarmak için tıkla):</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            ${hooks.map(h => `
+              <button type="button" onclick="switchPostHook('${p.id}', '${esc(h.text)}')" style="text-align:left;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text);cursor:pointer;transition:border .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)'">
+                <b style="color:var(--acc)">[${esc(h.label || h.type || 'Kanca')}]:</b> "${esc(h.text)}"
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Ret Gerekçesi Uyarısı
+    let rejBox = '';
+    if (st === 'rejected' && p.rejection_reason) {
+      rejBox = `
+        <div style="background:rgba(255,92,122,0.1);border:1px solid rgba(255,92,122,0.3);border-radius:8px;padding:7px 10px;font-size:11.5px;color:var(--red);margin:6px 0;line-height:1.4">
+          ⚠️ <b>Ret Gerekçesi:</b> "${esc(p.rejection_reason)}"
+        </div>
+      `;
+    }
+
+    // Lead Magnet Rozeti
+    const leadTrigger = p.lead_magnet_trigger || 'ROSTRUM';
+
+    // Aksiyon Butonları
+    const actions = `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:8px">
+        ${st !== 'approved' && st !== 'published' ? `<button class="btn btn-green btn-sm" onclick="approveReviewPost('${p.id}')">✅ Onayla</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="openRejectFeedbackModal('${p.id}')">❌ Reddet &amp; Neden Yaz</button>
+        <button class="btn btn-acc btn-sm" onclick="regenReviewPost('${p.id}')">↺ Yeniden Üret</button>
+        ${st === 'approved' ? `<button class="btn btn-green btn-sm" onclick="publishReviewSingle('${p.id}')">🚀 Hemen Paylaş</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="saveReviewCaption('${p.id}')">💾 Kaydet</button>
+      </div>
+    `;
+
+    return `
+      <div class="rsp-card" id="revCard-${p.id}">
+        <div class="${isFeed ? 'fp-phone' : 'rsp-phone'}">
+          <div class="${isFeed ? 'fp-scr' : 'rsp-scr'}">
+            ${p.svg || '<span style="font-size:11px;color:var(--dim)">Görsel yok</span>'}
+          </div>
+        </div>
+        <div class="rsp-meta">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${typeBadge}
+            <span style="font-weight:700;font-size:13px;color:var(--text)">${dateFormatted}</span>
+            <span class="chip-method" style="color:var(--acc2)">${esc(themeName)}</span>
+            <span style="margin-left:auto">${statusBadges[st] || st}</span>
+          </div>
+
+          <!-- Viralite & Lead Magnet Göstergesi -->
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:3px 0">
+            <span style="font-size:10.5px;font-weight:700;color:var(--acc);background:rgba(240,165,0,0.1);border:1px solid rgba(240,165,0,0.25);border-radius:5px;padding:2px 6px">
+              🔥 %${virScore} Virallik Skoru
+            </span>
+            <span style="font-size:10.5px;font-weight:600;color:var(--acc4);background:rgba(96,180,255,0.08);border:1px solid rgba(96,180,255,0.2);border-radius:5px;padding:2px 6px">
+              💬 Yoruma "${esc(leadTrigger)}" Yaz → DM Otomasyonu
+            </span>
+          </div>
+
+          ${rejBox}
+          ${hooksHtml}
+
+          <textarea class="rsp-cap" id="revCap-${p.id}" style="min-height:75px">${esc(p.caption || '')}</textarea>
+          ${actions}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function approveReviewPost(id) {
+  try {
+    await rspFetch('/api/generate?_route=posts', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'approve', id })
+    });
+    showToast('İçerik onaylandı — yayın takvimine alındı ✓');
+    await loadReviewPosts();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  }
+}
+
+function openRejectFeedbackModal(id) {
+  const p = _reviewPosts.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('rfPostId').value = id;
+  document.getElementById('rfPostSummary').textContent = `${p.post_date} · ${p.post_type === 'feed' ? 'Gönderi' : 'Hikaye'} · ${p.caption ? p.caption.slice(0, 80) : '—'}`;
+  document.getElementById('rfCustomReason').value = p.rejection_reason || '';
+  openModal('rejectFeedbackModal');
+}
+
+function appendRfTag(tag) {
+  const ta = document.getElementById('rfCustomReason');
+  if (ta.value) ta.value += ' — ' + tag;
+  else ta.value = tag;
+  ta.focus();
+}
+
+async function submitRejectOnly() {
+  const id = document.getElementById('rfPostId').value;
+  const reason = document.getElementById('rfCustomReason').value.trim();
+  const btn = document.getElementById('btnSubmitReject');
+  btn.disabled = true;
+  try {
+    await rspFetch('/api/generate?_route=posts', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'reject', id, reason })
+    });
+    closeModal('rejectFeedbackModal');
+    showToast('İçerik reddedildi ve ret gerekçesi AI hafızasına kaydedildi ✓');
+    await loadReviewPosts();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function submitRejectAndRegen() {
+  const id = document.getElementById('rfPostId').value;
+  const reason = document.getElementById('rfCustomReason').value.trim();
+  const btn = document.getElementById('btnSubmitRejectRegen');
+  btn.disabled = true;
+  btn.textContent = '⏳ Yeniden Üretiliyor...';
+  try {
+    await rspFetch('/api/generate?_route=posts', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'regenerate_with_feedback', id, reason })
+    });
+    closeModal('rejectFeedbackModal');
+    showToast('✨ Geri bildiriminizle yeni içerik üretildi! ✓');
+    await loadReviewPosts();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Reddet & Hemen Yeniden Üret ↺';
+  }
+}
+
+async function regenReviewPost(id) {
+  const p = _reviewPosts.find(x => x.id === id);
+  const promptReason = p?.rejection_reason || '';
+  showToast('Yapay zeka içeriği yeniliyor...');
+  try {
+    await rspFetch('/api/generate?_route=posts', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'regenerate_with_feedback', id, reason: promptReason })
+    });
+    showToast('✨ İçerik başarıyla yenilendi ✓');
+    await loadReviewPosts();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  }
+}
+
+async function switchPostHook(id, hookText) {
+  try {
+    await rspFetch('/api/generate?_route=posts', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'switch_hook', id, hook_text: hookText })
+    });
+    showToast('Kanca güncellendi ✓');
+    await loadReviewPosts();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  }
+}
+
+async function saveReviewCaption(id) {
+  const cap = document.getElementById('revCap-' + id)?.value;
+  try {
+    await rspFetch('/api/generate?_route=posts', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'save', id, caption: cap })
+    });
+    showToast('Kaydedildi ✓');
+    await loadReviewPosts();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  }
+}
+
+async function publishReviewSingle(id) {
+  if (!(await customConfirm('Bu içerik hemen Instagram hesabınızda paylaşılsın mı?', 'Paylaş'))) return;
+  showToast('Instagram ile paylaşılıyor...');
+  try {
+    const res = await rspFetch('/api/generate?_route=publish&id=' + id);
+    if (res && res.results && res.results[0] && res.results[0].ok) {
+      showToast('🎉 Instagram\'da başarıyla yayınlandı! ✓');
+    } else {
+      showToast(res?.results?.[0]?.error || 'Paylaşım tamamlandı.');
+    }
+    await loadReviewPosts();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  }
+}
+
+async function publishAllApprovedNow() {
+  const approvedCount = _reviewPosts.filter(p => p.status === 'approved').length;
+  if (!approvedCount) {
+    showToast('Onaylanmış içerik bulunamadı. Önce beğendiğiniz içerikleri onaylayın.', false);
+    return;
+  }
+  if (!(await customConfirm(`${approvedCount} adet onaylı içerik Instagram'a gönderilsin mi?`, 'Hepsini Paylaş'))) return;
+  showToast('Gönderiliyor...');
+  try {
+    const res = await rspFetch('/api/generate?_route=publish');
+    showToast(`İşlem tamamlandı: ${res.processed || 0} içerik yayınlandı.`);
+    await loadReviewPosts();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  }
+}
+
+async function startTwoWeeksBatchGen() {
+  if (!(await customConfirm('Önümüzdeki 14 gün için 14 Gönderi + 14 Hikaye (Toplam 28 içerik) üretilsin mi?', 'Üretimi Başlat'))) return;
+
+  openModal('batchProgressModal');
+  const stepText = document.getElementById('bpStepText');
+  const subText = document.getElementById('bpSubStepText');
+
+  if (stepText) stepText.textContent = 'Yapay zeka modelleri çağrılıyor... (~30-60 sn)';
+  if (subText) subText.textContent = 'Her gün için viral kancalar ve tasarımlar üretiliyor';
+
+  try {
+    const res = await rspFetch('/api/generate?_route=posts', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'batch_14days', force: true })
+    });
+
+    closeModal('batchProgressModal');
+    showToast(`🎉 2 Haftalık İçerik Planı Başarıyla Hazırlandı! (${res.total_generated || 28} İçerik)`);
+    await loadReviewPosts();
+  } catch (e) {
+    closeModal('batchProgressModal');
+    showToast('Üretim hatası: ' + e.message, false);
+  }
+}
+
+function openFeedbackMemoryModal() {
+  openModal('feedbackMemoryModal');
+  renderFeedbackMemoryList();
+}
+
+function renderFeedbackMemoryList() {
+  const listEl = document.getElementById('memoryRulesList');
+  const statsEl = document.getElementById('memStatsText');
+  if (!listEl) return;
+
+  if (!_reviewFeedbackMemory.length) {
+    listEl.innerHTML = '<div style="color:var(--dim);text-align:center;padding:24px;font-size:12px">Henüz öğrenilmiş bir kural yok. İçerikleri reddederken yazdığınız gerekçeler burada listelenecektir.</div>';
+    if (statsEl) statsEl.textContent = '0 kural aktif';
+    return;
+  }
+
+  listEl.innerHTML = _reviewFeedbackMemory.map((rule, idx) => `
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div style="font-size:12px;color:var(--text);line-height:1.4">
+        <span style="color:var(--acc);font-weight:700">#${idx+1}</span> ${esc(rule)}
+      </div>
+      <button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px" onclick="deleteFeedbackRule('${esc(rule)}')">Sil</button>
+    </div>
+  `).join('');
+
+  if (statsEl) statsEl.textContent = `${_reviewFeedbackMemory.length} kural AI prompt'una aktif olarak enjekte ediliyor`;
+}
+
+async function addFeedbackRuleManual() {
+  const inp = document.getElementById('newRuleInput');
+  const rule = (inp?.value || '').trim();
+  if (!rule) return;
+
+  try {
+    await rspFetch('/api/generate?_route=posts', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'reject', reason: rule, id: 'manual' })
+    });
+    inp.value = '';
+    showToast('Yeni kalite kuralı kaydedildi ✓');
+    await loadReviewPosts();
+    renderFeedbackMemoryList();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  }
+}
+
+async function deleteFeedbackRule(rule) {
+  try {
+    await rspFetch('/api/generate?_route=posts', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'delete_feedback_rule', rule })
+    });
+    showToast('Kural silindi');
+    await loadReviewPosts();
+    renderFeedbackMemoryList();
+  } catch (e) {
+    showToast('Hata: ' + e.message, false);
+  }
+}
 
 // ── INSTAGRAM PANEL STATE ──
 let _igPosts = [];
@@ -3032,7 +3612,7 @@ function igTypeLabel(type) {
 
 function switchIgPanelTab(tab) {
   _activeIgPanelTab = tab;
-  ['posts','rules','config','manual','story','reels'].forEach(t => {
+  ['review','posts','rules','config','manual','story','reels'].forEach(t => {
     const btn = document.getElementById('tab-ig-' + t);
     if (!btn) return;
     if (t === tab) {
@@ -3045,12 +3625,15 @@ function switchIgPanelTab(tab) {
       btn.style.fontWeight = t === 'manual' ? '600' : '500';
     }
   });
-  document.getElementById('ig-posts-section').style.display = tab === 'posts' ? 'block' : 'none';
-  document.getElementById('ig-rules-section').style.display = tab === 'rules' ? 'block' : 'none';
-  document.getElementById('ig-config-section').style.display = tab === 'config' ? 'block' : 'none';
-  document.getElementById('ig-manual-section').style.display = tab === 'manual' ? 'flex' : 'none';
-  document.getElementById('ig-story-section').style.display = tab === 'story' ? 'block' : 'none';
-  document.getElementById('ig-reels-section').style.display = tab === 'reels' ? 'block' : 'none';
+  const revSec = document.getElementById('ig-review-section'); if(revSec) revSec.style.display = tab === 'review' ? 'block' : 'none';
+  const postSec = document.getElementById('ig-posts-section'); if(postSec) postSec.style.display = tab === 'posts' ? 'block' : 'none';
+  const rulesSec = document.getElementById('ig-rules-section'); if(rulesSec) rulesSec.style.display = tab === 'rules' ? 'block' : 'none';
+  const cfgSec = document.getElementById('ig-config-section'); if(cfgSec) cfgSec.style.display = tab === 'config' ? 'block' : 'none';
+  const manSec = document.getElementById('ig-manual-section'); if(manSec) manSec.style.display = tab === 'manual' ? 'flex' : 'none';
+  const storySec = document.getElementById('ig-story-section'); if(storySec) storySec.style.display = tab === 'story' ? 'block' : 'none';
+  const reelsSec = document.getElementById('ig-reels-section'); if(reelsSec) reelsSec.style.display = tab === 'reels' ? 'block' : 'none';
+
+  if (tab === 'review') initReviewPanelTab();
   if (tab === 'posts') initFeedPostTab();
   if (tab === 'story') initStoryPanelTab();
   if (tab === 'rules') loadAndRenderIgRules();

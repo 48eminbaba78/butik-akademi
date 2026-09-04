@@ -1,4 +1,4 @@
-import { sb, isAuthed, generateForDate, publishDue, trNow, trDateStr } from '../lib/core.js';
+import { sb, isAuthed, generateForDate, generateTwoWeeksBatch, getFeedbackMemory, publishDue, trNow, trDateStr } from '../lib/core.js';
 import { applyCors } from '../lib/cors.js';
 
 export default async function handler(req, res) {
@@ -21,30 +21,146 @@ export default async function handler(req, res) {
         var result = await client
           .from('story_queue')
           .select('*')
-          .order('updated_at', { ascending: false })
-          .limit(100);
+          .order('post_date', { ascending: true })
+          .limit(150);
         if (result.error) throw result.error;
-        return res.status(200).json({ posts: result.data });
+
+        var memory = await getFeedbackMemory(client);
+        return res.status(200).json({ posts: result.data || [], feedback_memory: memory });
       }
       if (req.method === 'POST') {
         var action = req.body && req.body.action;
         var id = req.body && req.body.id;
-        if (action === 'approve' || action === 'reject') {
-          var status = action === 'approve' ? 'approved' : 'rejected';
-          var upd = await client.from('story_queue').update({ status, error_msg: null, updated_at: new Date().toISOString() }).eq('id', id);
-          if (upd.error) throw upd.error;
-          return res.status(200).json({ ok: true, status });
+
+        // 1. Onayla
+        if (action === 'approve') {
+          var updApprove = await client.from('story_queue').update({
+            status: 'approved',
+            error_msg: null,
+            approved_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }).eq('id', id);
+          if (updApprove.error && updApprove.error.code === '42703') {
+            updApprove = await client.from('story_queue').update({
+              status: 'approved',
+              error_msg: null,
+              updated_at: new Date().toISOString()
+            }).eq('id', id);
+          }
+          if (updApprove.error) throw updApprove.error;
+          return res.status(200).json({ ok: true, status: 'approved' });
         }
+
+        // 2. Reddet ve Gerekçe Kaydet (Kalite Hafızası)
+        if (action === 'reject') {
+          var reason = (req.body.reason || req.body.rejection_reason || '').trim();
+          var patch = {
+            status: 'rejected',
+            rejection_reason: reason || null,
+            rejected_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          var updReject = await client.from('story_queue').update(patch).eq('id', id);
+          if (updReject.error && updReject.error.code === '42703') {
+            updReject = await client.from('story_queue').update({
+              status: 'rejected',
+              updated_at: new Date().toISOString()
+            }).eq('id', id);
+          }
+          if (updReject.error) throw updReject.error;
+
+          // Eğer ret sebebi yazılmışsa kalıcı kalite hafızasına kaydet
+          if (reason) {
+            try {
+              var { data: memData } = await client.from('platform_settings').select('value').eq('key', 'instagram_feedback_memory').maybeSingle();
+              var memList = (memData && Array.isArray(memData.value)) ? memData.value : [];
+              if (!memList.includes(reason)) {
+                memList.unshift(reason);
+                if (memList.length > 30) memList = memList.slice(0, 30);
+                await client.from('platform_settings').upsert({ key: 'instagram_feedback_memory', value: memList }, { onConflict: 'key' });
+              }
+            } catch (mErr) {
+              console.warn('[Memory Save Error]:', mErr.message);
+            }
+          }
+          return res.status(200).json({ ok: true, status: 'rejected', reason: reason });
+        }
+
+        // 3. Geri Bildirimle Yeniden Üret (Regenerate with Feedback)
+        if (action === 'regenerate_with_feedback' || action === 'regenerate') {
+          var targetRow = await client.from('story_queue').select('*').eq('id', id).maybeSingle();
+          if (!targetRow.data) return res.status(404).json({ error: 'İçerik bulunamadı' });
+
+          var regenReason = (req.body.reason || req.body.rejection_reason || targetRow.data.rejection_reason || '').trim();
+
+          // Hafızaya ekle
+          if (regenReason) {
+            try {
+              var { data: mData } = await client.from('platform_settings').select('value').eq('key', 'instagram_feedback_memory').maybeSingle();
+              var mArr = (mData && Array.isArray(mData.value)) ? mData.value : [];
+              if (!mArr.includes(regenReason)) {
+                mArr.unshift(regenReason);
+                await client.from('platform_settings').upsert({ key: 'instagram_feedback_memory', value: mArr }, { onConflict: 'key' });
+              }
+            } catch(e) {}
+          }
+
+          var regenRes = await generateForDate(targetRow.data.post_date, {
+            force: true,
+            type: targetRow.data.post_type || 'story',
+            rejection_reason: regenReason,
+            idea: req.body.idea || ''
+          });
+
+          return res.status(200).json({ ok: true, regenerated: true, result: regenRes });
+        }
+
+        // 4. A/B Kanca Değiştir (Switch Hook)
+        if (action === 'switch_hook') {
+          var hookText = req.body.hook_text;
+          if (!hookText) return res.status(400).json({ error: 'hook_text eksik' });
+          var postToSwitch = await client.from('story_queue').select('*').eq('id', id).maybeSingle();
+          if (!postToSwitch.data) return res.status(404).json({ error: 'İçerik bulunamadı' });
+
+          var oldCaption = postToSwitch.data.caption || '';
+          var newCaption = hookText + '\n\n' + oldCaption.replace(/^.*?\n\n/, '');
+          var hookUpd = await client.from('story_queue').update({
+            caption: newCaption,
+            updated_at: new Date().toISOString()
+          }).eq('id', id);
+          if (hookUpd.error) throw hookUpd.error;
+          return res.status(200).json({ ok: true, caption: newCaption });
+        }
+
+        // 5. 14 Günlük Toplu Üretim (Batch 14 Days)
+        if (action === 'batch_14days') {
+          var startDate = req.body.startDate || req.query.startDate;
+          var batchRes = await generateTwoWeeksBatch(startDate, { force: !!req.body.force });
+          return res.status(200).json(batchRes);
+        }
+
+        // 6. Kalite Hafızası Kuralını Sil
+        if (action === 'delete_feedback_rule') {
+          var ruleToDelete = req.body.rule;
+          var { data: mData2 } = await client.from('platform_settings').select('value').eq('key', 'instagram_feedback_memory').maybeSingle();
+          var mList2 = (mData2 && Array.isArray(mData2.value)) ? mData2.value : [];
+          mList2 = mList2.filter(r => r !== ruleToDelete);
+          await client.from('platform_settings').upsert({ key: 'instagram_feedback_memory', value: mList2 }, { onConflict: 'key' });
+          return res.status(200).json({ ok: true, rules: mList2 });
+        }
+
+        // 7. Taslağı Kaydet
         if (action === 'save') {
-          var patch = { updated_at: new Date().toISOString() };
-          if (typeof req.body.caption === 'string') patch.caption = req.body.caption;
-          if (typeof req.body.svg === 'string') { patch.svg = req.body.svg; patch.png_url = null; }
-          if (req.body.publish_at) patch.publish_at = req.body.publish_at;
-          if (req.body.svg || req.body.caption) patch.status = 'draft';
-          var sv = await client.from('story_queue').update(patch).eq('id', id);
+          var patchSave = { updated_at: new Date().toISOString() };
+          if (typeof req.body.caption === 'string') patchSave.caption = req.body.caption;
+          if (typeof req.body.svg === 'string') { patchSave.svg = req.body.svg; patchSave.png_url = null; }
+          if (req.body.publish_at) patchSave.publish_at = req.body.publish_at;
+          if (req.body.svg || req.body.caption) patchSave.status = 'draft';
+          var sv = await client.from('story_queue').update(patchSave).eq('id', id);
           if (sv.error) throw sv.error;
           return res.status(200).json({ ok: true });
         }
+
         return res.status(400).json({ error: 'Bilinmeyen action' });
       }
       return res.status(405).json({ error: 'Method desteklenmiyor' });
