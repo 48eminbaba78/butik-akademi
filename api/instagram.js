@@ -149,23 +149,40 @@ export default async function handler(req, res) {
             if (field === 'comments' && value && value.id) {
               const commentId = value.id;
               const text = (value.text || '').trim().toUpperCase();
-              const username = value.from ? value.from.username : '';
+              const username = (value.from ? value.from.username : '').toLowerCase();
+
+              // Kendi yorumlarımıza cevap vermeyelim
+              if (username === 'rostrumakademi') continue;
 
               const matchingRule = rules.find(r => text.includes(r.trigger.toUpperCase()));
               if (matchingRule) {
-                // Post comment reply
-                await fetch(`https://graph.facebook.com/v20.0/${commentId}/replies`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ message: matchingRule.reply_comment, access_token: accessToken })
-                });
+                console.log(`[Webhook] Eşleşen kural bulundu: "${matchingRule.trigger}" (Kullanıcı: @${username}, Yorum ID: ${commentId})`);
 
-                // Send private DM
-                await fetch(`https://graph.facebook.com/v20.0/me/messages?access_token=${accessToken}`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ recipient: { comment_id: commentId }, message: { text: matchingRule.send_dm } })
-                });
+                // 1. Post altındaki yoruma yanıt yaz
+                try {
+                  const replyRes = await fetch(`https://graph.facebook.com/v21.0/${commentId}/replies`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: matchingRule.reply_comment, access_token: accessToken })
+                  });
+                  const replyData = await replyRes.json();
+                  console.log('[Webhook Reply Res]:', replyData);
+                } catch (rErr) {
+                  console.error('[Webhook Reply Error]:', rErr.message);
+                }
+
+                // 2. Kullanıcıya özel DM gönder (Meta Private Reply)
+                try {
+                  const dmRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ recipient: { comment_id: commentId }, message: { text: matchingRule.send_dm } })
+                  });
+                  const dmData = await dmRes.json();
+                  console.log('[Webhook DM Res]:', dmData);
+                } catch (dErr) {
+                  console.error('[Webhook DM Error]:', dErr.message);
+                }
               }
             }
           }
