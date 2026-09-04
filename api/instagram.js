@@ -171,12 +171,29 @@ export default async function handler(req, res) {
                   console.error('[Webhook Reply Error]:', rErr.message);
                 }
 
-                // 2. Kullanıcıya özel DM gönder (Meta Private Reply)
+                // 2. Kullanıcıya özel DM gönder (Meta Private Reply: POST /<PAGE_ID>/messages with Page Token)
                 try {
-                  const dmRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+                  const pageId = credData?.value?.facebook_page_id || '1175643595634867';
+                  let sendToken = accessToken;
+
+                  // Sayfa erişim jetonunu (Page Access Token) al
+                  try {
+                    const accRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?access_token=${accessToken}`);
+                    const accJson = await accRes.json();
+                    if (accJson?.data?.[0]?.access_token) {
+                      sendToken = accJson.data[0].access_token;
+                    }
+                  } catch (tokErr) {
+                    console.warn('[Page Token Fetch Warning]:', tokErr.message);
+                  }
+
+                  const dmRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/messages?access_token=${sendToken}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ recipient: { comment_id: commentId }, message: { text: matchingRule.send_dm } })
+                    body: JSON.stringify({
+                      recipient: { comment_id: commentId },
+                      message: { text: matchingRule.send_dm }
+                    })
                   });
                   const dmData = await dmRes.json();
                   console.log('[Webhook DM Res]:', dmData);
