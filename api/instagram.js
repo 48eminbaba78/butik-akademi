@@ -204,12 +204,15 @@ export default async function handler(req, res) {
                     console.warn('[Page Token Fetch Warning]:', tokErr.message);
                   }
 
+                  const cleanDmText = (matchingRule.send_dm || '')
+                    .replace(/rostrumakademi\.app/g, 'rostrumakademi.com');
+
                   const dmRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/messages?access_token=${sendToken}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       recipient: { comment_id: commentId },
-                      message: { text: matchingRule.send_dm }
+                      message: { text: cleanDmText }
                     })
                   });
                   const dmData = await dmRes.json();
