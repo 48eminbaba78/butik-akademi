@@ -2407,6 +2407,223 @@ function selectDayIdx(i){
 }
 window.selectDayIdx = selectDayIdx;
 
+let _subjBranchFilter = 'ALL';
+let _subjRange = '14d';
+
+const _SUBJ_ORDER = [
+  'Matematik', 'Geometri', 'Fizik', 'Kimya', 'Biyoloji',
+  'Türkçe', 'Edebiyat', 'Tarih', 'Tarih1', 'Tarih2',
+  'Coğrafya', 'Coğrafya1', 'Coğrafya2', 'Felsefe', 'Din', 'Din Kültürü'
+];
+
+function _programModeToggleHtml(progMode) {
+  const modes = [
+    { id: 'weekly',  label: '📋 Günlük Serbest' },
+    { id: 'hourly',  label: '🕒 Saatlik Düzen' },
+    { id: 'subject', label: '📚 Branş Branş' }
+  ];
+  return `<div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:4px;flex-wrap:wrap">${
+    modes.map(m => `<button class="btn btn-xs ${progMode===m.id?'btn-accent':'btn-ghost'}" onclick="setProgramMode('${m.id}')" style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px">${m.label}</button>`).join('')
+  }</div>`;
+}
+
+function _parseTaskSubject(rawSubject) {
+  const s = String(rawSubject || '').trim();
+  const idx = s.indexOf(' - ');
+  if (idx !== -1) {
+    return {
+      branch: s.slice(0, idx).trim() || 'Diğer',
+      resource: s.slice(idx + 3).trim() || 'Genel'
+    };
+  }
+  return { branch: s || 'Diğer', resource: 'Genel / Manuel' };
+}
+
+function _collectSubjectTasks(stuId, wStart, rangeKey) {
+  if (!stuId) return [];
+  const daysCount = rangeKey === '7d' ? 7 : rangeKey === '14d' ? 14 : 60;
+  const rows = [];
+  for (let i = 0; i < daysCount; i++) {
+    const d = addDays(wStart, i);
+    const ds = fmtDate(d);
+    const list = S.tasks[`${stuId}_${ds}`] || [];
+    list.forEach((t, ti) => {
+      const { branch, resource } = _parseTaskSubject(t.subject);
+      rows.push({ t, ds, ti, dateObj: d, branch, resource });
+    });
+  }
+  return rows;
+}
+
+function _renderSubjectTaskRowHtml(entry, role) {
+  const { t, ds, ti, dateObj, resource } = entry;
+  const roleArg = role === 'coach' ? 'coach' : 'student';
+  const toggleFn = role === 'coach'
+    ? `toggleTask('${ds}',${ti})`
+    : `openTaskDetail('${ds}',${ti},'student','completed')`;
+  const menuBtn = role === 'coach'
+    ? `<button class="tc-menu-btn" style="opacity:.75" onclick="event.stopPropagation();showTaskMenu('${ds}',${ti},this)">⋯</button>`
+    : '';
+  const shortDow = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'][dateObj.getDay()];
+  const dateLbl = `${dateObj.getDate()} ${MONTHS_TR[dateObj.getMonth()].slice(0,3)} ${shortDow}`;
+  const items = Array.isArray(t.task_items) ? t.task_items : [];
+  const isVideo = t.type === 'konu';
+
+  let detailHtml = '';
+  if (items.length > 0) {
+    const pills = items.map(it => {
+      const raw = it.label || it;
+      const clean = cleanTestLabel(raw, resource);
+      const unit = it.soru ? (isVideo ? `${it.soru} dk` : `${it.soru}s`) : '';
+      const itemDone = !!(it.done || t.done);
+      return `<span class="subj-item-pill ${itemDone ? 'done' : ''}">${itemDone ? '✓ ' : ''}${esc(clean)}${unit ? ` <span class="subj-item-unit">${unit}</span>` : ''}</span>`;
+    }).join('');
+    detailHtml += `<div class="subj-items-wrap">${pills}</div>`;
+  }
+
+  const autoNote = t.note && /^\d+\s+(video|test):/.test(t.note);
+  if (t.note && (!items.length || !autoNote)) {
+    detailHtml += `<div class="subj-task-note">${esc(t.note)}</div>`;
+  }
+
+  return `<div class="subj-task-row ${t.done ? 'done' : ''}" data-task-id="${t._id}" onclick="openTaskDetail('${ds}',${ti},'${roleArg}')">
+    <div class="tc-check ${t.done ? 'on' : ''}" onclick="event.stopPropagation();${toggleFn}"></div>
+    <div class="subj-task-body">
+      <div class="subj-task-top">
+        <span class="subj-date-pill">${dateLbl}</span>
+        <span class="subj-type-pill type-${t.type}">${typeLabel(t.type)}${t.exam ? ' · ' + esc(t.exam) : ''}</span>
+        ${t.start_time ? `<span class="subj-time-pill">🕒 ${esc(t.start_time)}</span>` : ''}
+        <span class="subj-dur-pill">${t.duration} dk</span>
+      </div>
+      ${detailHtml}
+    </div>
+    ${menuBtn}
+  </div>`;
+}
+
+function _subjectProgramViewHtml(stuId, wStart, role) {
+  if (!stuId) return '<div class="empty"><p>Program görüntülemek için öğrenci seçin</p></div>';
+  const rows = _collectSubjectTasks(stuId, wStart, _subjRange);
+  const rangeEnd = addDays(wStart, (_subjRange === '7d' ? 7 : _subjRange === '14d' ? 14 : 60) - 1);
+  const rangeOpts = [
+    { id: '7d',  lbl: 'Bu Hafta (7 Gün)' },
+    { id: '14d', lbl: '2 Hafta (14 Gün)' },
+    { id: '60d', lbl: 'Tüm Yaklaşanlar (60 Gün)' }
+  ];
+
+  // Branşlara göre grupla
+  const byBranch = {};
+  rows.forEach(r => {
+    if (!byBranch[r.branch]) byBranch[r.branch] = [];
+    byBranch[r.branch].push(r);
+  });
+
+  const branches = Object.keys(byBranch).sort((a, b) => {
+    const ia = _SUBJ_ORDER.indexOf(a);
+    const ib = _SUBJ_ORDER.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b, 'tr');
+  });
+
+  if (_subjBranchFilter !== 'ALL' && !byBranch[_subjBranchFilter]) {
+    _subjBranchFilter = 'ALL';
+  }
+
+  const totalMin = rows.reduce((s, r) => s + Number(r.t.duration || 0), 0);
+  const doneCount = rows.filter(r => r.t.done).length;
+
+  const chipsHtml = [
+    `<button class="subj-chip ${_subjBranchFilter==='ALL'?'active':''}" onclick="setSubjFilter('ALL')">Tümü <span class="subj-chip-meta">${rows.length} · ${formatMinToHours(totalMin)}</span></button>`,
+    ...branches.map(b => {
+      const list = byBranch[b];
+      const bMin = list.reduce((s, r) => s + Number(r.t.duration || 0), 0);
+      return `<button class="subj-chip ${_subjBranchFilter===b?'active':''}" onclick="setSubjFilter('${esc(b).replace(/'/g, "\\'")}')">${esc(b)} <span class="subj-chip-meta">${list.length} · ${formatMinToHours(bMin)}</span></button>`;
+    })
+  ].join('');
+
+  const visibleBranches = _subjBranchFilter === 'ALL' ? branches : branches.filter(b => b === _subjBranchFilter);
+
+  const sectionsHtml = visibleBranches.length === 0
+    ? `<div class="empty" style="padding:36px 16px"><p>Seçili aralıkta (${wStart.getDate()} ${MONTHS_TR[wStart.getMonth()]} — ${rangeEnd.getDate()} ${MONTHS_TR[rangeEnd.getMonth()]}) görev bulunamadı.</p></div>`
+    : visibleBranches.map(branch => {
+        const list = byBranch[branch];
+        const bMin = list.reduce((s, r) => s + Number(r.t.duration || 0), 0);
+        const bDone = list.filter(r => r.t.done).length;
+
+        // Branş içinde Kaynak / Kitap / Playlist'e göre grupla
+        const byRes = {};
+        list.forEach(entry => {
+          const rk = `${entry.t.exam || ''}||${entry.resource}`;
+          if (!byRes[rk]) byRes[rk] = { exam: entry.t.exam || '', resource: entry.resource, entries: [] };
+          byRes[rk].entries.push(entry);
+        });
+
+        const resCardsHtml = Object.values(byRes).map(group => {
+          const gMin = group.entries.reduce((s, e) => s + Number(e.t.duration || 0), 0);
+          const gDone = group.entries.filter(e => e.t.done).length;
+          const allItems = group.entries.flatMap(e => Array.isArray(e.t.task_items) ? e.t.task_items : []);
+          const hasKonu = group.entries.some(e => e.t.type === 'konu');
+          const totalQ = !hasKonu ? allItems.reduce((s, it) => s + (Number(it.soru) || 0), 0) : 0;
+          const metaParts = [
+            `${group.entries.length} görev`,
+            allItems.length > 0 ? (hasKonu ? `${allItems.length} video` : `${allItems.length} test`) : '',
+            totalQ > 0 ? `${totalQ} soru` : '',
+            formatMinToHours(gMin),
+            `${gDone}/${group.entries.length} bitti`
+          ].filter(Boolean);
+
+          return `<div class="subj-res-card">
+            <div class="subj-res-hd">
+              <div class="subj-res-title-wrap">
+                <span class="subj-res-icon">${hasKonu ? '🎬' : '📚'}</span>
+                <span class="subj-res-title">${esc(group.resource)}</span>
+                ${group.exam ? `<span class="subj-res-exam">${esc(group.exam)}</span>` : ''}
+              </div>
+              <div class="subj-res-meta">${metaParts.join(' · ')}</div>
+            </div>
+            <div class="subj-res-list">
+              ${group.entries.map(e => _renderSubjectTaskRowHtml(e, role)).join('')}
+            </div>
+          </div>`;
+        }).join('');
+
+        return `<section class="subj-branch-section">
+          <div class="subj-branch-hd">
+            <div class="subj-branch-title">${esc(branch)}</div>
+            <div class="subj-branch-stats">${list.length} görev · ${formatMinToHours(bMin)} · ${bDone}/${list.length} tamamlandı</div>
+          </div>
+          <div class="subj-res-grid">${resCardsHtml}</div>
+        </section>`;
+      }).join('');
+
+  return `<div class="subj-view-wrap">
+    <div class="subj-toolbar">
+      <div class="subj-range-pills">
+        ${rangeOpts.map(o => `<button class="btn btn-xs ${_subjRange===o.id?'btn-accent':'btn-ghost'}" onclick="setSubjRange('${o.id}')" style="padding:5px 10px;font-size:11px;font-weight:700;border-radius:8px">${o.lbl}</button>`).join('')}
+      </div>
+      <div class="subj-overall-meta">
+        <span>📅 ${wStart.getDate()} ${MONTHS_TR[wStart.getMonth()]} — ${rangeEnd.getDate()} ${MONTHS_TR[rangeEnd.getMonth()]}</span>
+        <span>· <b>${rows.length}</b> görev · <b>${formatMinToHours(totalMin)}</b> · Tamamlanan: <b>${doneCount}/${rows.length}</b></span>
+      </div>
+    </div>
+    <div class="subj-chips-bar">${chipsHtml}</div>
+    ${sectionsHtml}
+  </div>`;
+}
+
+function setSubjFilter(branch) {
+  _subjBranchFilter = branch || 'ALL';
+  if (session.role === 'student') renderSPortal();
+  else renderProgram();
+}
+function setSubjRange(range) {
+  _subjRange = range || '14d';
+  if (session.role === 'student') renderSPortal();
+  else renderProgram();
+}
+
 function renderProgram(){
   const el=document.getElementById('view-program');
   const stu=S.students.find(s=>s.id===S.activeStuId);
@@ -2418,38 +2635,44 @@ function renderProgram(){
   const selIdx=_resolveSelDayIdx(wStart,today);
 
   let dayCards='',stripMeta=[];
-  for(let i=0;i<7;i++){
-    const d=addDays(wStart,i);
-    const ds=fmtDate(d);
-    const isToday=ds===today;
-    const key=`${S.activeStuId}_${ds}`;
-    const tasks=S.tasks[key]||[];
-    const totalMin=tasks.reduce((s,t)=>s+Number(t.duration),0);
-    const doneMin=tasks.reduce((s,t)=>s+(t.done?Number(t.duration):0),0);
-    const dayLabel=DAYS_TR[(ws+i)%7];
+  if (progMode !== 'subject') {
+    for(let i=0;i<7;i++){
+      const d=addDays(wStart,i);
+      const ds=fmtDate(d);
+      const isToday=ds===today;
+      const key=`${S.activeStuId}_${ds}`;
+      const tasks=S.tasks[key]||[];
+      const totalMin=tasks.reduce((s,t)=>s+Number(t.duration),0);
+      const doneMin=tasks.reduce((s,t)=>s+(t.done?Number(t.duration):0),0);
+      const dayLabel=DAYS_TR[(ws+i)%7];
 
-    const taskHtml = _dayTasksBodyHtml(ds, tasks, 'coach', progMode);
+      const taskHtml = _dayTasksBodyHtml(ds, tasks, 'coach', progMode);
 
-    const shortDay = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][(ws+i)%7];
-    stripMeta.push({shortDay,dateNum:d.getDate(),isToday});
-    dayCards+=`<div class="day-col ${isToday?'today':''} ${i===selIdx?'sel-day':''}">
-      <div class="day-hd">
-        <div>
-          <div class="day-name-lbl">${shortDay}</div>
-          <div class="day-num">${d.getDate()}</div>
+      const shortDay = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][(ws+i)%7];
+      stripMeta.push({shortDay,dateNum:d.getDate(),isToday});
+      dayCards+=`<div class="day-col ${isToday?'today':''} ${i===selIdx?'sel-day':''}">
+        <div class="day-hd">
+          <div>
+            <div class="day-name-lbl">${shortDay}</div>
+            <div class="day-num">${d.getDate()}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <span class="day-badge" style="font-size:8.5px">${formatMinToHours(doneMin)} / ${formatMinToHours(totalMin)}</span>
+            ${_clipboardTask?`<button class="btn btn-ghost btn-xs" onclick="pasteTaskFromClipboard('${ds}')" style="font-size:9px;color:var(--accent);border-color:rgba(240,165,0,.3);background:var(--accent-dim);padding:2px 6px">Yapıştır</button>`:''}
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          <span class="day-badge" style="font-size:8.5px">${formatMinToHours(doneMin)} / ${formatMinToHours(totalMin)}</span>
-          ${_clipboardTask?`<button class="btn btn-ghost btn-xs" onclick="pasteTaskFromClipboard('${ds}')" style="font-size:9px;color:var(--accent);border-color:rgba(240,165,0,.3);background:var(--accent-dim);padding:2px 6px">Yapıştır</button>`:''}
-        </div>
-      </div>
-      <div class="day-tasks-list ${progMode==='hourly'?'tl-mode':''}">${taskHtml||''}</div>
-      <button class="add-day-btn" onclick="openTaskModal('${ds}','${dayLabel}')" ${!S.activeStuId?'disabled':''}>+ Görev Ekle</button>
-    </div>`;
+        <div class="day-tasks-list ${progMode==='hourly'?'tl-mode':''}">${taskHtml||''}</div>
+        <button class="add-day-btn" onclick="openTaskModal('${ds}','${dayLabel}')" ${!S.activeStuId?'disabled':''}>+ Görev Ekle</button>
+      </div>`;
+    }
   }
 
+  const bodyHtml = progMode === 'subject'
+    ? _subjectProgramViewHtml(S.activeStuId, wStart, 'coach')
+    : `<div class="week-grid">${dayCards}</div>`;
+
   el.innerHTML=`
-    <div class="day-selector-strip">${_daySelectorStripHtml(stripMeta,selIdx)}</div>`+`
+    ${progMode !== 'subject' ? `<div class="day-selector-strip">${_daySelectorStripHtml(stripMeta,selIdx)}</div>` : ''}
     <button class="back-link" onclick="switchTab('student-detail')">← ${stu?esc(stu.name):'Öğrenci'}</button>
     <div class="card prog-banner">
       <div class="prog-avatar" style="background:${stu?.color||'var(--accent)'};color:#fff">${stu?stu.name[0]:'?'}</div>
@@ -2474,14 +2697,11 @@ function renderProgram(){
       </div>
       
       <!-- Program Görünüm Seçici Toggle -->
-      <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:4px">
-        <button class="btn btn-xs ${progMode==='weekly'?'btn-accent':'btn-ghost'}" onclick="setProgramMode('weekly')" style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px">📋 Günlük Serbest</button>
-        <button class="btn btn-xs ${progMode==='hourly'?'btn-accent':'btn-ghost'}" onclick="setProgramMode('hourly')" style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px">🕒 Saatlik Düzen</button>
-      </div>
+      ${_programModeToggleHtml(progMode)}
 
       ${_clipboardTask?`<button class="btn btn-accent btn-sm" onclick="pasteTaskToWholeWeek()" style="font-size:12px;padding:6px 12px;gap:6px">📋 Kopyalananı Tüm Haftaya Yapıştır</button>`:''}
     </div>
-    <div class="week-grid">${dayCards}</div>`;
+    ${bodyHtml}`;
 }
 
 function selectStu(id){S.activeStuId=id||null;saveS();renderProgram();}
@@ -5723,31 +5943,36 @@ function renderSPortal(){
   const selIdx=_resolveSelDayIdx(wStart,today);
 
   let dayCards='',stripMeta=[];
-  for(let i=0;i<7;i++){
-    const d=addDays(wStart,i);const ds=fmtDate(d);const isToday=ds===today;
-    const key=`${stu.id}_${ds}`;const tasks=S.tasks[key]||[];
-    const totalMin=tasks.reduce((s,t)=>s+Number(t.duration),0);
-    const doneMin=tasks.reduce((s,t)=>s+(t.done?Number(t.duration):0),0);
-    const dayLabel=DAYS_TR[(ws+i)%7];
+  if (progMode !== 'subject') {
+    for(let i=0;i<7;i++){
+      const d=addDays(wStart,i);const ds=fmtDate(d);const isToday=ds===today;
+      const key=`${stu.id}_${ds}`;const tasks=S.tasks[key]||[];
+      const totalMin=tasks.reduce((s,t)=>s+Number(t.duration),0);
+      const doneMin=tasks.reduce((s,t)=>s+(t.done?Number(t.duration):0),0);
+      const dayLabel=DAYS_TR[(ws+i)%7];
 
-    const taskHtml = _dayTasksBodyHtml(ds, tasks, 'student', progMode);
+      const taskHtml = _dayTasksBodyHtml(ds, tasks, 'student', progMode);
 
-    const shortDay = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][(ws+i)%7];
-    stripMeta.push({shortDay,dateNum:d.getDate(),isToday});
-    dayCards+=`<div class="day-col ${isToday?'today':''} ${i===selIdx?'sel-day':''}">
-      <div class="day-hd">
-        <div><div class="day-name-lbl">${shortDay}</div><div class="day-num">${d.getDate()}</div></div>
-        <span class="day-badge" style="font-size:8.5px">${formatMinToHours(doneMin)} / ${formatMinToHours(totalMin)}</span>
-      </div>
-      <div class="day-tasks-list ${progMode==='hourly'?'tl-mode':''}">${taskHtml||(progMode==='hourly'?'':'<div class="empty" style="padding:8px 0"><p style="font-size:11px">Görev yok</p></div>')}</div>
-    </div>`;
+      const shortDay = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][(ws+i)%7];
+      stripMeta.push({shortDay,dateNum:d.getDate(),isToday});
+      dayCards+=`<div class="day-col ${isToday?'today':''} ${i===selIdx?'sel-day':''}">
+        <div class="day-hd">
+          <div><div class="day-name-lbl">${shortDay}</div><div class="day-num">${d.getDate()}</div></div>
+          <span class="day-badge" style="font-size:8.5px">${formatMinToHours(doneMin)} / ${formatMinToHours(totalMin)}</span>
+        </div>
+        <div class="day-tasks-list ${progMode==='hourly'?'tl-mode':''}">${taskHtml||(progMode==='hourly'?'':'<div class="empty" style="padding:8px 0"><p style="font-size:11px">Görev yok</p></div>')}</div>
+      </div>`;
+    }
   }
   const _yksInfo = getNextYks();
   const _daysToYks = _yksInfo.days;
+  const bodyHtml = progMode === 'subject'
+    ? _subjectProgramViewHtml(stu.id, wStart, 'student')
+    : `<div class="week-grid">${dayCards}</div>`;
 
   el.innerHTML=`
     ${_daysToYks > 0 ? `<div style="text-align:center;margin-bottom:10px;padding:7px 12px;background:var(--surface2);border-radius:10px;font-size:12px;color:var(--text-mid)">📅 YKS ${_yksInfo.year}'ye <strong style="color:var(--accent)">${_daysToYks}</strong> gün kaldı</div>` : ''}
-    <div class="day-selector-strip">${_daySelectorStripHtml(stripMeta,selIdx)}</div>
+    ${progMode !== 'subject' ? `<div class="day-selector-strip">${_daySelectorStripHtml(stripMeta,selIdx)}</div>` : ''}
     <div class="week-nav" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div style="display:flex;gap:6px;align-items:center">
         <button class="btn btn-ghost btn-sm" onclick="chWeekS(-1)">← Önceki</button>
@@ -5757,12 +5982,9 @@ function renderSPortal(){
       </div>
 
       <!-- Program Görünüm Seçici Toggle -->
-      <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:4px">
-        <button class="btn btn-xs ${progMode==='weekly'?'btn-accent':'btn-ghost'}" onclick="setProgramMode('weekly')" style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px">📋 Günlük Serbest</button>
-        <button class="btn btn-xs ${progMode==='hourly'?'btn-accent':'btn-ghost'}" onclick="setProgramMode('hourly')" style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px">🕒 Saatlik Düzen</button>
-      </div>
+      ${_programModeToggleHtml(progMode)}
     </div>
-    <div class="week-grid">${dayCards}</div>`;
+    ${bodyHtml}`;
 }
 
 async function stuToggleTask2(ds,idx){
@@ -17283,6 +17505,8 @@ window.setPfBrandColor = setPfBrandColor;
 window.renderSettings = renderSettings;
 window.saveGeminiKey = saveGeminiKey;
 window.renderProgram = renderProgram;
+window.setSubjFilter = setSubjFilter;
+window.setSubjRange = setSubjRange;
 window.selectStu = selectStu;
 window.chWeek = chWeek;
 window.goToday = goToday;
