@@ -4,13 +4,14 @@
 // YouTube API key sunucu tarafında güvenli kalır. UX'i iyileştirir.
 // ═══════════════════════════════════════════════════════════
 
+import { requireRole, applyRestrictedCors } from '../lib/api-auth.js';
+
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (applyRestrictedCors(req, res, 'GET, OPTIONS')) return;
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  const auth = await requireRole(req, res, ['coach', 'developer']);
+  if (!auth) return;
 
   try {
     const { playlistId, pageToken } = req.query;
@@ -24,10 +25,9 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'YouTube API anahtarı sunucu tarafında yapılandırılmamış.' });
     }
 
-    // 1. Playlist elemanlarını çek (Maksimum 50 adet)
-    let playlistItemsUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&key=${YOUTUBE_KEY}`;
+    let playlistItemsUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${encodeURIComponent(playlistId)}&maxResults=50&key=${YOUTUBE_KEY}`;
     if (pageToken) {
-      playlistItemsUrl += `&pageToken=${pageToken}`;
+      playlistItemsUrl += `&pageToken=${encodeURIComponent(pageToken)}`;
     }
 
     const plRes = await fetch(playlistItemsUrl);

@@ -560,7 +560,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015);}
   created_at timestamptz default now()
 );
 alter table payments enable row level security;
-create policy "auth_all_payments" on payments for all to authenticated using (true) with check (true);</code>
+create policy "dev_all_payments" on payments for all to authenticated using (exists (select 1 from users u where u.id = auth.uid() and u.role = 'developer')) with check (exists (select 1 from users u where u.id = auth.uid() and u.role = 'developer'));</code>
           <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="copyPaySql()">SQL'i Kopyala</button>
         </div>
 
@@ -1751,46 +1751,56 @@ const SB_URL='https://imyhenrwmsmyikpollur.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
 const db=supabase.createClient(SB_URL,SB_KEY);
 
-// ── AUTH ──────────────────────────────────────
-// Credentials SHA-256 hash olarak saklanır
-// Düz metin şifre kaynak kodda görünmez
-const ADMIN_HASH_USER = 'admin';
-const ADMIN_HASH_PASS = '6051fc84a7a0d74c225fb18a496b09952da5642e60723ecae543298edd7d82d6';
-
-async function _hashStr(s) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+// ── AUTH (Yalnızca Supabase Auth + role === 'developer') ──
+async function _verifyDeveloperSession() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session?.user) return false;
+    const { data: u } = await db.from('users').select('role').eq('id', session.user.id).maybeSingle();
+    return u?.role === 'developer';
+  } catch (_) {
+    return false;
+  }
 }
 
 async function doLogin(){
-  const u=document.getElementById('lgUser').value.trim();
-  const p=document.getElementById('lgPass').value;
-  let ph = '';
+  const rawUser = document.getElementById('lgUser').value.trim();
+  const p = document.getElementById('lgPass').value;
+  const errEl = document.getElementById('lgErr');
   try {
-    ph = await _hashStr(p);
-  } catch (e) {
-    console.warn('Crypto subtle not supported in this context, falling back to plain check.');
-  }
-  
-  const isUserMatch = u.toLowerCase() === ADMIN_HASH_USER;
-  const isPassMatch = ph === ADMIN_HASH_PASS || ph === '466c40f494c43cb86b34c870d9b55b7181626b373145676ad71211a308374e3b';
-
-  if(isUserMatch && isPassMatch){
+    if (!rawUser || !p) throw new Error('E-posta ve şifre gerekli');
+    const email = rawUser.includes('@') ? rawUser.toLowerCase() : (rawUser.toLowerCase() + '@rostrumakademi.com');
+    const { data, error } = await db.auth.signInWithPassword({ email, password: p });
+    if (error || !data?.user) throw error || new Error('Giriş başarısız');
+    const { data: u } = await db.from('users').select('role').eq('id', data.user.id).maybeSingle();
+    if (u?.role !== 'developer') {
+      await db.auth.signOut();
+      throw new Error('Bu panel yalnızca developer hesabı içindir.');
+    }
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('appShell').style.display='flex';
-    sessionStorage.setItem('site_admin','1');
     init();
-  } else {
-    document.getElementById('lgErr').style.display='block';
-    setTimeout(()=>document.getElementById('lgErr').style.display='none',2500);
+  } catch (e) {
+    if (errEl) {
+      errEl.textContent = e.message || 'Yetkisiz veya hatalı giriş';
+      errEl.style.display='block';
+      setTimeout(()=>errEl.style.display='none', 3000);
+    }
   }
 }
-function doLogout(){sessionStorage.removeItem('site_admin');location.reload();}
-if(sessionStorage.getItem('site_admin')){
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('appShell').style.display='flex';
-  setTimeout(init,100);
+
+async function doLogout(){
+  try { await db.auth.signOut(); } catch (_) {}
+  location.reload();
 }
+
+window.addEventListener('DOMContentLoaded', async () => {
+  if (await _verifyDeveloperSession()) {
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('appShell').style.display='flex';
+    init();
+  }
+});
 
 // ── STATE ─────────────────────────────────────
 let _leads=[], _content={}, _blogs=[], _announces=[];
@@ -1977,22 +1987,31 @@ function sendBroadcast(){
 function showAddCoach(){document.getElementById('addCoachModal').style.display='flex';}
 async function doAddCoach(){
   const name=document.getElementById('mcName').value.trim();
-  const email=document.getElementById('mcEmail').value.trim();
+  const email=document.getElementById('mcEmail').value.trim().toLowerCase();
   const pass=document.getElementById('mcPass').value;
-  const plan=document.getElementById('mcPlan').value;
+  const plan=document.getElementById('mcPlan').value||'trial';
   const errEl=document.getElementById('mcErr');
   if(!name||!email||!pass){errEl.textContent='Tüm alanlar zorunlu';errEl.style.display='block';return;}
   errEl.style.display='none';
-  const {data,error}=await db.auth.admin?.createUser?
-    db.auth.admin.createUser({email,password:pass,email_confirm:true}):
-    db.auth.signUp({email,password:pass});
-  if(error){errEl.textContent='Auth hatası: '+error.message;errEl.style.display='block';return;}
-  const userId=data?.user?.id||data?.id;
-  if(!userId){errEl.textContent='Kullanıcı ID alınamadı';errEl.style.display='block';return;}
-  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pass));
-  const hash=[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-  const {error:pErr}=await db.from('users').insert({id:userId,full_name:name,email,role:'coach',password_hash:hash,color:'#f0a500',week_start:0,progress:0,target:'',plan});
-  if(pErr){errEl.textContent='Profil hatası: '+pErr.message;errEl.style.display='block';return;}
+  const username = email.split('@')[0].replace(/[^a-z0-9]/g,'') || ('koc'+Date.now().toString().slice(-4));
+  const {data: newUserId, error} = await db.rpc('create_new_user', {
+    p_email: email,
+    p_password: pass,
+    p_full_name: name,
+    p_username: username,
+    p_role: 'coach',
+    p_target: 'Hedef belirtilmemiş',
+    p_color: '#f0a500',
+    p_progress: 0,
+    p_week_start: 0,
+    p_coach_id: null,
+    p_institution_id: null,
+    p_exam_profile: 'YKS'
+  });
+  if(error || !newUserId){errEl.textContent='Auth hatası: '+(error?.message||'Kullanıcı ID alınamadı');errEl.style.display='block';return;}
+  const trialEndsAt = new Date(Date.now() + 7*24*3600*1000).toISOString();
+  await db.from('users').update({ plan, trial_ends_at: trialEndsAt }).eq('id', newUserId);
+  await db.from('workspaces').upsert({ coach_id: newUserId, brand_name: name.split(' ')[0] + ' Akademi', brand_color: '#f0a500' }, { onConflict: 'coach_id' });
   document.getElementById('addCoachModal').style.display='none';
   showToast('Koç eklendi ✓');
   loadUsers();
@@ -2260,9 +2279,9 @@ async function createCoachAccount(lead){
       brand_color: '#f0a500'
     });
 
-    // Lead'e notları ekle
+    // Lead'e yalnızca durum ve kullanıcı adı yazılır — düz metin şifre DB'de saklanmaz
     await db.from('leads').update({
-      notes: `Hesap oluşturuldu.\nKullanıcı adı: ${username}\nŞifre: ${defaultPass}`,
+      notes: `Hesap oluşturuldu.\nKullanıcı adı: ${username}`,
       status: 'approved'
     }).eq('id', lead.id);
 
@@ -2339,14 +2358,10 @@ async function saveAllContent(){
     const val=document.getElementById('ci_'+key)?.value?.trim()||'';
     _content[key]=val;
     try{
-      // Önce var mı kontrol et
-      const {data:existing}=await db.from('site_content').select('id').eq('key',key).single();
-      let error;
-      if(existing){
-        ({error}=await db.from('site_content').update({value:val}).eq('key',key));
-      } else {
-        ({error}=await db.from('site_content').insert({key,value:val}));
-      }
+      const { error } = await db.from('site_content').upsert(
+        { key, value: val, updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
       if(error){console.error('Save error:',key,error);hasError=true;}
       else saved++;
     }catch(e){console.error('Exception:',key,e);hasError=true;}
@@ -6126,14 +6141,11 @@ async function saveIgConfig() {
 
 async function loadAiConfig() {
   try {
-    const { data } = await db.from('platform_settings').select('value').eq('key', 'ai_settings').maybeSingle();
-    if (data && data.value) {
-      document.getElementById('cfgGroqApiKey').value = data.value.groq_api_key || '';
-      document.getElementById('cfgGeminiApiKey').value = data.value.gemini_api_key || '';
-    }
-  } catch(e) {
-    console.error('Load AI config error:', e);
-  }
+    const gEl = document.getElementById('cfgGroqApiKey');
+    const gmEl = document.getElementById('cfgGeminiApiKey');
+    if (gEl) { gEl.value = ''; gEl.placeholder = 'Vercel Environment Variables üzerinden yönetilir (opsiyonel üzerine yaz)'; }
+    if (gmEl) { gmEl.value = ''; gmEl.placeholder = 'Vercel Environment Variables üzerinden yönetilir (opsiyonel üzerine yaz)'; }
+  } catch(e) {}
 }
 
 async function saveAiConfig() {
@@ -6392,23 +6404,26 @@ async function approvePendingPayment(id){
     const newEnd = new Date(base); newEnd.setMonth(newEnd.getMonth()+months);
 
     const { data: { session: adminSess } } = await db.auth.getSession();
+    const todayIso = new Date(Date.now() + 3*3600*1000).toISOString().split('T')[0];
+    const endIso = new Date(newEnd.getTime() + 3*3600*1000).toISOString().split('T')[0];
     const {error:pErr} = await db.from('payments').update({
-      status:'completed', verified:true, recorded_by: adminSess?.user?.email || 'admin',
-      period_start: new Date().toISOString().split('T')[0],
-      period_end: newEnd.toISOString().split('T')[0]
+      status:'completed', verified:true, recorded_by: adminSess?.user?.id || null,
+      period_start: todayIso,
+      period_end: endIso
     }).eq('id', id);
     if(pErr) throw pErr;
 
     const {error:uErr} = await db.from('users').update({ plan:'pro', trial_ends_at: newEnd.toISOString() }).eq('id', p.coach_id);
     if(uErr) throw uErr;
 
-    // Onay maili — best-effort, akışı engellemez
     if(c.email){
+      const hdrs = { 'Content-Type':'application/json' };
+      if (adminSess?.access_token) hdrs['Authorization'] = 'Bearer ' + adminSess.access_token;
       fetch('/api/mailer', {
-        method:'POST', headers:{'Content-Type':'application/json'},
+        method:'POST', headers: hdrs,
         body: JSON.stringify({
           type:'payment_approved', to:c.email, coach_name:c.full_name||c.username||'',
-          amount:p.amount, period_end:newEnd.toISOString().split('T')[0], ref_code:c.payment_reference_code||''
+          amount:p.amount, period_end:endIso, ref_code:c.payment_reference_code||''
         })
       }).catch(()=>{});
     }
@@ -6535,7 +6550,7 @@ function rspCfg(){
   }
   return {
     url: raw.replace(/\/+$/,''),
-    key: (localStorage.getItem('rsp_key')||'emin').trim()
+    key: (localStorage.getItem('rsp_key')||'').trim()
   };
 }
 
@@ -6609,7 +6624,7 @@ async function rspFetch(path, opts={}){
   try{
     const reqHeaders = {
       'content-type': 'application/json',
-      'x-panel-key': c.key || 'emin',
+      ...(c.key ? { 'x-panel-key': c.key } : {}),
       ...(opts.headers || {})
     };
     if (typeof db !== 'undefined' && db && db.auth) {

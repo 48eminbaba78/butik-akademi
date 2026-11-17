@@ -549,10 +549,18 @@
             onboarding_done: false
           });
 
-        // Mark invitation as used
+        // Mark invitation as used (authenticated student JWT ile)
+        let acceptToken = signUpData?.session?.access_token || '';
+        if (!acceptToken) {
+          const { data: signInData } = await db.auth.signInWithPassword({ email: studentEmail, password });
+          acceptToken = signInData?.session?.access_token || '';
+        }
+        const acceptHeaders = { 'Content-Type': 'application/json' };
+        if (acceptToken) acceptHeaders['Authorization'] = 'Bearer ' + acceptToken;
+
         const response = await fetch('/api/invitation?action=accept', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: acceptHeaders,
           body: JSON.stringify({ token: token, userId: userId })
         });
 

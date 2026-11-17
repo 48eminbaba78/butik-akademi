@@ -4,7 +4,7 @@
 
 import { db } from './config.js';
 import { S, session } from './state.js';
-import { loadAllData, dbQ } from './api.js';
+import { loadAllData, dbQ, saveCache } from './api.js';
 import {
   showLoading, sha256, normalizeUsername, showToast,
   esc, fmtDate, addDays, todayStr, netColor, typeLabel,
@@ -579,9 +579,9 @@ function renderHome(){
 
   // --- ANOMALİ TESPİTİ (Erken Uyarılar) ---
   const anomalies = [];
-  const ws = getWeekStart(0, 0);
 
   (S.students || []).forEach(s => {
+    const ws = getWeekStart(0, s.weekStart || 0);
     // 1) Görev tamamlama analizi
     let totalTasks = 0;
     let doneTasks = 0;
@@ -910,13 +910,14 @@ function renderHome(){
             const nowMinutes = nH*60+nM;
             const diffMin = apptMinutes - nowMinutes;
             const isLive = diffMin >= -((a.duration||60)) && diffMin <= 15;
-            const liveBtn = isLive && a.meet_link ? `<a href="${esc(a.meet_link)}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;background:${diffMin<=0?'var(--red)':'var(--accent)'};color:#fff;font-size:11px;font-weight:800;text-decoration:none;animation:${diffMin<=0?'pulse 1.5s infinite':'none'};white-space:nowrap;flex-shrink:0">${diffMin<=0?'🔴 Ders Sürüyor':'🟡 Derse Gir'}</a>` : '';
+            const mLink = a.meetLink || a.meet_link || '';
+            const liveBtn = isLive && mLink ? `<a href="${esc(mLink)}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;background:${diffMin<=0?'var(--red)':'var(--accent)'};color:#fff;font-size:11px;font-weight:800;text-decoration:none;animation:${diffMin<=0?'pulse 1.5s infinite':'none'};white-space:nowrap;flex-shrink:0">${diffMin<=0?'🔴 Ders Sürüyor':'🟡 Derse Gir'}</a>` : '';
             return `<div class="hsc-appt-row ${isPast&&!isLive?'hsc-appt-past':''}">
               <div class="hsc-appt-time">${a.time}</div>
               <div class="hsc-appt-bar" style="background:${stu?.color||'var(--accent)'}"></div>
               <div style="flex:1;min-width:0">
                 <div class="hsc-appt-name">${esc(stu?.name||'?')}</div>
-                <div class="hsc-appt-meta">${esc(a.type)} · ${a.duration} dk${!isLive&&a.meet_link?` · <a href="${esc(a.meet_link)}" target="_blank" style="color:var(--blue);text-decoration:none">${a.meet_link.includes('zoom')?'Zoom':'Meet'} →</a>`:''}</div>
+                <div class="hsc-appt-meta">${esc(a.type)} · ${a.duration} dk${!isLive&&mLink?` · <a href="${esc(mLink)}" target="_blank" style="color:var(--blue);text-decoration:none">${mLink.includes('zoom')?'Zoom':'Meet'} →</a>`:''}</div>
               </div>
               ${liveBtn || (isPast?'<span class="hsc-appt-done">✓</span>':'')}
             </div>`;
@@ -945,9 +946,9 @@ function renderHome(){
 // ── ÖĞRENCİ ARAMA ──────────────────────────────
 function renderStudentsSearch(){
   const el = document.getElementById('view-students');
-  const ws = getWeekStart(0, 0);
   const weekStats = {};
   S.students.forEach(s=>{
+    const ws = getWeekStart(0, s.weekStart || 0);
     let total=0,done=0,totalMin=0,doneMin=0;
     for(let i=0;i<7;i++){
       const tasks=S.tasks[`${s.id}_${fmtDate(addDays(ws,i))}`]||[];
@@ -1444,44 +1445,7 @@ async function openKonuHaritasi(stuId) {
   let activeSub = subjects[0];
   let activeView = 'mastery'; // 'mastery' | 'tekrar'
 
-  // Default topic mastery initialization for SAY demo students (e.g. Nikola Tesla)
-  if (!S.konuMastery[stuId] || Object.keys(S.konuMastery[stuId]).length === 0) {
-    S.konuMastery[stuId] = {
-      'TYT Fizik': {
-        'Fizik Bilimine Giriş': { stars: 7, status: 'td' },
-        'Vektörler ve Kuvvet': { stars: 7, status: 'td' },
-        'Elektrik ve Manyetizma': { stars: 7, status: 'td' },
-        'Optik ve Dalgalar': { stars: 7, status: 'td' }
-      },
-      'AYT Fizik': {
-        'Modern Fizik ve Görelilik': { stars: 7, status: 'td' },
-        'İtme ve Momentum': { stars: 7, status: 'td' },
-        'Düzgün Çembersel Hareket': { stars: 7, status: 'td' }
-      },
-      'AYT Matematik': {
-        'Türev ve Uygulamaları': { stars: 7, status: 'td' },
-        'İntegral ve Alan Hesabı': { stars: 7, status: 'td' },
-        'Trigonometri': { stars: 7, status: 'td' }
-      },
-      'Dil Bilgisi': {
-        'Paragrafta Anlatım Teknikleri & Sözel Mantık': { stars: 2, status: 'active' },
-        'Cümlenin Ögeleri & Yazım Kuralları': { stars: 3, status: 'active' },
-        'Ses Bilgisi & Noktalama İşaretleri': { stars: 2, status: 'active' }
-      },
-      'Tarih (TYT-AYT)': {
-        'Osmanlı Gerileme ve Dağılma Dönemi': { stars: 2, status: 'active' },
-        'Millî Mücadele ve İnkılap Tarihi': { stars: 3, status: 'active' }
-      },
-      'Coğrafya (TYT-AYT)': {
-        'Dünya İklim Tipleri ve Harita Okuma': { stars: 3, status: 'active' },
-        'Nüfus ve Yerleşme': { stars: 2, status: 'active' }
-      },
-      'Felsefe Grubu & Din': {
-        'Klasik Mantık ve Bilgi Felsefesi': { stars: 2, status: 'active' },
-        'Ahlak ve Siyaset Felsefesi': { stars: 3, status: 'active' }
-      }
-    };
-  }
+  if (!S.konuMastery[stuId]) S.konuMastery[stuId] = {};
 
   // Mastery verisini S'den al (api.js'de yüklendi)
   // { subject: { konu: row } }
@@ -1761,8 +1725,8 @@ async function openKonuHaritasi(stuId) {
     // Toggle: eğer tıklanan kutu zaten doluysa o kutunun sayısına indir, değilse artır
     const newCount = currentCount >= boxIndex ? boxIndex - 1 : boxIndex;
     await updateTekrarLog(subject, konu, periodStart, newCount);
-    // Son tekrar tarihini güncelle
-    if (newCount > 0) {
+    // Son tekrar tarihini güncelle (sadece yeni tik ekleniyorsa review_count artır)
+    if (newCount > currentCount) {
       const m = getMastery(subject, konu);
       const now = new Date().toISOString();
       const reviewRow = {
@@ -1771,8 +1735,10 @@ async function openKonuHaritasi(stuId) {
         last_review_date: now, review_count: (m?.review_count || 0) + 1,
         updated_at: now
       };
-      const { data } = await db.from('konu_mastery').upsert(reviewRow, { onConflict: 'student_id,subject,konu' }).select().single();
-      if (data) {
+      const { data, error } = await db.from('konu_mastery').upsert(reviewRow, { onConflict: 'student_id,subject,konu' }).select().single();
+      if (error) {
+        showToast('Hata: ' + error.message);
+      } else if (data) {
         if (!S.konuMastery[stuId]) S.konuMastery[stuId] = {};
         if (!S.konuMastery[stuId][subject]) S.konuMastery[stuId][subject] = {};
         S.konuMastery[stuId][subject][konu] = data;
@@ -1901,21 +1867,25 @@ async function openStudentKaynaklar(stuId) {
 // toplamı bilinemez — o durumda atanan toplam bir yaklaşık değer olarak kalır.
 async function _computeAutoKaynaklar(stuId) {
   const byKaynak = {}; // kaynakAdı -> {name, ders, assignedSoru, doneSoru}
+  const scanTask = t => {
+    if (!t || t.type !== 'soru') return;
+    if (!t.subject || !t.subject.includes(' - ')) return;
+    if (!Array.isArray(t.task_items) || t.task_items.length === 0) return;
+    const parts = t.subject.split(' - ');
+    const ders = parts[0].trim();
+    const kaynakAdi = parts.slice(1).join(' - ').trim();
+    if (!kaynakAdi) return;
+    const itemSoru = t.task_items.reduce((s, it) => s + (Number(it.soru) || 0), 0);
+    if (!byKaynak[kaynakAdi]) byKaynak[kaynakAdi] = { name: kaynakAdi, ders, assignedSoru: 0, doneSoru: 0 };
+    byKaynak[kaynakAdi].assignedSoru += itemSoru;
+    if (t.done) byKaynak[kaynakAdi].doneSoru += itemSoru;
+  };
   Object.entries(S.tasks).forEach(([key, tasks]) => {
     if (!key.startsWith(stuId + '_')) return;
-    (tasks || []).forEach(t => {
-      if (t.type !== 'soru') return;
-      if (!t.subject || !t.subject.includes(' - ')) return;
-      if (!Array.isArray(t.task_items) || t.task_items.length === 0) return;
-      const parts = t.subject.split(' - ');
-      const ders = parts[0].trim();
-      const kaynakAdi = parts.slice(1).join(' - ').trim();
-      if (!kaynakAdi) return;
-      const itemSoru = t.task_items.reduce((s, it) => s + (Number(it.soru) || 0), 0);
-      if (!byKaynak[kaynakAdi]) byKaynak[kaynakAdi] = { name: kaynakAdi, ders, assignedSoru: 0, doneSoru: 0 };
-      byKaynak[kaynakAdi].assignedSoru += itemSoru;
-      if (t.done) byKaynak[kaynakAdi].doneSoru += itemSoru;
-    });
+    (tasks || []).forEach(scanTask);
+  });
+  (S.olderTaskStats || []).forEach(t => {
+    if ((t.studentId || t.student_id) === stuId) scanTask(t);
   });
   const kaynaklar = Object.values(byKaynak);
   if (kaynaklar.length === 0) return [];
@@ -2109,7 +2079,7 @@ function renderProfile(){
   const el = document.getElementById('view-profile');
   const u = session.dbUser;
   const initials = (u?.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const roleLabel = session.role==='coach'?'Koç':session.role==='developer'?'Developer':'Öğrenci';
+  const roleLabel = session.role==='coach'?'Koç':session.role==='developer'?'Developer':session.role==='parent'?'Veli':'Öğrenci';
   el.innerHTML = `
     <div style="max-width:480px;margin:0 auto">
       <!-- Mini user card -->
@@ -2175,7 +2145,12 @@ async function saveProfile(){
   if(rawUser && !username) return showToast('Kullanıcı adı harf/rakam içermeli!');
   if(username && username !== session.dbUser.username) payload.username = username;
 
-  if(pass) payload.password_hash = await sha256(pass);
+  if(pass) {
+    if (pass.length < 6) return showToast('Şifre en az 6 karakter olmalı!');
+    const { error: authErr } = await db.auth.updateUser({ password: pass });
+    if (authErr) return showToast('Auth şifresi güncellenemedi: ' + authErr.message);
+    payload.password_hash = await sha256(pass);
+  }
   const { error } = await db.from('users').update(payload).eq('id',session.dbUser.id);
   if(error){
     if(/duplicate|unique|23505/i.test(error.message||'')) return showToast('Bu kullanıcı adı alınmış, başka bir tane deneyin');
@@ -2191,8 +2166,10 @@ async function saveProfile(){
       S.workspace = {...(S.workspace||{}), ...wsPayload};
     }
     if (brand) document.querySelector('.sb-logo-text').textContent = brand;
+    if (S.coachProfile) S.coachProfile.fullName = name;
   }
-  session.dbUser = {...session.dbUser, full_name:name, ...(payload.username ? {username: payload.username} : {})};
+  session.dbUser = {...session.dbUser, full_name:name, ...(payload.username ? {username: payload.username} : {}), ...(payload.password_hash ? {password_hash: payload.password_hash} : {})};
+  saveS();
   document.getElementById('sbName').textContent = name;
   showToast('Profil kaydedildi ✓');
   renderProfile();
@@ -2221,7 +2198,7 @@ function renderSettings(){
         </div>
       </div>
 
-      ${(session.role === 'student' || session.role === 'parent') ? `
+      ${session.role === 'student' ? `
       <div class="settings-block" style="margin-top:20px">
         <div class="settings-block-title">✨ Premium Deneyim</div>
         ${[
@@ -2828,12 +2805,20 @@ async function confirmClearDays(){
   if(!_clearDaysSel.length)return showToast('Önce gün seçin');
   if(!await customConfirm(`${_clearDaysSel.length} günün görevleri silinsin mi?`))return;
   showLoading(true, 'Siliniyor...');
+  let cleared = 0;
   for(const ds of _clearDaysSel){
-    await db.from('tasks').delete().eq('student_id',S.activeStuId).eq('date',ds);
+    const { error } = await db.from('tasks').delete().eq('student_id',S.activeStuId).eq('date',ds);
+    if (error) {
+      showLoading(false);
+      showToast('Silme hatası: ' + error.message);
+      saveCache(); renderProgram();
+      return;
+    }
     delete S.tasks[`${S.activeStuId}_${ds}`];
+    cleared++;
   }
   showLoading(false);
-  saveUI();cm('clearWeekModal');renderProgram();showToast(`${_clearDaysSel.length} gün temizlendi ✓`);
+  saveCache(); saveUI(); cm('clearWeekModal'); renderProgram(); showToast(`${cleared} gün temizlendi ✓`);
 }
 
 // ── KONU LİSTESİ ────────────────────────────────
@@ -3045,8 +3030,9 @@ function syncQCountVisibility(){
 let _resourcesCache = {};
 let _resourcesLoaded = false;
 
-async function loadResources() {
-  if(_resourcesLoaded) return;
+async function loadResources(force = false) {
+  if(_resourcesLoaded && !force) return;
+  if (force) _resourcesCache = {};
   const {data} = await db.from('resources').select('*').eq('active', true).order('name');
   if(data) {
     data.forEach(r => {
@@ -3129,8 +3115,6 @@ function updateBookList(){
   _resourcesLoaded=false; _resourcesCache={};
   if((type==='soru'||type==='konu')&&exam) renderBookList('');
 }
-
-document.getElementById('tmType').addEventListener('change', updateSubjectList);
 
 async function renderBookList(query){
   const exam=document.getElementById('tmExam').value;
@@ -3398,16 +3382,19 @@ async function loadStudentSpeeds(){
 }
 
 // Öğrenci hız yönetimi — öğrenci modalına eklenecek
-async function saveStudentSpeed(stuId, examType, subject, secsPerQ){
-  const {data:existing}=await db.from('student_speeds').select('id').eq('student_id',stuId).eq('exam_type',examType).eq('subject',subject).single();
+async function saveStudentSpeed(stuId, examType, subject, secsPerQ, silent = false){
+  const { data: existing, error: selErr } = await db.from('student_speeds').select('id').eq('student_id',stuId).eq('exam_type',examType).eq('subject',subject).maybeSingle();
+  if (selErr) { if (!silent) showToast('Hata: ' + selErr.message); return false; }
   if(existing){
-    await db.from('student_speeds').update({secs_per_question:secsPerQ,updated_at:new Date().toISOString()}).eq('id',existing.id);
+    const { error } = await db.from('student_speeds').update({secs_per_question:secsPerQ,updated_at:new Date().toISOString()}).eq('id',existing.id);
+    if (error) { if (!silent) showToast('Hata: ' + error.message); return false; }
   } else {
-    await db.from('student_speeds').insert({student_id:stuId,coach_id:session.coachId,exam_type:examType,subject,secs_per_question:secsPerQ});
+    const { error } = await db.from('student_speeds').insert({student_id:stuId,coach_id:session.coachId,exam_type:examType,subject,secs_per_question:secsPerQ});
+    if (error) { if (!silent) showToast('Hata: ' + error.message); return false; }
   }
-  // Cache güncelle
   _studentSpeeds[`${stuId}_${examType}_${subject}`]=secsPerQ;
-  showToast('Hız kaydedildi ✓');
+  if (!silent) showToast('Hız kaydedildi ✓');
+  return true;
 }
 
 // ═══════════════════════════════════════════════
@@ -3453,8 +3440,7 @@ function applySmartDuration(){
   }
 }
 
-// Ders değişince kitap listesi sıfırla — BUG FIX + akıllı rozet güncelle
-document.getElementById('tmType').addEventListener('change', updateSubjectList);
+// Akıllı rozet güncellemeleri (tmType/tmExam onchange ile updateSubjectList zaten bağlı)
 document.getElementById('tmExam')?.addEventListener('change', scheduleSmartBadge);
 document.getElementById('tmSubjectSel')?.addEventListener('change', scheduleSmartBadge);
 document.getElementById('tmSubjectFree')?.addEventListener('input', scheduleSmartBadge);
@@ -3519,12 +3505,53 @@ async function saveTask(){
         start_time: startTime
       };
       showLoading(true);
-      const { error } = await db.from('tasks').insert(payload);
+      if (_editingTaskId) {
+        const { error } = await db.from('tasks').update({
+          type: payload.type,
+          exam_type: payload.exam_type,
+          subject: payload.subject,
+          duration: payload.duration,
+          note: payload.note,
+          task_items: payload.task_items,
+          start_time: payload.start_time
+        }).eq('id', _editingTaskId);
+        showLoading(false);
+        if (error) return showToast('Hata: ' + error.message);
+        const key = `${S.activeStuId}_${_taskDate}`;
+        if (S.tasks[key]) {
+          const idx = S.tasks[key].findIndex(t => t._id === _editingTaskId);
+          if (idx !== -1) {
+            const prev = S.tasks[key][idx];
+            S.tasks[key][idx] = {
+              ...prev,
+              _id: _editingTaskId,
+              type: payload.type,
+              exam: payload.exam_type,
+              subject: payload.subject,
+              duration: payload.duration,
+              note: payload.note,
+              task_items: payload.task_items,
+              start_time: payload.start_time
+            };
+          }
+        }
+        _editingTaskId = null;
+        saveCache();
+        cm('taskModal'); renderProgram(); showToast('Görev güncellendi ✓');
+        return;
+      }
+      const { data, error } = await db.from('tasks').insert(payload).select().single();
       showLoading(false);
       if (error) return showToast('Hata: '+error.message);
       const key=`${S.activeStuId}_${_taskDate}`;
       if(!S.tasks[key]) S.tasks[key]=[];
-      S.tasks[key].push({type,exam:examType,subject,duration,note,done:false,task_items:payload.task_items,start_time:startTime});
+      S.tasks[key].push({
+        _id:data.id, type:data.type, exam:data.exam_type, subject:data.subject,
+        duration:data.duration, note:data.note, done:false,
+        student_note:'', student_result:null, student_feedback:null,
+        task_items:data.task_items||null, start_time:data.start_time
+      });
+      saveCache();
       cm('taskModal'); renderProgram(); showToast('Görev eklendi ✓');
       return;
     }
@@ -3585,20 +3612,22 @@ async function saveTask(){
       if(S.tasks[key]) {
         const idx = S.tasks[key].findIndex(t => t._id === _editingTaskId);
         if (idx !== -1) {
+          const prev = S.tasks[key][idx];
           S.tasks[key][idx] = {
+            ...prev,
             _id: _editingTaskId,
             type: payload.type,
             exam: payload.exam_type,
             subject: payload.subject,
             duration: payload.duration,
             note: payload.note,
-            done: S.tasks[key][idx].done,
-            student_note: S.tasks[key][idx].student_note || '',
+            student_note: prev.student_note || '',
             task_items: payload.task_items,
             start_time: payload.start_time
           };
         }
       }
+      saveCache();
       cm('taskModal');
       renderProgram();
       showToast('Görev güncellendi ✓');
@@ -3618,10 +3647,13 @@ async function saveTask(){
         note:data.note,
         done:false,
         student_note: '',
+        student_result: null,
+        student_feedback: null,
         task_items: data.task_items || null,
         start_time: data.start_time
       });
 
+      saveCache();
       cm('taskModal');
       renderProgram();
       showToast('Görev eklendi ✓');
@@ -3638,8 +3670,11 @@ async function toggleTask(ds,idx){
   const key=`${S.activeStuId}_${ds}`;
   const t=S.tasks[key]?.[idx]; if(!t)return;
   const newDone=!t.done;
-  await db.from('tasks').update({done:newDone}).eq('id',t._id);
-  t.done=newDone; renderProgram();
+  if (t._id) {
+    const { error } = await db.from('tasks').update({done:newDone}).eq('id',t._id);
+    if (error) return showToast('Hata: ' + error.message);
+  }
+  t.done=newDone; saveCache(); renderProgram();
 }
 // ── GÖREV 3-NOKTA MENÜSÜ ───────────────────────
 let _tcDropdown = null;
@@ -3707,8 +3742,15 @@ async function deleteTask(ds,idx){
   }
   
   await new Promise(resolve => setTimeout(resolve, 300));
-  await db.from('tasks').delete().eq('id',t._id);
+  if (t._id) {
+    const { error } = await db.from('tasks').delete().eq('id', t._id);
+    if (error) {
+      renderProgram();
+      return showToast('Silinemedi: ' + error.message);
+    }
+  }
   S.tasks[key].splice(idx,1);
+  saveCache();
   renderProgram();
   showToast(`"${label}" silindi`);
 }
@@ -4096,8 +4138,14 @@ function openAgendaApptModal(id, prefillDate){
 
 async function deleteAgendaAppt(id){
   if(!await customConfirm('Randevu silinsin mi?')) return;
-  await db.from('appointments').delete().eq('id',id);
+  const appt = S.appointments.find(a => a.id === id);
+  const { error } = await db.from('appointments').delete().eq('id',id);
+  if (error) return showToast('Silinemedi: ' + error.message);
+  if (S.workspace?.google_calendar_connected && appt?.google_event_id) {
+    gcalSync('delete', { google_event_id: appt.google_event_id }).catch(()=>{});
+  }
   S.appointments = S.appointments.filter(a=>a.id!==id);
+  saveCache();
   renderAgenda();
   showToast('Randevu silindi');
 }
@@ -4148,7 +4196,11 @@ function openStudentModal(id){
   document.getElementById('smName').value=s?.name||'';
   document.getElementById('smTarget').value=s?.target||'';
   document.getElementById('smUsername').value=s?.username||'';
-  document.getElementById('smPass').value=s?.pass||STU_DEFAULT_PASS;
+  const passEl = document.getElementById('smPass');
+  if (passEl) {
+    passEl.value = isEdit ? '' : STU_DEFAULT_PASS;
+    passEl.placeholder = isEdit ? 'Değiştirmek için yazın (boş = şifre değişmez)' : 'Geçici şifre';
+  }
   document.getElementById('smWeekStart').value=s?.weekStart??0;
   document.getElementById('smYksArea').value=s?.yksArea||'SAY';
   document.getElementById('smProg').value=s?.progress||0;
@@ -4276,10 +4328,10 @@ async function saveStudent(){
   const color=document.querySelector('.color-opt.sel')?.dataset.c||'#e8622a';
   const id=document.getElementById('smId').value;
   const uname=normalizeUsername(document.getElementById('smUsername').value.trim())||(normalizeUsername(name.split(' ')[0])+Math.floor(Math.random()*100));
-  const passRaw=document.getElementById('smPass').value||STU_DEFAULT_PASS;
-  const pass = await sha256(passRaw);
+  const passRaw=(document.getElementById('smPass').value||'').trim();
+  const pass = passRaw ? await sha256(passRaw) : '';
   const yksArea = document.getElementById('smYksArea').value;
-  const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'Hedef belirtilmemiş',color,progress:Number(document.getElementById('smProg').value),password_hash:pass,week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:'student',coach_id:session.coachId,yks_area:yksArea};
+  const payload={full_name:name,target:document.getElementById('smTarget').value.trim()||'Hedef belirtilmemiş',color,progress:Number(document.getElementById('smProg').value),week_start:Number(document.getElementById('smWeekStart').value),username:uname,role:'student',coach_id:session.coachId,yks_area:yksArea};
 
   const _lvl=document.getElementById('smLevel')?.value||'';
   const _sph=document.getElementById('smStudentPhone')?.value.trim()||'';
@@ -4301,7 +4353,7 @@ async function saveStudent(){
     });
     if(error)return showToast('Hata: '+error.message);
     const s=S.students.find(x=>x.id===id);
-    if(s)Object.assign(s,{name:payload.full_name,target:payload.target,color,progress:payload.progress,pass:passRaw,weekStart:payload.week_start,username:uname,yksArea:payload.yks_area});
+    if(s)Object.assign(s,{name:payload.full_name,target:payload.target,color,progress:payload.progress,weekStart:payload.week_start,username:uname,yksArea:payload.yks_area});
 
     // İletişim & seviye → student_profiles (opsiyonel; boş alan gönderilmez)
     if(_lvl||_sph||_pem||_pph){
@@ -4312,20 +4364,15 @@ async function saveStudent(){
       if(pErr && !/column/i.test(pErr.message||'')) console.warn('student_profiles upsert:',pErr.message);
     }
 
+    if (typeof window.invalidateCache === 'function') window.invalidateCache();
     showToast('Güncellendi ✓');
     saveUI();cm('studentModal');renderStudentsSearch();
   } else {
-    const { data: { session: authSess } } = await db.auth.getSession();
     showToast('Davet oluşturuluyor...');
     try {
       const resp = await fetch('/api/invitation?action=create', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${authSess?.access_token||''}`,
-          'X-Coach-Id': session.dbUser?.id || '',
-          'X-Coach-Hash': session.dbUser?.password_hash || ''
-        },
+        headers: await aiAuthHeaders(),
         body: JSON.stringify({ student_name: payload.full_name, username: uname })
       });
       const result = await resp.json();
@@ -4432,7 +4479,7 @@ async function sendInviteEmail(token){
   try{
     const resp = await fetch('/api/invitation?action=send_email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await aiAuthHeaders(),
       body: JSON.stringify({ token, email })
     });
     const out = await resp.json();
@@ -4502,9 +4549,9 @@ function renderApptList(){
       <div class="appt-name">${esc(stu?.name||'?')}</div>
       <div class="appt-type">${esc(a.type)}</div>
       ${a.note?`<div class="appt-note">${esc(a.note)}</div>`:''}
-      ${a.meet_link?`<div style="margin-top:6px;display:flex;gap:6px;align-items:center">
-        <a href="${esc(a.meet_link)}" target="_blank" style="font-size:11px;background:var(--blue-dim);color:var(--blue);padding:3px 10px;border-radius:99px;text-decoration:none;font-weight:700">${a.meet_link.includes('zoom')?'🎥 Zoom':`📹 Meet`}</a>
-        <button class="btn btn-ghost btn-xs" onclick="copyToClipboard('${esc(a.meet_link)}')">Kopyala</button>
+      ${(a.meetLink||a.meet_link)?`<div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+        <a href="${esc(a.meetLink||a.meet_link)}" target="_blank" rel="noopener" style="font-size:11px;background:var(--blue-dim);color:var(--blue);padding:3px 10px;border-radius:99px;text-decoration:none;font-weight:700">${(a.meetLink||a.meet_link).includes('zoom')?'🎥 Zoom':`📹 Meet`}</a>
+        <button class="btn btn-ghost btn-xs" onclick="copyToClipboard('${esc(a.meetLink||a.meet_link)}')">Kopyala</button>
       </div>`:''}
       <div class="appt-actions">
         <button class="btn btn-ghost btn-xs" onclick="openApptModal('${a.id}')">✏️</button>
@@ -4523,7 +4570,7 @@ function openApptModal(id){
   document.getElementById('amDuration').value=a?a.duration:'45';
   document.getElementById('amType').value=a?a.type:'Haftalık Değerlendirme';
   document.getElementById('amNote').value=a?.note||'';
-  document.getElementById('amMeetLink').value=a?.meet_link||'';
+  document.getElementById('amMeetLink').value=a?.meetLink||a?.meet_link||'';
   om('apptModal');
 }
 let _savingAppt = false;
@@ -4543,9 +4590,11 @@ async function _doSaveAppt(){
   const id=document.getElementById('amId').value;
   const payload={student_id:stuId,coach_id:session.coachId,date,time,duration:parseInt(document.getElementById('amDuration').value),type:document.getElementById('amType').value,note:document.getElementById('amNote').value.trim(),meet_link:rawMeetLink};
   if(id){
-    await db.from('appointments').update(payload).eq('id',id);
+    const { error } = await db.from('appointments').update(payload).eq('id',id);
+    if (error) return showToast('Güncellenemedi: ' + error.message);
     const a=S.appointments.find(x=>x.id===id);
-    if(a)Object.assign(a,{studentId:stuId,date,time,duration:payload.duration,type:payload.type,note:payload.note});
+    if(a)Object.assign(a,{studentId:stuId,date,time,duration:payload.duration,type:payload.type,note:payload.note,meetLink:rawMeetLink});
+    saveCache();
     showToast('Güncellendi ✓');
     if(S.workspace?.google_calendar_connected && a?.google_event_id) {
       const stu=S.students.find(s=>s.id===stuId);
@@ -4554,8 +4603,9 @@ async function _doSaveAppt(){
   } else {
     const {data,error}=await db.from('appointments').insert(payload).select().single();
     if(error)return showToast('Hata: '+error.message);
-    const newAppt={id:data.id,studentId:data.student_id,date:data.date,time:data.time,duration:data.duration,type:data.type,note:data.note,google_event_id:null};
+    const newAppt={id:data.id,studentId:data.student_id,date:data.date,time:data.time,duration:data.duration,type:data.type,note:data.note,meetLink:rawMeetLink,google_event_id:null};
     S.appointments.push(newAppt);
+    saveCache();
     showToast('Randevu eklendi ✓');
     if(S.workspace?.google_calendar_connected) {
       const stu=S.students.find(s=>s.id===stuId);
@@ -4629,8 +4679,10 @@ async function deleteAppt(id){
   if(S.workspace?.google_calendar_connected && appt?.google_event_id) {
     gcalSync('delete', { google_event_id: appt.google_event_id }).catch(()=>{});
   }
-  await db.from('appointments').delete().eq('id',id);
+  const { error } = await db.from('appointments').delete().eq('id',id);
+  if (error) { renderApptList?.(); return showToast('Silinemedi: ' + error.message); }
   S.appointments=S.appointments.filter(a=>a.id!==id);
+  saveCache();
   if(currentTab === 'todolist') renderAgenda();
   if(document.getElementById('apptList')) renderApptList();
   showToast('Silindi');
@@ -4781,8 +4833,9 @@ function _refreshModalPuan() {
 // ═══════════════════════════════════════════════
 function _examChartHtml(exams, stu) {
   if (!exams.length) return '';
-  const sorted  = [...exams].sort((a,b)=>a.date.localeCompare(b.date)).slice(-8);
-  const latest  = sorted[sorted.length-1];
+  const allSorted = [...exams].sort((a,b)=>a.date.localeCompare(b.date));
+  const latest  = allSorted[allSorted.length-1];
+  const sorted  = allSorted.filter(e => e.type === latest.type).slice(-8);
   const prev    = sorted.length>=2 ? sorted[sorted.length-2] : null;
   const fields  = EXAM_DEFS[latest.type]||[];
   const accent  = stu?.color||'#e8622a';
@@ -4891,7 +4944,7 @@ function _examChartHtml(exams, stu) {
   return `<div class="card cp" style="margin-bottom:16px">
     <div style="font-size:11px;font-weight:700;margin-bottom:12px;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px">📊 Deneme Takibi</div>
     ${statHtml}
-    <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Toplam Net Trendi · Son ${n} Deneme</div>
+    <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${esc(latest.type)} Toplam Net Trendi · Son ${n} Deneme</div>
     ${trendSvg}
     <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 10px">Son Deneme · Derse Göre</div>
     ${subBarsHtml}
@@ -4926,7 +4979,9 @@ function _examDetailHtml(e, allExams){
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
       ${fields.map(f=>{
         const v=Number(e.nets?.[f]||0);
-        const col=v>=20?'var(--green)':v>=12?'var(--accent)':'var(--red)';
+        const maxQ=(EXAM_SORU[e.type]||{})[f]||40;
+        const nc=netColor(v,maxQ);
+        const col=nc==='good'?'var(--green)':nc==='mid'?'var(--accent)':'var(--red)';
         return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:8px 12px;min-width:70px;text-align:center">
           <div style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">${f}</div>
           <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;color:${col}">${v}</div>
@@ -5011,6 +5066,7 @@ function renderExams(){
               <td style="padding:11px 14px;text-align:right;font-size:12px">${diffHtml}</td>
               <td style="padding:11px 14px;text-align:right;white-space:nowrap">
                 <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openCommentModal('${e.id}')">💬</button>
+                <button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="event.stopPropagation();deleteExam('${e.id}')">🗑️</button>
                 <span style="color:var(--text-dim);font-size:11px">▸</span>
               </td>
             </tr>
@@ -5182,7 +5238,15 @@ async function saveComment(){
   if(e)e.coachComment=comment;
   cm('commentModal');renderExams();showToast('Yorum kaydedildi ✓');
 }
-async function deleteExam(id){if(!await customConfirm('Bu denemeyi silmek istediğinizden emin misiniz?'))return;await db.from('exams').delete().eq('id',id);S.exams=S.exams.filter(e=>e.id!==id);renderExams();showToast('Silindi');}
+async function deleteExam(id){
+  if(!await customConfirm('Bu denemeyi silmek istediğinizden emin misiniz?'))return;
+  const { error } = await db.from('exams').delete().eq('id',id);
+  if (error) return showToast('Silinemedi: ' + error.message);
+  S.exams=S.exams.filter(e=>e.id!==id);
+  saveCache();
+  if (session.role === 'student') renderSExams(); else renderExams();
+  showToast('Silindi ✓');
+}
 
 // ═══════════════════════════════════════════════
 // MESSAGES — ÖĞRENCİ YÖNETİM KOMUTA MERKEZİ (3-Column Workspace)
@@ -5230,22 +5294,24 @@ function renderStudentInfoPanel(stuId) {
   // 1. Hedef Kartı Bilgileri
   const rawTarget = stu.target || '';
   const isGenericTarget = rawTarget.toLowerCase().includes('tyt') || rawTarget.toLowerCase().includes('ayt') || !rawTarget;
-  const uni = esc(stu.target_university || (!isGenericTarget ? rawTarget : 'Hacettepe Üniversitesi'));
-  const dept = esc(stu.target_department || (isGenericTarget && rawTarget ? rawTarget : 'Tıp Fakültesi'));
-  const year = esc(stu.target_year || 'YKS 2026');
+  const uni = esc(stu.target_university || (!isGenericTarget ? rawTarget : 'Hedef Belirtilmemiş'));
+  const dept = esc(stu.target_department || (isGenericTarget && rawTarget ? rawTarget : ''));
+  const yInfo = getNextYks(stu.examProfile);
+  const year = esc(stu.target_year || `${yInfo.label} ${yInfo.year}`);
 
   // 2. Deneme Netleri
+  const calcExamTotal = e => e ? (EXAM_DEFS[e.type] || Object.keys(e.nets || {})).reduce((s, f) => s + Number(e.nets?.[f] || 0), 0) : 0;
   const exams = (S.exams || []).filter(e => e.studentId === stuId);
   exams.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
   const tytExams = exams.filter(e => e.type === 'TYT');
   const aytExams = exams.filter(e => e.type && e.type.startsWith('AYT'));
-  const lastTyt = tytExams[0]?.totalNet ?? tytExams[0]?.net ?? '—';
-  const lastAyt = aytExams[0]?.totalNet ?? aytExams[0]?.net ?? '—';
+  const lastTyt = tytExams.length ? calcExamTotal(tytExams[0]).toFixed(1) : '—';
+  const lastAyt = aytExams.length ? calcExamTotal(aytExams[0]).toFixed(1) : '—';
 
   let trendHtml = '';
   if (tytExams.length >= 2) {
-    const curr = Number(tytExams[0].totalNet || 0);
-    const prev = Number(tytExams[1].totalNet || 0);
+    const curr = calcExamTotal(tytExams[0]);
+    const prev = calcExamTotal(tytExams[1]);
     const diff = (curr - prev).toFixed(1);
     if (diff > 0) trendHtml = `<span style="font-size:10px;font-weight:800;color:var(--green);background:var(--green-dim);padding:2px 6px;border-radius:99px">📈 +${diff} Net</span>`;
     else if (diff < 0) trendHtml = `<span style="font-size:10px;font-weight:800;color:var(--red);background:var(--red-dim);padding:2px 6px;border-radius:99px">📉 ${diff} Net</span>`;
@@ -5505,7 +5571,7 @@ function renderMessages(){
           const thread=S.messages[s.id]||[];
           const last=thread[thread.length-1];
           const unread=thread.filter(m=>m.from==='student'&&!m.read).length;
-          return `<div class="msg-contact ${S.msgThread===s.id?'active':''}" onclick="selectThread('${s.id}')">
+          return `<div class="msg-contact ${S.msgThread===s.id?'active':''}" data-stu-id="${s.id}" onclick="selectThread('${s.id}')">
             <div class="msg-contact-avatar" style="background:${s.color}">
               ${s.name[0]}
               <span class="online-dot"></span>
@@ -5539,8 +5605,9 @@ async function selectThread(stuId){
   if (main) main.innerHTML=renderThreadHTML(stuId,'coach');
   const infoPanel = document.getElementById('msgInfoPanel');
   if (infoPanel) infoPanel.innerHTML = renderStudentInfoPanel(stuId);
-  document.querySelectorAll('.msg-contact').forEach(el=>el.classList.remove('active'));
-  S.students.forEach((s,i)=>{if(s.id===stuId)document.querySelectorAll('.msg-contact')[i]?.classList.add('active');});
+  document.querySelectorAll('.msg-contact').forEach(el => {
+    el.classList.toggle('active', el.dataset.stuId === stuId);
+  });
   scrollMsgs();
   initRealtime();
 }
@@ -5583,8 +5650,11 @@ function renderThreadHTML(stuId, role){
     const prevM = thread[idx - 1];
     const isConsecutive = prevM && (prevM.from === m.from) && (!m.created_at || !prevM.created_at || m.created_at.slice(0,10) === prevM.created_at.slice(0,10));
 
+    const isPdf = m.image_url && /\.pdf(\?|$)/i.test(m.image_url);
     const imgHtml = m.image_url
-      ? `<img src="${esc(m.image_url)}" loading="lazy" onload="window._msgImgLoaded(this)" onclick="window.open('${esc(m.image_url)}','_blank')" />`
+      ? (isPdf
+        ? `<a href="${esc(m.image_url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;background:rgba(255,255,255,0.12);color:inherit;text-decoration:none;font-size:12px;font-weight:700">📄 PDF Ekini Aç ↗</a>`
+        : `<img src="${esc(m.image_url)}" loading="lazy" onload="window._msgImgLoaded(this)" onclick="window.open('${esc(m.image_url)}','_blank')" />`)
       : '';
     const textHtml = m.text ? esc(m.text) : '';
     const content = imgHtml + (imgHtml && textHtml ? `<div style="margin-top:5px">${textHtml}</div>` : textHtml);
@@ -5625,11 +5695,11 @@ function renderThreadHTML(stuId, role){
   const templates = isCoach ? coachTemplates : studentTemplates;
 
   const tplChipsHtml = templates.map(t => `
-    <div class="msg-tpl-chip" onclick="applyMsgTemplate('${esc(t.text)}')">${t.label}</div>
+    <div class="msg-tpl-chip" data-tpl="${esc(t.text)}" onclick="applyMsgTemplate(this.dataset.tpl)">${t.label}</div>
   `).join('');
 
-  const headerTitle = isCoach ? esc(stu?.name || 'Öğrenci') : (S.coachProfile?.fullName || 'YKS Koçum');
-  const targetLabel = isCoach ? (stu?.target ? esc(stu.target) : 'YKS Hedefi Belirtilmemiş') : 'Rostrum Akademi Koçluğu';
+  const headerTitle = isCoach ? esc(stu?.name || 'Öğrenci') : esc(S.coachProfile?.fullName || 'Koçum');
+  const targetLabel = isCoach ? (stu?.target ? esc(stu.target) : 'Hedef Belirtilmemiş') : 'Rostrum Akademi Koçluğu';
   const headerAvatarBg = isCoach ? color : 'var(--accent)';
 
   const toggleBtnHtml = isCoach ? `
@@ -5863,10 +5933,10 @@ function renderPortal(){
   const nextAppt=S.appointments.filter(a=>a.studentId===stu.id&&a.date>=today).sort((a,b)=>a.date.localeCompare(b.date))[0];
   const unread=(S.messages[stu.id]||[]).filter(m=>m.from==='coach'&&!m.read).length;
 
-  // YKS geri sayımı — önceden sadece koç ana sayfasında vardı
-  const yksInfo = getNextYks();
+  // Sınav geri sayımı — öğrencinin exam_profile'ına göre (YKS/LGS/KPSS/ALES)
+  const yksInfo = getNextYks(stu.examProfile);
 
-  // Bu haftaki görev tamamlama (ham sayı) — soyut "İlerleme" yüzdesinin altına somut dayanak
+  // Bu haftaki görev tamamlama
   const wsPortal = getWeekStart(0, stu.weekStart || 0);
   let weekTotal = 0, weekDone = 0;
   for (let i = 0; i < 7; i++) {
@@ -5874,6 +5944,19 @@ function renderPortal(){
     weekTotal += dTasks.length;
     weekDone += dTasks.filter(t => t.done).length;
   }
+  const weekPct = weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0;
+  const nextPendingIdx = todayTasks.findIndex(t => !t.done);
+  const nextPending = nextPendingIdx >= 0 ? todayTasks[nextPendingIdx] : null;
+  const nextBestHtml = nextPending ? `
+    <div style="background:linear-gradient(135deg,rgba(232,97,58,.12),rgba(139,92,246,.08));border:1.5px solid rgba(232,97,58,.35);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">⚡ Şimdi Sıradaki Görev</div>
+      <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:2px">${esc(nextPending.subject)}</div>
+      <div style="font-size:11px;color:var(--text-mid);margin-bottom:10px">${typeLabel(nextPending.type)}${nextPending.exam ? ' · ' + esc(nextPending.exam) : ''} · ${nextPending.duration} dk</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" style="background:var(--focus-purple);color:#fff;border:none;font-size:11px;padding:6px 12px" onclick="startFocusMode('${today}',${nextPendingIdx})">🎯 Odaklan</button>
+        <button class="btn btn-accent btn-sm" style="font-size:11px;padding:6px 12px" onclick="openTaskDetail('${today}',${nextPendingIdx},'student','completed')">✓ Detay & Tamamla</button>
+      </div>
+    </div>` : (todayTasks.length > 0 ? `<div style="background:rgba(31,158,99,.1);border:1px solid rgba(31,158,99,.3);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;font-weight:700;color:var(--green)">🏆 Bugünün tüm görevlerini tamamladın!</div>` : '');
 
   // Tekrar gereken konular
   const tekrarGereken = computeWeakTopics(stu.id);
@@ -5906,16 +5989,17 @@ function renderPortal(){
       </div>
       <div class="home-yks-badge">
         <div class="home-yks-num">${yksInfo.days}</div>
-        <div class="home-yks-meta">gün kaldı<br><b>YKS ${yksInfo.year}</b></div>
+        <div class="home-yks-meta">gün kaldı<br><b>${esc(yksInfo.label)} ${yksInfo.year}</b></div>
       </div>
     </div>
     <div class="portal-grid">
       <div class="card cp">
         <div class="portal-sec-title">📋 Bugünün Görevleri</div>
+        ${nextBestHtml}
         ${todayTasks.length?`
           ${todayTasks.map((t,i)=>`
-            <div data-task-id="${t._id}" class="task-card task-${t.type} ${t.done?'done':''}" style="margin-bottom:6px">
-              <div class="tc-check ${t.done?'on':''}" onclick="stuToggleTask('${today}',${i})"></div>
+            <div data-task-id="${t._id}" class="task-card task-${t.type} ${t.done?'done':''}" onclick="openTaskDetail('${today}',${i},'student')" style="margin-bottom:6px;cursor:pointer">
+              <div class="tc-check ${t.done?'on':''}" onclick="event.stopPropagation();stuToggleTask('${today}',${i})"></div>
               <div class="tc-body">
                 <div class="tc-type">${typeLabel(t.type)}${t.exam?' · '+t.exam:''}</div>
                 <div class="tc-subject">${esc(t.subject)}</div>
@@ -5931,10 +6015,10 @@ function renderPortal(){
       </div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card cp">
-          <div class="portal-sec-title">📈 İlerleme</div>
-          <div style="font-family:'Inter',sans-serif;font-size:36px;font-weight:800;color:${stu.color};margin-bottom:6px">%${stu.progress}</div>
-          <div class="prog-bar-wrap"><div class="prog-bar" style="width:${stu.progress}%;background:${stu.color}"></div></div>
-          <div style="font-size:11px;color:var(--text-mid);margin-top:8px">Bu hafta: <b style="color:var(--text)">${weekDone}/${weekTotal}</b> görev tamamlandı${weekTotal>0?` (%${Math.round(weekDone/weekTotal*100)})`:''}</div>
+          <div class="portal-sec-title">📈 Haftalık İlerleme</div>
+          <div style="font-family:'Inter',sans-serif;font-size:36px;font-weight:800;color:${stu.color};margin-bottom:6px">%${weekPct}</div>
+          <div class="prog-bar-wrap"><div class="prog-bar" style="width:${weekPct}%;background:${stu.color}"></div></div>
+          <div style="font-size:11px;color:var(--text-mid);margin-top:8px">Bu hafta: <b style="color:var(--text)">${weekDone}/${weekTotal}</b> görev tamamlandı</div>
         </div>
         <div class="card cp">
           <div class="portal-sec-title">📅 Sonraki Randevu</div>
@@ -5969,8 +6053,16 @@ async function stuToggleTask(ds,idx){
   const key=`${stu.id}_${ds}`;
   const t=S.tasks[key]?.[idx]; if(!t)return;
   const newDone=!t.done;
-  await db.from('tasks').update({done:newDone}).eq('id',t._id);
-  t.done=newDone; renderPortal();
+  if (t._id) {
+    const { error } = await db.from('tasks').update({done:newDone}).eq('id',t._id);
+    if (error) return showToast('Hata: ' + error.message);
+  }
+  t.done=newDone; saveCache(); renderPortal();
+  if (newDone && ds === todayStr()) {
+    const dayTasks = S.tasks[key] || [];
+    if (dayTasks.length > 0 && dayTasks.every(task => task.done)) showDayCelebration();
+    checkEasterEgg();
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -6008,14 +6100,14 @@ function renderSPortal(){
       </div>`;
     }
   }
-  const _yksInfo = getNextYks();
+  const _yksInfo = getNextYks(stu.examProfile);
   const _daysToYks = _yksInfo.days;
   const bodyHtml = progMode === 'subject'
     ? _subjectProgramViewHtml(stu.id, wStart, 'student')
     : `<div class="week-grid">${dayCards}</div>`;
 
   el.innerHTML=`
-    ${_daysToYks > 0 ? `<div style="text-align:center;margin-bottom:10px;padding:7px 12px;background:var(--surface2);border-radius:10px;font-size:12px;color:var(--text-mid)">📅 YKS ${_yksInfo.year}'ye <strong style="color:var(--accent)">${_daysToYks}</strong> gün kaldı</div>` : ''}
+    ${_daysToYks > 0 ? `<div style="text-align:center;margin-bottom:10px;padding:7px 12px;background:var(--surface2);border-radius:10px;font-size:12px;color:var(--text-mid)">📅 ${esc(_yksInfo.label)} ${_yksInfo.year}'e <strong style="color:var(--accent)">${_daysToYks}</strong> gün kaldı</div>` : ''}
     ${progMode !== 'subject' ? `<div class="day-selector-strip">${_daySelectorStripHtml(stripMeta,selIdx)}</div>` : ''}
     <div class="week-nav" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div style="display:flex;gap:6px;align-items:center">
@@ -6036,8 +6128,11 @@ async function stuToggleTask2(ds,idx){
   const key=`${stu.id}_${ds}`;
   const t=S.tasks[key]?.[idx]; if(!t)return;
   const newDone=!t.done;
-  await db.from('tasks').update({done:newDone}).eq('id',t._id);
-  t.done=newDone; renderSPortal();
+  if (t._id) {
+    const { error } = await db.from('tasks').update({done:newDone}).eq('id',t._id);
+    if (error) return showToast('Hata: ' + error.message);
+  }
+  t.done=newDone; saveCache(); renderSPortal();
   if (newDone && ds === todayStr()) {
     const dayTasks = S.tasks[key] || [];
     if (dayTasks.length > 0 && dayTasks.every(task => task.done)) {
@@ -6294,7 +6389,7 @@ async function openTaskDetail(ds, idx, role, defaultStatus){
   const totalQ = items.reduce((sum, item) => sum + (item.soru || 0), 0);
   const defDogru = t.student_result?.dogru ?? '';
   const defYanlis = t.student_result?.yanlis ?? '';
-  const defBos = t.student_result?.bos ?? (t.student_result == null && totalQ > 0 ? totalQ : '');
+  const defBos = t.student_result?.bos ?? '';
 
   // Test/video listesi HTML
   let itemsHtml = '';
@@ -6399,7 +6494,7 @@ async function openTaskDetail(ds, idx, role, defaultStatus){
     <!-- Not -->
     <div class="field">
       <label>${role==='student'?'Koçuma Not':'Öğrenci Notu'}</label>
-      <textarea id="tdNote" placeholder="${role==='student'?'Koçuna iletmek istediğin bir şey var mı?':'—'}" style="min-height:60px" ${role==='coach'?'disabled':''}>${t.student_note||''}</textarea>
+      <textarea id="tdNote" placeholder="${role==='student'?'Koçuna iletmek istediğin bir şey var mı?':'—'}" style="min-height:60px" ${role==='coach'?'disabled':''}>${esc(t.student_note||'')}</textarea>
     </div>
 
     <div style="display:flex; gap:10px; margin-top:12px">
@@ -6534,8 +6629,11 @@ window.finishFocusModeEarly = async function(){
   if(t && _focusTotalMs){
     const msLeft = _focusPausedLeftMs !== null ? _focusPausedLeftMs : Math.max(0, _focusEndAt - Date.now());
     const elapsedMin = Math.max(1, Math.round((_focusTotalMs - msLeft) / 60000));
-    t.duration = elapsedMin;
-    if(t._id) db.from('tasks').update({ duration: elapsedMin }).eq('id', t._id).then(()=>{});
+    t.student_feedback = { ...(t.student_feedback || {}), time_spent: elapsedMin };
+    if(t._id){
+      const { error } = await db.from('tasks').update({ student_feedback: t.student_feedback }).eq('id', t._id);
+      if (error) console.warn('finishFocusModeEarly feedback save error:', error.message);
+    }
   }
   if(_focusTimer){ clearInterval(_focusTimer); _focusTimer = null; }
   await finishFocusMode(ds, idx);
@@ -6588,9 +6686,20 @@ async function finishFocusMode(ds, idx){
   }
 
   if(t && !t.done){
-    t.done = true;
+    const prevItems = t.task_items ? t.task_items.map(i => ({ ...i })) : null;
     if(t.task_items && Array.isArray(t.task_items)) t.task_items.forEach(item => { item.done = true; });
-    if(t._id) await db.from('tasks').update({done:true, task_items: t.task_items||null, duration: t.duration}).eq('id', t._id);
+    if(t._id){
+      const upd = { done:true, task_items: t.task_items||null };
+      if (t.student_feedback) upd.student_feedback = t.student_feedback;
+      const { error } = await db.from('tasks').update(upd).eq('id', t._id);
+      if (error) {
+        t.task_items = prevItems;
+        showToast('Görev kaydedilemedi: ' + error.message);
+        return;
+      }
+    }
+    t.done = true;
+    saveCache();
     renderSPortal();
 
     // Koça bildirim
@@ -6599,7 +6708,9 @@ async function finishFocusMode(ds, idx){
       db.from('messages').insert({
         student_id: session.studentId, coach_id: session.coachId, from_role: 'student',
         text: `🎯 ${name} "${t.subject}" görevine odaklanarak tamamladı.`, read: false
-      }).then(()=>{});
+      }).then(({ error: msgErr }) => {
+        if (msgErr) console.warn('focus notification error:', msgErr.message);
+      });
     }
   }
 
@@ -6800,9 +6911,7 @@ function onTaskResultInput(totalQ, target){
     if(d + b > totalQ) {
       b = totalQ - d;
       bEl.value = Math.max(0, b);
-      b = parseInt(bEl.value) || 0;
     }
-    yEl.value = Math.max(0, totalQ - d - b);
   }
 }
 
@@ -6850,7 +6959,7 @@ async function saveTaskDetail(ds, idx, role){
     updatePayload.student_feedback = fb;
     t.student_feedback = fb;
     if (fb.status) {
-      updatePayload.done = fb.status !== 'failed';
+      updatePayload.done = (fb.status === 'completed' || fb.status === 'done');
       t.done = updatePayload.done;
     }
   }
@@ -6886,6 +6995,7 @@ async function saveTaskDetail(ds, idx, role){
   const { error: saveErr } = await db.from('tasks').update(updatePayload).eq('id', t._id);
   if (saveErr) { showToast('Kaydetme hatası: ' + saveErr.message); console.error('saveTaskDetail error', saveErr, updatePayload); return; }
   t.student_note = note;
+  saveCache();
   cm('taskDetailModal');
   showToast('Kaydedildi ✓');
   if(role==='student') renderSPortal(); else renderProgram();
@@ -6900,11 +7010,14 @@ function renderSExams(){
   const exams=[...S.exams].filter(e=>e.studentId===stu.id).sort((a,b)=>b.date.localeCompare(a.date));
 
   let chartHtml='';
-  if(exams.length>1){
-    const chartData=[...exams].sort((a,b)=>a.date.localeCompare(b.date)).slice(-8);
+  const examTypes = [...new Set(exams.map(e => e.type))];
+  examTypes.forEach(tType => {
+    const byType = exams.filter(e => e.type === tType);
+    if (byType.length < 2) return;
+    const chartData=[...byType].sort((a,b)=>a.date.localeCompare(b.date)).slice(-8);
     const maxT=Math.max(...chartData.map(e=>{const f=EXAM_DEFS[e.type]||[];return f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);}),1);
-    chartHtml=`<div class="card cp" style="margin-bottom:16px">
-      <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px">📈 Net Gelişimim</div>
+    chartHtml+=`<div class="card cp" style="margin-bottom:16px">
+      <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px">📈 ${esc(tType)} Net Gelişimim</div>
       <div class="bar-chart-scroll">
       <div class="bar-chart">
         ${chartData.map(e=>{
@@ -6914,22 +7027,25 @@ function renderSExams(){
           return `<div class="bar-wrap" onclick="document.getElementById('exi_${e.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
             <div class="bar-val">${total.toFixed(0)}</div>
             <div class="bar" style="height:${h}%;background:${stu.color}"></div>
-            <div class="bar-label">${esc(e.name.replace('Deneme ','#').replace('TYT ','').replace('AYT ',''))}</div>
+            <div class="bar-label">${esc(e.name.replace('Deneme ','#').replace(/^(TYT|AYT-SAY|AYT-EA|AYT-SOZ|AYT)\s+/,'').slice(0,10))}</div>
           </div>`;
         }).join('')}
       </div>
       </div>
     </div>`;
-  }
+  });
 
   const list=exams.length?exams.map(e=>{
     const fields=EXAM_DEFS[e.type]||[];
     const total=fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0).toFixed(1);
-    const netBoxes=fields.map(f=>{const v=Number(e.nets?.[f]||0);return `<div class="net-box"><div class="net-label">${f}</div><div class="net-val ${netColor(v)}">${v}</div></div>`;}).join('');
+    const netBoxes=fields.map(f=>{const v=Number(e.nets?.[f]||0);const maxQ=(EXAM_SORU[e.type]||{})[f]||40;return `<div class="net-box"><div class="net-label">${f}</div><div class="net-val ${netColor(v,maxQ)}">${v}</div></div>`;}).join('');
     return `<div class="exam-item" id="exi_${e.id}">
       <div class="exam-header">
         <div><div class="exam-name">${esc(e.name)}</div><div class="exam-date">${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}</div></div>
-        <button class="btn btn-ghost btn-xs" onclick="openStudentExamModal('${e.id}')">✏️ Düzenle</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-xs" onclick="openStudentExamModal('${e.id}')">✏️ Düzenle</button>
+          <button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="deleteExam('${e.id}')">🗑️</button>
+        </div>
       </div>
       ${e.note?`<div style="font-size:12px;color:var(--text-mid);margin-bottom:8px;font-style:italic">"${esc(e.note)}"</div>`:''}
       <div class="nets-grid">${netBoxes}</div>
@@ -7043,7 +7159,7 @@ window.updateExamNet = updateExamNet;
 
 function toggleKonuAccordion(ders) {
   const el = document.getElementById(`konu_acc_${ders.replace(/\s/g,'_')}`);
-  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+  if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none';
 }
 window.toggleKonuAccordion = toggleKonuAccordion;
 
@@ -7064,7 +7180,7 @@ function renderNetInputs(){
           style="font-size:11px;font-weight:700;color:var(--text-dim);background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px">
           📌 Yanlış Konular <span style="font-size:10px">▾</span>
         </button>
-        <div id="konu_acc_${ders.replace(/\s/g,'_')}" style="display:none;margin-top:6px;display:flex;flex-wrap:wrap;gap:0">
+        <div id="konu_acc_${ders.replace(/\s/g,'_')}" style="display:none;margin-top:6px;flex-wrap:wrap;gap:0">
           ${allKonular.map(k => `<span onclick="toggleExamKonuChip(this,'${ders}','${k.replace(/'/g,"\\'")}')"
             style="display:inline-block;padding:4px 10px;margin:2px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;user-select:none;border:1px solid var(--border);background:var(--surface);color:var(--text-mid)">${esc(k)}</span>`).join('')}
         </div>
@@ -7176,6 +7292,7 @@ async function saveExam(){
       }
     }
   }
+  saveCache();
   cm('examModal');
   if(session.role==='student')renderSExams();else renderExams();
 
@@ -7409,11 +7526,11 @@ async function renderDevUsers() {
   function _planBadge(u) {
     if (u.role !== 'coach' && u.role !== 'developer') return '<span style="color:var(--text-dim);font-size:11px">—</span>';
     const plan = u.plan || 'trial';
-    if (plan === 'active') return '<span style="font-size:10px;font-weight:800;color:#10b981;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);border-radius:4px;padding:2px 7px">AKTİF</span>';
-    if (plan === 'paused') return '<span style="font-size:10px;font-weight:700;color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:2px 7px">DURAKLATILDI</span>';
-    if (plan === 'cancelled') return '<span style="font-size:10px;font-weight:700;color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:2px 7px">İPTAL</span>';
-    // trial
-    const trialEnd = u.trial_ends_at ? new Date(u.trial_ends_at) : new Date(new Date(u.created_at).getTime() + 14*24*60*60*1000);
+    if (plan === 'pro' || plan === 'active') return '<span style="font-size:10px;font-weight:800;color:#10b981;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);border-radius:4px;padding:2px 7px">PRO</span>';
+    if (plan === 'grace') return '<span style="font-size:10px;font-weight:700;color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:2px 7px">MÜSAMAHA</span>';
+    if (plan === 'inactive' || plan === 'paused' || plan === 'cancelled') return '<span style="font-size:10px;font-weight:700;color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:2px 7px">PASİF</span>';
+    // trial (7 gün)
+    const trialEnd = u.trial_ends_at ? new Date(u.trial_ends_at) : new Date(new Date(u.created_at).getTime() + 7*24*60*60*1000);
     const daysLeft = Math.ceil((trialEnd - now) / 86400000);
     if (daysLeft <= 0) return '<span style="font-size:10px;font-weight:700;color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:2px 7px">SÜRESİ DOLDU</span>';
     return `<span style="font-size:10px;font-weight:700;color:#6366f1;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:4px;padding:2px 7px">DENEME · ${daysLeft}g</span>`;
@@ -7518,15 +7635,15 @@ function openPlanModal(userId, userName, currentPlan, trialEndsAt) {
         <label>Plan Durumu</label>
         <select id="planStatus" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none">
           <option value="trial">Deneme (Trial)</option>
-          <option value="active">Aktif (Ücretli)</option>
-          <option value="paused">Duraklatıldı</option>
-          <option value="cancelled">İptal Edildi</option>
+          <option value="pro">Pro (Aktif Abonelik)</option>
+          <option value="grace">Müsamaha (Grace)</option>
+          <option value="inactive">Pasif (Kilitli)</option>
         </select>
       </div>
       <div class="field" id="trialEndField">
-        <label>Deneme Bitiş Tarihi</label>
+        <label>Erişim / Deneme Bitiş Tarihi</label>
         <input type="date" id="planTrialEnd" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--text);outline:none;box-sizing:border-box">
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Boş bırakılırsa kayıt tarihinden +7 gün hesaplanır</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Trial veya Pro bitiş tarihi (boş = kayıt +7 gün)</div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button class="btn btn-accent" style="flex:1;justify-content:center;padding:11px" onclick="savePlan()">Kaydet</button>
@@ -7536,13 +7653,14 @@ function openPlanModal(userId, userName, currentPlan, trialEndsAt) {
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
     document.getElementById('planStatus').addEventListener('change', function() {
-      document.getElementById('trialEndField').style.display = this.value === 'trial' ? '' : 'none';
+      document.getElementById('trialEndField').style.display = (this.value === 'inactive') ? 'none' : '';
     });
   }
+  const normalizedPlan = currentPlan === 'active' ? 'pro' : (currentPlan === 'paused' || currentPlan === 'cancelled') ? 'inactive' : (currentPlan || 'trial');
   document.getElementById('planModalTitle').textContent = `Plan Yönet — ${userName}`;
   document.getElementById('planUserId').value = userId;
-  document.getElementById('planStatus').value = currentPlan || 'trial';
-  document.getElementById('trialEndField').style.display = (currentPlan === 'trial' || !currentPlan) ? '' : 'none';
+  document.getElementById('planStatus').value = normalizedPlan;
+  document.getElementById('trialEndField').style.display = (normalizedPlan === 'inactive') ? 'none' : '';
   if (trialEndsAt) {
     document.getElementById('planTrialEnd').value = trialEndsAt.split('T')[0];
   } else {
@@ -7556,13 +7674,17 @@ async function savePlan() {
   const plan = document.getElementById('planStatus').value;
   const trialEnd = document.getElementById('planTrialEnd').value;
   const payload = { plan };
-  if (plan === 'trial' && trialEnd) payload.trial_ends_at = trialEnd;
-  else if (plan !== 'trial') payload.trial_ends_at = null;
+  if (trialEnd && plan !== 'inactive') {
+    payload.trial_ends_at = new Date(trialEnd + 'T23:59:59+03:00').toISOString();
+  } else if (plan === 'pro' && !trialEnd) {
+    const d = new Date(); d.setMonth(d.getMonth() + 1);
+    payload.trial_ends_at = d.toISOString();
+  }
   showLoading(true);
   const { error } = await db.from('users').update(payload).eq('id', userId);
   showLoading(false);
   if (error) return showToast('Hata: ' + error.message);
-  const planLabels = { trial: 'Deneme', active: 'Aktif', paused: 'Duraklatıldı', cancelled: 'İptal' };
+  const planLabels = { trial: 'Deneme', pro: 'Pro', grace: 'Müsamaha', inactive: 'Pasif' };
   showToast(`Plan güncellendi: ${planLabels[plan] || plan} ✓`);
   cm('planMgmtModal');
   renderDevUsers();
@@ -7915,7 +8037,7 @@ async function renderDevFinance() {
   const el = document.getElementById('view-dev-finance');
   const [{data:subs},{data:pays}] = await Promise.all([
     db.from('subscriptions').select('*,users(full_name,color)').order('created_at',{ascending:false}),
-    db.from('payments').select('*,users(full_name)').order('payment_date',{ascending:false}).limit(20),
+    db.from('payments').select('*').order('payment_date',{ascending:false}).limit(20),
   ]);
 
   const totalMo = (pays||[]).filter(p=>p.status==='completed').reduce((s,p)=>s+Number(p.amount),0);
@@ -7953,7 +8075,7 @@ async function renderDevFinance() {
         ${(pays||[]).slice(0,10).map(p=>`
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
             <div style="min-width:0">
-              <div style="font-size:12px;font-weight:700">${esc(p.users?.full_name||'?')}</div>
+              <div style="font-size:12px;font-weight:700">${esc(p.coach_name||p.users?.full_name||'?')}</div>
               <div style="font-size:11px;color:var(--text-dim)">${p.payment_date} · ${p.method}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
@@ -7967,11 +8089,45 @@ async function renderDevFinance() {
     </div>`;
 }
 
-// Ödemeyi doğrula (payments.verified — migration_v15)
+// Ödemeyi doğrula + koçu pro yap + mail gönder (site_admin ile tam uyumlu)
 async function verifyPayment(payId){
-  const {error} = await db.from('payments').update({verified:true}).eq('id',payId);
-  if(error){ showToast('Onaylanamadı: '+error.message); return; }
-  showToast('✓ Ödeme doğrulandı');
+  const { data: p, error: fErr } = await db.from('payments').select('*').eq('id', payId).maybeSingle();
+  if (fErr || !p) { showToast('Ödeme kaydı bulunamadı'); return; }
+
+  const months = Number(p.period_months) || 1;
+  const newEnd = new Date();
+  newEnd.setMonth(newEnd.getMonth() + months);
+  const startIso = fmtDate(new Date());
+  const endIso = fmtDate(newEnd);
+
+  const { error } = await db.from('payments').update({
+    verified: true,
+    status: 'completed',
+    recorded_by: session.dbUser?.id || null,
+    period_start: startIso,
+    period_end: endIso,
+  }).eq('id', payId);
+  if (error) { showToast('Onaylanamadı: ' + error.message); return; }
+
+  if (p.coach_id) {
+    await db.from('users').update({ plan: 'pro', trial_ends_at: newEnd.toISOString() }).eq('id', p.coach_id);
+    const { data: c } = await db.from('users').select('email, full_name, username, payment_reference_code').eq('id', p.coach_id).maybeSingle();
+    if (c?.email) {
+      fetch('/api/mailer', {
+        method: 'POST',
+        headers: await aiAuthHeaders(),
+        body: JSON.stringify({
+          type: 'payment_approved',
+          to: c.email,
+          coach_name: c.full_name || c.username || '',
+          amount: p.amount,
+          period_end: endIso,
+          ref_code: c.payment_reference_code || ''
+        })
+      }).catch(() => {});
+    }
+  }
+  showToast('✓ Ödeme onaylandı ve koç Pro planına geçirildi');
   renderDevFinance();
 }
 
@@ -8055,7 +8211,7 @@ async function saveSub() {
 async function renderDevAnnounce() {
   const el = document.getElementById('view-dev-announce');
   const {data} = await db.from('announcements').select('*').order('created_at',{ascending:false});
-  const typeColors = {info:'var(--blue)',warning:'var(--accent)',success:'var(--green)',urgent:'var(--red)'};
+  const typeColors = {info:'var(--blue)',warning:'var(--accent)',success:'var(--green)'};
 
   el.innerHTML = `
     <div class="sh"><h2>📣 Duyuru Yönetimi</h2>
@@ -8067,11 +8223,10 @@ async function renderDevAnnounce() {
       <div class="card" style="padding:16px 20px;margin-bottom:10px;border-left:3px solid ${typeColors[a.type]||'var(--accent)'}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
           <div style="flex:1">
-            <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px">${esc(a.title)}</div>
-            <div style="font-size:13px;color:var(--text-mid);margin-bottom:8px">${esc(a.body)}</div>
+            <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:700;margin-bottom:6px">${esc(a.message || a.title || '')}</div>
+            ${a.link?`<div style="font-size:12px;color:var(--accent);margin-bottom:8px">${esc(a.link_text||a.link)}</div>`:''}
             <div style="display:flex;gap:8px">
-              <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${typeColors[a.type]+'22'};color:${typeColors[a.type]}">${a.type}</span>
-              <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:var(--surface2);color:var(--text-dim)">${a.target}</span>
+              <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${(typeColors[a.type]||'var(--accent)')+'22'};color:${typeColors[a.type]||'var(--accent)'}">${esc(a.type||'info')}</span>
               <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${a.active?'var(--green-dim)':'var(--red-dim)'};color:${a.active?'var(--green)':'var(--red)'}">${a.active?'Aktif':'Pasif'}</span>
             </div>
           </div>
@@ -8089,12 +8244,12 @@ function openAnnounceModal() {
     modal = document.createElement('div'); modal.id='announceModal'; modal.className='modal-bg';
     modal.innerHTML=`<div class="modal"><button class="modal-close" onclick="cm('announceModal')">×</button>
       <h2>Yeni Duyuru</h2>
-      <div class="field"><label>Başlık</label><input id="anTitle" placeholder="Önemli Güncelleme"></div>
-      <div class="field"><label>İçerik</label><textarea id="anBody" placeholder="Duyuru metni..."></textarea></div>
+      <div class="field"><label>Duyuru Mesajı</label><textarea id="anMessage" placeholder="Örn: Haftalık PDF Rapor Stüdyosu güncellendi..."></textarea></div>
       <div class="field-row">
-        <div class="field"><label>Tür</label><select id="anType"><option value="info">Bilgi</option><option value="warning">Uyarı</option><option value="success">Başarı</option><option value="urgent">Acil</option></select></div>
-        <div class="field"><label>Hedef</label><select id="anTarget"><option value="all">Herkes</option><option value="students">Öğrenciler</option><option value="coaches">Koçlar</option></select></div>
+        <div class="field"><label>Tür</label><select id="anType"><option value="info">Bilgi</option><option value="warning">Uyarı</option><option value="success">Başarı</option></select></div>
+        <div class="field"><label>Buton Yazısı (opsiyonel)</label><input id="anLinkText" placeholder="İncele →"></div>
       </div>
+      <div class="field"><label>Bağlantı URL (opsiyonel)</label><input id="anLink" placeholder="https://..."></div>
       <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:4px" onclick="saveAnnounce()">Yayınla</button>
     </div>`;
     document.body.appendChild(modal);
@@ -8104,10 +8259,18 @@ function openAnnounceModal() {
 }
 
 async function saveAnnounce() {
-  const title = document.getElementById('anTitle').value.trim();
-  const body = document.getElementById('anBody').value.trim();
-  if(!title||!body) return showToast('Başlık ve içerik zorunlu!');
-  await db.from('announcements').insert({title,body,type:document.getElementById('anType').value,target:document.getElementById('anTarget').value,active:true});
+  const message = document.getElementById('anMessage').value.trim();
+  const link = document.getElementById('anLink').value.trim() || null;
+  const link_text = document.getElementById('anLinkText').value.trim() || null;
+  if(!message) return showToast('Duyuru mesajı zorunlu!');
+  const { error } = await db.from('announcements').insert({
+    message,
+    type: document.getElementById('anType').value || 'info',
+    link,
+    link_text,
+    active: true
+  });
+  if (error) return showToast('Hata: ' + error.message);
   showToast('Duyuru yayınlandı ✓'); cm('announceModal'); renderDevAnnounce();
 }
 
@@ -8738,7 +8901,7 @@ async function sendSupportMessage() {
 async function loadAnnouncements() {
   const {data} = await db.from('announcements').select('*').eq('active',true);
   const target = session.role;
-  const relevant = (data||[]).filter(a=>a.target==='all'||(a.target==='students'&&target==='student')||(a.target==='coaches'&&target==='coach'));
+  const relevant = (data||[]).filter(a=>!a.target||a.target==='all'||(a.target==='students'&&target==='student')||(a.target==='coaches'&&target==='coach'));
   if(!relevant.length) return;
   const typeColors = {info:'var(--blue)',warning:'var(--accent)',success:'var(--green)',urgent:'var(--red)'};
   const container = document.createElement('div');
@@ -8748,7 +8911,7 @@ async function loadAnnouncements() {
     const el=document.createElement('div');
     el.style.cssText=`background:var(--surface);border:1px solid var(--border);border-left:3px solid ${typeColors[a.type]||'var(--accent)'};border-radius:10px;padding:12px 14px;box-shadow:var(--shadow);animation:fadeUp .3s ease`;
     el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-      <div><div style="font-size:13px;font-weight:700;margin-bottom:3px">${esc(a.title)}</div><div style="font-size:12px;color:var(--text-mid)">${esc(a.body)}</div></div>
+      <div>${a.title?`<div style="font-size:13px;font-weight:700;margin-bottom:3px">${esc(a.title)}</div>`:''}<div style="font-size:12px;color:var(--text)">${esc(a.message||a.body||'')}</div>${a.link?`<a href="${esc(a.link)}" target="_blank" style="display:inline-block;margin-top:4px;font-size:11px;font-weight:700;color:var(--accent);text-decoration:none">${esc(a.link_text||'Detay →')}</a>`:''}</div>
       <button onclick="this.closest('div[style]').remove()" style="background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:16px;flex-shrink:0">×</button>
     </div>`;
     container.appendChild(el);
@@ -9451,6 +9614,12 @@ function buildRhythmHeatmap(stuId, weeks) {
 // ═══════════════════════════════════════════════
 // STUDENT PROFILE PAGE
 // ═══════════════════════════════════════════════
+let _sProfilTab = 'ozet';
+window._setSProfilTab = function(tab) {
+  _sProfilTab = tab || 'ozet';
+  renderSProfil();
+};
+
 async function renderSProfil() {
   const stu = S.students.find(s=>s.id===session.studentId);
   if(!stu) return;
@@ -9485,23 +9654,17 @@ async function renderSProfil() {
   }
   const weekPct = weekTotal>0?Math.round((weekDone/weekTotal)*100):0;
 
-  // Toplam tamamlanan görev (tüm zamanlar)
+  // Toplam tamamlanan görev (tüm zamanlar: son 60g + olderTaskStats)
   let totalDone=0;
   Object.keys(S.tasks).filter(k=>k.startsWith(stu.id+'_')).forEach(k=>{ totalDone+=S.tasks[k].filter(t=>t.done).length; });
+  totalDone += (S.olderTaskStats || []).filter(t => t.studentId === stu.id && t.done).length;
 
-  if (myExams.length === 0 && totalDone === 0) {
-    el.innerHTML = `<div style="text-align:center;padding:60px 24px;max-width:360px;margin:0 auto">
-      <div style="font-size:52px;margin-bottom:16px">🌱</div>
-      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:8px">Yolculuğun Yeni Başlıyor</div>
-      <div style="font-size:14px;color:var(--text-mid);line-height:1.65;margin-bottom:28px">Koçun haftalık programını oluşturdukça görev istatistiklerin, deneme netlerini girdikçe gelişim grafiklerin burada belirmeye başlayacak.</div>
-      <div style="display:flex;flex-direction:column;gap:10px;text-align:left">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;display:flex;align-items:center;gap:12px"><span style="font-size:20px">📋</span><span>Koçunun program oluşturmasını bekle</span></div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;display:flex;align-items:center;gap:12px"><span style="font-size:20px">✅</span><span>Görevleri tamamladıkça istatistiklerin görünecek</span></div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;display:flex;align-items:center;gap:12px"><span style="font-size:20px">📈</span><span>Deneme netlerini girdikçe grafiklerin oluşacak</span></div>
-      </div>
-    </div>`;
-    return;
-  }
+  const emptyWelcomeHtml = (myExams.length === 0 && totalDone === 0) ? `
+    <div class="card cp" style="margin-bottom:14px;text-align:center;border-style:dashed">
+      <div style="font-size:32px;margin-bottom:8px">🌱</div>
+      <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px">Yolculuğun Yeni Başlıyor</div>
+      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.55">Görevleri tamamladıkça çalışma istatistiklerin, deneme netlerini girdikçe gelişim grafiklerin burada oluşacak.</div>
+    </div>` : '';
 
   // Ders bazında net ortalamaları — sadece "Boşluktan Eyleme" için zayıf dersleri bulmaya yarıyor
   let gapCardsHtml='';
@@ -9512,7 +9675,8 @@ async function renderSProfil() {
       const vals=myExams.filter(e=>e.type===lastType).map(e=>Number(e.nets?.[f]||0));
       const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
       const last=Number(lastExam.nets?.[f]||0);
-      return {f,avg:avg.toFixed(1),last,color:netColor(last)};
+      const maxQ=(EXAM_SORU[lastType]||{})[f]||40;
+      return {f,avg:avg.toFixed(1),last,color:netColor(last,maxQ)};
     });
 
     const gaps = avgs.filter(a=>a.color==='low');
@@ -9543,9 +9707,9 @@ async function renderSProfil() {
   const hasTarget = target_university || target_department;
   const coach_note = profile?.coach_note || '';
 
-  // Yolculuk çizgisi — kaçıncı gün, YKS'ye kaç gün, kaç gündür seri
+  // Yolculuk çizgisi — kaçıncı gün, sınav geri sayımı, kaç gündür seri
   const daysSinceJoin = session.dbUser?.created_at ? Math.max(1, Math.floor((Date.now() - new Date(session.dbUser.created_at).getTime()) / 86400000)) : null;
-  const yksInfo = getNextYks();
+  const yksInfo = getNextYks(stu.examProfile);
   const streak = calcStudentStreak(stu.id);
 
   // Rozetler — kalıcı kilometre taşları (bkz. yukarıdaki yardımcı fonksiyonlar)
@@ -9565,9 +9729,87 @@ async function renderSProfil() {
   // Dikkat gereken konular (zayıf/eskimiş mastery)
   const weakTopics = computeWeakTopics(stu.id);
 
-  // Net gelişim grafiği verisi — artık yatay kaydırmalı olduğu için daha uzun geçmişi gösterebiliyor
-  const chartData = myExams.slice(-10);
+  // Net gelişim grafiği verisi — aynı deneme türü (TYT vs AYT ayrı)
+  const chartExams = lastExam ? myExams.filter(e => e.type === lastExam.type) : [];
+  const chartData = chartExams.slice(-10);
   const chartMax = Math.max(...chartData.map(e=>{const f=EXAM_DEFS[e.type]||[];return f.reduce((s,fn)=>s+Number(e.nets?.[fn]||0),0);}), 1);
+
+  const subTabNavHtml = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      ${[
+        ['ozet', '🌟 Özet'],
+        ['kaynaklar', '📚 Kaynaklarım'],
+        ['konu', '🗺️ Konu Haritası'],
+        ['randevu', '📅 Randevular'],
+      ].map(([id, lbl]) => `<button class="btn btn-sm ${_sProfilTab===id?'btn-accent':'btn-ghost'}" onclick="window._setSProfilTab('${id}')">${lbl}</button>`).join('')}
+    </div>`;
+
+  let kaynakTabHtml = '';
+  if (_sProfilTab === 'kaynaklar') {
+    const kaynaklar = await _computeAutoKaynaklar(stu.id);
+    kaynakTabHtml = kaynaklar.length ? `
+      <div class="card cp" style="margin-bottom:14px">
+        <div class="portal-sec-title" style="margin-bottom:12px">📚 Kaynak İlerlemem</div>
+        ${kaynaklar.map(k => {
+          const pct = k.totalSoru > 0 ? Math.min(100, Math.round((k.doneSoru / k.totalSoru) * 100)) : 0;
+          const bc = pct >= 75 ? 'var(--green)' : pct >= 40 ? 'var(--accent)' : 'var(--red)';
+          return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+              <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(k.name)}</div>
+              <div style="font-size:12px;font-weight:800;color:${bc}">%${pct}</div>
+            </div>
+            <div style="height:6px;background:var(--surface);border-radius:99px;overflow:hidden;margin-bottom:5px"><div style="height:100%;width:${pct}%;background:${bc};border-radius:99px"></div></div>
+            <div style="font-size:11px;color:var(--text-dim)">${esc(k.ders)} · ${k.doneSoru} / ${k.totalSoru} soru tamamlandı</div>
+          </div>`;
+        }).join('')}
+      </div>` : `<div class="card cp"><div class="empty"><p>Henüz programında soru bankası kaynağı yok.</p></div></div>`;
+  }
+
+  let konuTabHtml = '';
+  if (_sProfilTab === 'konu') {
+    const mMap = S.konuMastery[stu.id] || {};
+    const subjects = Object.keys(mMap);
+    konuTabHtml = subjects.length ? subjects.map(subj => {
+      const items = Object.entries(mMap[subj] || {});
+      return `<div class="card cp" style="margin-bottom:12px">
+        <div class="portal-sec-title" style="margin-bottom:10px">📖 ${esc(subj)} <span style="font-size:11px;color:var(--text-dim);font-weight:500">(${items.length} konu)</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${items.map(([konu, m]) => {
+            const lv = MASTERY_LEVELS[m.stars] || { label: 'Başlanmadı', color: 'var(--text-dim)' };
+            return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:8px">
+              <div style="font-size:12.5px;font-weight:600;color:var(--text)">${esc(konu)}</div>
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                ${m.ka_date ? `<span style="font-size:10px;font-weight:700;color:var(--green)">KA ✓</span>` : ''}
+                <span style="font-size:11px;font-weight:700;color:${lv.color}">${'⭐'.repeat(Math.min(m.stars || 0, 5)) || '○'} ${esc(lv.label)}</span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('') : `<div class="card cp"><div class="empty"><p>Henüz konu hakimiyeti kaydı oluşturulmamış.</p></div></div>`;
+  }
+
+  let randevuTabHtml = '';
+  if (_sProfilTab === 'randevu') {
+    const allMyAppts = S.appointments.filter(a => a.studentId === stu.id).sort((a,b) => b.date.localeCompare(a.date));
+    randevuTabHtml = allMyAppts.length ? `<div class="card cp" style="margin-bottom:14px">
+      <div class="portal-sec-title" style="margin-bottom:10px">📅 Tüm Randevularım</div>
+      ${allMyAppts.map(a => {
+        const mUrl = a.meetLink || a.meet_link;
+        return `<div style="display:flex;align-items:center;gap:12px;background:var(--surface2);border-left:3px solid ${stu.color};border-radius:9px;padding:12px;margin-bottom:8px">
+          <div style="text-align:center;flex-shrink:0">
+            <div style="font-size:18px;font-weight:800;color:var(--text)">${new Date(a.date+'T12:00').getDate()}</div>
+            <div style="font-size:9px;font-weight:700;color:var(--text-dim);text-transform:uppercase">${new Date(a.date+'T12:00').toLocaleDateString('tr-TR',{month:'short'})}</div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">${esc(a.type)}</div>
+            <div style="font-size:11px;color:var(--text-mid);margin-top:2px">${a.date} · ${a.time} · ${a.duration} dk</div>
+          </div>
+          ${mUrl?`<a href="${esc(mUrl)}" target="_blank" rel="noopener" style="font-size:11px;background:var(--blue-dim);color:var(--blue);padding:4px 10px;border-radius:8px;text-decoration:none;font-weight:700">Katıl</a>`:''}
+        </div>`;
+      }).join('')}
+    </div>` : `<div class="card cp"><div class="empty"><p>Henüz planlanmış randevunuz yok.</p></div></div>`;
+  }
 
   el.innerHTML=`
     <!-- HERO: yolculuk çizgisi -->
@@ -9577,15 +9819,19 @@ async function renderSProfil() {
         <div style="flex:1;min-width:200px">
           <div style="font-size:20px;font-weight:800;color:var(--text)">${esc(stu.name)}</div>
           <div style="font-size:13px;color:var(--text-mid);margin-top:2px">${esc(stu.target)}${grade ? ' · ' + esc(grade) : ''}${school ? ' · ' + esc(school) : ''}</div>
-          ${hasTarget ? `<div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:${stu.color};color:#fff;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700">🎯 ${[target_university,target_department].filter(Boolean).join(' · ')}</div>` : ''}
+          ${hasTarget ? `<div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:${stu.color};color:#fff;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700">🎯 ${esc([target_university,target_department].filter(Boolean).join(' · '))}</div>` : ''}
         </div>
       </div>
       <div style="display:flex;gap:24px;margin-top:16px;padding-top:14px;border-top:1px solid ${stu.color}22;flex-wrap:wrap">
         ${daysSinceJoin ? `<div><div style="font-size:19px;font-weight:800;color:var(--text)">${daysSinceJoin}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">gündür yoldasın</div></div>` : ''}
-        <div><div style="font-size:19px;font-weight:800;color:var(--text)">${yksInfo.days}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">gün kaldı · YKS ${yksInfo.year}</div></div>
+        <div><div style="font-size:19px;font-weight:800;color:var(--text)">${yksInfo.days}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">gün kaldı · ${esc(yksInfo.label)} ${yksInfo.year}</div></div>
         ${streak > 0 ? `<div><div style="font-size:19px;font-weight:800;color:#f0a500">🔥 ${streak}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">gün üst üste</div></div>` : ''}
       </div>
     </div>
+
+    ${subTabNavHtml}
+    ${_sProfilTab === 'kaynaklar' ? kaynakTabHtml : _sProfilTab === 'konu' ? konuTabHtml : _sProfilTab === 'randevu' ? randevuTabHtml : `
+    ${emptyWelcomeHtml}
 
     <!-- ROZETLER -->
     <div class="card cp" style="margin-bottom:14px">
@@ -9609,9 +9855,9 @@ async function renderSProfil() {
     <!-- STAT CARDS -->
     <div class="stats-row" style="margin-bottom:14px">
       <div class="stat-card">
-        <div class="stat-label">Genel İlerleme</div>
-        <div class="stat-val" style="color:${stu.color}">%${stu.progress}</div>
-        <div class="prog-bar-wrap" style="margin-top:8px"><div class="prog-bar" style="width:${stu.progress}%;background:${stu.color}"></div></div>
+        <div class="stat-label">Haftalık İlerleme</div>
+        <div class="stat-val" style="color:${stu.color}">%${weekPct}</div>
+        <div class="prog-bar-wrap" style="margin-top:8px"><div class="prog-bar" style="width:${weekPct}%;background:${stu.color}"></div></div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Bu Hafta Görev</div>
@@ -9659,9 +9905,9 @@ async function renderSProfil() {
     </div>` : ''}
 
     ${chartData.length > 0 ? `
-    <!-- NET GELİŞİM GRAFİĞİ (tek renk + trend oku — düşen bir denemeyi "kötü" gibi göstermek yerine sadece farkı belirtir) -->
+    <!-- NET GELİŞİM GRAFİĞİ -->
     <div class="card cp" style="margin-bottom:14px">
-      <div class="portal-sec-title" style="margin-bottom:16px">📈 Net Gelişim Grafiği</div>
+      <div class="portal-sec-title" style="margin-bottom:16px">📈 ${esc(lastExam?.type||'')} Net Gelişim Grafiği</div>
       <div style="overflow-x:auto;padding-bottom:4px">
         <div style="position:relative;height:170px;display:flex;align-items:flex-end;gap:14px;padding-bottom:32px;min-width:${Math.max(chartData.length*56,280)}px">
           ${[0.25,0.5,0.75,1].map(r=>`
@@ -9762,7 +10008,7 @@ async function renderSProfil() {
             <div style="font-size:13px;font-weight:700">${esc(a.type)}</div>
             <div style="font-size:11px;color:var(--text-mid);margin-top:2px">${a.time} · ${a.duration} dk</div>
           </div>
-          ${a.meet_link?`<a href="${esc(a.meet_link)}" target="_blank" style="font-size:11px;background:var(--blue-dim);color:var(--blue);padding:4px 10px;border-radius:8px;text-decoration:none;font-weight:700">Katıl</a>`:''}
+          ${(a.meetLink || a.meet_link)?`<a href="${esc(a.meetLink || a.meet_link)}" target="_blank" rel="noopener" style="font-size:11px;background:var(--blue-dim);color:var(--blue);padding:4px 10px;border-radius:8px;text-decoration:none;font-weight:700">Katıl</a>`:''}
         </div>`).join('')}
     </div>` : ''}
 
@@ -9811,7 +10057,7 @@ async function renderSProfil() {
         <textarea id="spBio" style="width:100%;min-height:72px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;color:var(--text);outline:none;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(bio)}</textarea>
       </div>
       <button class="btn btn-accent" style="width:100%;padding:10px" onclick="saveStudentProfile()">Kaydet ✓</button>
-    </div>`;
+    </div>`}`;
 }
 
 async function saveStudentProfile() {
@@ -9828,7 +10074,12 @@ async function saveStudentProfile() {
       bio, school, grade, target_university, target_department,
       struggling_subjects, daily_capacity
     });
+    const stu = S.students.find(s => s.id === session.studentId);
+    if (stu) {
+      stu.school = school; stu.grade = grade; stu.target_university = target_university;
+    }
     showToast('Profil başarıyla güncellendi ✓', true);
+    await renderSProfil();
   } catch (e) {
     showToast('Profil kaydedilemedi: ' + e.message, false);
   }
@@ -10083,11 +10334,13 @@ async function openCoachPaymentModal() {
   om('coachPaymentModal');
 
   const uid = session.dbUser?.id;
-  const [{ data: settingsRow }, { data: refCode }] = await Promise.all([
-    db.from('platform_settings').select('value').eq('key', 'payment_settings').maybeSingle(),
+  const [settings, { data: refCode }] = await Promise.all([
+    fetch('/api/create-student?type=payment-info').then(r => r.ok ? r.json() : {}).catch(async () => {
+      const { data: rpcVal } = await db.rpc('get_public_payment_info');
+      return rpcVal || {};
+    }),
     db.rpc('ensure_payment_ref_code')
   ]);
-  const settings = settingsRow?.value || {};
   const tier = session.dbUser?.plan_tier === 'profesyonel' ? 'profesyonel' : 'bireysel';
   const tierLabel = tier === 'profesyonel' ? 'Profesyonel' : 'Bireysel';
   const priceMonthly = +settings[`price_${tier}`] || 0;
@@ -11762,10 +12015,20 @@ async function openSpeedModal(stuId, activeFilter = null) {
       `).join('')}
     </div>
 
+const _DEFAULT_SPEED_SECS = {
+  'TYT_Türkçe': 80, 'TYT_Tarih': 65, 'TYT_Coğrafya': 65, 'TYT_Felsefe': 65, 'TYT_Din Kültürü': 60,
+  'TYT_Biyoloji': 75, 'TYT_Kimya': 85, 'TYT_Fizik': 105, 'TYT_Matematik': 120, 'TYT_Geometri': 120,
+  'AYT-SAY_Matematik': 150, 'AYT-SAY_Fizik': 150, 'AYT-SAY_Geometri': 150, 'AYT-SAY_Kimya': 115, 'AYT-SAY_Biyoloji': 95,
+  'AYT-EA_Matematik': 150, 'AYT-EA_Geometri': 150, 'AYT-EA_Edebiyat': 80, 'AYT-EA_Tarih-1': 75, 'AYT-EA_Coğrafya-1': 75,
+  'AYT-SOZ_Edebiyat': 80, 'AYT-SOZ_Tarih-1': 75, 'AYT-SOZ_Coğrafya-1': 75, 'AYT-SOZ_Tarih-2': 75, 'AYT-SOZ_Coğrafya-2': 75,
+  'AYT-SOZ_Felsefe Grubu': 75, 'AYT-SOZ_Din Kültürü': 65, 'YDT_İngilizce': 85
+};
+
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;max-height:55vh;overflow-y:auto;padding-right:4px">
       ${displaySubjects.map(({exam, sub}) => {
         const key = `${exam}_${sub}`;
-        const val = speedMap[key] || 180;
+        const val = speedMap[key] ?? _DEFAULT_SPEED_SECS[key] ?? 110;
+        const isSaved = speedMap[key] !== undefined;
         const min = Math.floor(val / 60);
         const sec = val % 60;
         return `
@@ -11773,18 +12036,18 @@ async function openSpeedModal(stuId, activeFilter = null) {
             <div style="font-size:10px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${exam}</div>
             <div style="font-size:13px;font-weight:700;margin-bottom:8px">${sub}</div>
             <div style="display:flex;align-items:center;gap:6px">
-              <input type="number" id="spd_${key}" data-exam="${exam}" data-sub="${sub}" value="${val}" min="10" max="600" step="5"
+              <input type="number" id="spd_${key}" data-exam="${exam}" data-sub="${sub}" data-orig="${isSaved ? val : ''}" value="${val}" min="10" max="600" step="5"
                 style="width:75px;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-weight:700;color:var(--text);text-align:center">
               <span style="font-size:11px;color:var(--text-dim)">sn/soru</span>
             </div>
-            <div style="font-size:10.5px;color:var(--text-dim);margin-top:4px">${min > 0 ? min + ' dk ' : ''}${sec > 0 ? sec + ' sn' : ''}</div>
+            <div style="font-size:10.5px;color:var(--text-dim);margin-top:4px">${min > 0 ? min + ' dk ' : ''}${sec > 0 ? sec + ' sn' : ''}${isSaved ? '' : ' (varsayılan)'}</div>
           </div>
         `;
       }).join('')}
     </div>
 
     <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px;margin-top:16px;border-radius:10px" onclick="saveAllSpeeds('${stuId}')">
-      💾 Tüm Hız Ayarlarını Kaydet
+      💾 Hız Ayarlarını Kaydet
     </button>
   </div>`;
   om('speedModal');
@@ -11793,15 +12056,25 @@ window.openSpeedModal = openSpeedModal;
 
 async function saveAllSpeeds(stuId) {
   const inputs = document.querySelectorAll('input[id^="spd_"]');
+  let savedCount = 0;
+  let failed = false;
   for (const inp of inputs) {
     const exam = inp.dataset.exam;
     const sub = inp.dataset.sub;
     if (!exam || !sub) continue;
-    const secs = parseInt(inp.value) || 180;
-    await saveStudentSpeed(stuId, exam, sub, secs);
+    const secs = parseInt(inp.value, 10);
+    if (!secs || secs < 10) continue;
+    const defaultVal = _DEFAULT_SPEED_SECS[`${exam}_${sub}`] ?? 110;
+    const orig = inp.dataset.orig;
+    if (orig === '' && secs === defaultVal) continue;
+    if (orig !== '' && secs === parseInt(orig, 10)) continue;
+    const ok = await saveStudentSpeed(stuId, exam, sub, secs, true);
+    if (!ok) { failed = true; break; }
+    savedCount++;
   }
   cm('speedModal');
-  showToast('Hız ayarları kaydedildi ✓');
+  if (failed) return;
+  showToast(savedCount > 0 ? `${savedCount} ders hızı kaydedildi ✓` : 'Değişiklik yapılmadı');
 }
 window.saveAllSpeeds = saveAllSpeeds;
 
@@ -11856,7 +12129,9 @@ function getReportDates() {
   const period = document.getElementById('rpPeriod').value;
   const now = new Date();
   if(period==='weekly') {
-    const ws = getWeekStart(0, 0);
+    const stuId = document.getElementById('rpStuId')?.value || S.activeStuId;
+    const stu = S.students.find(s => s.id === stuId);
+    const ws = getWeekStart(0, stu?.weekStart || 0);
     return { start: fmtDate(ws), end: fmtDate(addDays(ws,6)) };
   } else if(period==='monthly') {
     return { start: fmtDate(new Date(now.getFullYear(),now.getMonth(),1)), end: fmtDate(now) };
@@ -11954,7 +12229,7 @@ function computeReportMetrics(stuId) {
 
   // Dönemdeki görevler
   const allTasks = [];
-  const d = new Date(start);
+  const d = new Date(start + 'T12:00');
   while(fmtDate(d) <= end) {
     const key = `${stuId}_${fmtDate(d)}`;
     (S.tasks[key]||[]).forEach(t => allTasks.push({...t, date:fmtDate(d)}));
@@ -11963,7 +12238,7 @@ function computeReportMetrics(stuId) {
   const totalTasks = allTasks.length;
   const doneTasks = allTasks.filter(t=>t.done).length;
   const pct = totalTasks > 0 ? Math.round((doneTasks/totalTasks)*100) : 0;
-  const totalMin = allTasks.filter(t=>t.done).reduce((s,t)=>s+Number(t.duration||0),0);
+  const totalMin = allTasks.filter(t=>t.done).reduce((s,t)=>s+(t.student_feedback?.time_spent>0?Number(t.student_feedback.time_spent):Number(t.duration||0)),0);
 
   // Ders bazında dağılım
   const bySubject = {};
@@ -12027,16 +12302,17 @@ function buildReportHTML(stuId, preview=false) {
   // en yeni deneme daha koyu vurgulanır.
   let examChartSVG = '';
   let chartCaption = '';
-  if (myExams.length > 1) {
+  const chartType = myExams.length ? myExams[myExams.length - 1].type : null;
+  const chartExams = chartType ? myExams.filter(e => e.type === chartType) : [];
+  if (chartExams.length > 1) {
     const typeMax = t => Object.values(examSoruMap[t]||{}).reduce((s,v)=>s+v,0);
-    const totals = myExams.map(e=>(EXAM_DEFS[e.type]||[]).reduce((s,f)=>s+Number(e.nets?.[f]||0),0));
-    const chartMax = Math.max(...myExams.map(e=>typeMax(e.type)), ...totals, 1);
+    const totals = chartExams.map(e=>(EXAM_DEFS[e.type]||[]).reduce((s,f)=>s+Number(e.nets?.[f]||0),0));
+    const chartMax = Math.max(typeMax(chartType), ...totals, 1);
     const w=732, chartBottom=100, chartTop=14, chartH=chartBottom-chartTop;
-    const n=myExams.length;
+    const n=chartExams.length;
     const slot=(w-40)/n, bw=Math.min(64, slot-14);
     const gridY = v => chartBottom - (v/chartMax)*chartH;
-    const examTypesUsed = [...new Set(myExams.map(e=>e.type))];
-    chartCaption = `Toplam net (${Math.round(chartMax)} üzerinden) — ${esc(examTypesUsed.length===1?examTypesUsed[0]:'deneme')} geçmişi`;
+    chartCaption = `Toplam net (${Math.round(chartMax)} üzerinden) — ${esc(chartType)} geçmişi`;
     examChartSVG = `<svg width="100%" height="150" viewBox="0 0 ${w} 150" preserveAspectRatio="none">
       <line x1="0" y1="${gridY(chartMax).toFixed(1)}" x2="${w}" y2="${gridY(chartMax).toFixed(1)}" stroke="#e5e5e5" stroke-width="1"/>
       <line x1="0" y1="${gridY(chartMax/2).toFixed(1)}" x2="${w}" y2="${gridY(chartMax/2).toFixed(1)}" stroke="#eee" stroke-width="1"/>
@@ -12044,7 +12320,7 @@ function buildReportHTML(stuId, preview=false) {
       <text x="4" y="${(gridY(chartMax)-3).toFixed(1)}" font-size="9" fill="#999">${Math.round(chartMax)}</text>
       <text x="4" y="${(gridY(chartMax/2)-3).toFixed(1)}" font-size="9" fill="#999">${Math.round(chartMax/2)}</text>
       <text x="4" y="${chartBottom-3}" font-size="9" fill="#999">0</text>
-      ${myExams.map((e,i)=>{
+      ${chartExams.map((e,i)=>{
         const total=totals[i];
         const x=40+i*slot+(slot-bw)/2;
         const bh=Math.max(gridY(0)-gridY(total),3);
@@ -12101,31 +12377,31 @@ function buildReportHTML(stuId, preview=false) {
   <div class="section">
     <div class="section-title"><span class="dot"></span>Deneme Sonuçları</div>
     ${examChartSVG ? `<div class="chart-card">${examChartSVG}<div class="chart-cap">${chartCaption}</div></div>` : ''}
-    <table>
-      <thead><tr><th>Sınav</th><th>Tarih</th><th>Tür</th>${(EXAM_DEFS[myExams[0]?.type]||['Matematik','Fen','Türkçe','Sosyal']).map(f=>`<th>${f}</th>`).join('')}<th>Toplam Net</th></tr></thead>
-      <tbody>
-        ${myExams.map(e=>{
-          const fields=EXAM_DEFS[e.type]||Object.keys(e.nets||{});
-          let total = 0;
-          if(e.totalNet) total = Number(e.totalNet);
-          else if(e.total_net) total = Number(e.total_net);
-          else if(e.nets && typeof e.nets === 'object') total = Object.values(e.nets).reduce((a,b)=>a+Number(b||0),0);
-          else total = fields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0);
-          
-          return `<tr>
-            <td><strong>${esc(e.name)}</strong></td>
-            <td>${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</td>
-            <td>${esc(e.type)}</td>
-            ${fields.map(f=>{
-              const v=Number(e.nets?.[f]||0);
-              const max=subjMax(e.type,f);
-              return `<td><span class="badge ${netBadgeClass(v,max)}">${v}${max?`<small>/${max}</small>`:''}</span></td>`;
+    ${[...new Set(myExams.map(e => e.type))].map(eType => {
+      const groupExams = myExams.filter(e => e.type === eType);
+      const groupFields = EXAM_DEFS[eType] || Object.keys(groupExams[0]?.nets || {});
+      return `<div style="margin-bottom:12px">
+        <div style="font-size:11px;font-weight:800;color:var(--brand);margin:6px 0">${esc(eType)} Denemeleri</div>
+        <table>
+          <thead><tr><th>Sınav</th><th>Tarih</th>${groupFields.map(f=>`<th>${esc(f)}</th>`).join('')}<th>Toplam Net</th></tr></thead>
+          <tbody>
+            ${groupExams.map(e=>{
+              const total = groupFields.reduce((s,f)=>s+Number(e.nets?.[f]||0),0);
+              return `<tr>
+                <td><strong>${esc(e.name)}</strong></td>
+                <td>${new Date(e.date+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</td>
+                ${groupFields.map(f=>{
+                  const v=Number(e.nets?.[f]||0);
+                  const max=subjMax(e.type,f);
+                  return `<td><span class="badge ${netBadgeClass(v,max)}">${v}${max?`<small>/${max}</small>`:''}</span></td>`;
+                }).join('')}
+                <td><strong style="color:var(--brand);font-size:14px">${total.toFixed(1)}</strong></td>
+              </tr>`;
             }).join('')}
-            <td><strong style="color:var(--brand);font-size:14px">${total.toFixed(1)}</strong></td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
+          </tbody>
+        </table>
+      </div>`;
+    }).join('')}
   </div>` : '',
     appointments: () => myAppts.length > 0 ? `
   <div class="section">
@@ -12800,7 +13076,7 @@ async function sendParentEmailReport() {
     // 3. /api/mailer POST çağrısı
     const resp = await fetch('/api/mailer', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await aiAuthHeaders(),
       body: JSON.stringify({
         type: 'parent_report',
         to: prof.parent_email,
@@ -13466,7 +13742,14 @@ function _setupAIStudentIframe() {
       try {
         const { data: { session: sbSession } } = await db.auth.getSession();
         const targetFrame = document.getElementById('aiStudentFrame');
-        if (!targetFrame || !sbSession?.access_token) return;
+        if (!targetFrame) return;
+        if (!sbSession?.access_token) {
+          targetFrame.contentWindow.postMessage({
+            type: 'ROSTRUM_AI_AUTH_ERROR',
+            error: 'Oturum bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.'
+          }, AI_ASSISTANT_ORIGIN);
+          return;
+        }
         const stu = S.students.find(s => s.id === session.studentId);
         targetFrame.contentWindow.postMessage({
           type: 'ROSTRUM_AI_AUTH',
@@ -13722,23 +14005,12 @@ async function autoDetectModel(key) {
 
 // Fallback: Doğrudan Gemini API (geliştirme modu için)
 async function callGeminiFallback(userText, context, userRole, pendingImg) {
-  let localKey = localStorage.getItem('gemini_api_key');
-  if (!localKey) {
-    try {
-      const { data } = await db.from('platform_settings').select('value').eq('key', 'ai_settings').maybeSingle();
-      if (data && data.value && data.value.gemini_api_key) {
-        localKey = data.value.gemini_api_key;
-      }
-    } catch(e) {
-      console.warn('DB Gemini API key load error:', e);
-    }
-  }
-  const GEMINI_KEY = localKey;
+  const GEMINI_KEY = localStorage.getItem('gemini_api_key');
   if (!GEMINI_KEY) {
-    throw new Error('API anahtarı eksik.');
+    throw new Error('Doğrudan Gemini geliştirici anahtarı ayarlı değil.');
   }
   
-  let modelName = 'gemini-1.5-flash'; // Varsayılan model
+  let modelName = 'gemini-2.5-flash'; // Varsayılan model
   if (GEMINI_KEY) {
     if (_detectedGeminiModel) {
       modelName = _detectedGeminiModel;
@@ -13768,7 +14040,7 @@ Rostrum Akademi İşleyişi, Üyelik ve Fiyatlandırma Bilgileri:
     if (plan === 'trial') {
       const trialEnd = dbUser.trial_ends_at
         ? new Date(dbUser.trial_ends_at)
-        : new Date(new Date(dbUser.created_at).getTime() + 14*24*60*60*1000);
+        : new Date(new Date(dbUser.created_at).getTime() + 7*24*60*60*1000);
       const daysLeft = Math.max(0, Math.ceil((trialEnd - Date.now()) / 86400000));
       systemPrompt += `\nKULLANICI BİLGİSİ: Ad=${dbUser.full_name||dbUser.username}, Plan=${planLabel}, Deneme süresi kalan=${daysLeft} gün (bitiş: ${trialEnd.toLocaleDateString('tr-TR')}).`;
     } else {
@@ -15347,6 +15619,9 @@ function showFernusError(msg) {
 }
 
 async function makeResourceGlobal(resId) {
+  if (session.role !== 'developer' && session.dbUser?.role !== 'developer') {
+    return showToast('Bu işlem yalnızca Developer hesabına açıktır.');
+  }
   const res = _crAllRes.find(r => r.id === resId);
   if (!res) return;
   if (!confirm(`"${res.name}" kaynağını tüm koçlar ve öğrenciler için globale (herkese açık) almak istediğinize emin misiniz?`)) return;
@@ -15483,6 +15758,9 @@ function buildCRContent(activeTab, res) {
       </div>
       ${buildGroupedList(playlists, 'playlist')}`;
   } else if (activeTab === 'coach_contrib') {
+    if (!(session.role === 'developer' || session.dbUser?.role === 'developer')) {
+      return '<div style="padding:32px;text-align:center;color:var(--text-dim)">Bu sekme yalnızca Developer hesabına açıktır.</div>';
+    }
     const coachRes = res.filter(r => r.coach_id != null);
     if (!coachRes.length) {
       return `<div style="text-align:center;padding:48px;color:var(--text-dim);font-size:13px;background:var(--surface);border-radius:16px;border:1px solid var(--border)">
@@ -15675,7 +15953,7 @@ async function renderCoachResources() {
   const el = document.getElementById('view-coach-resources');
   if(!el) return;
 
-  const isDev = session.role === 'developer' || session.dbUser?.role === 'developer' || session.dbUser?.email === 'ceylanemin1928@gmail.com';
+  const isDev = session.role === 'developer' || session.dbUser?.role === 'developer';
 
   if(!_crAllRes.length) {
     el.innerHTML = `<div style="max-width:720px;margin:0 auto;padding:40px;text-align:center;color:var(--text-dim);font-size:13px">Kaynaklar yükleniyor…</div>`;
@@ -15713,7 +15991,7 @@ async function renderCoachResources() {
     <div class="cr-tabs">
       <button class="cr-tab ${activeTab==='books'?'active':''}" id="crt-books" onclick="switchCRTab('books')">Soru Bankaları</button>
       <button class="cr-tab ${activeTab==='playlists'?'active':''}" id="crt-playlists" onclick="switchCRTab('playlists')">Oynatma Listeleri</button>
-      <button class="cr-tab ${activeTab==='coach_contrib'?'active':''}" id="crt-coach-contrib" onclick="switchCRTab('coach_contrib')">🌐 Koç Katkıları</button>
+      ${isDev ? `<button class="cr-tab ${activeTab==='coach_contrib'?'active':''}" id="crt-coach-contrib" onclick="switchCRTab('coach_contrib')">🌐 Koç Katkıları</button>` : ''}
       <button class="cr-tab ${activeTab==='fernus'?'active':''}" id="crt-fernus" onclick="switchCRTab('fernus')">🦊 Fernus Import</button>
       <button class="cr-tab ${activeTab==='analytics'?'active':''}" id="crt-analytics" onclick="switchCRTab('analytics')">Kaynak Analizi</button>
     </div>
@@ -16235,6 +16513,15 @@ async function openCoachTaskEdit(ds, idx) {
   document.getElementById('tmStartTime').value = t.start_time || '';
   document.getElementById('tmNote').value = t.note || '';
 
+  const tog = document.getElementById('tmNewResourceToggle');
+  if (tog) { tog.checked = false; _applyNewResourceToggle(false); }
+  const mk = document.getElementById('tmManualKaynak'); if (mk) mk.value = '';
+  const mt = document.getElementById('tmManualTestInput'); if (mt) mt.value = '';
+  const mc = document.getElementById('tmManualTestChips'); if (mc) mc.innerHTML = '';
+  _manualTests = [];
+  const qc = document.getElementById('tmQCount'); if (qc) qc.value = '';
+  const sb = document.getElementById('tmSmartBadge'); if (sb) sb.style.display = 'none';
+
   const exam = t.exam || '';
   const type = t.type;
 
@@ -16283,7 +16570,7 @@ async function openCoachTaskEdit(ds, idx) {
     
     // Now load resources, filter, and select this book
     showLoading(true);
-    await loadResources(); // Ensure resources loaded
+    await loadResources(true); // Ensure fresh resources loaded
     showLoading(false);
     
     const keyStr = `${exam}_${ders}`;
@@ -17566,8 +17853,9 @@ async function renderCoachApplications() {
     return;
   }
 
-  const statusColors = { pending:'#f0a500', accepted:'#3ecf8e', rejected:'#ff5c7a' };
-  const statusLabels = { pending:'Beklemede', accepted:'Kabul Edildi', rejected:'Reddedildi' };
+  const statusColors = { pending:'#f0a500', accepted:'#3ecf8e', matched:'#3ecf8e', rejected:'#ff5c7a' };
+  const statusLabels = { pending:'Beklemede', accepted:'Kabul Edildi', matched:'Kabul Edildi', rejected:'Reddedildi' };
+  window._coachAppsById = Object.fromEntries(apps.map(a => [a.id, a]));
 
   list.innerHTML = apps.map(a => `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px">
@@ -17604,8 +17892,8 @@ async function renderCoachApplications() {
       </div>
       ${a.status==='pending'?`
       <div style="display:flex;gap:8px">
-        <button onclick="updateApplication('${a.id}','accepted','${esc(a.email||'')}','${esc(a.student_name||'')}','${esc(a.phone||'')}')" style="flex:1;padding:9px;background:rgba(62,207,142,.12);color:#3ecf8e;border:1px solid rgba(62,207,142,.25);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✓ Kabul Et</button>
-        <button onclick="updateApplication('${a.id}','rejected','${esc(a.email||'')}','${esc(a.student_name||'')}','${esc(a.phone||'')}')" style="flex:1;padding:9px;background:rgba(255,92,122,.08);color:#ff5c7a;border:1px solid rgba(255,92,122,.2);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✗ Reddet</button>
+        <button onclick="updateApplication('${a.id}','accepted')" style="flex:1;padding:9px;background:rgba(62,207,142,.12);color:#3ecf8e;border:1px solid rgba(62,207,142,.25);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✓ Kabul Et</button>
+        <button onclick="updateApplication('${a.id}','rejected')" style="flex:1;padding:9px;background:rgba(255,92,122,.08);color:#ff5c7a;border:1px solid rgba(255,92,122,.2);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">✗ Reddet</button>
       </div>`:''}
     </div>`).join('');
 
@@ -17625,11 +17913,17 @@ async function renderCoachApplications() {
 }
 
 async function updateApplication(appId, status, applicantEmail, applicantName, applicantPhone) {
+  const cachedApp = window._coachAppsById?.[appId];
+  applicantEmail = applicantEmail || cachedApp?.email || '';
+  applicantName = applicantName || cachedApp?.student_name || '';
+  applicantPhone = applicantPhone || cachedApp?.phone || '';
+
+  const authHdrs = await aiAuthHeaders();
   let updateOk = false;
   try {
     const updateRes = await fetch('/api/invitation?action=update_application', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHdrs,
       body: JSON.stringify({ appId, status })
     });
     if (updateRes.ok) updateOk = true;
@@ -17648,9 +17942,8 @@ async function updateApplication(appId, status, applicantEmail, applicantName, a
     try {
       const invRes = await fetch('/api/invitation?action=create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHdrs,
         body: JSON.stringify({
-          coachId: S.user?.id || S.workspace?.id,
           email: applicantEmail || '',
           student_name: applicantName || ''
         })
@@ -17660,9 +17953,11 @@ async function updateApplication(appId, status, applicantEmail, applicantName, a
         if (invData.token) {
           inviteToken = invData.token;
           inviteLink = `${window.location.origin}/davet.html?token=${invData.token}`;
-          // Davet modallını öğrencinin telefon numarasıyla doğrudan WhatsApp açacak şekilde tetikle
           showInviteInfo(applicantName || 'Öğrenci', applicantEmail || '', inviteLink, inviteToken, applicantPhone || '');
         }
+      } else {
+        const invErr = await invRes.json().catch(() => ({}));
+        if (invErr?.error) showToast('Davet oluşturulamadı: ' + invErr.error);
       }
     } catch(e) {
       console.warn('[updateApplication] Auto-invite error:', e);
@@ -17672,7 +17967,7 @@ async function updateApplication(appId, status, applicantEmail, applicantName, a
   if (applicantEmail && applicantEmail.includes('@')) {
     fetch('/api/mailer', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHdrs,
       body: JSON.stringify({
         type: 'application_update',
         to: applicantEmail,
@@ -17703,9 +17998,16 @@ async function renderCoachNotes() {
     </div>
   </div>`;
 
-  const key = `coach_notes_${session.coachId}`;
-  const { data } = await db.from('platform_settings').select('value').eq('key', key).maybeSingle();
-  _coachNotesCache = data?.value?.notes || [];
+  _coachNotesCache = [];
+  try {
+    const { data, error } = await db.from('users').select('coach_notes').eq('id', session.coachId).maybeSingle();
+    if (!error && Array.isArray(data?.coach_notes)) {
+      _coachNotesCache = data.coach_notes;
+    } else {
+      const ls = JSON.parse(localStorage.getItem('ba_coach_notes_' + session.coachId) || '[]');
+      if (Array.isArray(ls)) _coachNotesCache = ls;
+    }
+  } catch (_) {}
   _renderNoteCards();
 }
 
@@ -17784,8 +18086,9 @@ async function deleteCoachNote(idx) {
 }
 
 async function _saveCoachNotesToDB() {
-  const key = `coach_notes_${session.coachId}`;
-  await db.from('platform_settings').upsert({ key, value: { notes: _coachNotesCache } }, { onConflict: 'key' });
+  try { localStorage.setItem('ba_coach_notes_' + session.coachId, JSON.stringify(_coachNotesCache)); } catch (_) {}
+  const { error } = await db.from('users').update({ coach_notes: _coachNotesCache }).eq('id', session.coachId);
+  if (error) console.warn('[coach_notes] DB güncellenemedi (migration_v48 bekleniyor olabilir):', error.message);
 }
 
 // ── AUTO REGISTRATION ON WINDOW FOR INLINE HTML HANDLERS ──
@@ -18305,92 +18608,76 @@ async function resetDemoData(btn) {
     btn.textContent = 'Sıfırlanıyor...';
   }
   try {
-    const coachId = window.S?.currentUser?.id;
+    const coachId = session.coachId || session.dbUser?.id;
     if (!coachId) throw new Error('Oturum bulunamadı.');
 
-    // 1. Koça ait öğrencileri al
-    const { data: students } = await db.from('users').select('id').eq('coach_id', coachId);
+    // 1. Koça ait mevcut demo öğrencilerini al (UUID & auth.users korunur)
+    const { data: students, error: stuErr } = await db.from('users').select('id,yks_area').eq('coach_id', coachId).eq('role', 'student');
+    if (stuErr) throw stuErr;
     const studentIds = (students || []).map(s => s.id);
-
-    if (studentIds.length > 0) {
-      // 2. İlişkili tüm verileri temizle
-      await db.from('tasks').delete().in('student_id', studentIds);
-      await db.from('exams').delete().in('student_id', studentIds);
-      await db.from('appointments').delete().in('student_id', studentIds);
-      await db.from('messages').delete().in('student_id', studentIds);
-      await db.from('student_profiles').delete().in('id', studentIds);
-      await db.from('users').delete().in('id', studentIds);
+    if (!studentIds.length) {
+      showToast('Demo hesapta sıfırlanacak öğrenci bulunamadı.');
+      return;
     }
 
-    // 3. 3 adet yeni öğrenci ekle
-    const mockStudents = [
-      { id: 'demo-stu-1', full_name: 'Ahmet Yılmaz', username: 'ahmetyilmaz', role: 'student', exam_profile: 'YKS', yks_area: 'SAY', coach_id: coachId, email: 'ahmet@demokoc.com', active: true },
-      { id: 'demo-stu-2', full_name: 'Zeynep Kaya', username: 'zeynepkaya', role: 'student', exam_profile: 'YKS', yks_area: 'EA', coach_id: coachId, email: 'zeynep@demokoc.com', active: true },
-      { id: 'demo-stu-3', full_name: 'Elif Demir', username: 'elifdemir', role: 'student', exam_profile: 'YKS', yks_area: 'SÖZ', coach_id: coachId, email: 'elif@demokoc.com', active: true }
-    ];
+    // 2. Aktivite verilerini temizle (hesap/auth kayıtlarını silmeden)
+    await db.from('tasks').delete().in('student_id', studentIds);
+    await db.from('exams').delete().in('student_id', studentIds);
+    await db.from('appointments').delete().in('student_id', studentIds);
+    await db.from('messages').delete().in('student_id', studentIds);
 
-    for (const stu of mockStudents) {
-      await db.from('users').upsert(stu);
-      await db.from('student_profiles').upsert({ id: stu.id, parent_email: 'veli@demo.com', target: 'Boğaziçi Üniversitesi' });
-    }
-
-    // 4. Haftalık görevleri ekle
+    // 3. Haftalık görevleri geçerli tasks şemasıyla ekle
     const today = new Date();
     const mockTasks = [];
-    const subjects = {
-      'demo-stu-1': ['Matematik', 'Fizik', 'Kimya'],
-      'demo-stu-2': ['Matematik', 'Edebiyat', 'Tarih'],
-      'demo-stu-3': ['Edebiyat', 'Tarih', 'Coğrafya']
+    const subMap = {
+      SAY: ['Matematik', 'Fizik'],
+      EA: ['Matematik', 'Edebiyat'],
+      SOZ: ['Edebiyat', 'Tarih1']
     };
 
-    for (const stu of mockStudents) {
-      const subs = subjects[stu.id];
+    for (const stu of students) {
+      const area = (stu.yks_area || 'SAY').toUpperCase().replace('SÖZ', 'SOZ');
+      const subs = subMap[area] || subMap.SAY;
+      const examType = area === 'EA' ? 'AYT-EA' : area === 'SOZ' ? 'AYT-SOZ' : 'AYT-SAY';
       for (let i = -3; i <= 3; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
-        
+        const d = addDays(today, i);
+        const dateStr = fmtDate(d);
         mockTasks.push({
-          student_id: stu.id,
-          date: dateStr,
-          subject: subs[0],
-          topic: 'Konu Anlatımı & Tekrar',
-          duration: 120,
-          done: i < 0
+          student_id: stu.id, coach_id: coachId, date: dateStr,
+          type: 'konu', exam_type: examType, subject: subs[0],
+          note: 'Konu Anlatımı & Tekrar', duration: 90, done: i < 0
         });
         mockTasks.push({
-          student_id: stu.id,
-          date: dateStr,
-          subject: subs[1],
-          topic: 'Soru Bankası Çözümü (120 Soru)',
-          duration: 90,
-          done: i <= 0
+          student_id: stu.id, coach_id: coachId, date: dateStr,
+          type: 'soru', exam_type: examType, subject: subs[1],
+          note: 'Soru Bankası Çözümü', duration: 60, done: i <= 0
         });
       }
     }
-    await db.from('tasks').insert(mockTasks);
+    const { error: taskInsErr } = await db.from('tasks').insert(mockTasks);
+    if (taskInsErr) throw taskInsErr;
 
-    // 5. Deneme sınavı sonuçları ekle
+    // 4. Deneme sonuçlarını geçerli exams şemasıyla ekle
     const mockExams = [];
-    for (const stu of mockStudents) {
+    for (const stu of students) {
       mockExams.push({
-        student_id: stu.id,
-        date: new Date(today.getTime() - 15 * 24 * 3600 * 1000).toISOString().split('T')[0],
-        type: 'TYT',
-        title: 'Özdebir Türkiye Geneli',
-        net_tr: 32, net_sos: 15, net_mat: 28, net_fen: 12, net_total: 87
+        student_id: stu.id, coach_id: coachId,
+        date: fmtDate(addDays(today, -15)),
+        exam_type: 'TYT', name: 'Özdebir Türkiye Geneli',
+        nets: { 'Türkçe': 32, 'Matematik': 28, 'Fen': 12, 'Sosyal': 15 }
       });
       mockExams.push({
-        student_id: stu.id,
-        date: new Date(today.getTime() - 5 * 24 * 3600 * 1000).toISOString().split('T')[0],
-        type: 'TYT',
-        title: '3D Simülasyon Denemesi',
-        net_tr: 34, net_sos: 16, net_mat: 31, net_fen: 14, net_total: 95
+        student_id: stu.id, coach_id: coachId,
+        date: fmtDate(addDays(today, -5)),
+        exam_type: 'TYT', name: '3D Simülasyon Denemesi',
+        nets: { 'Türkçe': 34, 'Matematik': 31, 'Fen': 14, 'Sosyal': 16 }
       });
     }
-    await db.from('exams').insert(mockExams);
+    const { error: examInsErr } = await db.from('exams').insert(mockExams);
+    if (examInsErr) throw examInsErr;
 
-    showToast('Demo verileri sıfırlandı ve tertemiz mock veri setleri yüklendi ✓');
+    if (typeof window.invalidateCache === 'function') window.invalidateCache();
+    showToast('Demo verileri sıfırlandı ✓');
     setTimeout(() => location.reload(), 800);
   } catch(err) {
     console.error('Demo reset error:', err);
@@ -18406,7 +18693,7 @@ window.resetDemoData = resetDemoData;
 
 setTimeout(() => {
   const urlParams = new URLSearchParams(window.location.search);
-  const isSandbox = urlParams.get('sandbox') === 'true' || (window.S && window.S.currentUser && window.S.currentUser.username === 'demokoc');
+  const isSandbox = urlParams.get('sandbox') === 'true' || session.dbUser?.username === 'demokoc';
   if (isSandbox) {
     let banner = document.getElementById('demoSandboxBanner');
     if (!banner) {

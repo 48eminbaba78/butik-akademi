@@ -69,7 +69,8 @@ export async function triggerRealGoogleLogin() {
     if (error) {
       showLoading(false);
       console.warn('Google Auth failed:', error);
-      if (isLocal) {
+      const demoAllowed = isLocal && import.meta.env?.VITE_ENABLE_DEMO_LOGIN === 'true';
+      if (demoAllowed) {
         showGoogleSimulator();
       } else {
         loginErr('Google Girişi Başlatılamadı: ' + error.message);
@@ -79,7 +80,7 @@ export async function triggerRealGoogleLogin() {
     showLoading(false);
     console.error('Google Auth exception:', e);
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
-    if (isLocal) {
+    if (isLocal && import.meta.env?.VITE_ENABLE_DEMO_LOGIN === 'true') {
       showGoogleSimulator();
     } else {
       loginErr('Google Girişi Başlatılamadı: ' + (e.message || e));
@@ -474,28 +475,6 @@ export async function doLogin() {
       return loginErr('Hesabınız veritabanında aktif değil.');
     }
 
-    // Fallback: kimlik bilgisiyle güvenli lookup (security definer RPC)
-    try {
-      const lookupUser = normalizeUsername(usernameOrEmail.includes('@') ? usernameOrEmail.split('@')[0] : usernameOrEmail);
-      const passHash = await sha256(pass);
-      const { data: rpcRows } = await db.rpc('get_user_by_credentials', {
-        p_username: lookupUser,
-        p_password_hash: passHash
-      });
-      const rows = Array.isArray(rpcRows) ? rpcRows[0] : rpcRows;
-      if (rows) {
-        if (rows.active === false) {
-          showLoading(false);
-          return loginErr('Hesabınız askıya alınmıştır. Lütfen yöneticiyle iletişime geçin.');
-        }
-        clearTimeout(_loginTimeout);
-        await finishLogin(rows);
-        return;
-      }
-    } catch (e) {
-      console.warn('Fallback RPC error:', e);
-    }
-
     showLoading(false);
     return loginErr(authErr ? 'Giriş başarısız: ' + authErr.message : 'Kullanıcı adı veya şifre hatalı.');
   } catch (e) {
@@ -523,6 +502,19 @@ export async function finishLogin(rows) {
   session.studentId = rows.role === 'student' ? rows.id : null;
   session.dbUser = rows;
   session.coachId = coachId;
+
+  // Veli girişinde çocuk ID'si loadAllData() ÖNCESİNDE çözülmeli ki
+  // konu_mastery / randevular doğru öğrenciye göre çekilebilsin.
+  if (rows.role === 'parent') {
+    try {
+      const { data: child } = await db.from('users').select('*').eq('parent_id', rows.id).maybeSingle();
+      if (child) {
+        S.activeStuId = child.id;
+        session.studentId = child.id;
+        session.childName = child.full_name || child.username;
+      }
+    } catch (_) {}
+  }
 
   // Daha önce izin verilmişse (ör. önceki oturumda "Etkinleştir"e basılmış),
   // her girişte sessizce yeniden abone ol — kullanıcı tekrar butona basmasın

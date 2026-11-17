@@ -34,6 +34,7 @@ export default function Page() {
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [context, setContext] = useState<StudentContext | null>(null);
   const [status, setStatus] = useState<'waiting' | 'loading' | 'ready' | 'error'>('waiting');
+  const [errorMsg, setErrorMsg] = useState<string>('');
 
   // 1) Ebeveyn pencereye "hazırım" sinyali gönder — ebeveyn sadece bu sinyali
   // aldıktan sonra kimlik/bağlam bilgisini postMessage ile yollar (iframe
@@ -42,8 +43,15 @@ export default function Page() {
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (!isAllowedOrigin(event.origin)) return;
-      const data = event.data as BridgePayload;
-      if (!data || data.type !== 'ROSTRUM_AI_AUTH' || !data.accessToken || !data.studentId) return;
+      const raw = event.data as (BridgePayload | { type?: string; error?: string });
+      if (!raw) return;
+      if (raw.type === 'ROSTRUM_AI_AUTH_ERROR') {
+        setErrorMsg(raw.error || 'Oturum doğrulanamadı.');
+        setStatus('error');
+        return;
+      }
+      const data = raw as BridgePayload;
+      if (data.type !== 'ROSTRUM_AI_AUTH' || !data.accessToken || !data.studentId) return;
       setBridge(data);
     };
     window.addEventListener('message', onMessage);
@@ -70,7 +78,7 @@ export default function Page() {
     return <CenterMessage text="Bağlanıyor..." />;
   }
   if (status === 'error' || !bridge || !supabase || !context) {
-    return <CenterMessage text="Bağlantı kurulamadı. Sayfayı yenilemeyi dene." />;
+    return <CenterMessage text={errorMsg || 'Bağlantı kurulamadı. Sayfayı yenilemeyi dene.'} />;
   }
 
   return (
@@ -103,7 +111,7 @@ YKS Alanı: ${context.yksArea}
 ${
   context.hasData
     ? `Son ${context.examType} denemesi toplam net: ${context.totalNet}
-Zayıf dersler (son denemede 12 net altı): ${weakList || 'yok — tüm dersler 12 net üzerinde'}`
+Zayıf dersler (<%30 net): ${weakList || 'yok — tüm dersler hedefin üzerinde'}`
     : 'Öğrenci henüz deneme sonucu girmemiş — net/zayıf ders verisi yok, tahmin yürütme, sorarak öğren.'
 }`,
   });
@@ -118,7 +126,8 @@ Zayıf dersler (son denemede 12 net altı): ${weakList || 'yok — tüm dersler 
       { name: 'durationMinutes', type: 'number', description: 'Tahmini süre (dakika), belirtilmezse 30', required: false },
     ],
     handler: async ({ subject, topic, durationMinutes }: { subject: string; topic: string; durationMinutes?: number }) => {
-      const dateStr = new Date().toISOString().slice(0, 10);
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const { error } = await supabase.from('tasks').insert({
         student_id: studentId,
         coach_id: coachId || null,

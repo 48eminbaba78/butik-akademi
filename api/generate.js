@@ -1,14 +1,15 @@
 import { sb, isAuthed, generateForDate, generateHookSuggestions, generateTwoWeeksBatch, getFeedbackMemory, publishDue, trNow, trDateStr } from '../lib/core.js';
 import { applyCors } from '../lib/cors.js';
+import { safeCompare, getSafeOrigin, makeInternalHeaders } from '../lib/api-auth.js';
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
 
   // ── Posts/story_queue yönetimi (eski /api/posts) ─────────────────────────
   if (req.method === 'POST' && req.body && req.body.action === 'login') {
-    var pw = (process.env.PANEL_PASSWORD || 'emin').trim();
+    var pw = (process.env.PANEL_PASSWORD || '').trim();
     var given = (req.body.password || '').trim();
-    var ok = given === pw;
+    var ok = Boolean(pw) && safeCompare(given, pw);
     return res.status(ok ? 200 : 401).json({ ok: ok });
   }
 
@@ -206,7 +207,10 @@ export default async function handler(req, res) {
     }
   }
 
-  // Caption üretimi — auth gerektirmez, POST body'de type:'reels_caption'
+  // Auth kontrolü (reels_caption dahil tüm AI/cron/yönetim uçları yetkili olmalı)
+  if (!(await isAuthed(req))) return res.status(401).json({ error: 'Yetkisiz' });
+
+  // Caption üretimi
   if (req.method === 'POST' && req.body && req.body.type === 'reels_caption') {
     try {
       const prompt = `Rostrum Akademi için Instagram Reels caption yaz.
@@ -256,11 +260,8 @@ Sadece caption metnini döndür, başka hiçbir şey yazma.`;
 
   // Onboarding deneme/müsamaha e-postaları — eski /api/onboarding-cron (cron: ?job=onboarding)
   if (req.query && req.query.job === 'onboarding') {
-    if (!(await isAuthed(req))) return res.status(401).json({ error: 'Yetkisiz cron çağrısı' });
     return runOnboardingCron(req, res);
   }
-
-  if (!(await isAuthed(req))) return res.status(401).json({ error: 'Yetkisiz' });
   try {
     var tomorrow = new Date(trNow().getTime() + 86400000);
     var dateStr = (req.query && req.query.date) || trDateStr(tomorrow);
@@ -280,7 +281,7 @@ async function runOnboardingCron(req, res) {
     // 1. Trial veya müsamaha (grace) sürecindeki koçları sorgula
     const { data: coaches, error: queryErr } = await supabaseAdmin
       .from('users')
-      .select('id, full_name, email, created_at, onboarding_email_step, plan, onboarding_rescue_sent_at')
+      .select('id, full_name, email, created_at, trial_ends_at, onboarding_email_step, plan, onboarding_rescue_sent_at')
       .eq('role', 'coach')
       .in('plan', ['trial', 'grace']);
 
@@ -290,18 +291,17 @@ async function runOnboardingCron(req, res) {
     }
 
     const results = [];
-    const protocol = (req.headers.host || '').includes('localhost') ? 'http' : 'https';
-    const mailerUrl = `${protocol}://${req.headers.host}/api/mailer`;
+    const mailerUrl = `${getSafeOrigin(req)}/api/mailer`;
 
     for (const coach of coaches) {
-      const hoursSinceSignup = Math.floor((Date.now() - new Date(coach.created_at).getTime()) / (1000 * 60 * 60));
+      const createdMs = new Date(coach.created_at).getTime();
+      const trialEndMs = coach.trial_ends_at ? new Date(coach.trial_ends_at).getTime() : (createdMs + 168 * 3600000);
+      const hoursSinceSignup = Math.floor((Date.now() - createdMs) / 3600000);
+      const hoursPastTrial = Math.floor((Date.now() - trialEndMs) / 3600000);
       let targetStep = coach.onboarding_email_step || 0;
       let emailType = null;
       let emailPayload = { to: coach.email, coach_name: coach.full_name };
 
-      // Sıfır aktivasyon kurtarma e-postası — gün bazlı akıştan bağımsız,
-      // tek seferlik. 48 saat geçtiği halde hâlâ hiç öğrencisi yoksa nazik
-      // bir hatırlatma gönderilir (FOMO değil, düşük eforlu bir davet).
       if (hoursSinceSignup >= 48 && !coach.onboarding_rescue_sent_at) {
         const { count: liveStudentCount } = await supabaseAdmin
           .from('users')
@@ -313,7 +313,7 @@ async function runOnboardingCron(req, res) {
           try {
             await fetch(mailerUrl, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: makeInternalHeaders(),
               body: JSON.stringify({ type: 'onboarding_rescue', to: coach.email, coach_name: coach.full_name })
             });
             results.push({ email: coach.email, sentType: 'onboarding_rescue', step: null });
@@ -321,33 +321,25 @@ async function runOnboardingCron(req, res) {
             console.error(`[Cron Rescue Mail Failure] ${coach.email}`, mailErr.message);
           }
         }
-        // Öğrencisi olsun ya da olmasın kontrol tamamlandı — cron'un her
-        // çalıştığında bu koç için tekrar tekrar kontrol etmesini önler.
         await supabaseAdmin
           .from('users')
           .update({ onboarding_rescue_sent_at: new Date().toISOString() })
           .eq('id', coach.id);
       }
 
-      // Hangi adımın tetikleneceğini hesapla
-      if (hoursSinceSignup >= 240 && coach.plan === 'grace') {
-        // 10. Gün - Müsamaha süresi de bitti, erişimi kilitle (e-posta Faz 2'de eklenecek)
+      // Admin trial_ends_at süresini uzattıysa erken kilitleme yapma
+      if (hoursPastTrial >= 72 && coach.plan === 'grace') {
         await supabaseAdmin
           .from('users')
           .update({ plan: 'inactive' })
           .eq('id', coach.id);
         results.push({ email: coach.email, sentType: null, action: 'plan->inactive' });
         continue;
-      } else if (hoursSinceSignup >= 168 && targetStep < 6) {
-        // 7. Gün - Deneme Süresi Bitti, 3 günlük müsamahaya geçiliyor
+      } else if (hoursPastTrial >= 0 && targetStep < 6) {
         emailType = 'onboarding_day7';
         targetStep = 6;
-
-        // Tarih hesaplama (30 gün sonrası için silinme uyarısı)
         const deleteDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
         emailPayload.delete_date = deleteDate;
-
-        // Koçun planını müsamaha (grace) sürecine çek — 3 gün daha erişim açık kalır
         await supabaseAdmin
           .from('users')
           .update({ plan: 'grace' })
@@ -396,7 +388,7 @@ async function runOnboardingCron(req, res) {
         try {
           await fetch(mailerUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: makeInternalHeaders(),
             body: JSON.stringify({
               type: emailType,
               ...emailPayload

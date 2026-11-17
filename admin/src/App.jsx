@@ -86,23 +86,8 @@ function App() {
     setLoginLoading(true)
 
     if (loginMethod === 'demo') {
-      // Demo / Local Admin Fallback (matching admin / admin2026)
-      if (email.trim() === 'admin' && password === 'admin2026') {
-        const demoUser = {
-          id: '00000000-0000-0000-0000-000000000000',
-          full_name: 'Yönetici (Demo)',
-          email: 'admin@rostrumakademi.com',
-          role: 'developer',
-          color: '#f0a500'
-        }
-        sessionStorage.setItem('site_admin_user', JSON.stringify(demoUser))
-        setCurrentUser(demoUser)
-        setSession({ local: true })
-        setLoginLoading(false)
-      } else {
-        setErrorMsg('Demo kullanıcı adı veya şifre hatalı!')
-        setLoginLoading(false)
-      }
+      setErrorMsg('Güvenlik nedeniyle demo admin girişi devre dışı bırakıldı. Lütfen developer hesabınızla Supabase Auth üzerinden giriş yapın.');
+      setLoginLoading(false);
     } else {
       // Supabase Auth Login
       try {
@@ -113,7 +98,6 @@ function App() {
 
         if (error) throw error
 
-        // Query user role to verify authorization
         const { data: profile, error: pErr } = await supabase
           .from('users')
           .select('*')
@@ -125,9 +109,9 @@ function App() {
           throw new Error('Sistemde yetki profiliniz bulunamadı.')
         }
 
-        if (profile.role !== 'developer' && profile.role !== 'institution') {
+        if (profile.role !== 'developer') {
           await supabase.auth.signOut()
-          throw new Error('Bu yönetim paneline erişim yetkiniz bulunmamaktadır.')
+          throw new Error('Bu yönetim paneline yalnızca developer hesabı erişebilir.')
         }
 
         setCurrentUser(profile)

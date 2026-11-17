@@ -1,18 +1,26 @@
-import { createClient } from '@supabase/supabase-js';
+import crypto from 'node:crypto';
 import { isAuthed, publishDue } from '../lib/core.js';
 import { applyCors } from '../lib/cors.js';
+import { getServiceClient, safeCompare } from '../lib/api-auth.js';
 import fs from 'fs';
 import path from 'path';
 
-const SB_URL = process.env.SUPABASE_URL || 'https://imyhenrwmsmyikpollur.supabase.co';
-const SB_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
-const db = createClient(SB_URL, SB_KEY);
-const WEBHOOK_VERIFY_TOKEN = process.env.IG_WEBHOOK_VERIFY_TOKEN || 'rostrum_webhook_verify_token_2026';
+const WEBHOOK_VERIFY_TOKEN = (process.env.IG_WEBHOOK_VERIFY_TOKEN || '').trim();
+
+function verifyMetaSignature(req) {
+  const appSecret = (process.env.IG_APP_SECRET || process.env.META_APP_SECRET || '').trim();
+  if (!appSecret) return true; // Secret tanımlıysa X-Hub-Signature-256 zorunlu doğrulanır
+  const sig = String(req.headers['x-hub-signature-256'] || '');
+  if (!sig.startsWith('sha256=')) return false;
+  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+  const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+  return safeCompare(sig, expected);
+}
 
 // ── Helpers from publish-instagram.js ──
 async function validateToken(accountId, accessToken) {
   const res = await fetch(
-    `https://graph.facebook.com/v20.0/${accountId}?fields=id,username&access_token=${accessToken}`
+    `https://graph.facebook.com/v21.0/${accountId}?fields=id,username&access_token=${accessToken}`
   );
   const data = await res.json();
   if (data.error) {
@@ -26,6 +34,7 @@ async function validateToken(accountId, accessToken) {
 }
 
 async function uploadImage(base64, fileName) {
+  const db = getServiceClient();
   const buffer = Buffer.from(base64, 'base64');
   const { error } = await db.storage
     .from('platform_assets')
@@ -34,7 +43,7 @@ async function uploadImage(base64, fileName) {
       cacheControl: '3600',
       upsert: true
     });
-  if (error) throw new Error('Storage yüklemesi başarısız: ' + error.message);
+  if (error) throw new Error('Storage yüklemesi başarısız');
   const { data: { publicUrl } } = db.storage
     .from('platform_assets')
     .getPublicUrl(`instagram_posts/${fileName}`);
@@ -42,7 +51,7 @@ async function uploadImage(base64, fileName) {
 }
 
 async function createMediaContainer(accountId, accessToken, params) {
-  const res = await fetch(`https://graph.facebook.com/v20.0/${accountId}/media`, {
+  const res = await fetch(`https://graph.facebook.com/v21.0/${accountId}/media`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...params, access_token: accessToken })
@@ -132,8 +141,12 @@ export default async function handler(req, res) {
 
     // A. Webhook Event handling
     if (action === 'webhook' || req.body?.object === 'instagram') {
+      if (!verifyMetaSignature(req)) {
+        return res.status(403).json({ error: 'Invalid webhook signature' });
+      }
       const body = req.body;
       try {
+        const db = getServiceClient();
         const { data: credData } = await db.from('platform_settings').select('value').eq('key', 'instagram_credentials').maybeSingle();
         const accessToken = credData?.value?.instagram_access_token;
         if (!accessToken) return res.status(200).json({ status: 'no_token' });
@@ -233,15 +246,19 @@ export default async function handler(req, res) {
       }
     }
 
-    // B. Publish Action handling (Eski publish-instagram.js)
+    // B. Publish Action handling (Yönetici yetkisi zorunlu)
     if (action === 'publish') {
-      const { caption, imageBase64, isStory, slides, isCarousel, isReels, videoUrl } = req.body;
+      if (applyCors(req, res)) return;
+      if (!(await isAuthed(req))) return res.status(401).json({ error: 'Yetkisiz' });
+
+      const { caption, imageBase64, isStory, slides, isCarousel, isReels, videoUrl } = req.body || {};
 
       if (!imageBase64 && !videoUrl && (!slides || slides.length === 0)) {
         return res.status(400).json({ message: 'imageBase64, videoUrl veya slides parametresi eksik.' });
       }
 
       try {
+        const db = getServiceClient();
         const { data: credData, error: credError } = await db
           .from('platform_settings')
           .select('value')

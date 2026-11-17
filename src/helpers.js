@@ -80,8 +80,10 @@ export function todayStr() {
   return fmtDate(new Date());
 }
 
-export function netColor(v) {
-  return v >= 20 ? 'good' : v >= 12 ? 'mid' : 'low';
+export function netColor(v, maxQ = 40) {
+  const m = Number(maxQ) > 0 ? Number(maxQ) : 40;
+  const ratio = Number(v || 0) / m;
+  return ratio >= 0.50 ? 'good' : ratio >= 0.30 ? 'mid' : 'low';
 }
 
 export function typeLabel(t) {
@@ -183,17 +185,29 @@ export function maskPhoneTR(el) {
   el.value = out;
 }
 
-// YKS geri sayımı — sınav (yaklaşık 14 Haziran) geçince otomatik sonraki yıla döner
-export function getNextYks() {
+// Sınav geri sayımı — YKS / LGS / KPSS / ALES / DGS / YDS tarihine kalan gün
+const EXAM_SCHEDULE = {
+  LGS:  { month: 5, day: 7,  label: 'LGS'  },
+  KPSS: { month: 6, day: 14, label: 'KPSS' },
+  ALES: { month: 4, day: 10, label: 'ALES' },
+  DGS:  { month: 6, day: 20, label: 'DGS'  },
+  YDS:  { month: 3, day: 15, label: 'YDS'  },
+  YKS:  { month: 5, day: 14, label: 'YKS'  },
+};
+
+export function getNextYks(examProfile) {
+  const key = String(examProfile || 'YKS').toUpperCase().split(/[\s_-]/)[0];
+  const cfg = EXAM_SCHEDULE[key] || EXAM_SCHEDULE.YKS;
   const now = new Date();
   let year = now.getFullYear();
-  let examDate = new Date(year, 5, 14); // 14 Haziran
+  let examDate = new Date(year, cfg.month, cfg.day);
   if (now > examDate) {
     year += 1;
-    examDate = new Date(year, 5, 14);
+    examDate = new Date(year, cfg.month, cfg.day);
   }
-  return { year, days: Math.max(1, Math.ceil((examDate - now) / 864e5)) };
+  return { year, days: Math.max(1, Math.ceil((examDate - now) / 864e5)), label: cfg.label };
 }
+export const getExamCountdown = getNextYks;
 
 // Haftalık program başlangıç hesaplama (0=Pazartesi, 6=Pazar)
 export function getWeekStart(offset, stuWeekStart = 0) {
@@ -261,10 +275,15 @@ export async function subscribeToPush() {
         applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
     }
+    const hdrs = { 'Content-Type': 'application/json' };
+    try {
+      const { data: { session: s } } = await (window.db?.auth?.getSession() || Promise.resolve({ data: {} }));
+      if (s?.access_token) hdrs['Authorization'] = 'Bearer ' + s.access_token;
+    } catch (_) {}
     await fetch('/api/push?action=subscribe', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: session.dbUser.id, subscription: sub.toJSON() })
+      headers: hdrs,
+      body: JSON.stringify({ subscription: sub.toJSON() })
     });
   } catch (e) {
     console.warn('[push] abone olunamadı:', e.message);

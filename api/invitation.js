@@ -1,74 +1,41 @@
-import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
+import {
+  requireRole,
+  verifyJwtUser,
+  getServiceClient,
+  getSafeOrigin,
+  makeInternalHeaders,
+  checkCoachStudentQuota,
+} from '../lib/api-auth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { action } = req.query;
-
-  const supabaseAdmin = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getServiceClient();
+  } catch (_) {
+    return res.status(500).json({ error: 'Sunucu yapılandırma hatası' });
+  }
 
   // ── ACTION: CREATE (Davet Oluşturma) ──
   if (action === 'create') {
-    let coachId = null;
-    let coachName = 'Koçunuz';
+    const auth = await requireRole(req, res, ['coach', 'developer']);
+    if (!auth) return;
 
-    // 1. Standart Yetkilendirme (Supabase JWT Token)
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      if (token && token !== 'undefined' && token !== 'null') {
-        const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-        if (!authErr && user) {
-          coachId = user.id;
-        }
-      }
+    const coachId = auth.user.id;
+    const coachName = auth.profile.full_name || 'Koçunuz';
+
+    const quota = await checkCoachStudentQuota(supabaseAdmin, coachId);
+    if (!quota.allowed) {
+      return res.status(403).json({
+        error: `${quota.tier === 'profesyonel' ? 'Profesyonel' : 'Bireysel'} paket öğrenci limitinize (${quota.limit}) ulaştınız. Lütfen paketinizi yükseltin.`
+      });
     }
 
-    // 2. Yedek Yetkilendirme (RPC Fallback Girişleri İçin - Güvenli Hash Karşılaştırma)
-    if (!coachId) {
-      const xCoachId = req.headers['x-coach-id'];
-      const xCoachHash = req.headers['x-coach-hash'];
-      if (xCoachId && xCoachHash) {
-        const { data: coachUser, error: dbErr } = await supabaseAdmin
-          .from('users')
-          .select('id, role, full_name')
-          .eq('id', xCoachId)
-          .eq('password_hash', xCoachHash)
-          .maybeSingle();
-
-        if (!dbErr && coachUser) {
-          coachId = coachUser.id;
-          coachName = coachUser.full_name;
-        }
-      }
-    }
-
-    // Yetki kontrolü
-    if (!coachId) {
-      return res.status(401).json({ error: 'Token gerekli (Oturum doğrulanamadı)' });
-    }
-
-    // Koçun veritabanındaki rol ve isim bilgisini al (eğer JWT ile girilmişse)
-    if (coachName === 'Koçunuz') {
-      const { data: caller } = await supabaseAdmin
-        .from('users')
-        .select('role, full_name')
-        .eq('id', coachId)
-        .maybeSingle();
-
-      if (!caller || !['coach', 'developer'].includes(caller.role)) {
-        return res.status(403).json({ error: 'Sadece koçlar davet gönderebilir' });
-      }
-      coachName = caller.full_name || 'Koçunuz';
-    }
-
-    const { email, student_name, username, send_email } = req.body;
-    if (!student_name || !student_name.trim()) {
+    const { email, student_name, username, send_email } = req.body || {};
+    if (!student_name || !String(student_name).trim()) {
       return res.status(400).json({ error: 'Öğrencinin adı ve soyadı zorunludur' });
     }
 
@@ -80,9 +47,9 @@ export default async function handler(req, res) {
       .insert({
         token: inviteToken,
         coach_id: coachId,
-        email: email ? email.toLowerCase().trim() : '',
-        student_name: student_name ? student_name.trim() : null,
-        username: username ? username.trim().toLowerCase() : null,
+        email: email ? String(email).toLowerCase().trim() : '',
+        student_name: String(student_name).trim(),
+        username: username ? String(username).trim().toLowerCase() : null,
         expires_at: expiresAt
       });
 
@@ -91,7 +58,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Davet oluşturulurken bir hata oluştu' });
     }
 
-    // E-posta yalnız istenirse gider — koç kanalı (mail/WhatsApp) modaldan seçer
     if (send_email && email) {
       try {
         await _sendInviteMail(req, { token: inviteToken, email, student_name, coachName });
@@ -105,7 +71,10 @@ export default async function handler(req, res) {
 
   // ── ACTION: SEND_EMAIL (Mevcut davet için e-posta gönder) ──
   if (action === 'send_email') {
-    const { token, email: reqEmail } = req.body;
+    const auth = await requireRole(req, res, ['coach', 'developer']);
+    if (!auth) return;
+
+    const { token, email: reqEmail } = req.body || {};
     if (!token) return res.status(400).json({ error: 'Token gereklidir' });
 
     const { data: invite } = await supabaseAdmin
@@ -114,15 +83,17 @@ export default async function handler(req, res) {
       .eq('token', token)
       .maybeSingle();
     if (!invite) return res.status(404).json({ error: 'Davet bulunamadı' });
+    if (auth.profile.role !== 'developer' && invite.coach_id !== auth.user.id) {
+      return res.status(403).json({ error: 'Bu davet üzerinde yetkiniz yok' });
+    }
     if (invite.used_at) return res.status(400).json({ error: 'Bu davet zaten kullanılmış' });
     if (new Date(invite.expires_at) < new Date()) return res.status(400).json({ error: 'Davet süresi dolmuş' });
 
-    const targetEmail = reqEmail ? reqEmail.toLowerCase().trim() : invite.email;
+    const targetEmail = reqEmail ? String(reqEmail).toLowerCase().trim() : invite.email;
     if (!targetEmail || !targetEmail.includes('@')) {
       return res.status(400).json({ error: 'Geçerli bir e-posta adresi girin' });
     }
 
-    // E-posta adresi güncellendiyse davet kaydını güncelle
     if (targetEmail !== invite.email) {
       await supabaseAdmin
         .from('student_invitations')
@@ -143,92 +114,91 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error('[Invitation Email Error]', err.message);
-      return res.status(400).json({ error: err.message || 'E-posta gönderilemedi. Davet bağlantısını kopyalayarak iletebilirsiniz.' });
+      return res.status(400).json({ error: 'E-posta gönderilemedi. Davet bağlantısını kopyalayarak iletebilirsiniz.' });
     }
   }
 
-  // ── ACTION: UPDATE_APPLICATION (Başvuru durumunu günceller — RLS & Check Constraint Safe) ──
+  // ── ACTION: UPDATE_APPLICATION (Başvuru durumunu günceller) ──
   if (action === 'update_application') {
-    const { appId, status } = req.body;
-    if (!appId || !status) return res.status(400).json({ error: 'Eksik parametre' });
+    const auth = await requireRole(req, res, ['coach', 'developer']);
+    if (!auth) return;
 
-    // DB Check Constraint 'match_requests_status_check' ('matched' | 'accepted') uyumluluğu
-    const targetStatus = status === 'accepted' ? 'matched' : status;
-
-    try {
-      let { error: updateErr } = await supabaseAdmin
-        .from('match_requests')
-        .update({ status: targetStatus })
-        .eq('id', appId);
-
-      if (updateErr && status === 'accepted') {
-        const { error: retryErr } = await supabaseAdmin
-          .from('match_requests')
-          .update({ status: 'matched' })
-          .eq('id', appId);
-        if (retryErr) throw updateErr;
-      } else if (updateErr) {
-        throw updateErr;
-      }
-
-      return res.status(200).json({ success: true });
-    } catch (err) {
-      console.error('[Update Application Error]', err.message);
-      return res.status(500).json({ error: 'Başvuru güncellenemedi: ' + err.message });
+    const { appId, status } = req.body || {};
+    const allowedStatuses = ['pending', 'accepted', 'rejected', 'matched', 'completed'];
+    if (!appId || !allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Eksik veya geçersiz parametre' });
     }
+
+    const { data: existingApp } = await supabaseAdmin
+      .from('match_requests')
+      .select('id, coach_id')
+      .eq('id', appId)
+      .maybeSingle();
+    if (!existingApp) return res.status(404).json({ error: 'Başvuru bulunamadı' });
+    if (auth.profile.role !== 'developer' && existingApp.coach_id !== auth.user.id) {
+      return res.status(403).json({ error: 'Bu başvuru üzerinde yetkiniz yok' });
+    }
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('match_requests')
+      .update({ status })
+      .eq('id', appId);
+    if (updateErr) {
+      console.error('[Update Application Error]', updateErr.message);
+      return res.status(500).json({ error: 'Başvuru güncellenemedi' });
+    }
+    return res.status(200).json({ success: true });
   }
 
-  // ── ACTION: ACCEPT (Davet Kabul Etme) ──
+  // ── ACTION: ACCEPT (Davet Kabul Etme — kimliği doğrulanmış öğrenci) ──
   if (action === 'accept') {
-    const { token, userId } = req.body;
+    const auth = await verifyJwtUser(req);
+    if (!auth) return res.status(401).json({ error: 'Daveti kabul etmek için oturum açmanız gerekir' });
+
+    const { token } = req.body || {};
     if (!token) return res.status(400).json({ error: 'Token gereklidir' });
 
-    try {
-      const { data: invite, error: selectErr } = await supabaseAdmin
-        .from('student_invitations')
-        .select('*')
-        .eq('token', token)
-        .maybeSingle();
+    const { data: invite, error: selectErr } = await supabaseAdmin
+      .from('student_invitations')
+      .select('*')
+      .eq('token', token)
+      .maybeSingle();
 
-      if (selectErr || !invite) {
-        return res.status(404).json({ error: 'Davet bulunamadı' });
-      }
+    if (selectErr || !invite) return res.status(404).json({ error: 'Davet bulunamadı' });
+    if (invite.used_at) return res.status(400).json({ error: 'Bu davet zaten kullanılmış' });
+    if (new Date(invite.expires_at) < new Date()) return res.status(400).json({ error: 'Davet süresi dolmuş' });
 
-      if (invite.used_at) {
-        return res.status(400).json({ error: 'Bu davet zaten kullanılmış' });
-      }
-
-      if (new Date(invite.expires_at) < new Date()) {
-        return res.status(400).json({ error: 'Davet süresi dolmuş' });
-      }
-
-      const { error: updateErr } = await supabaseAdmin
-        .from('student_invitations')
-        .update({ used_at: new Date().toISOString() })
-        .eq('token', token);
-
-      if (updateErr) throw new Error(updateErr.message);
-
-      return res.status(200).json({ success: true });
-    } catch (err) {
-      console.error('[Accept Invitation Error]', err.message);
-      return res.status(500).json({ error: 'İşlem tamamlanırken bir sunucu hatası oluştu' });
+    const quota = await checkCoachStudentQuota(supabaseAdmin, invite.coach_id);
+    if (!quota.allowed) {
+      return res.status(403).json({ error: 'Koçunuzun öğrenci kontenjanı dolduğu için bu davet şu an kabul edilemiyor' });
     }
+
+    const { error: bindErr } = await supabaseAdmin
+      .from('users')
+      .update({ coach_id: invite.coach_id, role: 'student' })
+      .eq('id', auth.user.id);
+    if (bindErr) return res.status(500).json({ error: 'Öğrenci eşleştirmesi tamamlanamadı' });
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('student_invitations')
+      .update({ used_at: new Date().toISOString() })
+      .eq('token', token);
+    if (updateErr) return res.status(500).json({ error: 'Davet güncellenemedi' });
+
+    return res.status(200).json({ success: true });
   }
 
   return res.status(400).json({ error: 'Geçersiz aksiyon' });
 }
 
-// Davet e-postasını mailer üzerinden tetikler
 async function _sendInviteMail(req, { token, email, student_name, coachName }) {
-  const protocol = req.headers.host.includes('localhost') || req.headers.host.includes('127.0.0.1') ? 'http' : 'https';
-  const siteUrl = process.env.SITE_URL || `${protocol}://${req.headers.host}`;
-  const invitationLink = `${siteUrl}/davet.html?token=${token}`;
-  const mailerUrl = `${protocol}://${req.headers.host}/api/mailer`;
+  const siteUrl = getSafeOrigin(req);
+  const invitationLink = `${siteUrl}/davet.html?token=${encodeURIComponent(token)}`;
+  const mailerUrl = `${siteUrl}/api/mailer`;
 
   const mailRes = await fetch(mailerUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: makeInternalHeaders(),
     body: JSON.stringify({
       type: 'student_invitation',
       to: email,

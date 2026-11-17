@@ -1016,9 +1016,44 @@ const SB_URL = 'https://imyhenrwmsmyikpollur.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
 const db = supabase.createClient(SB_URL, SB_KEY);
 const WORKER = 'https://claude-proxy.ceylanemin1928.workers.dev';
-const _KR_HASH = '07cf99a32383fa51aedb193252e8815d09cf3f36cd72b95b08e966f681af0ba8'; // kaynak2026
 
-const FERNUS_PUBLISHERS = [
+// ── AUTH & INIT (Gerçek Supabase Developer Oturumu Zorunlu) ──
+async function doLogin() {
+  const email = (document.getElementById('loginEmail')?.value || '').trim();
+  const p = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  try {
+    if (!email || !p) throw new Error('E-posta ve şifre gerekli');
+    const { data, error } = await db.auth.signInWithPassword({ email, password: p });
+    if (error || !data?.user) throw error || new Error('Giriş başarısız');
+    const { data: u } = await db.from('users').select('role').eq('id', data.user.id).maybeSingle();
+    if (!u || !['developer', 'coach'].includes(u.role)) {
+      await db.auth.signOut();
+      throw new Error('Yetkisiz rol');
+    }
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('appMain').style.display = 'grid';
+    initApp();
+  } catch (e) {
+    err.textContent = e.message || 'Giriş başarısız';
+    err.style.display = 'block';
+    setTimeout(() => err.style.display='none', 3000);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (session?.user) {
+      const { data: u } = await db.from('users').select('role').eq('id', session.user.id).maybeSingle();
+      if (u && ['developer', 'coach'].includes(u.role)) {
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('appMain').style.display = 'grid';
+        initApp();
+      }
+    }
+  } catch (_) {}
+});
   { name: "345 (ÜçDörtBeş)", base: "https://ucdortbes.frns.in" },
   { name: "Bilgi Sarmal", base: "https://bilgisarmal.frns.in" },
   { name: "Çap Yayınları", base: "https://capyayinlari.frns.in" },

@@ -4,7 +4,7 @@
 
 import { db } from './config.js';
 import { S, session } from './state.js';
-import { showLoading } from './helpers.js';
+import { showLoading, fmtDate } from './helpers.js';
 
 export async function dbQ(table, query = {}) {
   let q = db.from(table).select('*');
@@ -37,11 +37,17 @@ function _saveCache() {
       coachTodos: S.coachTodos,
       studentSpeeds: S.studentSpeeds,
       workspace: S.workspace,
+      coachProfile: S.coachProfile,
+      olderTaskStats: S.olderTaskStats,
       konuHaftaSoru: S.konuHaftaSoru,
       pendingInvites: S.pendingInvites,
       reportTemplates: S.reportTemplates,
     }));
   } catch(e) {}
+}
+
+export function saveCache() {
+  _saveCache();
 }
 
 function _restoreCache() {
@@ -58,6 +64,8 @@ function _restoreCache() {
     if (c.coachTodos)    S.coachTodos    = c.coachTodos;
     if (c.studentSpeeds) S.studentSpeeds = c.studentSpeeds;
     if (c.workspace)     S.workspace     = c.workspace;
+    if (c.coachProfile)  S.coachProfile  = c.coachProfile;
+    if (c.olderTaskStats) S.olderTaskStats = c.olderTaskStats;
     if (c.konuHaftaSoru) S.konuHaftaSoru = c.konuHaftaSoru;
     if (c.pendingInvites) S.pendingInvites = c.pendingInvites;
     if (c.reportTemplates) S.reportTemplates = c.reportTemplates;
@@ -81,11 +89,21 @@ async function _fetchAll() {
 
   const dateLimit = new Date();
   dateLimit.setDate(dateLimit.getDate() - 60);
-  const dateLimitStr = dateLimit.toISOString().split('T')[0];
+  const dateLimitStr = fmtDate(dateLimit);
 
   const apptLimit = new Date();
   apptLimit.setDate(apptLimit.getDate() - 30);
-  const apptLimitStr = apptLimit.toISOString().split('T')[0];
+  const apptLimitStr = fmtDate(apptLimit);
+
+  const coachP = (role === 'student' || role === 'parent') && coachId
+    ? db.from('users').select('id, full_name, email').eq('id', coachId).maybeSingle()
+    : Promise.resolve({ data: null });
+
+  const olderTaskP = role === 'student'
+    ? db.from('tasks').select('student_id, date, subject, duration, done, task_items').eq('student_id', session.studentId).lt('date', dateLimitStr).limit(1500)
+    : (role === 'coach' || role === 'developer')
+    ? db.from('tasks').select('student_id, date, subject, duration, done, task_items').eq('coach_id', coachId).lt('date', dateLimitStr).limit(2000)
+    : Promise.resolve({ data: [] });
 
   const taskP = role === 'student'
     ? db.from('tasks').select('*').eq('student_id', session.studentId).gte('date', dateLimitStr)
@@ -144,20 +162,29 @@ async function _fetchAll() {
     ? db.from('report_templates').select('*').eq('coach_id', coachId)
     : Promise.resolve({ data: [] });
 
-  const [wsRes, stuRes, taskRes, apptRes, examRes, msgRes, todoRes, speedRes, masteryRes, tekrarLogRes, inviteRes, reportTemplatesRes] =
-    await Promise.all([wsP, stuP, taskP, apptP, examP, msgP, todoP, speedP, masteryP, tekrarLogP, inviteP, reportTemplatesP]);
+  const [wsRes, stuRes, taskRes, apptRes, examRes, msgRes, todoRes, speedRes, masteryRes, tekrarLogRes, inviteRes, reportTemplatesRes, coachRes, olderTaskRes] =
+    await Promise.all([wsP, stuP, taskP, apptP, examP, msgP, todoP, speedP, masteryP, tekrarLogP, inviteP, reportTemplatesP, coachP, olderTaskP]);
 
   S.workspace = wsRes?.data || null;
+  S.coachProfile = coachRes?.data
+    ? { id: coachRes.data.id, fullName: coachRes.data.full_name || 'Koçum', email: coachRes.data.email || '' }
+    : null;
+  S.olderTaskStats = olderTaskRes?.data || [];
 
   S.students = (stuRes.data || []).map(s => ({
     id:       s.id,
     name:     s.full_name || s.username || 'Öğrenci',
+    email:    s.email || '',
     target:   s.target || '',
+    school:   s.school || '',
+    grade:    s.grade || '',
+    target_university: s.target_university || '',
     color:    s.color || '#4da6ff',
     progress: s.progress || 0,
     weekStart:s.week_start || 0,
     username: s.username,
     coachId:  s.coach_id,
+    examProfile: s.exam_profile || 'YKS',
     yksArea:  s.yks_area || 'SAY',
     active:   s.active !== false
   }));
@@ -308,3 +335,4 @@ export async function loadAllData() {
 window.dbQ          = dbQ;
 window.loadAllData  = loadAllData;
 window.invalidateCache = invalidateCache;
+window.saveCache    = saveCache;

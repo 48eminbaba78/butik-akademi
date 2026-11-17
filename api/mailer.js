@@ -5,9 +5,17 @@
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from '@supabase/supabase-js';
+import {
+  SB_URL,
+  getServiceKey,
+  hasInternalSecret,
+  isDeveloperOrCron,
+  requireRole,
+  getSafeOrigin,
+  signReportToken,
+} from '../lib/api-auth.js';
 
-const SB_URL = process.env.SUPABASE_URL || 'https://imyhenrwmsmyikpollur.supabase.co';
-const SB_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SB_SERVICE_KEY = getServiceKey();
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const FROM = `Rostrum Akademi <${process.env.SENDER_EMAIL || 'onboarding@resend.dev'}>`;
 const SITE_URL = process.env.SITE_URL || 'https://rostrumakademi.com';
@@ -83,7 +91,8 @@ function welcomeEmail({ student_name, username, password, login_url, coach_name 
 }
 
 function parentReportEmail({ student_name, student_id, coach_name, completion_percentage, coach_note }) {
-  const reportUrl = `${SITE_URL}/api/generate-pdf-report?studentId=${student_id}`;
+  const sig = student_id ? signReportToken({ studentId: student_id }) : '';
+  const reportUrl = `${SITE_URL}/api/generate-pdf-report?studentId=${encodeURIComponent(student_id || '')}${sig ? '&sig=' + encodeURIComponent(sig) : ''}`;
   return wrap(`
 <tr><td style="background:#1e293b;padding:40px;text-align:center;border-bottom:4px solid #0d9488">
   <div style="font-size:48px;margin-bottom:12px">📈</div>
@@ -150,38 +159,6 @@ function coachWelcomeEmail({ coach_name, email, brand_name }) {
 </td></tr>`);
 }
 
-function applicationEmail({ student_name, status, coach_name }) {
-  const pending = status === 'pending';
-  const accepted = status === 'accepted';
-  const color = pending ? '#E8613A' : accepted ? '#0d9488' : '#ef4444';
-  const icon = pending ? '📬' : accepted ? '🎉' : '📋';
-  const title = pending
-    ? 'Başvurunuz Alındı!'
-    : accepted
-      ? 'Başvurunuz Kabul Edildi!'
-      : 'Başvurunuz Hakkında Bilgi';
-  const body = pending
-    ? `Kurumsal başvurunuz <strong>başarıyla alındı</strong>. <strong>${coach_name || 'Rostrum Akademi ekibi'}</strong> en kısa sürede (ortalama 1 iş günü içinde) sizinle iletişime geçecektir.`
-    : accepted
-      ? `<strong>${coach_name || 'Koçunuz'}</strong> başvurunuzu kabul etti! Yakında hesap bilgilerinizi alacaksınız.`
-      : `<strong>${coach_name || 'Koçumuz'}</strong> şu an için yeni öğrenci kabul etmiyor. Daha fazla bilgi için koçla iletişime geçebilirsiniz.`;
-
-  return wrap(`
-<tr><td style="background:#1e293b;padding:40px;text-align:center;border-bottom:4px solid ${color}">
-  <div style="font-size:48px;margin-bottom:12px">${icon}</div>
-  <h1 style="color:#fff;font-size:24px;font-weight:800;margin:0">${title}</h1>
-</td></tr>
-<tr><td style="padding:36px 40px">
-  <p style="margin:0 0 16px;font-size:15px;color:#444">Merhaba${student_name ? ' <strong>' + student_name + '</strong>' : ''},</p>
-  <p style="margin:0 0 28px;font-size:15px;color:#555;line-height:1.7">${body}</p>
-  ${pending ? `
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;font-size:13px;color:#64748b;line-height:1.6">
-      📞 <strong>Hızlı iletişim:</strong> Acil sorularınız için <a href="mailto:info@rostrumakademi.com" style="color:#E8613A;text-decoration:none">info@rostrumakademi.com</a> adresine yazabilirsiniz.
-    </div>
-  ` : ''}
-  ${accepted ? `<div style="text-align:center"><a href="${SITE_URL}/app.html" style="display:inline-block;background:${color};color:#fff;padding:15px 40px;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none">Platforma Git →</a></div>` : ''}
-</td></tr>`);
-}
 
 function studentInvitationEmail({ student_name, coach_name, invitation_link }) {
   return wrap(`
@@ -468,7 +445,30 @@ function applicationEmail({ student_name, status, coach_name, invite_link }) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { type, ...data } = req.body;
+  const { type, ...data } = req.body || {};
+
+  const COACH_OR_INTERNAL_TYPES = new Set([
+    'student_welcome', 'student_invitation', 'coach_welcome',
+    'onboarding_day1', 'onboarding_rescue', 'onboarding_day3',
+    'onboarding_day5', 'onboarding_day6', 'onboarding_day7',
+  ]);
+
+  if (COACH_OR_INTERNAL_TYPES.has(type)) {
+    if (!hasInternalSecret(req)) {
+      const auth = await requireRole(req, res, ['coach', 'developer']);
+      if (!auth) return;
+    }
+  } else if (type === 'payment_approved') {
+    if (!hasInternalSecret(req) && !(await isDeveloperOrCron(req))) {
+      return res.status(403).json({ error: 'Bu e-posta türü yalnızca yönetici yetkisiyle gönderilebilir' });
+    }
+  } else if (type === 'parent_report') {
+    const auth = await requireRole(req, res, ['coach', 'developer']);
+    if (!auth) return;
+  } else if (type === 'application_update' && data.status !== 'pending') {
+    const auth = await requireRole(req, res, ['coach', 'developer']);
+    if (!auth) return;
+  }
 
   try {
     if (type === 'student_welcome') {
@@ -575,10 +575,7 @@ export default async function handler(req, res) {
         targetEmail = input + '@rostrumakademi.com';
       }
 
-      // Dinamik redirect URL oluşturma (Localhost veya canlı domain)
-      const host = req.headers.host || '';
-      const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
-      const redirectBase = host ? `${protocol}://${host}` : (process.env.SITE_URL || 'https://rostrumakademi.com');
+      const redirectBase = getSafeOrigin(req);
       const redirectTo = `${redirectBase}/app.html`;
 
       const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
@@ -587,10 +584,13 @@ export default async function handler(req, res) {
         options: { redirectTo }
       });
 
-      if (linkErr) throw new Error(linkErr.message);
+      if (linkErr) {
+        console.error('[password_reset linkErr]', linkErr.message);
+        return res.status(400).json({ error: 'Şifre sıfırlama bağlantısı oluşturulamadı. E-posta adresinizi kontrol edin.' });
+      }
 
       const action_link = linkData?.properties?.action_link;
-      if (!action_link) throw new Error('Sıfırlama linki oluşturulamadı');
+      if (!action_link) return res.status(500).json({ error: 'Sıfırlama linki oluşturulamadı' });
 
       await sendEmail(targetEmail, '🔐 Rostrum Akademi — Şifre Sıfırlama', passwordResetEmail({ action_link }));
       return res.status(200).json({ success: true });

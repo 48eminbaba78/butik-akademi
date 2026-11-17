@@ -3,23 +3,36 @@
 // Endpoint: /api/generate-pdf-report
 // ═══════════════════════════════════════════════════════════
 
-import { createClient } from '@supabase/supabase-js';
-
-const SB_URL = process.env.SUPABASE_URL || 'https://imyhenrwmsmyikpollur.supabase.co';
-const SB_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
-const db = createClient(SB_URL, SB_KEY);
+import { getServiceClient, verifyJwtUser, verifyReportToken, escapeHtml } from '../lib/api-auth.js';
 
 export default async function handler(req, res) {
-  const { studentId, paymentId } = req.query;
+  const { studentId, paymentId, sig } = req.query;
 
-  if (paymentId) return generateReceipt(res, paymentId);
+  const auth = await verifyJwtUser(req);
+  const signed = sig ? verifyReportToken(sig) : null;
+
+  if (!auth && !signed) {
+    return res.status(401).send('<h1>Yetkisiz Erişim: Oturum doğrulaması veya geçerli rapor imzası gereklidir.</h1>');
+  }
+
+  let db;
+  try {
+    db = getServiceClient();
+  } catch (_) {
+    return res.status(500).send('<h1>Sunucu yapılandırma hatası.</h1>');
+  }
+
+  if (paymentId) return generateReceipt(res, db, paymentId, auth, signed);
 
   if (!studentId) {
     return res.status(400).send('<h1>Hata: studentId parametresi zorunludur.</h1>');
   }
 
+  if (signed && signed.studentId !== studentId) {
+    return res.status(403).send('<h1>Yetkisiz rapor bağlantısı.</h1>');
+  }
+
   try {
-    // 1. Veri Çekme
     const [{ data: student }, { data: tasks }, { data: exams }, { data: appts }] = await Promise.all([
       db.from('users').select('*, workspaces(brand_name, brand_color)').eq('id', studentId).maybeSingle(),
       db.from('tasks').select('*').eq('student_id', studentId),
@@ -31,25 +44,29 @@ export default async function handler(req, res) {
       return res.status(404).send('<h1>Hata: Öğrenci bulunamadı.</h1>');
     }
 
-    // 2. Metrik Hesaplamaları
+    if (auth) {
+      const r = auth.profile.role;
+      const isOwner = auth.user.id === student.id || student.coach_id === auth.user.id || r === 'developer';
+      if (!isOwner) return res.status(403).send('<h1>Bu öğrencinin raporuna erişim yetkiniz yok.</h1>');
+    }
+
     const totalTasks = tasks?.length || 0;
     const doneTasks = tasks?.filter(t => t.done)?.length || 0;
     const completionRate = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
-    const brandName = student.workspaces?.brand_name || 'Rostrum Akademi';
-    const brandColor = student.workspaces?.brand_color || '#f0a500';
+    const brandName = escapeHtml(student.workspaces?.brand_name || 'Rostrum Akademi');
+    const brandColor = /^#[0-9a-fA-F]{3,8}$/.test(student.workspaces?.brand_color || '') ? student.workspaces.brand_color : '#f0a500';
+    const studentNameEsc = escapeHtml(student.full_name || 'Öğrenci');
 
-    // Sınav Tipleri ve Net Ortalamaları
     const recentExams = exams?.slice(-5) || [];
 
-    // 3. HTML Şablon Oluşturma
     const htmlReport = `
 <!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${student.full_name} — Haftalık Gelişim Raporu</title>
+  <title>${studentNameEsc} — Haftalık Gelişim Raporu</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body {
@@ -178,8 +195,8 @@ export default async function handler(req, res) {
 
   <div class="header">
     <div>
-      <h1>${student.full_name}</h1>
-      <div class="meta">Hedef: <strong>${student.target || 'Belirtilmemiş'}</strong> | Tarih: <strong>${new Date().toLocaleDateString('tr-TR')}</strong></div>
+      <h1>${studentNameEsc}</h1>
+      <div class="meta">Hedef: <strong>${escapeHtml(student.target || 'Belirtilmemiş')}</strong> | Tarih: <strong>${escapeHtml(new Date().toLocaleDateString('tr-TR'))}</strong></div>
     </div>
     <div class="logo">${brandName}</div>
   </div>
@@ -192,7 +209,7 @@ export default async function handler(req, res) {
     </div>
     <div class="card">
       <div class="card-lbl">Genel İlerleme</div>
-      <div class="card-val">%${student.progress}</div>
+      <div class="card-val">%${Number(student.progress) || 0}</div>
       <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">Sistem müfredat yüzdesi</div>
     </div>
     <div class="card">
@@ -216,10 +233,10 @@ export default async function handler(req, res) {
     <tbody>
       ${recentExams.map(e => `
         <tr>
-          <td><strong>${e.name}</strong></td>
-          <td>${e.date}</td>
-          <td><span class="badge" style="background-color: #eff6ff; color: #1d4ed8;">${e.exam_type}</span></td>
-          <td>${Object.entries(e.nets || {}).map(([subject, net]) => `${subject}: <strong>${net}</strong>`).join(', ')}</td>
+          <td><strong>${escapeHtml(e.name)}</strong></td>
+          <td>${escapeHtml(e.date)}</td>
+          <td><span class="badge" style="background-color: #eff6ff; color: #1d4ed8;">${escapeHtml(e.exam_type)}</span></td>
+          <td>${Object.entries(e.nets || {}).map(([subject, net]) => `${escapeHtml(subject)}: <strong>${escapeHtml(net)}</strong>`).join(', ')}</td>
         </tr>
       `).join('')}
     </tbody>
@@ -241,10 +258,10 @@ export default async function handler(req, res) {
     <tbody>
       ${tasks.slice(0, 15).map(t => `
         <tr>
-          <td>${t.date}</td>
-          <td><strong>${t.subject}</strong>${t.note ? `<br><span style="font-size: 11px; color: #64748b;">Not: ${t.note}</span>` : ''}</td>
-          <td>${t.type}</td>
-          <td>${t.duration} dk</td>
+          <td>${escapeHtml(t.date)}</td>
+          <td><strong>${escapeHtml(t.subject)}</strong>${t.note ? `<br><span style="font-size: 11px; color: #64748b;">Not: ${escapeHtml(t.note)}</span>` : ''}</td>
+          <td>${escapeHtml(t.type)}</td>
+          <td>${Number(t.duration) || 0} dk</td>
           <td><span class="badge ${t.done ? '' : 'badge-pending'}">${t.done ? 'Tamamlandı' : 'Bekliyor'}</span></td>
         </tr>
       `).join('')}
@@ -261,15 +278,24 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error('PDF Report generator error:', err);
-    return res.status(500).send(`<h1>Sunucu Hatası: ${err.message}</h1>`);
+    return res.status(500).send('<h1>Rapor oluşturulurken sunucu hatası oluştu.</h1>');
   }
 }
 
-// Yazdırılabilir ödeme makbuzu — eski /api/generate-receipt (?paymentId=...)
-async function generateReceipt(res, paymentId) {
+// Yazdırılabilir ödeme makbuzu
+async function generateReceipt(res, db, paymentId, auth, signed) {
+  if (signed && signed.paymentId !== paymentId) {
+    return res.status(403).send('<h1>Yetkisiz makbuz bağlantısı.</h1>');
+  }
   try {
     const { data: payment } = await db.from('payments').select('*').eq('id', paymentId).maybeSingle();
     if (!payment) return res.status(404).send('<h1>Hata: Ödeme kaydı bulunamadı.</h1>');
+
+    if (auth) {
+      const r = auth.profile.role;
+      const isOwner = payment.coach_id === auth.user.id || payment.user_id === auth.user.id || r === 'developer';
+      if (!isOwner) return res.status(403).send('<h1>Bu makbuza erişim yetkiniz yok.</h1>');
+    }
     if (payment.status && payment.status !== 'completed') {
       return res.status(400).send('<h1>Bu ödeme henüz onaylanmadı — makbuz oluşturulamaz.</h1>');
     }
@@ -278,7 +304,9 @@ async function generateReceipt(res, paymentId) {
 
     const dateTxt = new Date(payment.period_start || payment.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
     const amountTxt = `₺${Number(payment.amount || 0).toLocaleString('tr-TR')}`;
-    const methodLbl = { havale: 'Havale / EFT', elden: 'Elden', diger: 'Diğer' }[payment.method] || (payment.method || '—');
+    const methodLbl = escapeHtml({ havale: 'Havale / EFT', elden: 'Elden', diger: 'Diğer' }[payment.method] || (payment.method || '—'));
+    const coachNameEsc = escapeHtml(payment.coach_name || 'Koç');
+    const refCodeEsc = escapeHtml(coach?.payment_reference_code || '—');
 
     const html = `
 <!DOCTYPE html>
@@ -286,7 +314,7 @@ async function generateReceipt(res, paymentId) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ödeme Makbuzu — ${payment.coach_name || ''}</title>
+  <title>Ödeme Makbuzu — ${coachNameEsc}</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#0f172a;margin:0;padding:3rem;line-height:1.5}
@@ -319,14 +347,14 @@ async function generateReceipt(res, paymentId) {
       <div class="stamp">✓ Havale/EFT ile Tahsil Edilmiştir</div>
     </div>
 
-    <h1>${payment.coach_name || 'Koç'}</h1>
-    <div class="meta">Makbuz Tarihi: ${dateTxt}</div>
+    <h1>${coachNameEsc}</h1>
+    <div class="meta">Makbuz Tarihi: ${escapeHtml(dateTxt)}</div>
 
     <div class="grid">
       <div class="row"><div class="row-lbl">Ödeme Yöntemi</div><div class="row-val">${methodLbl}</div></div>
-      <div class="row"><div class="row-lbl">Dönem</div><div class="row-val">${payment.period_months || 1} Ay</div></div>
-      <div class="row"><div class="row-lbl">Referans Kodu</div><div class="row-val">${coach?.payment_reference_code || '—'}</div></div>
-      <div class="row"><div class="row-lbl">Erişim Bitiş Tarihi</div><div class="row-val">${payment.period_end ? new Date(payment.period_end).toLocaleDateString('tr-TR') : '—'}</div></div>
+      <div class="row"><div class="row-lbl">Dönem</div><div class="row-val">${Number(payment.period_months) || 1} Ay</div></div>
+      <div class="row"><div class="row-lbl">Referans Kodu</div><div class="row-val">${refCodeEsc}</div></div>
+      <div class="row"><div class="row-lbl">Erişim Bitiş Tarihi</div><div class="row-val">${payment.period_end ? escapeHtml(new Date(payment.period_end).toLocaleDateString('tr-TR')) : '—'}</div></div>
     </div>
 
     <div class="total">
@@ -343,6 +371,6 @@ async function generateReceipt(res, paymentId) {
     return res.status(200).send(html);
   } catch (err) {
     console.error('Receipt generator error:', err);
-    return res.status(500).send(`<h1>Sunucu Hatası: ${err.message}</h1>`);
+    return res.status(500).send('<h1>Makbuz oluşturulurken sunucu hatası oluştu.</h1>');
   }
 }

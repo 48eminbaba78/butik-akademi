@@ -18,6 +18,8 @@ export const S = {
   msgThread: null,
   workspace: null,
   studentSpeeds: [],
+  coachProfile: null,
+  olderTaskStats: [],
   konuHaftaSoru: [],
   pendingInvites: [],
   reportTemplates: []
@@ -57,16 +59,25 @@ window.EXAM_SORU = {
 
 // Deneme dersi → KONU_LISTESI anahtarı
 window.EXAM_KONU_MAP = {
-  'TYT_Türkçe':       ['Dil Bilgisi'],
-  'TYT_Matematik':    ['TYT Matematik', 'Geometri'],
-  'TYT_Fen':          ['TYT Fizik', 'TYT Kimya', 'TYT Biyoloji'],
-  'TYT_Sosyal':       [],
-  'AYT-SAY_Matematik':['AYT Matematik', 'Geometri'],
-  'AYT-SAY_Fizik':    ['AYT Fizik'],
-  'AYT-SAY_Kimya':    ['AYT Kimya'],
-  'AYT-SAY_Biyoloji': ['AYT Biyoloji'],
-  'AYT-EA_Matematik': ['AYT Matematik', 'Geometri'],
-  'AYT-EA_Edebiyat':  ['Dil Bilgisi'],
+  'TYT_Türkçe':         ['Dil Bilgisi'],
+  'TYT_Matematik':      ['TYT Matematik', 'Geometri'],
+  'TYT_Fen':            ['TYT Fizik', 'TYT Kimya', 'TYT Biyoloji'],
+  'TYT_Sosyal':         ['Tarih (TYT-AYT)', 'Coğrafya (TYT-AYT)', 'Felsefe Grubu & Din'],
+  'AYT-SAY_Matematik':  ['AYT Matematik', 'Geometri'],
+  'AYT-SAY_Fizik':      ['AYT Fizik'],
+  'AYT-SAY_Kimya':      ['AYT Kimya'],
+  'AYT-SAY_Biyoloji':   ['AYT Biyoloji'],
+  'AYT-EA_Matematik':   ['AYT Matematik', 'Geometri'],
+  'AYT-EA_Edebiyat':    ['AYT Edebiyat', 'Dil Bilgisi'],
+  'AYT-EA_Tarih':       ['Tarih (TYT-AYT)'],
+  'AYT-EA_Coğrafya':    ['Coğrafya (TYT-AYT)'],
+  'AYT-SOZ_Edebiyat':   ['AYT Edebiyat', 'Dil Bilgisi'],
+  'AYT-SOZ_Tarih1':     ['Tarih (TYT-AYT)'],
+  'AYT-SOZ_Tarih2':     ['Tarih (TYT-AYT)'],
+  'AYT-SOZ_Coğrafya1':  ['Coğrafya (TYT-AYT)'],
+  'AYT-SOZ_Coğrafya2':  ['Coğrafya (TYT-AYT)'],
+  'AYT-SOZ_Felsefe':    ['Felsefe Grubu & Din'],
+  'AYT-SOZ_Din':        ['Felsefe Grubu & Din'],
 };
 
 window.SUBJECT_MAP = {

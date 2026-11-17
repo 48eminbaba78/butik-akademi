@@ -3,22 +3,17 @@
 // Push bildirimleri + Offline cache desteği
 // ═══════════════════════════════════════════════
 
-const CACHE_NAME = 'rostrum-v12';
+const CACHE_NAME = 'rostrum-v13';
 const OFFLINE_URL = '/app.html';
 
-// Uygulama kabuğu — bu dosyalar her zaman cache'lenir
+// Uygulama kabuğu — statik varlıklar (HTML ve hashed Vite chunklar hariç)
 const SHELL_FILES = [
-  '/',
-  '/app.html',
-  '/app.css?v=11',
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png'
 ];
 
-// ── INSTALL: Temel dosyaları cache'le ──
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install — cache oluşturuluyor v10');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(SHELL_FILES).catch(err => {
@@ -29,9 +24,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// ── ACTIVATE: Eski cache'leri temizle ──
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate — eski cache temizleniyor v10');
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
@@ -42,20 +35,27 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// ── FETCH: Network-first stratejisi ──
 self.addEventListener('fetch', (event) => {
-  // Chrome extensions & non-http/https isteklerini filtrele
-  if (!event.request.url.startsWith('http://') && !event.request.url.startsWith('https://')) return;
-  // API isteklerini cache'leme
-  if (event.request.url.includes('/api/')) return;
-  // POST isteklerini cache'leme
+  const url = event.request.url || '';
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+  // API ve Supabase isteklerini ASLA cache'leme (kullanıcı verisi izolasyonu + taze oturum)
+  if (url.includes('/api/') || url.includes('supabase.co')) return;
   if (event.request.method !== 'GET') return;
 
+  // HTML navigasyonları vercel.json no-store politikasıyla uyumlu olarak her zaman ağdan taze alınır
+  const isHtmlNav = event.request.mode === 'navigate' || (event.request.headers.get('accept') || '').includes('text/html');
+  if (isHtmlNav) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(OFFLINE_URL))
+    );
+    return;
+  }
+
+  // Hashed Vite assetleri & statik dosyalar: ağ öncelikli, offline fallback
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Başarılı yanıtı cache'e kaydet
-        if (response.status === 200) {
+        if (response.status === 200 && url.startsWith(self.location.origin)) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone).catch(() => {});
@@ -63,16 +63,7 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => {
-        // Offline ise cache'den dön
-        return caches.match(event.request).then((cached) => {
-          if (cached) return cached;
-          // HTML isteklerinde offline sayfayı göster
-          if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match(OFFLINE_URL);
-          }
-        });
-      })
+      .catch(() => caches.match(event.request))
   );
 });
 

@@ -10,10 +10,20 @@ import {
   hydrateProgramPlan,
   extractJsonObject
 } from '../lib/program-planner.js';
+import {
+  SB_URL,
+  SB_ANON,
+  getServiceKey,
+  getServiceClient,
+  applyRestrictedCors,
+  verifyJwtUser,
+} from '../lib/api-auth.js';
 
-const SB_URL = process.env.SUPABASE_URL || 'https://imyhenrwmsmyikpollur.supabase.co';
-const SB_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
+const SB_KEY = SB_ANON;
 const db = createClient(SB_URL, SB_KEY);
+function privDb() {
+  return getServiceKey() ? getServiceClient() : db;
+}
 
 // ── Sunucu Taraflı Topraklama (Grounding) ─────────────────
 // Client'ın gönderdiği context'e GÜVENİLMEZ. Çağıranın JWT'siyle (RLS altında)
@@ -43,7 +53,7 @@ async function buildVerifiedContext(req, mode) {
     // gerçek fiyat/IBAN bilgisi topraklamaya eklenir (db: service-scoped client,
     // platform_settings zaten public-okuma tablosu).
     if (mode === 'support' && (me.role === 'coach' || me.role === 'developer')) {
-      const { data: pay } = await db.from('platform_settings').select('value').eq('key', 'payment_settings').maybeSingle();
+      const { data: pay } = await privDb().from('platform_settings').select('value').eq('key', 'payment_settings').maybeSingle();
       const ps = pay?.value;
       if (ps) {
         block += `\nÖDEME/FİYAT BİLGİSİ (GERÇEK — bunun dışında fiyat UYDURMA): Bireysel ${ps.price_bireysel ? ps.price_bireysel + '₺/ay' : 'ayarlanmadı'}, Profesyonel ${ps.price_profesyonel ? ps.price_profesyonel + '₺/ay' : 'ayarlanmadı'}, Banka: ${ps.bank_name || '—'}, IBAN: ${ps.iban || '—'}.`;
@@ -114,11 +124,7 @@ async function buildVerifiedContext(req, mode) {
 }
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (applyRestrictedCors(req, res, 'POST, OPTIONS')) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   if (req.body?.mode === 'program_builder') {
@@ -128,12 +134,19 @@ export default async function handler(req, res) {
   try {
     const { messages, context, userRole, imageBase64, mimeType, text, mode } = req.body;
 
+    if (mode !== 'support') {
+      const callerAuth = await verifyJwtUser(req);
+      if (!callerAuth) {
+        return res.status(401).json({ error: 'Yapay zeka asistanını kullanmak için oturum açmalısınız.' });
+      }
+    }
+
     // ── Görsel varsa Gemini Vision kullan ───────────────────
     if (imageBase64) {
       let GEMINI_KEY = process.env.GEMINI_API_KEY;
       if (!GEMINI_KEY) {
         try {
-          const { data } = await db.from('platform_settings').select('value').eq('key', 'ai_settings').maybeSingle();
+          const { data } = await privDb().from('platform_settings').select('value').eq('key', 'ai_settings').maybeSingle();
           GEMINI_KEY = data?.value?.gemini_api_key;
         } catch (e) { }
       }
@@ -150,13 +163,13 @@ export default async function handler(req, res) {
         }
       ];
       const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
         {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             system_instruction: { parts: [{ text: sysPrompt }] },
             contents,
-            generationConfig: { temperature: 0.4, maxOutputTokens: 2048 }
+            generationConfig: { temperature: 0.4, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } }
           })
         }
       );
@@ -166,7 +179,7 @@ export default async function handler(req, res) {
       }
       const gd = await geminiRes.json();
       const reply = gd?.candidates?.[0]?.content?.parts?.[0]?.text || 'Yanıt üretilemedi.';
-      return res.status(200).json({ reply, model: 'gemini-1.5-flash' });
+      return res.status(200).json({ reply, model: 'gemini-2.5-flash' });
     }
 
     // ── Metin: Groq / LLaMA ─────────────────────────────────
@@ -176,7 +189,7 @@ export default async function handler(req, res) {
 
     let GROQ_KEY = process.env.GROQ_API_KEY;
     if (!GROQ_KEY) {
-      const { data: aiSettings } = await db
+      const { data: aiSettings } = await privDb()
         .from('platform_settings')
         .select('value')
         .eq('key', 'ai_settings')
@@ -408,7 +421,7 @@ async function resolveAIKeys() {
 
   if (!anthropicKey || !geminiKey || !groqKey) {
     try {
-      const { data } = await db.from('platform_settings').select('value').eq('key', 'ai_settings').maybeSingle();
+      const { data } = await privDb().from('platform_settings').select('value').eq('key', 'ai_settings').maybeSingle();
       const v = data?.value || {};
       if (!anthropicKey && v.anthropic_api_key) anthropicKey = String(v.anthropic_api_key).trim();
       if (!geminiKey && v.gemini_api_key) geminiKey = String(v.gemini_api_key).trim();
@@ -472,11 +485,11 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
     for (const gModel of ['gemini-2.5-flash', 'gemini-2.0-flash']) {
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 42000);
+        const timer = setTimeout(() => controller.abort(), 28000);
         const generationConfig = {
           responseMimeType: 'application/json',
           temperature: 0.3,
-          maxOutputTokens: 12288,
+          maxOutputTokens: 8192,
         };
         if (gModel.includes('2.5')) {
           generationConfig.thinkingConfig = { thinkingBudget: 0 };
@@ -724,7 +737,7 @@ Görevin, koçun verdiği talimatlar ile öğrencinin sistemdeki TÜM gerçek ve
 
 KESİN KURALLAR:
 1. SADECE geçerli JSON döndür. Başka açıklama, markdown veya ekstra metin YAZMA.
-2. Her gün için toplam dakika KESİNLİKLE [${minDaily}, ${maxDaily}] aralığında kalsın (günlük ortalama ~${Math.round((Number(minDaily) + Number(maxDaily)) / 2)} dk; günde 4-6 görev, topic_note en fazla 6-8 kelime olsun).
+2. Her gün için toplam dakika KESİNLİKLE [${minDaily}, ${maxDaily}] aralığında kalsın (günlük ortalama ~${Math.round((Number(minDaily) + Number(maxDaily)) / 2)} dk).
 3. ÖĞRENCİNİN HIZLARI & VİDEO HIZI:
    - Video izleme hızı: ${videoSpeed}x (örn. 120 dk ham video ${videoSpeed}x hızda ${Math.round(120 / Number(videoSpeed))} dk sürer).
    - Eğer bir playlistte TEK bir video çok uzunsa (ör. 90-150 dk ham video), onu TEK oturuşta verme! "part_index": 1, "part_total": 2 (ve ertesi/sonraki güne "part_index": 2, "part_total": 2) şeklinde insani 35-55 dk'lık parçalara böl.
@@ -862,7 +875,7 @@ Katalogda tam resource_id + remIdx içinden item_indices ver; katalog dışı i�
           aiRes = retryRes;
           hydrated = retryHydrated;
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     if (clampedDays >= 2 && hydrated.tasks.length < clampedDays * 2) {

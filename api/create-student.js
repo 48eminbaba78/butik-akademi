@@ -1,27 +1,57 @@
-import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
+import {
+  getServiceClient,
+  requireRole,
+  getSafeOrigin,
+  makeInternalHeaders,
+  checkCoachStudentQuota,
+} from '../lib/api-auth.js';
+
+function localIsoToday() {
+  const now = new Date(Date.now() + 3 * 3600 * 1000);
+  return now.toISOString().slice(0, 10);
+}
 
 export default async function handler(req, res) {
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getServiceClient();
+  } catch (_) {
+    return res.status(500).json({ error: 'Sunucu yapılandırma hatası' });
+  }
+
+  // ── PUBLIC READ: Koç ödeme modalı için hassas anahtar içermeyen banka/fiyat bilgisi ──
+  if (req.method === 'GET' && req.query?.type === 'payment-info') {
+    const { data } = await supabaseAdmin
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'payment_settings')
+      .maybeSingle();
+    const v = data?.value || {};
+    return res.status(200).json({
+      bank_name: v.bank_name || '',
+      account_holder: v.account_holder || '',
+      iban: v.iban || '',
+      price_bireysel: v.price_bireysel || 0,
+      price_bireysel_10mo: v.price_bireysel_10mo || 0,
+      price_profesyonel: v.price_profesyonel || 0,
+      price_profesyonel_10mo: v.price_profesyonel_10mo || 0,
+    });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const supabaseAdmin = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-
-  // ── PUBLIC: Koç kayıt (type === 'coach', kimlik doğrulama gerekmez) ──
-  if (req.body.type === 'coach') {
+  // ── PUBLIC: Koç kayıt (type === 'coach') ──
+  if (req.body?.type === 'coach') {
     const { full_name, email, password, brand_name } = req.body;
     const plan_tier = ['bireysel', 'profesyonel'].includes(req.body.plan_tier) ? req.body.plan_tier : 'bireysel';
     if (!full_name || !email || !password) {
       return res.status(400).json({ error: 'Ad, e-posta ve şifre zorunludur.' });
     }
-    if (password.length < 8) {
+    if (String(password).length < 8) {
       return res.status(400).json({ error: 'Şifre en az 8 karakter olmalıdır.' });
     }
 
-    // Auth kullanıcısı oluştur
     const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -29,7 +59,7 @@ export default async function handler(req, res) {
       user_metadata: { full_name, role: 'coach' }
     });
     if (createErr) {
-      const msg = createErr.message.includes('already') ? 'Bu e-posta adresiyle zaten bir hesap var.' : createErr.message;
+      const msg = createErr.message.includes('already') ? 'Bu e-posta adresiyle zaten bir hesap var.' : 'Hesap oluşturulamadı.';
       return res.status(400).json({ error: msg });
     }
 
@@ -37,11 +67,10 @@ export default async function handler(req, res) {
     const passHash = crypto.createHash('sha256').update(password).digest('hex');
     const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // users tablosuna yaz
     const { error: profileErr } = await supabaseAdmin.from('users').upsert({
       id: userId,
       full_name,
-      username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, ''),
+      username: String(email).split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, ''),
       password_hash: passHash,
       role: 'coach',
       email,
@@ -53,34 +82,30 @@ export default async function handler(req, res) {
     });
     if (profileErr) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      return res.status(400).json({ error: profileErr.message });
+      return res.status(400).json({ error: 'Profil oluşturulamadı.' });
     }
 
-    // workspace oluştur
     await supabaseAdmin.from('workspaces').upsert({
       coach_id: userId,
-      brand_name: brand_name || (full_name.split(' ')[0] + ' Akademi'),
+      brand_name: brand_name || (String(full_name).split(' ')[0] + ' Akademi'),
       brand_color: '#E8613A',
       onboarding_done: false
     });
 
-    // Hoş geldin maili gönder (fire-and-forget)
     try {
-      const protocol = (req.headers.host || '').includes('localhost') ? 'http' : 'https';
-      const mailerUrl = `${protocol}://${req.headers.host}/api/mailer`;
+      const mailerUrl = `${getSafeOrigin(req)}/api/mailer`;
       await fetch(mailerUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: makeInternalHeaders(),
         body: JSON.stringify({
           type: 'coach_welcome',
           to: email,
           coach_name: full_name,
-          email: email,
-          brand_name: brand_name || (full_name.split(' ')[0] + ' Akademi')
+          email,
+          brand_name: brand_name || (String(full_name).split(' ')[0] + ' Akademi')
         })
       });
     } catch (mailErr) {
-      // Mail hatası kayıt akışını engellemez
       console.error('[Coach Welcome Email Error]', mailErr.message);
     }
 
@@ -88,37 +113,25 @@ export default async function handler(req, res) {
   }
 
   // ── AUTHENTICATED: Koç ödeme/dekont bildirimi (type === 'submit-payment') ──
-  if (req.body.type === 'submit-payment') {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Token gerekli' });
+  if (req.body?.type === 'submit-payment') {
+    const auth = await requireRole(req, res, ['coach', 'developer']);
+    if (!auth) return;
 
-    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Yetkisiz' });
-
-    const { data: coach, error: coachErr } = await supabaseAdmin
-      .from('users')
-      .select('id, full_name, username, email, role, payment_reference_code, plan_tier')
-      .eq('id', user.id)
-      .single();
-    if (coachErr || !coach) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
-    if (!['coach', 'developer'].includes(coach.role)) {
-      return res.status(403).json({ error: 'Sadece koçlar ödeme bildirebilir' });
-    }
-
+    const coach = auth.profile;
     const { months, receipt_path } = req.body;
     const periodMonths = [1, 3, 6, 10, 12].includes(+months) ? +months : 1;
-    if (!receipt_path) return res.status(400).json({ error: 'Dekont dosyası gerekli' });
+    if (!receipt_path || !String(receipt_path).startsWith(`${coach.id}/`)) {
+      return res.status(400).json({ error: 'Geçersiz dekont dosya yolu' });
+    }
 
-    // Referans kodu yoksa üret
     let refCode = coach.payment_reference_code;
     if (!refCode) {
       const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc('generate_payment_ref_code');
-      if (rpcErr) return res.status(500).json({ error: 'Referans kodu üretilemedi: ' + rpcErr.message });
+      if (rpcErr) return res.status(500).json({ error: 'Referans kodu üretilemedi' });
       refCode = rpcData;
       await supabaseAdmin.from('users').update({ payment_reference_code: refCode }).eq('id', coach.id);
     }
 
-    // Fiyatı platform_settings'ten oku (hardcode yok) — koçun kendi paketine (plan_tier) göre
     const { data: settingsRow } = await supabaseAdmin
       .from('platform_settings')
       .select('value')
@@ -131,49 +144,50 @@ export default async function handler(req, res) {
       ? (+sv[`price_${tier}_10mo`] || priceMonthly * 10)
       : priceMonthly * periodMonths;
 
+    const today = localIsoToday();
     const { error: insertErr } = await supabaseAdmin.from('payments').insert({
       coach_id: coach.id,
       coach_name: coach.full_name || coach.username || coach.email || '',
       amount,
       method: 'havale',
       period_months: periodMonths,
-      period_start: new Date().toISOString().split('T')[0],
-      payment_date: new Date().toISOString().split('T')[0],
+      period_start: today,
+      payment_date: today,
       receipt_url: receipt_path,
       note: 'Koç tarafından bildirildi',
       verified: false,
       status: 'pending'
     });
-    if (insertErr) return res.status(400).json({ error: insertErr.message });
+    if (insertErr) return res.status(400).json({ error: 'Ödeme bildirimi kaydedilemedi' });
 
     return res.status(200).json({ success: true, refCode });
   }
 
   // ── AUTHENTICATED: Öğrenci oluşturma ──
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Token gerekli' });
+  const auth = await requireRole(req, res, ['coach', 'developer']);
+  if (!auth) return;
 
-  const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-  if (authErr || !user) return res.status(401).json({ error: 'Yetkisiz' });
-
-  const { data: caller } = await supabaseAdmin.from('users').select('role').eq('id', user.id).single();
-  if (!caller || !['coach', 'developer'].includes(caller.role)) {
-    return res.status(403).json({ error: 'Sadece koçlar öğrenci ekleyebilir' });
-  }
-
-  const { email, password, full_name, username, color, target, progress, week_start, coach_id, exam_profile, yks_area } = req.body;
+  const { email, password, full_name, username, color, target, progress, week_start, coach_id, exam_profile, yks_area } = req.body || {};
   if (!email || !password || !full_name || !username) {
     return res.status(400).json({ error: 'Zorunlu alanlar eksik' });
   }
 
-  // Admin API ile kullanıcı oluştur
+  // Koç başka bir koça öğrenci enjekte edemez — yalnızca kendi adına ekler
+  const effectiveCoachId = (auth.profile.role === 'developer' && coach_id) ? coach_id : auth.user.id;
+  const quota = await checkCoachStudentQuota(supabaseAdmin, effectiveCoachId);
+  if (!quota.allowed) {
+    return res.status(403).json({
+      error: `${quota.tier === 'profesyonel' ? 'Profesyonel' : 'Bireysel'} paket öğrenci limitinize (${quota.limit}) ulaştınız. Lütfen paketinizi yükseltin.`
+    });
+  }
+
   const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
     user_metadata: { full_name, role: 'student' }
   });
-  if (createErr) return res.status(400).json({ error: createErr.message });
+  if (createErr) return res.status(400).json({ error: 'Öğrenci hesabı oluşturulamadı' });
 
   const userId = newUser.user.id;
   const passHash = crypto.createHash('sha256').update(password).digest('hex');
@@ -189,32 +203,30 @@ export default async function handler(req, res) {
     target: target || '',
     progress: progress || 0,
     week_start: week_start || 0,
-    coach_id,
+    coach_id: effectiveCoachId,
     exam_profile: exam_profile || 'YKS',
-    yks_area: yks_area || 'SAY'
+    yks_area: ['SAY', 'EA', 'SOZ', 'DIL'].includes(yks_area) ? yks_area : 'SAY'
   });
 
   if (profileErr) {
     await supabaseAdmin.auth.admin.deleteUser(userId);
-    return res.status(400).json({ error: profileErr.message });
+    return res.status(400).json({ error: 'Öğrenci profili kaydedilemedi' });
   }
 
-  // E-posta gönderimini tetikle
   try {
-    const { data: coachData } = await supabaseAdmin.from('users').select('full_name').eq('id', coach_id).single();
+    const { data: coachData } = await supabaseAdmin.from('users').select('full_name').eq('id', effectiveCoachId).maybeSingle();
     const coachName = coachData?.full_name || 'Koçunuz';
-    const protocol = req.headers.host.includes('localhost') || req.headers.host.includes('127.0.0.1') ? 'http' : 'https';
-    const mailerUrl = `${protocol}://${req.headers.host}/api/mailer`;
-    
+    const mailerUrl = `${getSafeOrigin(req)}/api/mailer`;
+
     await fetch(mailerUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: makeInternalHeaders(),
       body: JSON.stringify({
         type: 'student_welcome',
         to: email,
         student_name: full_name,
-        username: username,
-        password: password,
+        username,
+        password,
         coach_name: coachName
       })
     });
