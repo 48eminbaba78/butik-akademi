@@ -5,6 +5,11 @@
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from '@supabase/supabase-js';
+import {
+  buildResourceTopicIndex,
+  hydrateProgramPlan,
+  extractJsonObject
+} from '../lib/program-planner.js';
 
 const SB_URL = process.env.SUPABASE_URL || 'https://imyhenrwmsmyikpollur.supabase.co';
 const SB_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteWhlbnJ3bXNteWlrcG9sbHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDE3ODYsImV4cCI6MjA5NTcxNzc4Nn0._ySJ5ArD1GYthyitHjdyEjLaUhextIwEqpRoF5ScI34';
@@ -115,6 +120,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  if (req.body?.mode === 'program_builder') {
+    return handleProgramBuilder(req, res);
+  }
 
   try {
     const { messages, context, userRole, imageBase64, mimeType, text, mode } = req.body;
@@ -380,4 +389,363 @@ KATI KURAL: Belirli bir öğrenci ismi/verisi hakkında analiz, rapor, veli metn
   }
 
   return base;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AKILLI PROGRAM OLUŞTURUCU (mode === 'program_builder')
+// Öğrencinin TÜM verilerini (profil, hızlar, kitaplar, denemeler, mastery,
+// son 60 gün görev ilerlemesi, mesajlar) + kaynak kataloğunu topraklar;
+// koç talimatı & revizyon notuyla JSON program üretip hidrate eder.
+// ═══════════════════════════════════════════════════════════════════════
+async function resolveAIKeys() {
+  let anthropicKey = (process.env.ANTHROPIC_API_KEY || '').trim();
+  let geminiKey = (process.env.GEMINI_API_KEY || '').trim();
+  let groqKey = (process.env.GROQ_API_KEY || '').trim();
+
+  if (!anthropicKey || !geminiKey || !groqKey) {
+    try {
+      const { data } = await db.from('platform_settings').select('value').eq('key', 'ai_settings').maybeSingle();
+      const v = data?.value || {};
+      if (!anthropicKey && v.anthropic_api_key) anthropicKey = String(v.anthropic_api_key).trim();
+      if (!geminiKey && v.gemini_api_key) geminiKey = String(v.gemini_api_key).trim();
+      if (!groqKey && v.groq_api_key) groqKey = String(v.groq_api_key).trim();
+    } catch (_) {}
+  }
+  return { anthropicKey, geminiKey, groqKey };
+}
+
+async function callStructuredProgramAI(systemPrompt, userPrompt, keys) {
+  const errors = [];
+
+  // 1. Anthropic Claude (öncelikli — karmaşık planlama & JSON tutarlılığı yüksek)
+  if (keys.anthropicKey) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 24000);
+      const model = (process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5').trim();
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': keys.anthropicKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 6000,
+          temperature: 0.3,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+        }),
+      });
+      clearTimeout(timer);
+      if (resp.ok) {
+        const data = await resp.json();
+        const text = (data.content || []).map(b => b.text || '').join('').trim();
+        return { json: extractJsonObject(text), provider: 'anthropic', model };
+      }
+      errors.push(`Anthropic ${resp.status}`);
+    } catch (e) {
+      errors.push(`Anthropic: ${e.message}`);
+    }
+  }
+
+  // 2. Google Gemini
+  if (keys.geminiKey) {
+    for (const gModel of ['gemini-2.5-flash', 'gemini-1.5-flash']) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 20000);
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${keys.geminiKey}`, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ parts: [{ text: userPrompt }] }],
+            generationConfig: { responseMimeType: 'application/json', temperature: 0.3, maxOutputTokens: 8192 },
+          }),
+        });
+        clearTimeout(timer);
+        if (resp.ok) {
+          const data = await resp.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          return { json: extractJsonObject(text), provider: 'gemini', model: gModel };
+        }
+        errors.push(`${gModel} ${resp.status}`);
+      } catch (e) {
+        errors.push(`${gModel}: ${e.message}`);
+      }
+    }
+  }
+
+  // 3. Groq (openai/gpt-oss-120b — hızlı JSON modu)
+  if (keys.groqKey) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 22000);
+      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${keys.groqKey}`,
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b',
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.3,
+          max_tokens: 6000,
+        }),
+      });
+      clearTimeout(timer);
+      if (resp.ok) {
+        const data = await resp.json();
+        const text = data?.choices?.[0]?.message?.content || '';
+        return { json: extractJsonObject(text), provider: 'groq', model: 'openai/gpt-oss-120b' };
+      }
+      errors.push(`Groq ${resp.status}`);
+    } catch (e) {
+      errors.push(`Groq: ${e.message}`);
+    }
+  }
+
+  throw new Error('Program üretilemedi (' + (errors.join(' | ') || 'API anahtarı yapılandırılmamış') + ')');
+}
+
+function addDaysIso(isoDate, delta) {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + delta)).toISOString().slice(0, 10);
+}
+
+async function handleProgramBuilder(req, res) {
+  try {
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'Oturum doğrulaması gerekli.' });
+
+    const userDb = createClient(SB_URL, SB_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: { user }, error: uErr } = await userDb.auth.getUser(token);
+    if (uErr || !user) return res.status(401).json({ error: 'Geçersiz oturum.' });
+
+    const { data: me } = await userDb.from('users').select('id, full_name, role').eq('id', user.id).maybeSingle();
+    if (!me || (me.role !== 'coach' && me.role !== 'developer')) {
+      return res.status(403).json({ error: 'Bu işlem yalnızca koçlar içindir.' });
+    }
+
+    const {
+      studentId,
+      startDate,
+      daysCount = 7,
+      minDaily = 270,
+      maxDaily = 330,
+      videoSpeed = 1.5,
+      coachPrompt = '',
+      previousDraft = null,
+      revisionPrompt = '',
+    } = req.body || {};
+
+    if (!studentId || !/^\d{4}-\d{2}-\d{2}$/.test(String(startDate || ''))) {
+      return res.status(400).json({ error: 'studentId ve geçerli startDate (YYYY-MM-DD) zorunludur.' });
+    }
+
+    const clampedDays = Math.max(1, Math.min(14, Number(daysCount) || 7));
+    const endDate = addDaysIso(startDate, clampedDays - 1);
+    const sixtyDaysAgo = addDaysIso(startDate, -60);
+
+    // 1. Öğrencinin TÜM verilerini ve aktif kaynak kataloğunu paralel çek
+    const [stuRes, profRes, speedRes, bookRes, examRes, masteryRes, taskRes, msgRes, resCatalog] = await Promise.all([
+      userDb.from('users').select('id, full_name, target, yks_area, week_start, coach_id').eq('id', studentId).maybeSingle(),
+      userDb.from('student_profiles').select('level, struggling_subjects, daily_capacity, coach_note, target_university, target_department, target_rank').eq('id', studentId).maybeSingle(),
+      userDb.from('student_speeds').select('exam_type, subject, secs_per_question').eq('student_id', studentId),
+      userDb.from('student_books').select('name, total_tests, completed_tests').eq('student_id', studentId),
+      userDb.from('exams').select('name, date, exam_type, nets, exam_details').eq('student_id', studentId).order('date', { ascending: false }).limit(8),
+      userDb.from('konu_mastery').select('subject, konu, stars, status, last_review_date').eq('student_id', studentId),
+      userDb.from('tasks').select('id, date, type, exam_type, subject, duration, done, note, task_items').eq('student_id', studentId).gte('date', sixtyDaysAgo).order('date', { ascending: true }).limit(600),
+      userDb.from('messages').select('from_role, text, created_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(25),
+      userDb.from('resources').select('id, exam_type, subject, publisher, name, resource_type, coach_id, active, tests').eq('active', true).limit(300),
+    ]);
+
+    const student = stuRes.data;
+    if (!student) return res.status(404).json({ error: 'Öğrenci bulunamadı.' });
+    if (me.role !== 'developer' && student.coach_id !== me.id) {
+      return res.status(403).json({ error: 'Bu öğrenciye erişim yetkiniz yok.' });
+    }
+
+    const pastTasks = taskRes.data || [];
+    const completedLabelsBySubject = {};
+    const pendingLabelsBySubject = {};
+    const dailyHistory = {};
+    const existingTasksInRange = [];
+
+    for (const t of pastTasks) {
+      if (t.date >= startDate && t.date <= endDate) {
+        existingTasksInRange.push({ id: t.id, date: t.date, subject: t.subject, type: t.type, duration: t.duration, done: !!t.done });
+      }
+      if (!dailyHistory[t.date]) dailyHistory[t.date] = { total: 0, done: 0 };
+      dailyHistory[t.date].total += Number(t.duration || 0);
+      if (t.done) dailyHistory[t.date].done += Number(t.duration || 0);
+
+      const items = Array.isArray(t.task_items) ? t.task_items : [];
+      for (const it of items) {
+        const lbl = String(it?.label || it || '').trim();
+        if (!lbl) continue;
+        const isDone = !!(t.done || it?.done);
+        const map = isDone ? completedLabelsBySubject : pendingLabelsBySubject;
+        if (!map[t.subject]) map[t.subject] = new Set();
+        map[t.subject].add(lbl);
+      }
+    }
+
+    const histDays = Object.values(dailyHistory);
+    const avgAssignedMin = histDays.length ? Math.round(histDays.reduce((s, d) => s + d.total, 0) / histDays.length) : null;
+    const recentTasksCompact = pastTasks.slice(-28).map(t => ({
+      date: t.date, type: t.type, exam: t.exam_type, subject: t.subject, dur: t.duration, done: !!t.done, note: t.note || '',
+    }));
+
+    const weakTopics = (masteryRes.data || [])
+      .filter(m => m.status !== 'td' && m.status !== 'not_started')
+      .map(m => {
+        const daysSince = m.last_review_date ? Math.floor((Date.now() - new Date(m.last_review_date).getTime()) / 86400000) : 999;
+        return { konu: m.konu, subject: m.subject, stars: m.stars, daysSince };
+      })
+      .filter(m => m.stars <= 2 || m.daysSince > 20)
+      .slice(0, 15);
+
+    const recentMessages = [...(msgRes.data || [])].reverse().map(m => `[${m.from_role}] ${m.text}`).slice(-15);
+
+    const resources = resCatalog.data || [];
+    const resourcesById = Object.fromEntries(resources.map(r => [r.id, r]));
+    const hintText = [
+      coachPrompt,
+      revisionPrompt,
+      recentMessages.join(' '),
+      (bookRes.data || []).map(b => b.name).join(' '),
+      pastTasks.slice(-40).map(t => t.subject).join(' '),
+    ].join(' ');
+
+    const resourceIndex = buildResourceTopicIndex(
+      resources,
+      completedLabelsBySubject,
+      pendingLabelsBySubject,
+      student.yks_area || 'SAY',
+      hintText
+    );
+
+    const targetDates = [];
+    for (let i = 0; i < clampedDays; i++) targetDates.push(addDaysIso(startDate, i));
+
+    const systemPrompt = `Sen Rostrum Akademi'nin uzman YKS koçluk ve ders programı planlama yapay zekasısın.
+Görevin, koçun verdiği talimatlar ile öğrencinin sistemdeki TÜM gerçek verilerini birleştirerek son derece dengeli, gerçekçi ve uygulanabilir bir çok günlük çalışma programı üretmektir.
+
+KESİN KURALLAR:
+1. SADECE geçerli JSON döndür. Başka açıklama, markdown veya ekstra metin YAZMA.
+2. Her gün için toplam dakika KESİNLİKLE [${minDaily}, ${maxDaily}] aralığında kalsın (günlük ortalama ~${Math.round((Number(minDaily) + Number(maxDaily)) / 2)} dk).
+3. ÖĞRENCİNİN HIZLARI & VİDEO HIZI:
+   - Video izleme hızı: ${videoSpeed}x (örn. 120 dk ham video ${videoSpeed}x hızda ${Math.round(120 / Number(videoSpeed))} dk sürer).
+   - Eğer bir playlistte TEK bir video çok uzunsa (ör. 90-150 dk ham video), onu TEK oturuşta verme! "part_index": 1, "part_total": 2 (ve ertesi/sonraki güne "part_index": 2, "part_total": 2) şeklinde insani 35-55 dk'lık parçalara böl.
+   - Soru bankalarında öğrenci hızını (student_speeds, sn/soru) dikkate alarak her oturumda makul test sayısı (genelde 2-4 test) seç.
+4. KAYNAK SEÇİMİ VE HİDRATASYON:
+   - Katalogdaki (detailed_resources) bir kitap veya playlistten seçerken MUTLAKA tam "resource_id" ve o kaynağın "clusters[].remIdx" listesindeki GERÇEK indeksleri ("item_indices": [..]) ver. Zaten çözülmüş/izlenmiş kalemleri tekrar yazma!
+   - Önce KONU (playlist) ardından aynı/sonraki günlerde SORU (kitap) sırasını koru (önce videosunu izlemeden ağır soru testi koyma).
+   - Eğer koçun istediği kaynak katalogda YOKSA (örn. Apotemi Paragraf, Toprak Kurumsal TYT Matematik gibi), "resource_id": null bırak, "manual_source": "Kitap/Kanal Adı", "question_count" veya "estimated_minutes", ve "manual_items": ["Konu/Test açıklaması"] doldur.
+5. ÇIKTI JSON ŞEMASI:
+{
+  "summary": "Koça yönelik 2-3 cümlelik veri temelli plan özeti (hangi deneme/hız/talimat dikkate alındı)",
+  "notes": ["Önemli koçluk veya denge notu 1"],
+  "tasks": [
+    {
+      "date": "YYYY-MM-DD",
+      "exam_type": "TYT" | "AYT-SAY" | "AYT-EA" | "AYT-SOZ",
+      "type": "konu" | "soru" | "deneme" | "diger",
+      "branch": "Matematik" | "Geometri" | "Fizik" | "Kimya" | "Biyoloji" | "Türkçe" | "Edebiyat" | "Tarih" | "Coğrafya" | "Felsefe" | "Din Kültürü",
+      "resource_id": "uuid-veya-null",
+      "item_indices": [13, 14],
+      "part_index": 1,
+      "part_total": 1,
+      "manual_source": "resource_id null ise kaynak adı",
+      "manual_items": ["isteğe bağlı manuel alt kalemler"],
+      "question_count": 20,
+      "estimated_minutes": 35,
+      "topic_note": "Kısa ve net konu/kapsam açıklaması"
+    }
+  ]
+}`;
+
+    const studentSnapshot = {
+      student: {
+        name: student.full_name,
+        yks_area: student.yks_area || 'SAY',
+        target: profRes.data?.target_university
+          ? `${profRes.data.target_university} ${profRes.data.target_department || ''} (Hedef sıra: ${profRes.data.target_rank || '-'})`
+          : student.target,
+        level: profRes.data?.level || null,
+        struggling_subjects: profRes.data?.struggling_subjects || null,
+        daily_capacity_hours: profRes.data?.daily_capacity || null,
+        coach_note: profRes.data?.coach_note || null,
+      },
+      student_speeds_secs_per_q: (speedRes.data || []).map(s => ({ exam: s.exam_type, subject: s.subject, secs: s.secs_per_question })),
+      student_books: bookRes.data || [],
+      recent_exams: (examRes.data || []).map(e => ({ name: e.name, date: e.date, type: e.exam_type, nets: e.nets, details: e.exam_details })),
+      weak_topics_mastery: weakTopics,
+      avg_historical_daily_minutes: avgAssignedMin,
+      recent_tasks_sample: recentTasksCompact,
+      recent_chat_messages: recentMessages,
+    };
+
+    let userPrompt = `HEDEF TARİHLER (${clampedDays} gün): ${JSON.stringify(targetDates)}
+GÜNLÜK SÜRE HEDEFİ: ${minDaily} - ${maxDaily} dk
+VİDEO İZLEME HIZI: ${videoSpeed}x
+
+KOÇUN YÖNLENDİRMESİ VE ÖĞRENCİ MESAJI:
+"""
+${coachPrompt || 'Öğrencinin mevcut verilerine, zayıf konularına ve kaldığı yerlere göre dengeli bir program oluştur.'}
+"""
+
+ÖĞRENCİ VERİLERİ (TEK GERÇEK KAYNAK):
+${JSON.stringify(studentSnapshot)}
+
+DETAYLI KAYNAK KATALOĞU (kalan test/video indeksleriyle):
+${JSON.stringify(resourceIndex.detailed)}
+
+DİĞER KATALOG KAYNAKLARI (yalnızca adları — gerekirse manual_source olarak kullanılabilir):
+${JSON.stringify(resourceIndex.compactOthers)}`;
+
+    if (previousDraft && revisionPrompt) {
+      userPrompt += `\n\n═══ REVİZYON İSTEĞİ ═══
+Koç aşağıdaki MEVCUT TASLAK üzerinde değişiklik istiyor. Değişmesini istemediği kısımları koru, istediği revizyonları uygula ve günlerin dakika dengesini yeniden koru:
+REVİZYON TALİMATI: "${revisionPrompt}"
+MEVCUT TASLAK GÖREVLERİ:
+${JSON.stringify(previousDraft.tasks || [])}`;
+    }
+
+    const keys = await resolveAIKeys();
+    const aiRes = await callStructuredProgramAI(systemPrompt, userPrompt, keys);
+    const hydrated = hydrateProgramPlan(aiRes.json, resourcesById, speedRes.data || [], {
+      startDate,
+      daysCount: clampedDays,
+      videoSpeed,
+      minDaily,
+      maxDaily,
+      completedLabelsBySubject,
+    });
+
+    return res.status(200).json({
+      ...hydrated,
+      provider: aiRes.provider,
+      model: aiRes.model,
+      existingCountInRange: existingTasksInRange.length,
+      existingTasksInRange: existingTasksInRange.slice(0, 30),
+    });
+  } catch (err) {
+    console.error('handleProgramBuilder error:', err);
+    return res.status(500).json({ error: err.message || 'Program oluşturulamadı.' });
+  }
 }

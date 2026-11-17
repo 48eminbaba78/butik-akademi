@@ -2811,5 +2811,391 @@ input[type="checkbox"]:checked {
   line-height: 1.4;
 }
 
+/* ── AKILLI AI PROGRAM OLUŞTURUCU ─────────────────────────────── */
+.aip-section {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.aip-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+}
+.aip-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  line-height: 1.45;
+}
+.aip-prompt {
+  width: 100%;
+  min-height: 76px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.aip-prompt:focus,
+.aip-field input:focus,
+.aip-field select:focus,
+.aip-revise-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.aip-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+.aip-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.aip-field input,
+.aip-field select {
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 12.5px;
+  font-family: inherit;
+}
+.aip-actions-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.aip-gen-btn {
+  padding: 10px 18px !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+}
+.aip-status {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.aip-result {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.aip-meta-banner {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.aip-meta-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.aip-provider-tag {
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.aip-meta-summary {
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.5;
+}
+.aip-notes-list {
+  margin: 6px 0 0 16px;
+  padding: 0;
+  font-size: 11.5px;
+  color: var(--text-mid);
+}
+.aip-warnings {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text);
+}
+.aip-warnings ul {
+  margin: 4px 0 0 16px;
+  padding: 0;
+}
+.aip-conflict-box {
+  background: rgba(232, 93, 58, 0.08);
+  border: 1px solid rgba(232, 93, 58, 0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.aip-conflict-title {
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.aip-conflict-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.aip-conflict-opts label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text-mid);
+}
+.aip-day-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.aip-day-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  min-width: 96px;
+  font-size: 11px;
+}
+.aip-day-chip.ok {
+  border-color: rgba(62, 207, 142, 0.45);
+  background: rgba(62, 207, 142, 0.08);
+}
+.aip-day-chip.low,
+.aip-day-chip.high {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.08);
+}
+.aip-day-chip strong {
+  font-size: 13px;
+  color: var(--text);
+}
+.aip-day-chip small {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.aip-preview-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.aip-preview-lbl {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+.aip-mode-toggle {
+  display: inline-flex;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 2px;
+  gap: 2px;
+}
+.aip-mode-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.aip-mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+.aip-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.aip-group {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.aip-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.aip-group-head span {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.aip-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+.aip-row {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: var(--surface2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aip-row.unchecked {
+  opacity: 0.48;
+}
+.aip-row-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.aip-row-chk {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.aip-date-badge,
+.aip-type-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-mid);
+}
+.aip-type-badge.konu {
+  color: var(--green);
+  border-color: rgba(62, 207, 142, 0.35);
+}
+.aip-type-badge.soru {
+  color: var(--accent);
+  border-color: rgba(232, 93, 58, 0.35);
+}
+.aip-inp-date,
+.aip-inp-subject,
+.aip-inp-dur,
+.aip-inp-note {
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+}
+.aip-inp-subject {
+  flex: 1;
+  min-width: 180px;
+  font-weight: 600;
+}
+.aip-dur-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.aip-inp-dur {
+  width: 60px;
+}
+.aip-del-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.aip-del-btn:hover {
+  color: var(--red);
+  background: rgba(239, 68, 68, 0.12);
+}
+.aip-inp-note {
+  width: 100%;
+  font-size: 11.5px;
+  color: var(--text-mid);
+}
+.aip-row-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.aip-item-pill {
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-mid);
+}
+.aip-item-pill.more {
+  color: var(--text-dim);
+  font-style: italic;
+}
+.aip-revise-box {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px dashed var(--border);
+}
+.aip-revise-input {
+  flex: 1;
+  min-width: 220px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  font-family: inherit;
+}
+.aip-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+.aip-approve-btn {
+  background: var(--green) !important;
+  border-color: var(--green) !important;
+  color: #fff !important;
+  padding: 10px 18px !important;
+  font-weight: 700 !important;
+}
+
 
 
