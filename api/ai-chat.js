@@ -472,11 +472,11 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
     for (const gModel of ['gemini-2.5-flash', 'gemini-2.0-flash']) {
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 28000);
+        const timer = setTimeout(() => controller.abort(), 42000);
         const generationConfig = {
           responseMimeType: 'application/json',
           temperature: 0.3,
-          maxOutputTokens: 8192,
+          maxOutputTokens: 12288,
         };
         if (gModel.includes('2.5')) {
           generationConfig.thinkingConfig = { thinkingBudget: 0 };
@@ -724,7 +724,7 @@ Görevin, koçun verdiği talimatlar ile öğrencinin sistemdeki TÜM gerçek ve
 
 KESİN KURALLAR:
 1. SADECE geçerli JSON döndür. Başka açıklama, markdown veya ekstra metin YAZMA.
-2. Her gün için toplam dakika KESİNLİKLE [${minDaily}, ${maxDaily}] aralığında kalsın (günlük ortalama ~${Math.round((Number(minDaily) + Number(maxDaily)) / 2)} dk).
+2. Her gün için toplam dakika KESİNLİKLE [${minDaily}, ${maxDaily}] aralığında kalsın (günlük ortalama ~${Math.round((Number(minDaily) + Number(maxDaily)) / 2)} dk; günde 4-6 görev, topic_note en fazla 6-8 kelime olsun).
 3. ÖĞRENCİNİN HIZLARI & VİDEO HIZI:
    - Video izleme hızı: ${videoSpeed}x (örn. 120 dk ham video ${videoSpeed}x hızda ${Math.round(120 / Number(videoSpeed))} dk sürer).
    - Eğer bir playlistte TEK bir video çok uzunsa (ör. 90-150 dk ham video), onu TEK oturuşta verme! "part_index": 1, "part_total": 2 (ve ertesi/sonraki güne "part_index": 2, "part_total": 2) şeklinde insani 35-55 dk'lık parçalara böl.
