@@ -135,26 +135,30 @@ export default async function handler(req, res) {
         try {
           const { data } = await db.from('platform_settings').select('value').eq('key', 'ai_settings').maybeSingle();
           GEMINI_KEY = data?.value?.gemini_api_key;
-        } catch(e) {}
+        } catch (e) { }
       }
       if (!GEMINI_KEY) return res.status(500).json({ error: 'Gemini API anahtarı yapılandırılmamış.' });
 
       const sysPrompt = buildVisionPrompt(context, userRole);
       const userText = text || 'Bu soruda takıldım, yardımcı olur musun?';
       const contents = [
-        { role: 'user', parts: [
-          { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } },
-          { text: userText }
-        ]}
+        {
+          role: 'user', parts: [
+            { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } },
+            { text: userText }
+          ]
+        }
       ];
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             system_instruction: { parts: [{ text: sysPrompt }] },
             contents,
             generationConfig: { temperature: 0.4, maxOutputTokens: 2048 }
-          }) }
+          })
+        }
       );
       if (!geminiRes.ok) {
         const e = await geminiRes.json().catch(() => ({}));
@@ -409,7 +413,7 @@ async function resolveAIKeys() {
       if (!anthropicKey && v.anthropic_api_key) anthropicKey = String(v.anthropic_api_key).trim();
       if (!geminiKey && v.gemini_api_key) geminiKey = String(v.gemini_api_key).trim();
       if (!groqKey && v.groq_api_key) groqKey = String(v.groq_api_key).trim();
-    } catch (_) {}
+    } catch (_) { }
   }
   return { anthropicKey, geminiKey, groqKey };
 }
@@ -493,13 +497,13 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
     }
   }
 
-  // 3. Groq (bu hesapta aktif olan openai/gpt-oss-120b; reasoning tokenleri dahil bütçeli)
+  // 3. Groq (bu hesapta aktif olan openai/gpt-oss-120b; düşük reasoning ile daha hızlı & eksiksiz JSON)
   if (keys.groqKey) {
     const promptForGroq = groqUserPrompt || userPrompt;
     const sysForGroq = groqSystemPrompt || systemPrompt;
     const groqAttempts = [
-      { useJsonMode: true, maxTokens: 4800 },
-      { useJsonMode: false, maxTokens: 4800 },
+      { useJsonMode: true, reasoningLow: true, maxTokens: 4800 },
+      { useJsonMode: false, reasoningLow: false, maxTokens: 4800 },
     ];
     for (const att of groqAttempts) {
       try {
@@ -511,10 +515,11 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
             { role: 'system', content: sysForGroq },
             { role: 'user', content: promptForGroq },
           ],
-          temperature: 0.2,
+          temperature: 0.25,
           max_tokens: att.maxTokens,
         };
         if (att.useJsonMode) payload.response_format = { type: 'json_object' };
+        if (att.reasoningLow) payload.reasoning_effort = 'low';
 
         const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -533,7 +538,6 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
         }
         const detail = await readShortApiError(resp);
         errors.push(`Groq (${att.useJsonMode ? 'json' : 'text'}) ${resp.status}${detail ? ': ' + detail : ''}`);
-        // Yalnızca 400 (json_validate_failed vb.) durumunda response_format olmadan tekrar dene
         if (resp.status !== 400) break;
       } catch (e) {
         errors.push(`Groq: ${e.message}`);
@@ -661,12 +665,30 @@ async function handleProgramBuilder(req, res) {
 
     const resources = resCatalog.data || [];
     const resourcesById = Object.fromEntries(resources.map(r => [r.id, r]));
+
+    // Öğrencinin son programındaki aktif kaynakları + kalınan yerleri özetle (tüm branşlar görünür)
+    const activeBySource = new Map();
+    for (const t of pastTasks) {
+      if (!t.subject) continue;
+      const cur = activeBySource.get(t.subject) || { subject: t.subject, exam: t.exam_type || 'TYT', type: t.type, count: 0, lastDate: t.date, lastNote: '' };
+      cur.count++;
+      if (t.date >= cur.lastDate) {
+        cur.lastDate = t.date;
+        cur.lastNote = String(t.note || '').slice(0, 60);
+      }
+      activeBySource.set(t.subject, cur);
+    }
+    const activeProgramSources = [...activeBySource.values()]
+      .sort((a, b) => b.lastDate.localeCompare(a.lastDate))
+      .slice(0, 16)
+      .map(s => `${s.exam}|${s.type}|${s.subject} (${s.count}x, son:${s.lastDate}${s.lastNote ? ', ' + s.lastNote : ''})`);
+
+    const activeSubjectNames = [...activeBySource.keys(), ...(bookRes.data || []).map(b => b.name)];
     const hintText = [
       coachPrompt,
       revisionPrompt,
       recentMessages.join(' '),
       (bookRes.data || []).map(b => b.name).join(' '),
-      pastTasks.slice(-40).map(t => t.subject).join(' '),
     ].join(' ');
 
     const resourceIndex = buildResourceTopicIndex(
@@ -675,7 +697,7 @@ async function handleProgramBuilder(req, res) {
       pendingLabelsBySubject,
       student.yks_area || 'SAY',
       hintText,
-      { excludePending: assumePendingDone }
+      { excludePending: assumePendingDone, activeSubjectNames }
     );
     const groqResourceIndex = buildResourceTopicIndex(
       resources,
@@ -683,7 +705,7 @@ async function handleProgramBuilder(req, res) {
       pendingLabelsBySubject,
       student.yks_area || 'SAY',
       hintText,
-      { maxDetailed: 10, maxClusters: 4, maxRemIdx: 4, maxCompact: 8, excludePending: assumePendingDone }
+      { maxDetailed: 12, maxClusters: 4, maxRemIdx: 4, maxCompact: 8, excludePending: assumePendingDone, activeSubjectNames }
     );
 
     const targetDates = [];
@@ -750,7 +772,8 @@ KESİN KURALLAR:
       ),
       weak_topics_mastery: compact ? weakTopics.slice(0, 8) : weakTopics,
       avg_historical_daily_minutes: avgAssignedMin,
-      recent_tasks_sample: compact ? recentTasksCompact.slice(-10) : recentTasksCompact,
+      active_program_sources: activeProgramSources,
+      ...(compact ? {} : { recent_tasks_sample: recentTasksCompact }),
       recent_chat_messages: compact ? recentMessages.slice(-4) : recentMessages,
     });
 
@@ -771,7 +794,9 @@ DETAYLI KAYNAK KATALOĞU (kalan test/video indeksleriyle):
 ${JSON.stringify(idx.detailed)}
 
 DİĞER KATALOG KAYNAKLARI (yalnızca adları — gerekirse manual_source olarak kullanılabilir):
-${JSON.stringify(idx.compactOthers)}`;
+${JSON.stringify(idx.compactOthers)}
+
+ZORUNLU KURAL: Yukarıdaki TÜM ${clampedDays} GÜN (${targetDates.join(', ')}) için her güne 4-6 görev yazarak toplam ${clampedDays * 4}-${clampedDays * 6} görev üret. Her gün toplam ${minDaily}-${maxDaily} dk olmalı. Tek günlük veya az görevli eksik taslak DÖNDÜRME.`;
 
       if (previousDraft && revisionPrompt) {
         const prevCompact = (previousDraft.tasks || []).map(t => ({
@@ -788,24 +813,53 @@ ${JSON.stringify(prevCompact)}`;
     };
 
     const groqSystemPrompt = `YKS koçluk planlayıcısısın. SADECE geçerli saf JSON döndür (markdown/yorum yok).
-Her gün toplam [${minDaily},${maxDaily}] dk, günde 4-6 görev seç; topic_note çok kısa (en fazla 6 kelime) olsun ki JSON kısa ve tam kalsın.
+KRİTİK: ${clampedDays} günün HER BİRİ için ayrı 4-6 görev üret (toplam en az ${clampedDays * 4} görev, her gün ${minDaily}-${maxDaily} dk). Örnek şemada 1 öğe olsa bile sen TÜM ${clampedDays} günü doldurmak ZORUNDASIN!
+topic_note çok kısa (en fazla 5 kelime) olsun ki tüm ${clampedDays * 4}+ görev JSON'a eksiksiz sığsın.
 Video hızı ${videoSpeed}x (uzun videoları part_index/part_total ile 35-55 dk böl).
 Katalogda tam resource_id + remIdx içinden item_indices ver; katalog dışı için resource_id:null, manual_source, question_count/estimated_minutes, manual_items yaz.
-Şema: {"summary":"kısa özet","notes":[""],"tasks":[{"date":"YYYY-MM-DD","exam_type":"TYT|AYT-SAY|AYT-EA|AYT-SOZ","type":"konu|soru|deneme|diger","branch":"Matematik|Geometri|Fizik|Kimya|Biyoloji|Türkçe|Edebiyat|Tarih|Coğrafya","resource_id":null,"item_indices":[0],"part_index":1,"part_total":1,"manual_source":"","manual_items":[""],"question_count":20,"estimated_minutes":35,"topic_note":"kısa"}]}`;
+Şema: {"summary":"kısa özet","notes":[""],"tasks":[{"date":"${targetDates[0]}","exam_type":"TYT|AYT-SAY|AYT-EA|AYT-SOZ","type":"konu|soru|deneme|diger","branch":"Matematik|Geometri|Fizik|Kimya|Biyoloji|Türkçe","resource_id":null,"item_indices":[0],"part_index":1,"part_total":1,"manual_source":"","manual_items":[""],"question_count":20,"estimated_minutes":35,"topic_note":"kısa"}]}`;
 
     const userPrompt = formatBuilderPrompt(buildSnapshot(false), resourceIndex);
     const groqUserPrompt = formatBuilderPrompt(buildSnapshot(true), groqResourceIndex);
 
     const keys = await resolveAIKeys();
-    const aiRes = await callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt, groqSystemPrompt);
-    const hydrated = hydrateProgramPlan(aiRes.json, resourcesById, speedRes.data || [], {
+    const hydrateOpts = {
       startDate,
       daysCount: clampedDays,
       videoSpeed,
       minDaily,
       maxDaily,
       completedLabelsBySubject: effectiveCompletedLabels,
-    });
+    };
+
+    let aiRes = await callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt, groqSystemPrompt);
+    let hydrated = hydrateProgramPlan(aiRes.json, resourcesById, speedRes.data || [], hydrateOpts);
+
+    // Yapay zeka eksik gün/görev (örn. 1 görev) döndürdüyse 1 kez tam doldurma düzeltme isteği yap
+    const minTasksRequired = clampedDays >= 2 ? clampedDays * 3 : 1;
+    const minDaysRequired = clampedDays >= 2 ? Math.ceil(clampedDays * 0.6) : 1;
+    const coveredDays = new Set(hydrated.tasks.map(t => t.date)).size;
+    if (hydrated.tasks.length < minTasksRequired || coveredDays < minDaysRequired) {
+      const fixSuffix = `\n\nDİKKAT: Önceki çıktın eksik kaldı (yalnızca ${hydrated.tasks.length} görev ve ${coveredDays}/${clampedDays} gün). Şimdi TÜM ${clampedDays} gün (${targetDates.join(', ')}) için her güne 4-6 görev ekleyerek EN AZ ${clampedDays * 4} görevli TAM JSON üret!`;
+      try {
+        const retryRes = await callStructuredProgramAI(
+          systemPrompt,
+          userPrompt + fixSuffix,
+          keys,
+          groqUserPrompt + fixSuffix,
+          groqSystemPrompt
+        );
+        const retryHydrated = hydrateProgramPlan(retryRes.json, resourcesById, speedRes.data || [], hydrateOpts);
+        if (retryHydrated.tasks.length > hydrated.tasks.length) {
+          aiRes = retryRes;
+          hydrated = retryHydrated;
+        }
+      } catch (_) {}
+    }
+
+    if (clampedDays >= 2 && hydrated.tasks.length < clampedDays * 2) {
+      throw new Error(`Model (${aiRes.provider} / ${aiRes.model}) ${clampedDays} gün için yalnızca ${hydrated.tasks.length} görev üretebildi. Lütfen tekrar deneyin veya daha kararlı çıktı için Gemini/Anthropic anahtarı ekleyin.`);
+    }
 
     return res.status(200).json({
       ...hydrated,
