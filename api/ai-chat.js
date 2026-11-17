@@ -472,15 +472,23 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
     for (const gModel of ['gemini-2.5-flash', 'gemini-2.0-flash']) {
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 20000);
+        const timer = setTimeout(() => controller.abort(), 28000);
+        const generationConfig = {
+          responseMimeType: 'application/json',
+          temperature: 0.3,
+          maxOutputTokens: 8192,
+        };
+        if (gModel.includes('2.5')) {
+          generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        }
         const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${keys.geminiKey}`, {
           method: 'POST',
           signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ parts: [{ text: userPrompt }] }],
-            generationConfig: { responseMimeType: 'application/json', temperature: 0.3, maxOutputTokens: 8192 },
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            generationConfig,
           }),
         });
         clearTimeout(timer);
