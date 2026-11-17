@@ -493,14 +493,29 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
     }
   }
 
-  // 3. Groq (yüksek TPM modelleri öncelikli; kompakt sistem+kullanıcı promptu)
+  // 3. Groq (bu hesapta aktif olan openai/gpt-oss-120b; reasoning tokenleri dahil bütçeli)
   if (keys.groqKey) {
     const promptForGroq = groqUserPrompt || userPrompt;
     const sysForGroq = groqSystemPrompt || systemPrompt;
-    for (const gqModel of ['llama-3.3-70b-versatile', 'meta-llama/llama-4-scout-17b-16e-instruct', 'openai/gpt-oss-120b']) {
+    const groqAttempts = [
+      { useJsonMode: true, maxTokens: 4800 },
+      { useJsonMode: false, maxTokens: 4800 },
+    ];
+    for (const att of groqAttempts) {
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 22000);
+        const timer = setTimeout(() => controller.abort(), 24000);
+        const payload = {
+          model: 'openai/gpt-oss-120b',
+          messages: [
+            { role: 'system', content: sysForGroq },
+            { role: 'user', content: promptForGroq },
+          ],
+          temperature: 0.2,
+          max_tokens: att.maxTokens,
+        };
+        if (att.useJsonMode) payload.response_format = { type: 'json_object' };
+
         const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           signal: controller.signal,
@@ -508,27 +523,21 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${keys.groqKey}`,
           },
-          body: JSON.stringify({
-            model: gqModel,
-            response_format: { type: 'json_object' },
-            messages: [
-              { role: 'system', content: sysForGroq },
-              { role: 'user', content: promptForGroq },
-            ],
-            temperature: 0.3,
-            max_tokens: 2600,
-          }),
+          body: JSON.stringify(payload),
         });
         clearTimeout(timer);
         if (resp.ok) {
           const data = await resp.json();
           const text = data?.choices?.[0]?.message?.content || '';
-          return { json: extractJsonObject(text), provider: 'groq', model: gqModel };
+          return { json: extractJsonObject(text), provider: 'groq', model: 'openai/gpt-oss-120b' };
         }
         const detail = await readShortApiError(resp);
-        errors.push(`Groq (${gqModel}) ${resp.status}${detail ? ': ' + detail : ''}`);
+        errors.push(`Groq (${att.useJsonMode ? 'json' : 'text'}) ${resp.status}${detail ? ': ' + detail : ''}`);
+        // Yalnızca 400 (json_validate_failed vb.) durumunda response_format olmadan tekrar dene
+        if (resp.status !== 400) break;
       } catch (e) {
-        errors.push(`Groq (${gqModel}): ${e.message}`);
+        errors.push(`Groq: ${e.message}`);
+        break;
       }
     }
   }
@@ -778,10 +787,11 @@ ${JSON.stringify(prevCompact)}`;
       return msg;
     };
 
-    const groqSystemPrompt = `YKS koçluk planlayıcısısın. SADECE geçerli JSON döndür.
-Her gün toplam süre [${minDaily},${maxDaily}] dk arası, video hızı ${videoSpeed}x (uzun videoları part_index/part_total ile 35-55 dk böl).
-Katalog kaynaklarında tam resource_id + remIdx içinden item_indices ver; katalog dışı kaynakta resource_id:null, manual_source, question_count/estimated_minutes, manual_items yaz.
-Şema: {"summary":"kısa özet","notes":[""],"tasks":[{"date":"YYYY-MM-DD","exam_type":"TYT|AYT-SAY|AYT-EA|AYT-SOZ","type":"konu|soru|deneme|diger","branch":"Matematik|Geometri|Fizik|Kimya|Biyoloji|Türkçe|Edebiyat|Tarih|Coğrafya","resource_id":null,"item_indices":[0],"part_index":1,"part_total":1,"manual_source":"","manual_items":[""],"question_count":20,"estimated_minutes":35,"topic_note":"kısa not"}]}`;
+    const groqSystemPrompt = `YKS koçluk planlayıcısısın. SADECE geçerli saf JSON döndür (markdown/yorum yok).
+Her gün toplam [${minDaily},${maxDaily}] dk, günde 4-6 görev seç; topic_note çok kısa (en fazla 6 kelime) olsun ki JSON kısa ve tam kalsın.
+Video hızı ${videoSpeed}x (uzun videoları part_index/part_total ile 35-55 dk böl).
+Katalogda tam resource_id + remIdx içinden item_indices ver; katalog dışı için resource_id:null, manual_source, question_count/estimated_minutes, manual_items yaz.
+Şema: {"summary":"kısa özet","notes":[""],"tasks":[{"date":"YYYY-MM-DD","exam_type":"TYT|AYT-SAY|AYT-EA|AYT-SOZ","type":"konu|soru|deneme|diger","branch":"Matematik|Geometri|Fizik|Kimya|Biyoloji|Türkçe|Edebiyat|Tarih|Coğrafya","resource_id":null,"item_indices":[0],"part_index":1,"part_total":1,"manual_source":"","manual_items":[""],"question_count":20,"estimated_minutes":35,"topic_note":"kısa"}]}`;
 
     const userPrompt = formatBuilderPrompt(buildSnapshot(false), resourceIndex);
     const groqUserPrompt = formatBuilderPrompt(buildSnapshot(true), groqResourceIndex);
