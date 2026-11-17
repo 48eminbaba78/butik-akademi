@@ -414,7 +414,18 @@ async function resolveAIKeys() {
   return { anthropicKey, geminiKey, groqKey };
 }
 
-async function callStructuredProgramAI(systemPrompt, userPrompt, keys) {
+async function readShortApiError(resp) {
+  try {
+    const raw = await resp.text();
+    const parsed = JSON.parse(raw);
+    const msg = parsed?.error?.message || parsed?.message || raw;
+    return String(msg || '').replace(/\s+/g, ' ').trim().slice(0, 90);
+  } catch (_) {
+    return '';
+  }
+}
+
+async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt) {
   const errors = [];
 
   // 1. Anthropic Claude (öncelikli — karmaşık planlama & JSON tutarlılığı yüksek)
@@ -445,7 +456,8 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys) {
         const text = (data.content || []).map(b => b.text || '').join('').trim();
         return { json: extractJsonObject(text), provider: 'anthropic', model };
       }
-      errors.push(`Anthropic ${resp.status}`);
+      const detail = await readShortApiError(resp);
+      errors.push(`Anthropic ${resp.status}${detail ? ': ' + detail : ''}`);
     } catch (e) {
       errors.push(`Anthropic: ${e.message}`);
     }
@@ -453,7 +465,7 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys) {
 
   // 2. Google Gemini
   if (keys.geminiKey) {
-    for (const gModel of ['gemini-2.5-flash', 'gemini-1.5-flash']) {
+    for (const gModel of ['gemini-2.5-flash', 'gemini-2.0-flash']) {
       try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 20000);
@@ -473,45 +485,50 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys) {
           const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
           return { json: extractJsonObject(text), provider: 'gemini', model: gModel };
         }
-        errors.push(`${gModel} ${resp.status}`);
+        const detail = await readShortApiError(resp);
+        errors.push(`${gModel} ${resp.status}${detail ? ': ' + detail : ''}`);
       } catch (e) {
         errors.push(`${gModel}: ${e.message}`);
       }
     }
   }
 
-  // 3. Groq (openai/gpt-oss-120b — hızlı JSON modu)
+  // 3. Groq (sıkıştırılmış payload ile 8K-12K TPM sınırına sığar)
   if (keys.groqKey) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 22000);
-      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${keys.groqKey}`,
-        },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          temperature: 0.3,
-          max_tokens: 6000,
-        }),
-      });
-      clearTimeout(timer);
-      if (resp.ok) {
-        const data = await resp.json();
-        const text = data?.choices?.[0]?.message?.content || '';
-        return { json: extractJsonObject(text), provider: 'groq', model: 'openai/gpt-oss-120b' };
+    const promptForGroq = groqUserPrompt || userPrompt;
+    for (const gqModel of ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile']) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 22000);
+        const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${keys.groqKey}`,
+          },
+          body: JSON.stringify({
+            model: gqModel,
+            response_format: { type: 'json_object' },
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: promptForGroq },
+            ],
+            temperature: 0.3,
+            max_tokens: 3500,
+          }),
+        });
+        clearTimeout(timer);
+        if (resp.ok) {
+          const data = await resp.json();
+          const text = data?.choices?.[0]?.message?.content || '';
+          return { json: extractJsonObject(text), provider: 'groq', model: gqModel };
+        }
+        const detail = await readShortApiError(resp);
+        errors.push(`Groq (${gqModel}) ${resp.status}${detail ? ': ' + detail : ''}`);
+      } catch (e) {
+        errors.push(`Groq (${gqModel}): ${e.message}`);
       }
-      errors.push(`Groq ${resp.status}`);
-    } catch (e) {
-      errors.push(`Groq: ${e.message}`);
     }
   }
 
@@ -606,9 +623,9 @@ async function handleProgramBuilder(req, res) {
 
     const histDays = Object.values(dailyHistory);
     const avgAssignedMin = histDays.length ? Math.round(histDays.reduce((s, d) => s + d.total, 0) / histDays.length) : null;
-    const recentTasksCompact = pastTasks.slice(-28).map(t => ({
-      date: t.date, type: t.type, exam: t.exam_type, subject: t.subject, dur: t.duration, done: !!t.done, note: t.note || '',
-    }));
+    const recentTasksCompact = pastTasks.slice(-18).map(t =>
+      `${t.date}|${t.exam_type || ''}|${t.subject}|${t.duration || 0}dk|${t.done ? 'yapildi' : 'bekliyor'}`
+    );
 
     const weakTopics = (masteryRes.data || [])
       .filter(m => m.status !== 'td' && m.status !== 'not_started')
@@ -617,9 +634,20 @@ async function handleProgramBuilder(req, res) {
         return { konu: m.konu, subject: m.subject, stars: m.stars, daysSince };
       })
       .filter(m => m.stars <= 2 || m.daysSince > 20)
-      .slice(0, 15);
+      .slice(0, 12);
 
-    const recentMessages = [...(msgRes.data || [])].reverse().map(m => `[${m.from_role}] ${m.text}`).slice(-15);
+    const recentMessages = [...(msgRes.data || [])].reverse().map(m => `[${m.from_role}] ${m.text}`).slice(-8);
+
+    const assumePendingDone = /hepsi\s*yap[ıi]ld[ıi]|tamamland[ıi]\s*varsay|mevcut\s*program[ıi]\s*ilerlet|kald[ıi][gğ][ıi]\s*yerden/i.test(
+      `${coachPrompt} ${revisionPrompt}`
+    );
+    const effectiveCompletedLabels = { ...completedLabelsBySubject };
+    if (assumePendingDone) {
+      for (const [subj, set] of Object.entries(pendingLabelsBySubject)) {
+        if (!effectiveCompletedLabels[subj]) effectiveCompletedLabels[subj] = new Set();
+        set.forEach(l => effectiveCompletedLabels[subj].add(l));
+      }
+    }
 
     const resources = resCatalog.data || [];
     const resourcesById = Object.fromEntries(resources.map(r => [r.id, r]));
@@ -633,10 +661,19 @@ async function handleProgramBuilder(req, res) {
 
     const resourceIndex = buildResourceTopicIndex(
       resources,
-      completedLabelsBySubject,
+      effectiveCompletedLabels,
       pendingLabelsBySubject,
       student.yks_area || 'SAY',
-      hintText
+      hintText,
+      { excludePending: assumePendingDone }
+    );
+    const groqResourceIndex = buildResourceTopicIndex(
+      resources,
+      effectiveCompletedLabels,
+      pendingLabelsBySubject,
+      student.yks_area || 'SAY',
+      hintText,
+      { maxDetailed: 12, maxClusters: 5, maxRemIdx: 4, maxCompact: 10, excludePending: assumePendingDone }
     );
 
     const targetDates = [];
@@ -679,28 +716,36 @@ KESİN KURALLAR:
   ]
 }`;
 
-    const studentSnapshot = {
-      student: {
-        name: student.full_name,
-        yks_area: student.yks_area || 'SAY',
-        target: profRes.data?.target_university
-          ? `${profRes.data.target_university} ${profRes.data.target_department || ''} (Hedef sıra: ${profRes.data.target_rank || '-'})`
-          : student.target,
-        level: profRes.data?.level || null,
-        struggling_subjects: profRes.data?.struggling_subjects || null,
-        daily_capacity_hours: profRes.data?.daily_capacity || null,
-        coach_note: profRes.data?.coach_note || null,
-      },
-      student_speeds_secs_per_q: (speedRes.data || []).map(s => ({ exam: s.exam_type, subject: s.subject, secs: s.secs_per_question })),
-      student_books: bookRes.data || [],
-      recent_exams: (examRes.data || []).map(e => ({ name: e.name, date: e.date, type: e.exam_type, nets: e.nets, details: e.exam_details })),
-      weak_topics_mastery: weakTopics,
-      avg_historical_daily_minutes: avgAssignedMin,
-      recent_tasks_sample: recentTasksCompact,
-      recent_chat_messages: recentMessages,
+    const baseStudentInfo = {
+      name: student.full_name,
+      yks_area: student.yks_area || 'SAY',
+      target: profRes.data?.target_university
+        ? `${profRes.data.target_university} ${profRes.data.target_department || ''} (Hedef sıra: ${profRes.data.target_rank || '-'})`
+        : student.target,
+      level: profRes.data?.level || null,
+      struggling_subjects: profRes.data?.struggling_subjects || null,
+      daily_capacity_hours: profRes.data?.daily_capacity || null,
+      coach_note: profRes.data?.coach_note || null,
     };
+    const compactSpeeds = (speedRes.data || []).map(s => ({ exam: s.exam_type, subject: s.subject, secs: s.secs_per_question }));
 
-    let userPrompt = `HEDEF TARİHLER (${clampedDays} gün): ${JSON.stringify(targetDates)}
+    const buildSnapshot = (compact) => ({
+      student: baseStudentInfo,
+      student_speeds_secs_per_q: compactSpeeds,
+      student_books: compact ? (bookRes.data || []).slice(0, 12) : (bookRes.data || []),
+      recent_exams: (examRes.data || []).slice(0, compact ? 4 : 8).map(e =>
+        compact
+          ? { name: e.name, date: e.date, type: e.exam_type, nets: e.nets }
+          : { name: e.name, date: e.date, type: e.exam_type, nets: e.nets, details: e.exam_details }
+      ),
+      weak_topics_mastery: compact ? weakTopics.slice(0, 8) : weakTopics,
+      avg_historical_daily_minutes: avgAssignedMin,
+      recent_tasks_sample: compact ? recentTasksCompact.slice(-10) : recentTasksCompact,
+      recent_chat_messages: compact ? recentMessages.slice(-4) : recentMessages,
+    });
+
+    const formatBuilderPrompt = (snap, idx) => {
+      let msg = `HEDEF TARİHLER (${clampedDays} gün): ${JSON.stringify(targetDates)}
 GÜNLÜK SÜRE HEDEFİ: ${minDaily} - ${maxDaily} dk
 VİDEO İZLEME HIZI: ${videoSpeed}x
 
@@ -710,31 +755,40 @@ ${coachPrompt || 'Öğrencinin mevcut verilerine, zayıf konularına ve kaldığ
 """
 
 ÖĞRENCİ VERİLERİ (TEK GERÇEK KAYNAK):
-${JSON.stringify(studentSnapshot)}
+${JSON.stringify(snap)}
 
 DETAYLI KAYNAK KATALOĞU (kalan test/video indeksleriyle):
-${JSON.stringify(resourceIndex.detailed)}
+${JSON.stringify(idx.detailed)}
 
 DİĞER KATALOG KAYNAKLARI (yalnızca adları — gerekirse manual_source olarak kullanılabilir):
-${JSON.stringify(resourceIndex.compactOthers)}`;
+${JSON.stringify(idx.compactOthers)}`;
 
-    if (previousDraft && revisionPrompt) {
-      userPrompt += `\n\n═══ REVİZYON İSTEĞİ ═══
+      if (previousDraft && revisionPrompt) {
+        const prevCompact = (previousDraft.tasks || []).map(t => ({
+          date: t.date, type: t.type, exam_type: t.exam_type, branch: t.branch,
+          subject: t.subject, duration: t.duration, note: t.note,
+        }));
+        msg += `\n\n═══ REVİZYON İSTEĞİ ═══
 Koç aşağıdaki MEVCUT TASLAK üzerinde değişiklik istiyor. Değişmesini istemediği kısımları koru, istediği revizyonları uygula ve günlerin dakika dengesini yeniden koru:
 REVİZYON TALİMATI: "${revisionPrompt}"
 MEVCUT TASLAK GÖREVLERİ:
-${JSON.stringify(previousDraft.tasks || [])}`;
-    }
+${JSON.stringify(prevCompact)}`;
+      }
+      return msg;
+    };
+
+    const userPrompt = formatBuilderPrompt(buildSnapshot(false), resourceIndex);
+    const groqUserPrompt = formatBuilderPrompt(buildSnapshot(true), groqResourceIndex);
 
     const keys = await resolveAIKeys();
-    const aiRes = await callStructuredProgramAI(systemPrompt, userPrompt, keys);
+    const aiRes = await callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt);
     const hydrated = hydrateProgramPlan(aiRes.json, resourcesById, speedRes.data || [], {
       startDate,
       daysCount: clampedDays,
       videoSpeed,
       minDaily,
       maxDaily,
-      completedLabelsBySubject,
+      completedLabelsBySubject: effectiveCompletedLabels,
     });
 
     return res.status(200).json({
