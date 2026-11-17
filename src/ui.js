@@ -14486,7 +14486,6 @@ async function approveAIProgramDraft(stuId) {
       note: t.note || '',
       done: false,
       task_items: Array.isArray(t.task_items) && t.task_items.length ? t.task_items : null,
-      resource_id: t.resource_id || null,
     }));
 
     const { data: inserted, error } = await db.from('tasks').insert(payloads).select();
@@ -14497,7 +14496,7 @@ async function approveAIProgramDraft(stuId) {
       const key = `${stuId}_${p.date}`;
       if (!S.tasks[key]) S.tasks[key] = [];
       S.tasks[key].push({
-        id: p.id,
+        _id: p.id,
         type: p.type,
         exam: p.exam_type,
         subject: p.subject,
@@ -14505,7 +14504,6 @@ async function approveAIProgramDraft(stuId) {
         note: p.note,
         done: false,
         task_items: p.task_items || null,
-        resource_id: p.resource_id || null,
       });
     });
 
