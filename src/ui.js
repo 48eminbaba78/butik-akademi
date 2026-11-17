@@ -1309,6 +1309,7 @@ function openStudentDetail(stuId){
           <button id="aiProgramBtn" class="btn btn-accent btn-sm aip-gen-btn" onclick="generateAIProgramDraft('${s.id}')">📋 Akıllı Program Oluştur</button>
           <span id="aiProgramStatusMsg" class="aip-status"></span>
         </div>
+        <div id="aiProgramErrorBox" class="aip-error-box" style="display:none"></div>
 
         <div id="aiProgramResultArea" class="aip-result" style="display:none">
           <div id="aiProgramMetaBanner" class="aip-meta-banner"></div>
@@ -14142,6 +14143,8 @@ async function _requestAIProgramDraft(stuId, isRevision) {
   const genBtn = document.getElementById('aiProgramBtn');
   const revBtn = document.getElementById('aiProgramReviseBtn');
   const statusEl = document.getElementById('aiProgramStatusMsg');
+  const errBox = document.getElementById('aiProgramErrorBox');
+  if (errBox) { errBox.style.display = 'none'; errBox.textContent = ''; }
   if (genBtn) { genBtn.disabled = true; genBtn.textContent = isRevision ? '📋 Akıllı Program Oluştur' : '⌛ Veriler Analiz Ediliyor...'; }
   if (revBtn) { revBtn.disabled = true; if (isRevision) revBtn.textContent = '⌛ Revize Ediliyor...'; }
   if (statusEl) statusEl.textContent = isRevision ? 'Revizyon hazırlanıyor...' : 'Öğrenci verileri, denemeler, hızlar ve kaynaklar işleniyor...';
@@ -14209,7 +14212,11 @@ async function _requestAIProgramDraft(stuId, isRevision) {
     showToast(isRevision ? '🔄 Program revize edildi ✓' : '📋 Akıllı program taslağı hazır ✓');
   } catch (e) {
     console.error('_requestAIProgramDraft error:', e);
-    showToast('Hata: ' + e.message);
+    if (errBox) {
+      errBox.textContent = '⚠️ ' + e.message;
+      errBox.style.display = 'block';
+    }
+    showToast('Program üretilemedi — detay kutusunu inceleyin.');
   } finally {
     if (genBtn) { genBtn.disabled = false; genBtn.textContent = '📋 Akıllı Program Oluştur'; }
     if (revBtn) { revBtn.disabled = false; revBtn.textContent = '🔄 Revize Et'; }

@@ -2889,6 +2889,16 @@ input[type="checkbox"]:checked {
   font-size: 12px;
   color: var(--text-dim);
 }
+.aip-error-box {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--red);
+  line-height: 1.5;
+  word-break: break-word;
+}
 .aip-result {
   margin-top: 6px;
   display: flex;

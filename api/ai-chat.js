@@ -425,7 +425,7 @@ async function readShortApiError(resp) {
   }
 }
 
-async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt) {
+async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt, groqSystemPrompt) {
   const errors = [];
 
   // 1. Anthropic Claude (öncelikli — karmaşık planlama & JSON tutarlılığı yüksek)
@@ -493,10 +493,11 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
     }
   }
 
-  // 3. Groq (sıkıştırılmış payload ile 8K-12K TPM sınırına sığar)
+  // 3. Groq (yüksek TPM modelleri öncelikli; kompakt sistem+kullanıcı promptu)
   if (keys.groqKey) {
     const promptForGroq = groqUserPrompt || userPrompt;
-    for (const gqModel of ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile']) {
+    const sysForGroq = groqSystemPrompt || systemPrompt;
+    for (const gqModel of ['llama-3.3-70b-versatile', 'meta-llama/llama-4-scout-17b-16e-instruct', 'openai/gpt-oss-120b']) {
       try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 22000);
@@ -511,11 +512,11 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
             model: gqModel,
             response_format: { type: 'json_object' },
             messages: [
-              { role: 'system', content: systemPrompt },
+              { role: 'system', content: sysForGroq },
               { role: 'user', content: promptForGroq },
             ],
             temperature: 0.3,
-            max_tokens: 3500,
+            max_tokens: 2600,
           }),
         });
         clearTimeout(timer);
@@ -638,7 +639,7 @@ async function handleProgramBuilder(req, res) {
 
     const recentMessages = [...(msgRes.data || [])].reverse().map(m => `[${m.from_role}] ${m.text}`).slice(-8);
 
-    const assumePendingDone = /hepsi\s*yap[ıi]ld[ıi]|tamamland[ıi]\s*varsay|mevcut\s*program[ıi]\s*ilerlet|kald[ıi][gğ][ıi]\s*yerden/i.test(
+    const assumePendingDone = /(hepsi\s*yap[ıi]ld[ıi]|tamamland[ıi]\s*varsay|ilerlet|devam\s*et|kald[ıi][gğ][ıi]\s*yerden)/i.test(
       `${coachPrompt} ${revisionPrompt}`
     );
     const effectiveCompletedLabels = { ...completedLabelsBySubject };
@@ -673,7 +674,7 @@ async function handleProgramBuilder(req, res) {
       pendingLabelsBySubject,
       student.yks_area || 'SAY',
       hintText,
-      { maxDetailed: 12, maxClusters: 5, maxRemIdx: 4, maxCompact: 10, excludePending: assumePendingDone }
+      { maxDetailed: 10, maxClusters: 4, maxRemIdx: 4, maxCompact: 8, excludePending: assumePendingDone }
     );
 
     const targetDates = [];
@@ -777,11 +778,16 @@ ${JSON.stringify(prevCompact)}`;
       return msg;
     };
 
+    const groqSystemPrompt = `YKS koçluk planlayıcısısın. SADECE geçerli JSON döndür.
+Her gün toplam süre [${minDaily},${maxDaily}] dk arası, video hızı ${videoSpeed}x (uzun videoları part_index/part_total ile 35-55 dk böl).
+Katalog kaynaklarında tam resource_id + remIdx içinden item_indices ver; katalog dışı kaynakta resource_id:null, manual_source, question_count/estimated_minutes, manual_items yaz.
+Şema: {"summary":"kısa özet","notes":[""],"tasks":[{"date":"YYYY-MM-DD","exam_type":"TYT|AYT-SAY|AYT-EA|AYT-SOZ","type":"konu|soru|deneme|diger","branch":"Matematik|Geometri|Fizik|Kimya|Biyoloji|Türkçe|Edebiyat|Tarih|Coğrafya","resource_id":null,"item_indices":[0],"part_index":1,"part_total":1,"manual_source":"","manual_items":[""],"question_count":20,"estimated_minutes":35,"topic_note":"kısa not"}]}`;
+
     const userPrompt = formatBuilderPrompt(buildSnapshot(false), resourceIndex);
     const groqUserPrompt = formatBuilderPrompt(buildSnapshot(true), groqResourceIndex);
 
     const keys = await resolveAIKeys();
-    const aiRes = await callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt);
+    const aiRes = await callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt, groqSystemPrompt);
     const hydrated = hydrateProgramPlan(aiRes.json, resourcesById, speedRes.data || [], {
       startDate,
       daysCount: clampedDays,
