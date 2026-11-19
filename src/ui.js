@@ -3601,7 +3601,7 @@ async function saveTask(){
         task_items:data.task_items||null, start_time:data.start_time
       });
       saveCache();
-      cm('taskModal'); renderProgram(); showToast('Görev eklendi ✓');
+      cm('taskModal'); renderProgram(); _obRefreshWidget?.(); showToast('Görev eklendi ✓');
       return;
     }
 
@@ -3705,6 +3705,7 @@ async function saveTask(){
       saveCache();
       cm('taskModal');
       renderProgram();
+      _obRefreshWidget?.();
       showToast('Görev eklendi ✓');
     }
   } finally {
@@ -4415,7 +4416,7 @@ async function saveStudent(){
 
     if (typeof window.invalidateCache === 'function') window.invalidateCache();
     showToast('Güncellendi ✓');
-    saveUI();cm('studentModal');renderStudentsSearch();
+    saveUI();cm('studentModal');renderStudentsSearch();_obRefreshWidget?.();
   } else {
     showToast('Davet oluşturuluyor...');
     try {
@@ -7474,11 +7475,15 @@ function stopChatPoll(){}
 
 // ── DASHBOARD ──────────────────────────────────
 async function devResetOnboarding() {
+  localStorage.removeItem(_obDismissKey());
+  localStorage.removeItem(_obKey('report'));
+  localStorage.removeItem('ra_ob_welcomed_' + session.coachId);
   await db.from('workspaces').upsert(
     { coach_id: session.coachId, brand_name: S.workspace?.brand_name || 'Akademi', brand_color: S.workspace?.brand_color || '#E8613A', onboarding_done: false },
     { onConflict: 'coach_id' }
   );
   if (S.workspace) S.workspace.onboarding_done = false;
+  saveCache();
   showOnboarding();
 }
 window.devResetOnboarding = devResetOnboarding;
@@ -8990,37 +8995,60 @@ const _devSaveStudent = saveStudent;
 // (tıklamayla değil), report için ilgili gönderim fonksiyonlarının başarı
 // anında çağırdığı _obMarkDone bayrağı kullanılır.
 function _obKey(task) { return `ra_ob_${session.coachId}_${task}`; }
+function _obDismissKey() { return `ra_ob_dismissed_${session.coachId}`; }
 function _obDone(task) {
   if (task === 'student') return (S.students || []).length > 0;
   if (task === 'program') return Object.values(S.tasks || {}).some(arr => (arr || []).length > 0);
   return localStorage.getItem(_obKey(task)) === '1';
 }
+function _obAllDone() {
+  return ['student', 'program', 'report'].every(t => _obDone(t));
+}
 function _obMarkDone(task) {
   if (task !== 'student' && task !== 'program') localStorage.setItem(_obKey(task), '1');
   _obRefreshWidget();
-  // Tüm görevler tamam mı?
-  const tasks = ['student','program','report'];
-  if (tasks.every(t => _obDone(t))) _obComplete();
+  if (_obAllDone()) _obComplete(false);
 }
-async function _obComplete() {
+async function _obComplete(silent = false) {
+  try { localStorage.setItem(_obDismissKey(), '1'); } catch (_) {}
   const widget = document.getElementById('obWidget');
   if (widget) {
-    widget.innerHTML = `<div style="padding:20px;text-align:center">
-      <div style="font-size:36px;margin-bottom:8px">🎉</div>
-      <div style="font-weight:800;color:var(--text);margin-bottom:4px">Harika iş!</div>
-      <div style="font-size:12px;color:var(--text-mid)">İlk adımları tamamladınız.</div>
-    </div>`;
-    setTimeout(() => widget.remove(), 3000);
+    if (silent) {
+      widget.remove();
+    } else if (!widget.dataset.completing) {
+      widget.dataset.completing = '1';
+      widget.innerHTML = `<div style="padding:20px;text-align:center">
+        <div style="font-size:36px;margin-bottom:8px">🎉</div>
+        <div style="font-weight:800;color:var(--text);margin-bottom:4px">Harika iş!</div>
+        <div style="font-size:12px;color:var(--text-mid)">İlk adımları tamamladınız.</div>
+      </div>`;
+      setTimeout(() => document.getElementById('obWidget')?.remove(), 2500);
+    }
   }
-  await db.from('workspaces').update({ onboarding_done: true }).eq('coach_id', session.coachId);
-  if (S.workspace) S.workspace.onboarding_done = true;
+  S.workspace = {
+    ...(S.workspace || { coach_id: session.coachId }),
+    onboarding_done: true
+  };
+  saveCache();
+  await db.from('workspaces').upsert(
+    {
+      coach_id: session.coachId,
+      brand_name: S.workspace?.brand_name || 'Rostrum Akademi',
+      brand_color: S.workspace?.brand_color || '#E8613A',
+      onboarding_done: true
+    },
+    { onConflict: 'coach_id' }
+  );
 }
+window._obDismissWidget = async function() {
+  await _obComplete(true);
+};
 
 function _obRefreshWidget() {
   const widget = document.getElementById('obWidget');
   if (!widget) return;
   const tasks = [
-    { id: 'account', icon: '✅', label: 'Hesabınızı oluşturdunuz', done: true },
+    { id: 'account', icon: '🎓', label: 'Hesabınızı oluşturdunuz', done: true },
     { id: 'student', icon: '👤', label: 'İlk öğrencini ekle → programını 2 dakikada gör', action: `window.openStudentModal?.()`, btnLabel: 'Ekle →' },
     { id: 'program', icon: '📅', label: 'Haftalık program oluştur → ilerlemesini anlık izle', action: `switchTab('program')`, btnLabel: 'Git →' },
     { id: 'report',  icon: '📄', label: 'İlk raporunu gönder → veli farkı görsün',   action: `switchTab('program')`, btnLabel: 'Git →' },
@@ -9028,38 +9056,46 @@ function _obRefreshWidget() {
   const doneCount = tasks.filter(t => t.done || _obDone(t.id)).length;
   const pct = Math.round((doneCount / tasks.length) * 100);
 
-  widget.querySelector('.ob-body').innerHTML = tasks.map(t => {
+  widget.querySelector('.ob-body').innerHTML = tasks.map((t, idx) => {
     const done = t.done || _obDone(t.id);
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+    const isLast = idx === tasks.length - 1;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;${isLast ? '' : 'border-bottom:1px solid var(--border);'}">
       <div style="width:22px;height:22px;border-radius:50%;border:2px solid ${done?'var(--green)':'var(--border2)'};background:${done?'var(--green)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
         ${done?`<svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4L4 7L9 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`:''}
       </div>
-      <div style="flex:1;font-size:12px;color:${done?'var(--text-dim)':'var(--text)'};${done?'text-decoration:line-through':''}">
-        <span style="margin-right:5px">${t.icon}</span>${t.label}
+      <div style="flex:1;min-width:0;display:flex;align-items:flex-start;gap:6px;font-size:12px;line-height:1.4">
+        <span style="flex-shrink:0">${t.icon}</span>
+        <span style="color:${done?'var(--text-dim)':'var(--text)'};${done?'text-decoration:line-through;opacity:.85':''}">${t.label}</span>
       </div>
-      ${!done && t.action?`<button onclick="${t.action};window._obMarkDone?.('${t.id}')" style="font-size:11px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;white-space:nowrap;padding:0">${t.btnLabel}</button>`:''}
+      ${!done && t.action?`<button onclick="${t.action}" style="font-size:11px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;white-space:nowrap;padding:0;flex-shrink:0">${t.btnLabel}</button>`:''}
     </div>`;
   }).join('');
   widget.querySelector('.ob-progress-bar-inner').style.width = pct + '%';
   widget.querySelector('.ob-progress-text').textContent = `${doneCount}/${tasks.length} tamamlandı`;
+  if (doneCount === tasks.length) _obComplete(false);
 }
 
 function showOnboardingWidget() {
   if (document.getElementById('obWidget')) return;
+  if (S.workspace?.onboarding_done || localStorage.getItem(_obDismissKey()) === '1') return;
+  if (_obAllDone()) {
+    _obComplete(true);
+    return;
+  }
   const bc = S.workspace?.brand_color || 'var(--accent)';
   const widget = document.createElement('div');
   widget.id = 'obWidget';
-  widget.style.cssText = 'position:fixed;bottom:90px;right:20px;width:290px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;box-shadow:var(--shadow-lg);z-index:4000;overflow:hidden';
+  widget.style.cssText = 'position:fixed;bottom:148px;right:20px;width:300px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--border2);border-radius:16px;box-shadow:var(--shadow-lg);z-index:4000;overflow:hidden';
   widget.innerHTML = `
     <div style="background:${bc};padding:12px 14px;display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="font-size:13px;font-weight:800;color:#fff">Başlangıç Görevleri</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:1px" class="ob-progress-text">1/4 tamamlandı</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.78);margin-top:1px" class="ob-progress-text">1/4 tamamlandı</div>
       </div>
-      <button onclick="document.getElementById('obWidget').remove()" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer;padding:0;line-height:1">×</button>
+      <button type="button" title="Kapat" onclick="window._obDismissWidget()" style="background:none;border:none;color:rgba(255,255,255,.85);font-size:18px;cursor:pointer;padding:2px 4px;line-height:1">×</button>
     </div>
     <div style="height:3px;background:rgba(255,255,255,.2)"><div class="ob-progress-bar-inner" style="height:100%;background:#fff;transition:width .4s;width:25%"></div></div>
-    <div style="padding:4px 14px 14px" class="ob-body"></div>`;
+    <div style="padding:4px 14px 12px" class="ob-body"></div>`;
   document.body.appendChild(widget);
   _obRefreshWidget();
 }

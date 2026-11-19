@@ -625,7 +625,8 @@ export async function finishLogin(rows) {
     }
 
     document.getElementById('aiChatBubble').style.display = 'flex';
-    if ((session.role === 'coach' || session.role === 'developer') && (!S.workspace || !S.workspace.onboarding_done)) {
+    const _obDismissed = localStorage.getItem('ra_ob_dismissed_' + session.coachId) === '1';
+    if ((session.role === 'coach' || session.role === 'developer') && !_obDismissed && (!S.workspace || !S.workspace.onboarding_done)) {
       window.switchTab('home');
       // Karşılama modalı sadece ilk girişte gösterilir; sonraki girişlerde
       // (onboarding_done henüz false olsa bile) doğrudan görev widget'ı gösterilir.
