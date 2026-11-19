@@ -10,6 +10,9 @@ import {
   esc, fmtDate, addDays, todayStr, netColor, typeLabel,
   om, cm, getWeekStart, getStudentWeekStart, saveUI, saveS, getNextYks
 } from './helpers.js';
+import {
+  computeEarlyWarnings, loadSnoozedAlerts, snoozeAlert, unsnoozeAlert, clearSnoozedAlerts
+} from './alerts.js';
 
 function formatMinToHours(mins) {
   if (!mins || mins <= 0) return '0 sa';
@@ -560,6 +563,129 @@ function switchTab(tab, updateHash = true){
   }
 }
 
+// ── ERKEN UYARI SİSTEMİ DURUM & AKSİYON YARDIMCILARI ──
+let _alertFilter = 'all';
+let _alertsExpanded = false;
+const _expandedAlertGroups = new Set();
+let _lastAlertsById = {};
+
+function _refreshAlertViews() {
+  if (currentTab === 'student-detail' && S.activeStuId) openStudentDetail(S.activeStuId);
+  else renderHome();
+}
+
+window._setAlertFilter = function(f) {
+  _alertFilter = f || 'all';
+  renderHome();
+};
+
+window._toggleAlertsExpanded = function() {
+  _alertsExpanded = !_alertsExpanded;
+  renderHome();
+};
+
+window._toggleAlertGroup = function(stuId) {
+  if (_expandedAlertGroups.has(stuId)) _expandedAlertGroups.delete(stuId);
+  else _expandedAlertGroups.add(stuId);
+  renderHome();
+};
+
+window._snoozeAlert = function(domKey) {
+  const a = _lastAlertsById[domKey];
+  if (!a) return;
+  const ttlMs = a.severity === 'critical' ? 24 * 3600000 : 3 * 24 * 3600000;
+  snoozeAlert(session.coachId, a.fingerprint, ttlMs);
+  showToast(a.severity === 'critical' ? 'Uyarı 24 saat ertelendi ✓' : 'Uyarı 3 gün ertelendi ✓');
+  _refreshAlertViews();
+};
+
+window._unsnoozeAlert = function(domKey) {
+  const a = _lastAlertsById[domKey];
+  if (!a) return;
+  unsnoozeAlert(session.coachId, a.fingerprint);
+  showToast('Uyarı geri alındı ✓');
+  renderHome();
+};
+
+window._clearAllSnoozed = function() {
+  clearSnoozedAlerts(session.coachId);
+  _alertFilter = 'all';
+  showToast('Tüm ertelenen uyarılar temizlendi ✓');
+  renderHome();
+};
+
+window._runAlertAction = function(domKey) {
+  const a = _lastAlertsById[domKey];
+  if (!a) return;
+  switch (a.actionType) {
+    case 'speed':
+      openSpeedModal(a.studentId);
+      break;
+    case 'program':
+      S.weekOffset = 0;
+      openStudentProgram(a.studentId);
+      break;
+    case 'program_next':
+      S.weekOffset = 1;
+      openStudentProgram(a.studentId);
+      break;
+    case 'exams':
+      openStudentExams(a.studentId);
+      break;
+    case 'konu':
+      openKonuHaritasi(a.studentId);
+      break;
+    case 'appt':
+      openAgendaApptModal(null);
+      {
+        const sel = document.getElementById('amStudent');
+        if (sel) sel.value = a.studentId;
+      }
+      break;
+    case 'message':
+      switchTab('messages');
+      setTimeout(async () => {
+        await selectThread(a.studentId);
+        if (a.draftMsg) applyMsgTemplate(a.draftMsg);
+      }, 80);
+      break;
+    case 'students':
+    default:
+      switchTab('students');
+      break;
+  }
+};
+
+function _renderAlertRowHtml(a, domKey, isFirst, isSnoozed = false, showStudentName = false) {
+  _lastAlertsById[domKey] = a;
+  if (isSnoozed) {
+    return `<div class="ew-row ${isFirst ? 'first' : ''}">
+      <div class="ew-icon">${a.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div class="ew-title sev-${a.severity}">${showStudentName ? `${esc(a.studentName)} · ` : ''}${esc(a.title)}</div>
+        <div class="ew-desc">${a.desc}</div>
+      </div>
+      <div class="ew-actions">
+        <button type="button" class="ew-qa-btn sev-${a.severity}" onclick="event.stopPropagation();window._unsnoozeAlert('${domKey}')">↩ Geri Al</button>
+      </div>
+    </div>`;
+  }
+  const qaBtn = a.actionLabel
+    ? `<button type="button" class="ew-qa-btn sev-${a.severity}" onclick="event.stopPropagation();window._runAlertAction('${domKey}')">${a.actionLabel}</button>`
+    : '';
+  const snzBtn = a.severity !== 'positive'
+    ? `<button type="button" class="ew-snooze-btn" title="${a.severity === 'critical' ? '24 saat ertele' : '3 gün ertele'}" onclick="event.stopPropagation();window._snoozeAlert('${domKey}')">🔕</button>`
+    : '';
+  return `<div class="ew-row ${isFirst ? 'first' : ''}">
+    <div class="ew-icon">${a.icon}</div>
+    <div style="flex:1;min-width:0">
+      <div class="ew-title sev-${a.severity}">${esc(a.title)}</div>
+      <div class="ew-desc">${a.desc}</div>
+    </div>
+    <div class="ew-actions">${qaBtn}${snzBtn}</div>
+  </div>`;
+}
+
 // ── KOÇ ANA SAYFA ──────────────────────────────
 function renderHome(){
   const el = document.getElementById('view-home');
@@ -577,231 +703,108 @@ function renderHome(){
   // Bugünkü randevular
   const todayAppts = S.appointments.filter(a=>a.date===todayStr).sort((a,b)=>a.time.localeCompare(b.time));
 
-  // --- ANOMALİ TESPİTİ (Erken Uyarılar) ---
-  const anomalies = [];
+  // --- ANOMALİ TESPİTİ (Erken Uyarılar Motoru) ---
+  const snoozedMap = loadSnoozedAlerts(session.coachId);
+  const alertRes = computeEarlyWarnings(S, { now, snoozedMap });
+  const activeStudentsHome = (S.students || []).filter(s => s.active !== false);
+  _lastAlertsById = {};
 
-  (S.students || []).forEach(s => {
-    const ws = getWeekStart(0, s.weekStart || 0);
-    // 1) Görev tamamlama analizi
-    let totalTasks = 0;
-    let doneTasks = 0;
-    for (let i = 0; i < 7; i++) {
-      const dateStr = fmtDate(addDays(ws, i));
-      const tasks = S.tasks[`${s.id}_${dateStr}`] || [];
-      totalTasks += tasks.length;
-      doneTasks += tasks.filter(t => t.done).length;
+  if (_alertFilter === 'snoozed' && alertRes.counts.snoozed === 0) _alertFilter = 'all';
+
+  let alertFilterBarHTML = '';
+  if (activeStudentsHome.length > 0 && (alertRes.alerts.length > 0 || alertRes.counts.snoozed > 0)) {
+    const chips = [
+      { id: 'all', cls: 'sev-all', label: `Tümü (${alertRes.alerts.length})` },
+    ];
+    if (alertRes.counts.critical > 0 || _alertFilter === 'critical') {
+      chips.push({ id: 'critical', cls: 'sev-critical', label: `🔴 Kritik (${alertRes.counts.critical})` });
     }
-    const completionRate = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-    if (totalTasks > 0 && completionRate < 30) {
-      anomalies.push({
-        studentId: s.id,
-        studentName: s.name,
-        color: s.color,
-        type: 'tasks',
-        icon: '📋',
-        title: 'Düşük Görev',
-        desc: `Bu haftaki görev tamamlama oranı <b>%${completionRate}</b>'de kaldı (${doneTasks}/${totalTasks} görev tamamlandı).`
-      });
+    if (alertRes.counts.warning > 0 || _alertFilter === 'warning') {
+      chips.push({ id: 'warning', cls: 'sev-warning', label: `🟡 Takip (${alertRes.counts.warning})` });
     }
-
-    // 2) Deneme net düşüşü analizi
-    const stuExams = (S.exams || []).filter(e => e.studentId === s.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const examsByType = {};
-    stuExams.forEach(e => {
-      if (!examsByType[e.type]) examsByType[e.type] = [];
-      examsByType[e.type].push(e);
-    });
-
-    Object.entries(examsByType).forEach(([examType, list]) => {
-      if (list.length >= 2) {
-        const latest = list[0];
-        const prev = list[1];
-        const latestTotal = Object.values(latest.nets || {}).reduce((sum, v) => sum + Number(v || 0), 0);
-        const prevTotal = Object.values(prev.nets || {}).reduce((sum, v) => sum + Number(v || 0), 0);
-        const diff = latestTotal - prevTotal;
-        if (diff < -5) {
-          anomalies.push({
-            studentId: s.id,
-            studentName: s.name,
-            color: s.color,
-            type: 'exams',
-            icon: '📉',
-            title: `Net Düşüşü (${examType})`,
-            desc: `Son denemede <b>${latestTotal} net</b> yaptı. Önceki denemesine (${prevTotal} net) göre <b>${Math.abs(diff).toFixed(1)} net düşüş</b>.`
-          });
-        }
-      }
-    });
-
-    // 3) Bu hafta hiç program yapılmamış
-    if (totalTasks === 0) {
-      anomalies.push({
-        studentId: s.id, studentName: s.name, color: s.color,
-        type: 'noplan', icon: '📭', title: 'Program Yok',
-        desc: `Bu hafta için henüz hiç görev eklenmemiş.`
-      });
+    if (alertRes.counts.positive > 0 || _alertFilter === 'positive') {
+      chips.push({ id: 'positive', cls: 'sev-positive', label: `🏆 Başarı (${alertRes.counts.positive})` });
     }
-
-    // 4) Son 3 gündür hiçbir görev tamamlanmamış (en az 1 görevi varsa)
-    if (totalTasks > 0 && doneTasks === 0) {
-      let hasTaskLast3 = false;
-      for (let i = 0; i < 3; i++) {
-        const d = fmtDate(addDays(now, -i));
-        if ((S.tasks[`${s.id}_${d}`]||[]).length > 0) { hasTaskLast3 = true; break; }
-      }
-      if (hasTaskLast3) {
-        anomalies.push({
-          studentId: s.id, studentName: s.name, color: s.color,
-          type: 'inactive', icon: '💤', title: '3 Gündür Pasif',
-          desc: `Son 3 gündür hiçbir görev tamamlanmadı. İletişime geç!`
-        });
-      }
+    if (alertRes.counts.snoozed > 0 || _alertFilter === 'snoozed') {
+      chips.push({ id: 'snoozed', cls: 'sev-snoozed', label: `🔕 Ertelenen (${alertRes.counts.snoozed})` });
     }
-
-    // 5) Tüm görevleri tamamlayanlar (pozitif)
-    if (totalTasks > 0 && doneTasks === totalTasks) {
-      anomalies.push({
-        studentId: s.id, studentName: s.name, color: s.color,
-        type: 'perfect', icon: '🏆', title: 'Harika Hafta!',
-        desc: `Bu haftaki tüm ${totalTasks} görevi tamamladı! Tebrik et.`
-      });
-    }
-
-    // 6) Soru çözüm hızı analizi
-    const studentSpeeds = (S.studentSpeeds || []).filter(sp => sp.student_id === s.id);
-    studentSpeeds.forEach(sp => {
-      let limit = 120;
-      if (sp.exam_type === 'TYT') {
-        if (['Türkçe', 'Sosyal'].includes(sp.subject)) limit = 100;
-        else if (['Matematik', 'Fen'].includes(sp.subject)) limit = 130;
-      } else if (sp.exam_type && sp.exam_type.startsWith('AYT')) {
-        limit = 180;
-      }
-      if (sp.secs_per_question > limit) {
-        anomalies.push({
-          studentId: s.id,
-          studentName: s.name,
-          color: s.color,
-          type: 'speed',
-          icon: '⚡',
-          title: `Hız Aşımı (${sp.exam_type} - ${sp.subject})`,
-          desc: `Soru çözüm hızı <b>${sp.secs_per_question} sn/soru</b> (Limit: ${limit} sn).`
-        });
-      }
-    });
-  });
-
-  // 7) Kabul edilmemiş öğrenci davetleri — koç, davetin sessizce başarısız
-  // olduğunu (öğrenci hiç katılmadı) fark edebilsin diye. Yeni gönderilen
-  // davetler (24 saatten taze, süresi dolmamış) henüz alarm oluşturmaz.
-  (S.pendingInvites || []).forEach(inv => {
-    const hoursSincePending = (Date.now() - new Date(inv.createdAt).getTime()) / 3600000;
-    if (!inv.expired && hoursSincePending < 24) return;
-    anomalies.push({
-      studentId: `invite_${inv.id}`,
-      studentName: inv.studentName,
-      color: '#94a3b8',
-      type: 'invite',
-      icon: '📨',
-      title: inv.expired ? 'Davet Süresi Doldu' : 'Davet Bekliyor',
-      desc: inv.expired
-        ? `<b>${esc(inv.email)}</b> adresine gönderilen davet kabul edilmeden süresi doldu. Öğrenci hiç katılmamış olabilir — tekrar davet gönderin.`
-        : `<b>${esc(inv.email)}</b> adresine gönderilen davet henüz kabul edilmedi (${Math.floor(hoursSincePending)} saat önce gönderildi).`
-    });
-  });
+    alertFilterBarHTML = `<div class="ew-filter-bar">
+      ${chips.map(c => `<button type="button" class="ew-chip ${c.cls} ${_alertFilter === c.id ? 'active' : ''}" onclick="window._setAlertFilter('${c.id}')">${c.label}</button>`).join('')}
+    </div>`;
+  }
 
   let anomaliesHTML = '';
-  if (anomalies.length === 0) {
-    if (S.students.length === 0) {
-      anomaliesHTML = `
-        <div style="text-align:center;padding:24px 16px">
-          <div style="font-size:36px;margin-bottom:12px">👋</div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">İlk öğrencinizi ekleyin</div>
-          <div style="font-size:12px;color:var(--text-mid);margin-bottom:16px;line-height:1.6">Öğrencilerim sekmesinden öğrenci ekleyerek uygulamayı kullanmaya başlayabilirsiniz.</div>
-          <button class="btn btn-accent" onclick="switchTab('students')" style="font-size:13px;padding:9px 20px">Öğrenci Ekle →</button>
-        </div>`;
+  let domCounter = 0;
+
+  if (_alertFilter === 'snoozed') {
+    if (alertRes.snoozed.length === 0) {
+      anomaliesHTML = `<div class="hsc-empty">Ertelenmiş uyarı bulunmuyor.</div>`;
     } else {
       anomaliesHTML = `
-        <div style="text-align:center;padding:16px;color:var(--text-dim);font-size:13px">
-          ✅ Harika! Şu an için kritik bir performans düşüşü veya uyarı bulunmuyor.
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button type="button" class="ew-qa-btn" onclick="window._clearAllSnoozed()">Tümünü Geri Al</button>
+        </div>
+        <div class="ew-card">
+          ${alertRes.snoozed.map((a, idx) => _renderAlertRowHtml(a, `al_s_${idx}`, idx === 0, true, true)).join('')}
         </div>`;
     }
   } else {
-    const typeStyle = {
-      perfect: { badge: '#3ecf8e', badgeBg: 'rgba(62,207,142,.12)', border: 'rgba(62,207,142,.25)' },
-      noplan:  { badge: '#f0a500', badgeBg: 'rgba(240,165,0,.1)',   border: 'rgba(240,165,0,.2)' },
-      inactive:{ badge: '#ff5c7a', badgeBg: 'rgba(255,92,122,.08)', border: 'rgba(255,92,122,.2)' },
-      tasks:   { badge: '#ff5c7a', badgeBg: 'rgba(255,92,122,.08)', border: 'rgba(255,92,122,.2)' },
-      exams:   { badge: '#ff5c7a', badgeBg: 'rgba(255,92,122,.08)', border: 'rgba(255,92,122,.2)' },
-      speed:   { badge: '#f0a500', badgeBg: 'rgba(240,165,0,.1)',   border: 'rgba(240,165,0,.2)' },
-      invite:  { badge: '#60a5fa', badgeBg: 'rgba(96,165,250,.1)',  border: 'rgba(96,165,250,.2)' },
-    };
-    // Uyarı tipine göre tek-tık hızlı aksiyon (koç ilgili ekrana ışınlanır)
-    const quickAction = {
-      noplan:   { label: '📅 Program Yap',  fn: 'openStudentProgram' },
-      tasks:    { label: '📋 Programı Aç',  fn: 'openStudentProgram' },
-      inactive: { label: '📋 Programı Aç',  fn: 'openStudentProgram' },
-      exams:    { label: '➕ Deneme Ekle',  fn: 'openStudentExams' },
-      speed:    { label: '⏱ Hızı Düzenle', fn: 'openStudentModal' },
-    };
-    const qaBtnHTML = a => {
-      const st2 = typeStyle[a.type] || typeStyle.tasks;
-      const qa = quickAction[a.type];
-      return qa ? `<button onclick="event.stopPropagation();${qa.fn}('${a.studentId}')" style="flex-shrink:0;font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid ${st2.border};background:var(--surface);color:${st2.badge};cursor:pointer;font-family:inherit;white-space:nowrap;transition:filter .15s" onmouseover="this.style.filter='brightness(.95)'" onmouseout="this.style.filter='none'">${qa.label}</button>` : '';
-    };
+    const sevRank = { critical: 3, warning: 2, positive: 1 };
+    const filteredGroups = alertRes.groups
+      .map(grp => {
+        const items = _alertFilter === 'all' ? grp.items : grp.items.filter(x => x.severity === _alertFilter);
+        if (!items.length) return null;
+        const worst = items.reduce((w, it) => (sevRank[it.severity] > sevRank[w] ? it.severity : w), 'positive');
+        return { ...grp, items, worstSeverity: worst };
+      })
+      .filter(Boolean);
 
-    // Aynı öğrenci için birden fazla uyarı varsa tek kartta grupla — dağınık,
-    // tekrarlı liste yerine öğrenci başına tek kart gösterilir (mobil inceleme notu).
-    // Tek uyarısı olan öğrenciler eskisi gibi (değişmemiş) görünür.
-    const severityRank = { inactive: 3, tasks: 3, exams: 3, noplan: 2, speed: 2, perfect: 0 };
-    const grouped = [];
-    const idxByStu = {};
-    anomalies.forEach(a => {
-      if (idxByStu[a.studentId] === undefined) {
-        idxByStu[a.studentId] = grouped.length;
-        grouped.push({ studentId: a.studentId, studentName: a.studentName, color: a.color, items: [] });
+    if (filteredGroups.length === 0) {
+      if (activeStudentsHome.length === 0 && S.students.length === 0) {
+        anomaliesHTML = `
+          <div style="text-align:center;padding:24px 16px">
+            <div style="font-size:36px;margin-bottom:12px">👋</div>
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">İlk öğrencinizi ekleyin</div>
+            <div style="font-size:12px;color:var(--text-mid);margin-bottom:16px;line-height:1.6">Öğrencilerim sekmesinden öğrenci ekleyerek uygulamayı kullanmaya başlayabilirsiniz.</div>
+            <button class="btn btn-accent" onclick="switchTab('students')" style="font-size:13px;padding:9px 20px">Öğrenci Ekle →</button>
+          </div>`;
+      } else {
+        anomaliesHTML = `
+          <div style="text-align:center;padding:16px;color:var(--text-dim);font-size:13px">
+            ✅ Harika! Bu kategoride bekleyen erken uyarı bulunmuyor.
+          </div>`;
       }
-      grouped[idxByStu[a.studentId]].items.push(a);
-    });
-
-    anomaliesHTML = grouped.map(grp => {
-      if (grp.items.length === 1) {
-        const a = grp.items[0];
-        const st = typeStyle[a.type] || typeStyle.tasks;
-        const clickAction = a.type === 'invite' ? `switchTab('students')` : `openStudentDetail('${a.studentId}')`;
-        return `<div style="cursor:pointer;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:${st.badgeBg};border:1px solid ${st.border};display:flex;align-items:center;gap:10px;transition:opacity .15s" onclick="${clickAction}" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-          <div style="font-size:18px;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0">${a.icon}</div>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px">
-              <span style="font-size:13px;font-weight:700">${esc(a.studentName)}</span>
-              <span style="font-size:10px;font-weight:700;color:${st.badge};white-space:nowrap">${a.title}</span>
-            </div>
-            <div style="font-size:11px;color:var(--text-mid);line-height:1.4">${a.desc}</div>
+    } else {
+      const limit = _alertFilter === 'all' && !_alertsExpanded ? 6 : filteredGroups.length;
+      const shownGroups = filteredGroups.slice(0, limit);
+      anomaliesHTML = shownGroups.map(grp => {
+        const isInvite = String(grp.studentId || '').startsWith('invite_');
+        const clickAction = isInvite ? `switchTab('students')` : `openStudentDetail('${esc(grp.studentId)}')`;
+        const isGrpExpanded = _expandedAlertGroups.has(grp.studentId) || grp.items.length <= 2;
+        const shownItems = isGrpExpanded ? grp.items : grp.items.slice(0, 2);
+        const rowsHTML = shownItems.map((a, idx) => _renderAlertRowHtml(a, `al_h_${domCounter++}`, idx === 0, false, false)).join('');
+        const moreRowsBtn = grp.items.length > 2
+          ? `<button type="button" class="ew-more-rows-btn" onclick="event.stopPropagation();window._toggleAlertGroup('${esc(grp.studentId)}')">${isGrpExpanded ? 'Daha az göster' : `+${grp.items.length - 2} diğer uyarıyı göster`}</button>`
+          : '';
+        const countBadge = grp.items.length > 1
+          ? `<span class="ew-count-badge">${grp.items.length} uyarı</span>`
+          : '';
+        return `<div class="ew-card sev-${grp.worstSeverity}" onclick="${clickAction}">
+          <div class="ew-card-hd">
+            <span class="ew-stu-name"><span class="ew-stu-dot" style="background:${grp.color || 'var(--accent)'}"></span>${esc(grp.studentName)}</span>
+            ${countBadge}
           </div>
-          ${qaBtnHTML(a)}
-        </div>`;
-      }
-      const worst = grp.items.reduce((w, it) => (severityRank[it.type] ?? 1) > (severityRank[w.type] ?? 1) ? it : w, grp.items[0]);
-      const st = typeStyle[worst.type] || typeStyle.tasks;
-      const rowsHTML = grp.items.map((a, i) => {
-        const st2 = typeStyle[a.type] || typeStyle.tasks;
-        return `<div style="display:flex;align-items:center;gap:10px;padding:${i===0?'0 0 8px':'8px 0 0'};${i>0?'border-top:1px solid rgba(255,255,255,.07)':''}">
-          <div style="font-size:16px;width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0">${a.icon}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:11px;font-weight:700;color:${st2.badge};margin-bottom:1px">${a.title}</div>
-            <div style="font-size:11px;color:var(--text-mid);line-height:1.4">${a.desc}</div>
-          </div>
-          ${qaBtnHTML(a)}
+          ${rowsHTML}
+          ${moreRowsBtn}
         </div>`;
       }).join('');
-      return `<div style="cursor:pointer;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:${st.badgeBg};border:1px solid ${st.border};transition:opacity .15s" onclick="openStudentDetail('${grp.studentId}')" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${grp.color||'var(--accent)'};display:inline-block;flex-shrink:0"></span>${esc(grp.studentName)}</span>
-          <span style="font-size:10px;font-weight:700;color:${st.badge};white-space:nowrap;background:rgba(255,255,255,.07);padding:3px 8px;border-radius:20px">${grp.items.length} uyarı</span>
-        </div>
-        ${rowsHTML}
-      </div>`;
-    }).join('');
+
+      if (_alertFilter === 'all' && filteredGroups.length > 6) {
+        anomaliesHTML += `<button type="button" class="ew-footer-btn" onclick="window._toggleAlertsExpanded()">
+          ${_alertsExpanded ? 'Daha Az Göster ▲' : `Tümünü Gör (${filteredGroups.length} öğrenci · +${filteredGroups.length - 6} daha) ▾`}
+        </button>`;
+      }
+    }
   }
 
   const hr = now.getHours();
@@ -813,17 +816,21 @@ function renderHome(){
   const yksInfo = getNextYks();
   const daysToYks = yksInfo.days;
 
-  // Haftanın görev tamamlama özeti
-  const ws2 = getWeekStart(0, 0);
+  // Haftanın görev tamamlama özeti (aktif öğrenciler + kişisel weekStart)
   let weekTotal = 0, weekDone = 0;
-  S.students.forEach(s => {
+  activeStudentsHome.forEach(s => {
+    const sWs = getWeekStart(0, s.weekStart || 0);
     for(let i=0;i<7;i++){
-      const tasks = S.tasks[`${s.id}_${fmtDate(addDays(ws2,i))}`]||[];
+      const tasks = S.tasks[`${s.id}_${fmtDate(addDays(sWs,i))}`]||[];
       weekTotal += tasks.length;
       weekDone += tasks.filter(t=>t.done).length;
     }
   });
   const weekPct = weekTotal > 0 ? Math.round(weekDone/weekTotal*100) : 0;
+
+  const actionableCount = alertRes.counts.totalActionable;
+  const headerIcon = alertRes.counts.critical > 0 ? '🚨' : actionableCount > 0 ? '⚠️' : '✅';
+  const headerPillCls = alertRes.counts.critical > 0 ? 'hsc-pill-red' : actionableCount > 0 ? 'hsc-pill-amber' : 'hsc-pill-green';
 
   el.innerHTML = `
     <!-- HERO -->
@@ -849,7 +856,7 @@ function renderHome(){
           <span class="hsv2-icon-wrap hsv2-amber">👥</span>
           <span class="hsv2-trend">→</span>
         </div>
-        <div class="hsv2-val">${S.students.length}</div>
+        <div class="hsv2-val">${activeStudentsHome.length}</div>
         <div class="hsv2-lbl">Aktif Öğrenci</div>
       </div>
       <div class="hsv2-card" onclick="switchTab('students')" title="Öğrencilere git — randevu sekmesi">
@@ -884,13 +891,15 @@ function renderHome(){
 
     <!-- ALT GRID: Uyarılar + Randevular -->
     <div class="home-bottom-grid">
-      <div class="home-section-card ${anomalies.length>0?'hsc-has-alerts':''}">
+      <div class="home-section-card ${actionableCount>0?'hsc-has-alerts':''}">
         <div class="hsc-head">
-          <span class="hsc-head-icon">${anomalies.length>0?'⚠️':'✅'}</span>
+          <span class="hsc-head-icon">${headerIcon}</span>
           <span class="hsc-head-title">Erken Uyarılar</span>
-          <span class="hsc-pill ${anomalies.length>0?'hsc-pill-red':'hsc-pill-green'}">${anomalies.length>0?anomalies.length+' uyarı':'Temiz'}</span>
+          ${alertRes.counts.positive > 0 ? `<span class="hsc-pill hsc-pill-green">🏆 ${alertRes.counts.positive}</span>` : ''}
+          <span class="hsc-pill ${headerPillCls}">${actionableCount>0?actionableCount+' uyarı':'Temiz'}</span>
         </div>
-        <div class="hsc-body">${anomaliesHTML}</div>
+        ${alertFilterBarHTML}
+        <div class="hsc-body hsc-alerts-body ${_alertsExpanded?'expanded':''}">${anomaliesHTML}</div>
       </div>
       <div class="home-section-card">
         <div class="hsc-head">
@@ -960,6 +969,15 @@ function renderStudentsSearch(){
     weekStats[s.id]={total,done,totalMin,doneMin};
   });
 
+  const stuWarnRes = computeEarlyWarnings(S, { snoozedMap: loadSnoozedAlerts(session.coachId) });
+  const stuWarnCounts = {};
+  (stuWarnRes.alerts || []).forEach(a => {
+    if (a.severity === 'positive') return;
+    if (!stuWarnCounts[a.studentId]) stuWarnCounts[a.studentId] = { critical: 0, warning: 0 };
+    if (a.severity === 'critical') stuWarnCounts[a.studentId].critical++;
+    else stuWarnCounts[a.studentId].warning++;
+  });
+
   const activeStudents = S.students.filter(s=>s.active!==false);
   const pasifStudents  = S.students.filter(s=>s.active===false);
   const totalStudents = activeStudents.length;
@@ -1005,6 +1023,12 @@ function renderStudentsSearch(){
         const isComplete=w.total>0&&w.done===w.total;
         const lastExam=S.exams.filter(e=>e.studentId===s.id).sort((a,b)=>b.date.localeCompare(a.date))[0];
         const totalNet=lastExam?Object.values(lastExam.nets||{}).reduce((a,b)=>a+b,0).toFixed(1):null;
+        const wc=stuWarnCounts[s.id];
+        const alertPill = wc?.critical
+          ? `<span class="stu-alert-pill sev-critical" title="${wc.critical} kritik uyarı">🔴 ${wc.critical}</span>`
+          : wc?.warning
+          ? `<span class="stu-alert-pill sev-warning" title="${wc.warning} takip uyarısı">🟡 ${wc.warning}</span>`
+          : '';
         return `<div class="stu-row" id="sturow_${s.id}" onclick="openStudentDetail('${s.id}')" style="padding:12px 16px;align-items:center;gap:12px;border-radius:10px">
           <div style="width:38px;height:38px;border-radius:10px;background:${s.color};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0">${s.name[0]}</div>
           <div style="flex:1;min-width:0">
@@ -1012,6 +1036,7 @@ function renderStudentsSearch(){
             <div style="font-size:11px;color:var(--text-dim);margin-top:1px">${esc(s.target||'Hedef belirtilmemiş')}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;font-size:11px;color:var(--text-mid)">
+            ${alertPill}
             <span style="font-weight:700;color:${pctColor}">%${pct}</span>
             <span style="color:var(--border2)">·</span>
             <span>${w.done}/${w.total} görev</span>
@@ -1075,18 +1100,33 @@ function openStudentDetail(stuId){
   const wPct=wTotal>0?Math.round((wDone/wTotal)*100):0;
   const pctColor=wPct>=70?'var(--green)':wPct>=40?'#f59e0b':'var(--red)';
 
-  // Durum Etiketi
+  const stuAlerts = computeEarlyWarnings(S, { snoozedMap: loadSnoozedAlerts(session.coachId), studentId: stuId });
+  const stuActionable = (stuAlerts.alerts || []).filter(a => a.severity !== 'positive');
+  const stuAlertsHtml = stuActionable.length ? `
+    <div class="stu-detail-alerts">
+      <div class="stu-detail-alerts-hd">
+        <span>⚠️ Erken Uyarılar</span>
+        <span class="hsc-pill ${stuAlerts.counts.critical > 0 ? 'hsc-pill-red' : 'hsc-pill-amber'}">${stuActionable.length} uyarı</span>
+      </div>
+      ${stuActionable.map((a, idx) => _renderAlertRowHtml(a, `al_d_${idx}`, idx === 0, false, false)).join('')}
+    </div>` : '';
+
+  // Durum Etiketi (vadesi gelen görevlere / aktif uyarılara göre — Pazartesi sabahı yalancı Riskli etiketi oluşmaz)
   let statusBadge = { label: '🟢 Aktif', class: 'status-active', color: '#3ecf8e', bg: 'rgba(62,207,142,.12)', border: 'rgba(62,207,142,.25)' };
-  let insightText = `Harika tempo! Bu hafta tanımlanan ${wTotal} görevin ${wDone}'i (%${wPct}) başarıyla tamamlandı. Öğrenci yüksek motivasyon ve istikrarla hedefine doğru ilerliyor.`;
+  let insightText = wTotal > 0
+    ? `Harika tempo! Bu hafta tanımlanan ${wTotal} görevin ${wDone}'i (%${wPct}) başarıyla tamamlandı. Öğrenci istikrarla hedefine doğru ilerliyor.`
+    : `Bu hafta için henüz görev eklenmemiş. Öğrenciye haftalık program oluşturarak takibi başlatabilirsiniz.`;
   let insightClass = 'success';
 
-  if (wPct < 40) {
+  if (stuAlerts.counts.critical > 0) {
     statusBadge = { label: '🔴 Riskli', class: 'status-risk', color: '#ef4444', bg: 'rgba(239,68,68,.12)', border: 'rgba(239,68,68,.25)' };
-    insightText = `Bu hafta tanımlanan ${wTotal} görevin yalnızca ${wDone}'ü (%${wPct}) tamamlandı. Öğrenci hedeflenen haftalık performansın altında seyrediyor. Aksayan konuları tespit etmek için 1-on-1 görüşme önerilir.`;
+    insightText = `${stuAlerts.alerts.find(a => a.severity === 'critical')?.title || 'Kritik uyarı'} dahil ${stuActionable.length} erken uyarı tespit edildi. Yakın takip ve 1-1 değerlendirme önerilir.`;
     insightClass = 'risk';
-  } else if (wPct < 70) {
+  } else if (stuAlerts.counts.warning > 0 || (wTotal > 0 && wPct < 70)) {
     statusBadge = { label: '🟡 Takip Gerekli', class: 'status-warning', color: '#f59e0b', bg: 'rgba(245,158,11,.12)', border: 'rgba(245,158,11,.25)' };
-    insightText = `Bu hafta görevlerin %${wPct}'si tamamlandı. Temposunu koruması ve eksik olduğu derslerin konu tekrarına ağırlık vermesi tavsiye edilir.`;
+    insightText = stuActionable.length
+      ? `${stuActionable.length} takip uyarısı bulunuyor (${esc(stuActionable[0].title)}). Programı veya hız ayarlarını gözden geçirmeniz önerilir.`
+      : `Bu hafta görevlerin %${wPct}'si tamamlandı. Temposunu koruması ve eksik olduğu derslere odaklanması tavsiye edilir.`;
     insightClass = 'warning';
   }
 
@@ -1225,6 +1265,8 @@ function openStudentDetail(stuId){
         📅 Görüşme Planla
       </button>
     </div>
+
+    ${stuAlertsHtml}
 
     <!-- 4. MODERN SEKMELİ YAPI (ANA SEKMELER) -->
     <div class="stu-segmented-tabs-wrap">
@@ -3392,8 +3434,15 @@ async function saveStudentSpeed(stuId, examType, subject, secsPerQ, silent = fal
     const { error } = await db.from('student_speeds').insert({student_id:stuId,coach_id:session.coachId,exam_type:examType,subject,secs_per_question:secsPerQ});
     if (error) { if (!silent) showToast('Hata: ' + error.message); return false; }
   }
-  _studentSpeeds[`${stuId}_${examType}_${subject}`]=secsPerQ;
   if (!silent) showToast('Hız kaydedildi ✓');
+  const spList = S.studentSpeeds || (S.studentSpeeds = []);
+  const exIdx = spList.findIndex(sp => sp.student_id === stuId && sp.exam_type === examType && sp.subject === subject);
+  if (exIdx >= 0) {
+    spList[exIdx].secs_per_question = secsPerQ;
+  } else {
+    spList.push({ student_id: stuId, coach_id: session.coachId, exam_type: examType, subject, secs_per_question: secsPerQ });
+  }
+  _studentSpeeds[`${stuId}_${examType}_${subject}`]=secsPerQ;
   return true;
 }
 
@@ -12074,6 +12123,11 @@ async function saveAllSpeeds(stuId) {
   }
   cm('speedModal');
   if (failed) return;
+  if (savedCount > 0) {
+    saveCache();
+    if (currentTab === 'home') renderHome();
+    else if (currentTab === 'student-detail' && S.activeStuId === stuId) openStudentDetail(stuId);
+  }
   showToast(savedCount > 0 ? `${savedCount} ders hızı kaydedildi ✓` : 'Değişiklik yapılmadı');
 }
 window.saveAllSpeeds = saveAllSpeeds;
