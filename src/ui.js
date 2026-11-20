@@ -13,6 +13,11 @@ import {
 import {
   computeEarlyWarnings, loadSnoozedAlerts, snoozeAlert, unsnoozeAlert, clearSnoozedAlerts
 } from './alerts.js';
+import {
+  DIFF_META, BLOCKER_LABELS, TYPE_META, escAttr, formatShortDuration,
+  getTaskStatusMeta, computeTaskResultMeta, computeTaskDurationMeta,
+  computeWeeklyReportStats, filterAndSortWeeklyTasks, buildCoachTaskMessageDraft
+} from './weekly-report.js';
 
 function formatMinToHours(mins) {
   if (!mins || mins <= 0) return '0 sa';
@@ -3185,7 +3190,7 @@ async function renderBookList(query){
         subjects.forEach(sub => {
           const key=`${r.exam_type}_${sub}`;
           if(!_resourcesCache[key]) _resourcesCache[key]=[];
-          _resourcesCache[key].push({name:r.name,yil:r.year,testler:Array.isArray(r.tests)?r.tests:[],publisher:r.publisher,resource_type:r.resource_type||'book'});
+          _resourcesCache[key].push({name:r.name,yil:r.year,testler:Array.isArray(r.tests)?r.tests:[],publisher:r.publisher,resource_type:r.resource_type||'book',exam_type:r.exam_type,subject:r.subject});
         });
       });
     }
@@ -3194,8 +3199,21 @@ async function renderBookList(query){
 
   const key=`${exam}_${subject}`;
   const books=_resourcesCache[key]||[];
-  const q=query.toLowerCase();
-  _filteredBooks=books.filter(b=>!q||b.name.toLowerCase().includes(q)||b.publisher?.toLowerCase().includes(q));
+  _filteredBooks=books.filter(b=>_matchesResourceQuery(b, query));
+  let isGlobalFallback = false;
+  if (query.trim() && !_filteredBooks.length) {
+    const seenKeys = new Set();
+    const allUnique = [];
+    Object.values(_resourcesCache).flat().forEach(b => {
+      const uid = `${b.name}__${b.exam_type||''}__${b.subject||''}`;
+      if (!seenKeys.has(uid)) { seenKeys.add(uid); allUnique.push(b); }
+    });
+    const globalHits = allUnique.filter(b => _matchesResourceQuery(b, query));
+    if (globalHits.length) {
+      _filteredBooks = globalHits.slice(0, 30);
+      isGlobalFallback = true;
+    }
+  }
 
   if(!query && !_filteredBooks.length){
     listEl.style.display='none'; return;
@@ -3206,12 +3224,15 @@ async function renderBookList(query){
     return;
   }
   listEl.style.display='block';
-  listEl.innerHTML=_filteredBooks.map((b,i)=>`
+  const fallbackHead = isGlobalFallback
+    ? `<div style="padding:7px 14px;font-size:10.5px;font-weight:700;color:var(--text-dim);background:var(--surface2);border-bottom:1px solid var(--border)">Diğer sınav/derslerde bulunan eşleşmeler:</div>`
+    : '';
+  listEl.innerHTML=fallbackHead + _filteredBooks.map((b,i)=>`
     <div onclick="selectBook(${i})" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;transition:background .15s"
       onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background=''">
       <div>
         <div style="font-size:13px;font-weight:700">${esc(b.name)}</div>
-        <div style="font-size:10px;color:var(--text-dim);margin-top:2px">${esc(b.publisher||'')} · ${b.testler.length} test</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:2px">${esc(b.publisher||'')} · ${b.testler.length} ${wantedType==='playlist'?'video':'test'}${isGlobalFallback && b.exam_type ? ` · ${esc(b.exam_type)} ${esc(b.subject||'')}` : ''}</div>
       </div>
       <span style="font-size:10px;font-weight:700;background:var(--green-dim);color:var(--green);padding:2px 7px;border-radius:99px;margin-left:8px;flex-shrink:0">${b.yil}</span>
     </div>`).join('');
@@ -7930,11 +7951,11 @@ async function fetchYouTubePlaylist() {
   try {
     let videos = [], nextPage = '';
     do {
-      let apiUrl = `/api/youtube?playlistId=${listId}`;
+      let apiUrl = `/api/youtube?playlistId=${encodeURIComponent(listId)}`;
       if (nextPage) {
-        apiUrl += `&pageToken=${nextPage}`;
+        apiUrl += `&pageToken=${encodeURIComponent(nextPage)}`;
       }
-      const res = await fetch(apiUrl);
+      const res = await fetch(apiUrl, { headers: await aiAuthHeaders() });
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.error || 'Oynatma listesi yüklenemedi.');
@@ -15734,10 +15755,17 @@ window.makeResourceGlobal = makeResourceGlobal;
 
 // deleteResourceCoach is defined below
 
+function _matchesResourceQuery(r, rawQuery) {
+  const tokens = trClean(rawQuery || '').split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  const hay = trClean(`${r?.name || ''} ${r?.publisher || ''} ${r?.exam_type || ''} ${r?.subject || ''}`);
+  return tokens.every(t => hay.includes(t));
+}
+
 function applyResFilter(all) {
   const q = _crFilter.search;
   return all.filter(r => {
-    if (q && !r.name.toLowerCase().includes(q) && !(r.publisher||'').toLowerCase().includes(q)) return false;
+    if (!_matchesResourceQuery(r, q)) return false;
     if (_crFilter.exam && r.exam_type !== _crFilter.exam) return false;
     if (_crFilter.subject && r.subject !== _crFilter.subject) return false;
     return true;
@@ -16069,13 +16097,14 @@ async function renderCoachResources() {
   // isDev is already declared above
 
   el.innerHTML = `<div style="max-width:720px;margin:0 auto">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap">
       <div>
         <h2 style="font-family:'Inter',sans-serif;font-size:22px;font-weight:800;display:flex;align-items:center;gap:8px">
           <span>📚</span> <span>Kaynak Yönetim Merkezi</span>
         </h2>
         <p style="font-size:12px;color:var(--text-mid);margin-top:2px">Soru bankaları, oynatma listeleri, koç özel kaynakları ve Fernus Dijital Import.</p>
       </div>
+      <a href="/kaynak_yoneticisi.html" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="white-space:nowrap">↗ Kaynak Yöneticisi</a>
     </div>
 
     <div class="cr-tabs">
@@ -16086,7 +16115,7 @@ async function renderCoachResources() {
       <button class="cr-tab ${activeTab==='analytics'?'active':''}" id="crt-analytics" onclick="switchCRTab('analytics')">Kaynak Analizi</button>
     </div>
 
-    <div class="cr-filter-bar">
+    <div class="cr-filter-bar" id="crFilterBar" style="${activeTab==='fernus'?'display:none':''}">
       <div class="cr-filter-search">
         <span style="color:var(--text-dim);font-size:14px">🔍</span>
         <input type="text" id="crSearch" placeholder="Kaynak veya yayınevi ara..." oninput="updateCRFilter()" autocomplete="off">
@@ -16119,6 +16148,8 @@ async function renderCoachResources() {
 function switchCRTab(tab) {
   document.querySelectorAll('.cr-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('crt-' + tab.replace('_', '-'))?.classList.add('active');
+  const fBar = document.getElementById('crFilterBar');
+  if (fBar) fBar.style.display = tab === 'fernus' ? 'none' : '';
   const filtered = applyResFilter(_crAllRes);
   document.getElementById('cr-tab-content').innerHTML = buildCRContent(tab, filtered);
   if (tab === 'fernus') {
@@ -16287,10 +16318,13 @@ async function fetchYtPlaylistCoach() {
   try {
     let videos = [], nextPage = '';
     do {
-      let apiUrl = `/api/youtube?playlistId=${listId}`;
-      if (nextPage) apiUrl += `&pageToken=${nextPage}`;
-      const res = await fetch(apiUrl);
-      if (!res.ok) throw new Error('Playlist çekilemedi.');
+      let apiUrl = `/api/youtube?playlistId=${encodeURIComponent(listId)}`;
+      if (nextPage) apiUrl += `&pageToken=${encodeURIComponent(nextPage)}`;
+      const res = await fetch(apiUrl, { headers: await aiAuthHeaders() });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Playlist çekilemedi.');
+      }
       const data = await res.json();
       if(data.items) videos = videos.concat(data.items);
       nextPage = data.nextPageToken || '';
@@ -17324,11 +17358,59 @@ function applyReportTemplate() {
   showToast(`"${t.name}" uygulandı ✓`);
 }
 
-async function openWeeklyReportModal() {
-  const stu = S.students.find(s=>s.id===S.activeStuId);
-  if(!stu) return showToast('Öğrenci bulunamadı.');
+const _WR_DOW_SHORT = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+
+function _wrFormatTaskDate(ds) {
+  if (!ds || typeof ds !== 'string') return '';
+  const parts = ds.split('-');
+  if (parts.length !== 3) return ds;
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (!y || !m || !d) return ds;
+  const dt = new Date(y, m - 1, d);
+  const mon = (MONTHS_TR[m - 1] || '').slice(0, 3);
+  return `${d} ${mon} · ${_WR_DOW_SHORT[dt.getDay()] || ''}`;
+}
+
+function _wrRowStableId(t, fallbackIdx) {
+  return t?._id || `${t?.date || ''}_${t?.subject || ''}_${fallbackIdx}`;
+}
+
+function _wrTaskSubSummary(t) {
+  const items = Array.isArray(t?.task_items) ? t.task_items : [];
+  const parts = [];
+  if (items.length > 0) {
+    const labels = items
+      .map(it => cleanTestLabel(typeof it === 'string' ? it : (it?.label || ''), t?.subject || ''))
+      .filter(Boolean);
+    if (labels.length > 0) {
+      let line = labels.slice(0, 2).join(' · ');
+      if (items.length > 2) line += ` (+${items.length - 2} daha)`;
+      parts.push(line);
+    }
+  }
+  const rawNote = String(t?.note || '').trim();
+  const isAutoSummary = /^\d+\s+(video|test):/.test(rawNote);
+  if (rawNote && (!items.length || !isAutoSummary)) {
+    if (!parts.includes(rawNote)) parts.push(rawNote);
+  }
+  return parts.join(' — ');
+}
+
+async function openWeeklyReportModal(offsetOverride) {
+  const stu = S.students.find(s => s.id === S.activeStuId);
+  if (!stu) return showToast('Öğrenci bulunamadı.');
+
   const ws = stu.weekStart ?? 0;
-  const wStart = getWeekStart(S.weekOffset, ws);
+  const activeOffset = (offsetOverride !== undefined && offsetOverride !== null && !Number.isNaN(Number(offsetOverride)))
+    ? Number(offsetOverride)
+    : S.weekOffset;
+
+  window._wrWeekOffset = activeOffset;
+  window._wrStudent = stu;
+
+  const wStart = getWeekStart(activeOffset, ws);
   const wEnd = addDays(wStart, 6);
 
   showLoading(true);
@@ -17350,71 +17432,31 @@ async function openWeeklyReportModal() {
     exam: t.exam_type,
     subject: t.subject,
     duration: t.duration,
-    note: t.note,
-    done: t.done,
+    note: t.note || '',
+    done: !!t.done,
     student_note: t.student_note || '',
     student_feedback: t.student_feedback || null,
     student_result: t.student_result || null,
-    task_items: t.task_items || [],
+    task_items: Array.isArray(t.task_items) ? t.task_items : [],
+    start_time: t.start_time || null,
+    added_by_student: !!t.added_by_student,
     date: t.date
   }));
 
-  weekTasks.sort((a, b) => a.date.localeCompare(b.date));
+  weekTasks.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 
-  if (weekTasks.length === 0) {
-    return showToast('Bu haftaya ait atanmış görev bulunmuyor.');
-  }
+  const todayDs = todayStr();
+  const stats = computeWeeklyReportStats(weekTasks, todayDs);
 
-  const totalTasks = weekTasks.length;
-  const completedTasks = weekTasks.filter(t => t.done).length;
-  const completionRate = Math.round((completedTasks / totalTasks) * 100);
-
-  const tasksWithFocus = weekTasks.filter(t => t.student_feedback?.focus);
-  const avgFocus = tasksWithFocus.length 
-    ? (tasksWithFocus.reduce((sum, t) => sum + t.student_feedback.focus, 0) / tasksWithFocus.length).toFixed(1)
-    : '—';
-
-  const diffCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  const DL = { 1: 'Çok Kolay', 2: 'Kolay', 3: 'Orta', 4: 'Zor', 5: 'Çok Zor' };
-  weekTasks.forEach(t => {
-    const diff = t.student_feedback?.difficulty;
-    if (diff && diffCounts[diff] !== undefined) {
-      diffCounts[diff]++;
-    }
-  });
-
-  const totalPlannedMin = weekTasks.reduce((sum, t) => sum + Number(t.duration || 0), 0);
-  const totalSpentMin = weekTasks.reduce((sum, t) => sum + Number(t.student_feedback?.time_spent || 0), 0);
-
-  const blockers = [];
-  const BL = { time: 'Zamanı yetmedi', topic: 'Konuyu anlayamadı', hard: 'Kaynak çok zordu', moti: 'Motivasyon yok' };
-  weekTasks.forEach(t => {
-    const blocker = t.student_feedback?.blocker;
-    if (blocker) {
-      blockers.push({
-        task: t.subject,
-        reason: BL[blocker] || blocker
-      });
-    }
-  });
-
-  let totalSolved = 0;
-  let totalCorrect = 0;
-  let totalWrong = 0;
-  let totalBlank = 0;
-  
-  weekTasks.forEach(t => {
-    if (t.student_result) {
-      totalCorrect += Number(t.student_result.dogru || 0);
-      totalWrong += Number(t.student_result.yanlis || 0);
-      totalBlank += Number(t.student_result.bos || 0);
-    }
-  });
-  totalSolved = totalCorrect + totalWrong + totalBlank;
-  const net = (totalCorrect - (totalWrong / 4)).toFixed(2);
+  window.currentWRTasks = weekTasks;
+  window._wrTodayDs = todayDs;
+  window._wrState = { quickFilter: 'all', category: 'all', difficulty: 'all', search: '', sort: 'date' };
+  window._wrExpandedIds = new Set();
+  window._wrRowMap = Object.create(null);
+  window._wrWrongTopicsList = stats.wrongTopics.map(x => x.topic);
 
   let modal = document.getElementById('weeklyReportModal');
-  if(!modal) {
+  if (!modal) {
     modal = document.createElement('div');
     modal.id = 'weeklyReportModal';
     modal.className = 'modal-bg';
@@ -17422,235 +17464,617 @@ async function openWeeklyReportModal() {
     modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
   }
 
-  modal.innerHTML = `<div class="modal" style="max-width:800px; width:95%; max-height:85vh; overflow-y:auto; padding:24px; border-radius:16px; position:relative;">
-    <button class="modal-close" onclick="cm('weeklyReportModal')">×</button>
-    <h2 style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">📊 Haftalık Gelişim Raporu</h2>
-    <p style="font-size:13px; color:var(--text-mid); margin-bottom:20px;">
-      Öğrenci: <strong style="color:var(--accent);">${esc(stu.name)}</strong> &nbsp;|&nbsp; 
-      Hafta: <strong>${wStart.getDate()} ${MONTHS_TR[wStart.getMonth()]} — ${wEnd.getDate()} ${MONTHS_TR[wEnd.getMonth()]} ${wEnd.getFullYear()}</strong>
-    </p>
-    
-    <!-- SUMMARY CARDS -->
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:20px;">
-      <div class="card" style="padding:16px; text-align:center;">
-        <div style="font-size:24px; font-weight:800; color:var(--accent);">${completionRate}%</div>
-        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; margin-top:4px;">Görev Tamamlama</div>
-        <div style="font-size:12px; color:var(--text-mid); margin-top:2px;">${completedTasks} / ${totalTasks} Görev</div>
-      </div>
-      <div class="card" style="padding:16px; text-align:center;">
-        <div style="font-size:24px; font-weight:800; color:#f0a500;">
-          ${avgFocus} <span style="font-size:16px;">★</span>
+  const rangeLabel = `${wStart.getDate()} ${MONTHS_TR[wStart.getMonth()].slice(0, 3)} — ${wEnd.getDate()} ${MONTHS_TR[wEnd.getMonth()].slice(0, 3)} ${wEnd.getFullYear()}`;
+  const targetLabel = stu.target || `${stu.examProfile || 'YKS'} ${stu.yksArea || ''}`.trim();
+
+  const headerHtml = `
+    <div class="wr-header">
+      <div class="wr-header-top">
+        <div class="wr-title-block">
+          <h2 class="wr-title">📊 Haftalık Gelişim Raporu</h2>
+          <div class="wr-meta-row">
+            <span class="wr-student-pill">👤 ${esc(stu.name)}</span>
+            ${targetLabel ? `<span>${esc(targetLabel)}</span>` : ''}
+          </div>
         </div>
-        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; margin-top:4px;">Ortalama Odaklanma</div>
-        <div style="font-size:12px; color:var(--text-mid); margin-top:2px;">${tasksWithFocus.length} Geri Bildirim</div>
+        <div class="wr-header-actions">
+          <div class="wr-week-nav">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="window._wrShiftWeek(-1)" title="Önceki Hafta">←</button>
+            <span class="wr-week-lbl">${rangeLabel}</span>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="window._wrShiftWeek(1)" title="Sonraki Hafta">→</button>
+            ${activeOffset !== 0 ? `<button type="button" class="btn btn-ghost btn-sm" onclick="window._wrGoCurrentWeek()">Bu Hafta</button>` : ''}
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="window._wrOpenPdf()">📄 PDF</button>
+          <button type="button" class="btn btn-accent btn-sm" onclick="window._wrMessageStudent()">💬 Mesaj</button>
+        </div>
       </div>
-      <div class="card" style="padding:16px; text-align:center;">
-        <div style="font-size:24px; font-weight:800; color:var(--blue);">${totalSolved}</div>
-        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; margin-top:4px;">Çözülen Soru</div>
-        <div style="font-size:12px; color:var(--text-mid); margin-top:2px;">Net: <strong style="color:var(--green);">${net}</strong></div>
+    </div>`;
+
+  if (weekTasks.length === 0) {
+    modal.innerHTML = `<div class="modal wr-modal">
+      <button class="modal-close" onclick="cm('weeklyReportModal')">×</button>
+      ${headerHtml}
+      <div class="empty" style="padding:44px 20px; border:1px dashed var(--border); border-radius:14px; background:var(--surface2);">
+        <div style="font-size:28px; margin-bottom:8px;">🗓️</div>
+        <div style="font-weight:700; color:var(--text); margin-bottom:4px;">Bu haftaya ait atanmış görev bulunmuyor.</div>
+        <div style="font-size:12.5px; color:var(--text-mid); margin-bottom:14px;">Yukarıdaki hafta oklarıyla önceki veya sonraki haftaları inceleyebilirsin.</div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="window._wrShiftWeek(-1)">← Önceki Haftaya Bak</button>
       </div>
-      <div class="card" style="padding:16px; text-align:center;">
-        <div style="font-size:24px; font-weight:800; color:var(--green);">${totalSpentMin} dk</div>
-        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; margin-top:4px;">Çalışma Süresi</div>
-        <div style="font-size:12px; color:var(--text-mid); margin-top:2px;">Planlanan: ${totalPlannedMin} dk</div>
+    </div>`;
+    om('weeklyReportModal');
+    return;
+  }
+
+  const issueBreakdown = [
+    stats.partialCount > 0 ? `${stats.partialCount} kısmen` : '',
+    (stats.failedCount + stats.missedCount) > 0 ? `${stats.failedCount + stats.missedCount} eksik` : ''
+  ].filter(Boolean).join(' · ');
+
+  const displayTimeMin = stats.totalLoggedMin > 0
+    ? stats.totalLoggedMin
+    : (stats.totalCompletedPlannedMin || stats.totalPlannedMin);
+
+  const quickChipDefs = [
+    { key: 'all', label: 'Tümü', count: stats.quickCounts.all },
+    { key: 'hard', label: '🔥 Zorlananlar', count: stats.quickCounts.hard },
+    { key: 'noted', label: '📝 Notu Olanlar', count: stats.quickCounts.noted },
+    { key: 'issues', label: '⚠️ Eksik / Engelli', count: stats.quickCounts.issues },
+    { key: 'low_focus', label: '🎯 Düşük Odak', count: stats.quickCounts.low_focus },
+    { key: 'completed', label: '✓ Tamamlananlar', count: stats.quickCounts.completed }
+  ];
+
+  modal.innerHTML = `<div class="modal wr-modal">
+    <button class="modal-close" onclick="cm('weeklyReportModal')">×</button>
+    ${headerHtml}
+
+    <!-- KPI KARTLARI -->
+    <div class="wr-kpi-grid">
+      <div class="wr-kpi-card">
+        <div class="wr-kpi-lbl">Görev Tamamlama</div>
+        <div class="wr-kpi-val" style="color:var(--accent);">${stats.completionRate}%</div>
+        <div class="wr-kpi-sub">${stats.completedCount} / ${stats.totalTasks} tamam${issueBreakdown ? ` · ${issueBreakdown}` : ''}</div>
+        <div class="wr-kpi-bar"><div class="wr-kpi-bar-fill" style="width:${stats.completionRate}%;"></div></div>
+      </div>
+      <div class="wr-kpi-card">
+        <div class="wr-kpi-lbl">Ortalama Odaklanma</div>
+        <div class="wr-kpi-val" style="color:var(--amber);">${stats.avgFocus !== null ? `${stats.avgFocus} ★` : '—'}</div>
+        <div class="wr-kpi-sub">${stats.focusCount} değerlendirme${stats.lowFocusCount ? ` · <span style="color:var(--red);font-weight:700;">${stats.lowFocusCount} düşük (≤2★)</span>` : ''}</div>
+      </div>
+      <div class="wr-kpi-card">
+        <div class="wr-kpi-lbl">Çözülen Soru & Net</div>
+        <div class="wr-kpi-val" style="color:var(--blue);">${stats.totalSolved}</div>
+        <div class="wr-kpi-sub">${stats.totalSolved > 0 ? `Net: <strong style="color:var(--green);">${stats.totalNet}</strong> · %${stats.accuracyPct} doğru` : 'Henüz soru sonucu yok'}</div>
+      </div>
+      <div class="wr-kpi-card">
+        <div class="wr-kpi-lbl">Çalışma Süresi</div>
+        <div class="wr-kpi-val" style="color:var(--green);">${formatShortDuration(displayTimeMin)}</div>
+        <div class="wr-kpi-sub">Planlanan: ${formatShortDuration(stats.totalPlannedMin)}${stats.loggedTaskCount > 0 ? ` · ${stats.loggedTaskCount} kayıtlı` : ' (plan bazlı)'}</div>
       </div>
     </div>
 
-    <!-- DETAILS SECTIONS -->
-    <div style="display:grid; grid-template-columns:1fr; gap:16px; margin-bottom:20px;">
-      ${totalSolved > 0 ? `
-      <div class="card" style="padding:16px;">
-        <h3 style="margin-bottom:12px; font-size:14px; font-weight:700;">📊 Soru Dağılımı ve Net Analizi</h3>
-        <div style="display:flex; align-items:center; gap:16px; margin-bottom:14px;">
-          <div style="flex:1;">
-            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-              <span>Doğru Soru Oranı</span>
-              <strong>${Math.round((totalCorrect/totalSolved)*100)}%</strong>
-            </div>
-            <div style="height:8px; background:var(--surface2); border-radius:4px; overflow:hidden;">
-              <div style="width:${(totalCorrect/totalSolved)*100}%; height:100%; background:var(--green);"></div>
-            </div>
-          </div>
+    <!-- ANALİZ BÖLÜMÜ -->
+    <div class="wr-insights-grid ${stats.totalSolved === 0 ? 'single' : ''}">
+      ${stats.totalSolved > 0 ? `
+      <div class="wr-insight-card">
+        <h3 class="wr-card-title">📊 Soru Dağılımı ve Net Analizi <span class="wr-card-hint">${stats.totalSolved} soru</span></h3>
+        <div class="wr-acc-row">
+          <span>Doğru Soru Oranı</span>
+          <strong>%${stats.accuracyPct}</strong>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; text-align:center;">
-          <div style="background:var(--surface2); padding:8px; border-radius:8px;">
-            <div style="font-size:10px; color:var(--green); font-weight:700;">✓ DOĞRU</div>
-            <div style="font-size:16px; font-weight:800; margin-top:4px;">${totalCorrect}</div>
+        <div class="wr-acc-track"><div class="wr-acc-fill" style="width:${stats.accuracyPct}%;"></div></div>
+        <div class="wr-mini-stats">
+          <div class="wr-mini-stat">
+            <div class="wr-mini-stat-lbl" style="color:var(--green);">✓ DOĞRU</div>
+            <div class="wr-mini-stat-val">${stats.totalCorrect}</div>
           </div>
-          <div style="background:var(--surface2); padding:8px; border-radius:8px;">
-            <div style="font-size:10px; color:var(--red); font-weight:700;">✗ YANLIŞ</div>
-            <div style="font-size:16px; font-weight:800; margin-top:4px;">${totalWrong}</div>
+          <div class="wr-mini-stat">
+            <div class="wr-mini-stat-lbl" style="color:var(--red);">✗ YANLIŞ</div>
+            <div class="wr-mini-stat-val">${stats.totalWrong}</div>
           </div>
-          <div style="background:var(--surface2); padding:8px; border-radius:8px;">
-            <div style="font-size:10px; color:var(--text-dim); font-weight:700;">— BOŞ</div>
-            <div style="font-size:16px; font-weight:800; margin-top:4px;">${totalBlank}</div>
+          <div class="wr-mini-stat">
+            <div class="wr-mini-stat-lbl" style="color:var(--text-dim);">— BOŞ</div>
+            <div class="wr-mini-stat-val">${stats.totalBlank}</div>
           </div>
-          <div style="background:var(--accent-dim); padding:8px; border-radius:8px; border:1px solid var(--accent-border);">
-            <div style="font-size:10px; color:var(--accent); font-weight:700;">⚡ NET</div>
-            <div style="font-size:16px; font-weight:800; color:var(--accent); margin-top:4px;">${net}</div>
+          <div class="wr-mini-stat net">
+            <div class="wr-mini-stat-lbl" style="color:var(--accent);">⚡ NET</div>
+            <div class="wr-mini-stat-val" style="color:var(--accent);">${stats.totalNet}</div>
           </div>
         </div>
       </div>
       ` : ''}
 
-      <div class="card" style="padding:16px;">
-        <h3 style="margin-bottom:12px; font-size:14px; font-weight:700;">📈 Görev Zorluk Derecesi Dağılımı</h3>
-        <div style="display:flex; flex-direction:column; gap:8px;">
+      <div class="wr-insight-card">
+        <h3 class="wr-card-title">📈 Görev Zorluk Derecesi Dağılımı <span class="wr-card-hint">Filtrelemek için tıkla</span></h3>
+        <div class="wr-diff-list">
           ${[5, 4, 3, 2, 1].map(level => {
-            const count = diffCounts[level] || 0;
-            const hasDiffCount = weekTasks.filter(t => t.student_feedback?.difficulty).length;
-            const pct = hasDiffCount ? Math.round((count / hasDiffCount) * 100) : 0;
-            const color = { 1: '#3ecf8e', 2: '#86efac', 3: '#f0a500', 4: '#fb923c', 5: '#ef4444' }[level];
+            const count = stats.diffCounts[level] || 0;
+            const pct = stats.diffTotal ? Math.round((count / stats.diffTotal) * 100) : 0;
+            const meta = DIFF_META[level];
             return `
-              <div style="display:flex; align-items:center; gap:8px; font-size:12px;">
-                <span style="width:70px; font-weight:600; color:var(--text-mid);">${DL[level]}</span>
-                <div style="flex:1; height:6px; background:var(--surface2); border-radius:3px; overflow:hidden;">
-                  <div style="width:${pct}%; height:100%; background:${color};"></div>
-                </div>
-                <span style="width:30px; text-align:right; font-weight:700; color:var(--text-mid);">${count}</span>
-              </div>
-            `;
+              <button type="button" class="wr-diff-bar-row" data-wr-diff="${level}" onclick="window._wrToggleDiffFilter(${level})">
+                <span class="wr-diff-bar-lbl">${meta.label}</span>
+                <span class="wr-diff-track"><span class="wr-diff-fill ${meta.cls}" style="display:block; width:${pct}%;"></span></span>
+                <span class="wr-diff-count">${count}${stats.diffTotal ? ` · %${pct}` : ''}</span>
+              </button>`;
           }).join('')}
         </div>
       </div>
-
-      ${blockers.length > 0 ? `
-      <div class="card" style="padding:16px; border:1.5px solid rgba(251,146,60,.3); background:rgba(251,146,60,.03);">
-        <h3 style="margin-bottom:8px; font-size:14px; font-weight:700; color:#fb923c; display:flex; align-items:center; gap:6px;">⚠️ Karşılaşılan Engeller</h3>
-        <div style="display:flex; flex-direction:column; gap:6px;">
-          ${blockers.map(b => `
-            <div style="font-size:12px; color:var(--text-mid);">
-              📌 <strong>${esc(b.task)}</strong>: <span style="color:#fb923c; font-weight:600;">${b.reason}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-      ` : ''}
     </div>
 
-    <!-- DETAILED TABLE WITH FILTERS & SORTING -->
-    <div class="card" style="padding:16px;">
-      <h3 style="margin-bottom:12px; font-size:14px; font-weight:700;">📋 Görev Bazlı Detaylı Tablo</h3>
-      
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px; background:var(--surface2); padding:10px 14px; border-radius:10px; border:1px solid var(--border);">
-        <!-- Kategori Filtresi -->
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.5px;">📁 Kategori:</span>
-          <select id="wrCategoryFilter" onchange="window.filterSortWeeklyReport()" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:8px; background:var(--surface); border:1.5px solid var(--border); color:var(--text); outline:none; cursor:pointer;">
+    ${stats.wrongTopics.length > 0 ? `
+    <div class="wr-topics-card">
+      <h3 class="wr-card-title">📌 Öne Çıkan Yanlış Konular <span class="wr-card-hint">Tabloda filtrelemek için tıkla</span></h3>
+      <div class="wr-topic-chips">
+        ${stats.wrongTopics.map((wt, idx) => `
+          <button type="button" class="wr-topic-chip" onclick="window._wrFilterByTopic(${idx})">${esc(wt.topic)} <span>${wt.count}</span></button>
+        `).join('')}
+      </div>
+    </div>
+    ` : ''}
+
+    ${stats.blockers.length > 0 ? `
+    <div class="wr-blocker-card">
+      <h3 class="wr-card-title" style="color:var(--amber);">⚠️ Karşılaşılan Engeller <span class="wr-card-hint">${stats.blockers.length} görev</span></h3>
+      <div class="wr-blocker-list">
+        ${stats.blockers.map(b => `
+          <div class="wr-blocker-item">
+            ${b.date ? `<span class="wr-date-pill">${esc(_wrFormatTaskDate(b.date))}</span>` : ''}
+            <strong>${esc(b.subject)}</strong>:
+            <span class="wr-blocker-reason">${esc(b.reason)}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    ` : ''}
+
+    <!-- DETAYLI TABLO KARTI -->
+    <div id="wrTableCard" class="wr-table-card">
+      <div class="wr-table-head">
+        <h3 class="wr-table-title">📋 Görev Bazlı Detaylı Tablo</h3>
+        <button type="button" id="wrExpandAllBtn" class="btn btn-ghost btn-sm" onclick="window._wrToggleAllDetails()">↕ Tüm Notları Aç</button>
+      </div>
+
+      <div id="wrSummaryStrip" class="wr-summary-strip"></div>
+
+      <div class="wr-quick-chips">
+        ${quickChipDefs.map(q => `
+          <button type="button" class="wr-qchip ${q.key === 'all' ? 'active' : (q.count === 0 ? 'dim' : '')}" data-wr-quick="${q.key}" onclick="window._wrSetQuickFilter('${q.key}')">
+            <span>${q.label}</span>
+            <span class="wr-qchip-cnt">${q.count}</span>
+          </button>
+        `).join('')}
+      </div>
+
+      <div class="wr-toolbar">
+        <div class="wr-search-wrap">
+          <span class="wr-search-icon">🔍</span>
+          <input id="wrSearchInput" class="wr-search-input" type="text" placeholder="Konu, kaynak, öğrenci notu veya engel ara..." oninput="window._wrOnSearchInput(this.value)">
+          <button type="button" id="wrSearchClearBtn" class="wr-search-clear" onclick="window._wrClearSearch()" title="Aramayı temizle">×</button>
+        </div>
+        <div class="wr-filter-group">
+          <select id="wrCategoryFilter" class="wr-select" onchange="window.filterSortWeeklyReport()" title="Kategori Filtresi">
             <option value="all">Tüm Tipler</option>
             <option value="soru">Soru Bankası</option>
             <option value="konu">Konu Anlatımı</option>
             <option value="deneme">Deneme</option>
             <option value="diger">Diğer</option>
           </select>
-        </div>
-        <!-- Sıralama Seçenekleri -->
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.5px;">⚡ Sırala:</span>
-          <select id="wrSortSelect" onchange="window.filterSortWeeklyReport()" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:8px; background:var(--surface); border:1.5px solid var(--border); color:var(--text); outline:none; cursor:pointer;">
-            <option value="date">Tarih (Varsayılan)</option>
-            <option value="alpha">Alfabetik (A-Z)</option>
-            <option value="status">Durum (Önce Tamamlananlar)</option>
-            <option value="result">Sonuç (Çözülen Soru Sayısı)</option>
-            <option value="duration">Çalışma Süresi (Çoktan Aza)</option>
-            <option value="focus">Odaklanma Derecesi</option>
-            <option value="difficulty">Zorluk Derecesi</option>
+          <select id="wrDiffFilter" class="wr-select" onchange="window.filterSortWeeklyReport()" title="Zorluk Filtresi">
+            <option value="all">Tüm Zorluklar</option>
+            <option value="5">Çok Zor</option>
+            <option value="4">Zor</option>
+            <option value="3">Orta</option>
+            <option value="2">Kolay</option>
+            <option value="1">Çok Kolay</option>
           </select>
+          <select id="wrSortSelect" class="wr-select" onchange="window.filterSortWeeklyReport()" title="Sıralama">
+            <option value="date">Tarih (Eskiden Yeniye)</option>
+            <option value="date_desc">Tarih (Yeniden Eskiye)</option>
+            <option value="difficulty">Zorluk (En Zor Önce)</option>
+            <option value="focus_asc">Odak (En Düşük Önce)</option>
+            <option value="focus">Odak (En Yüksek Önce)</option>
+            <option value="result">Sonuç (Net / Soru)</option>
+            <option value="duration">Süre (En Uzun Önce)</option>
+            <option value="status_incomplete">Durum (Eksikler Önce)</option>
+            <option value="status">Durum (Tamamlananlar Önce)</option>
+            <option value="alpha">Alfabetik (A-Z)</option>
+          </select>
+          <button type="button" id="wrResetBtn" class="btn btn-ghost btn-sm" style="display:none;" onclick="window._wrResetFilters()">↺ Sıfırla</button>
         </div>
       </div>
 
-      <div style="overflow-x:auto;">
-        <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
+      <div class="wr-table-wrap">
+        <table class="wr-table">
           <thead>
-            <tr style="border-bottom:2px solid var(--border); color:var(--text-dim); font-size:11px; text-transform:uppercase;">
-              <th style="padding:8px 4px;">Görev / Konu</th>
-              <th style="padding:8px 4px; text-align:center;">Durum</th>
-              <th style="padding:8px 4px; text-align:center;">Sonuç (D/Y/B)</th>
-              <th style="padding:8px 4px; text-align:center;">Süre</th>
-              <th style="padding:8px 4px; text-align:center;">Odak</th>
-              <th style="padding:8px 4px; text-align:center;">Zorluk</th>
-              <th style="padding:8px 4px;">Öğrenci Notu</th>
+            <tr>
+              <th>Görev / Konu</th>
+              <th class="center">Durum</th>
+              <th class="center">Sonuç (D/Y/B)</th>
+              <th class="center">Süre</th>
+              <th class="center">Odak</th>
+              <th class="center">Zorluk</th>
+              <th>Öğrenci Notu</th>
             </tr>
           </thead>
-          <tbody id="wrTableBody">
-            <!-- Dinamik olarak filterSortWeeklyReport tarafından doldurulacak -->
-          </tbody>
+          <tbody id="wrTableBody"></tbody>
         </table>
       </div>
     </div>
   </div>`;
 
-  window.currentWRTasks = weekTasks;
   om('weeklyReportModal');
-  setTimeout(() => {
-    if (window.filterSortWeeklyReport) window.filterSortWeeklyReport();
-  }, 50);
+  filterSortWeeklyReport();
 }
 
-window.filterSortWeeklyReport = function() {
-  const cat = document.getElementById('wrCategoryFilter')?.value || 'all';
-  const sortVal = document.getElementById('wrSortSelect')?.value || 'date';
-  const DL = { 1: 'Çok Kolay', 2: 'Kolay', 3: 'Orta', 4: 'Zor', 5: 'Çok Zor' };
+function _wrRenderDetailRow(t, rowKey, st, res, dur, diffMeta, blockerText) {
+  const stuNote = String(t.student_note || '').trim();
+  const coachNote = String(t.note || '').trim();
+  const items = Array.isArray(t.task_items) ? t.task_items : [];
+  const isVideo = t.type === 'konu';
+  const focusVal = Number(t.student_feedback?.focus || 0);
 
-  let tasks = [...(window.currentWRTasks || [])];
+  return `<tr class="wr-detail-row">
+    <td colspan="7">
+      <div class="wr-detail-box">
+        ${stuNote ? `
+          <div>
+            <div class="wr-detail-section-lbl">💬 Öğrenci Notu</div>
+            <div class="wr-detail-note-quote">${esc(stuNote)}</div>
+          </div>
+        ` : ''}
 
-  // 1. Kategori Filtrele
-  if (cat !== 'all') {
-    tasks = tasks.filter(t => t.type === cat);
+        ${coachNote ? `
+          <div>
+            <div class="wr-detail-section-lbl">📌 Görev İçeriği / Plan Notu</div>
+            <div style="font-size:12px; color:var(--text-mid); line-height:1.45;">${esc(coachNote)}</div>
+          </div>
+        ` : ''}
+
+        <div class="wr-detail-meta-grid">
+          <span class="wr-detail-meta-chip">📅 <strong>${esc(_wrFormatTaskDate(t.date))}</strong></span>
+          <span class="wr-detail-meta-chip">Durum: <strong>${esc(st.label)}</strong></span>
+          ${dur.isLogged
+            ? `<span class="wr-detail-meta-chip">⏱ Gerçekleşen: <strong>${formatShortDuration(dur.spentMin)}</strong>${dur.plannedMin > 0 ? ` (Plan: ${formatShortDuration(dur.plannedMin)})` : ''}</span>`
+            : (dur.plannedMin > 0 ? `<span class="wr-detail-meta-chip">⏱ Planlanan: <strong>${formatShortDuration(dur.plannedMin)}</strong></span>` : '')}
+          ${focusVal > 0 ? `<span class="wr-detail-meta-chip">🎯 Odak: <strong>${focusVal}/5</strong></span>` : ''}
+          ${diffMeta ? `<span class="wr-detail-meta-chip">📊 Zorluk: <strong>${esc(diffMeta.label)}</strong></span>` : ''}
+          ${res && res.total > 0 ? `<span class="wr-detail-meta-chip">📝 Sonuç: <strong>${res.dogru}D ${res.yanlis}Y ${res.bos}B</strong> (${res.netLabel} net · %${res.accuracy})</span>` : ''}
+          ${blockerText ? `<span class="wr-detail-meta-chip" style="color:var(--amber); font-weight:700;">⚠️ Engel: ${esc(blockerText)}</span>` : ''}
+        </div>
+
+        ${items.length > 0 ? `
+          <div>
+            <div class="wr-detail-section-lbl">${isVideo ? '🎬 Videolar' : '📚 Testler'} (${items.length})</div>
+            <div class="wr-detail-items">
+              ${items.map(it => {
+                const rawLbl = typeof it === 'string' ? it : (it?.label || '');
+                const cleanLbl = cleanTestLabel(rawLbl, t.subject || '');
+                const unit = it?.soru > 0 ? (isVideo ? `${it.soru} dk` : `${it.soru}s`) : '';
+                const doneItem = !!(t.done || it?.done);
+                return `<span class="wr-detail-item-chip ${doneItem ? 'done' : ''}">${doneItem ? '✓ ' : ''}${esc(cleanLbl)}${unit ? ` · ${unit}` : ''}</span>`;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${res && res.wrongTopics.length > 0 ? `
+          <div>
+            <div class="wr-detail-section-lbl">📌 Yanlış Yapılan Konular</div>
+            <div class="wr-detail-items">
+              ${res.wrongTopics.map(wt => `<span class="wr-flag-topics">${esc(wt)}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="wr-detail-actions">
+          <button type="button" class="btn btn-accent btn-sm" onclick="event.stopPropagation(); window._wrMessageTask('${rowKey}')">💬 Bu Görev Hakkında Yaz</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); window._wrOpenTask('${rowKey}')">🔍 Görev Kartını Aç</button>
+        </div>
+      </div>
+    </td>
+  </tr>`;
+}
+
+function filterSortWeeklyReport() {
+  const allTasks = window.currentWRTasks || [];
+  if (!window._wrState) {
+    window._wrState = { quickFilter: 'all', category: 'all', difficulty: 'all', search: '', sort: 'date' };
+  }
+  if (!window._wrExpandedIds) window._wrExpandedIds = new Set();
+
+  const catEl = document.getElementById('wrCategoryFilter');
+  const diffEl = document.getElementById('wrDiffFilter');
+  const sortEl = document.getElementById('wrSortSelect');
+  const searchEl = document.getElementById('wrSearchInput');
+
+  if (catEl) window._wrState.category = catEl.value || 'all';
+  if (diffEl) window._wrState.difficulty = diffEl.value || 'all';
+  if (sortEl) window._wrState.sort = sortEl.value || 'date';
+  if (searchEl) window._wrState.search = searchEl.value || '';
+
+  const stState = window._wrState;
+  const todayDs = window._wrTodayDs || todayStr();
+
+  document.querySelectorAll('#weeklyReportModal [data-wr-quick]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.wrQuick === stState.quickFilter);
+  });
+  document.querySelectorAll('#weeklyReportModal [data-wr-diff]').forEach(btn => {
+    btn.classList.toggle('active', stState.difficulty !== 'all' && btn.dataset.wrDiff === String(stState.difficulty));
+  });
+
+  const clearBtn = document.getElementById('wrSearchClearBtn');
+  if (clearBtn) clearBtn.style.display = stState.search.trim() ? 'inline-flex' : 'none';
+
+  const hasActiveFilter = (
+    stState.quickFilter !== 'all' ||
+    stState.category !== 'all' ||
+    stState.difficulty !== 'all' ||
+    stState.search.trim() !== ''
+  );
+  const resetBtn = document.getElementById('wrResetBtn');
+  if (resetBtn) resetBtn.style.display = hasActiveFilter ? 'inline-flex' : 'none';
+
+  const tasks = filterAndSortWeeklyTasks(allTasks, stState, todayDs);
+  window._wrFilteredTasks = tasks;
+
+  // Özet şeridi güncelle
+  const summaryEl = document.getElementById('wrSummaryStrip');
+  if (summaryEl) {
+    const fStats = computeWeeklyReportStats(tasks, todayDs);
+    const totalDur = tasks.reduce((s, t) => s + computeTaskDurationMeta(t).effectiveMin, 0);
+    summaryEl.innerHTML = `
+      <span class="wr-sum-chip">Gösterilen: <strong>${tasks.length} / ${allTasks.length}</strong> görev</span>
+      ${fStats.avgFocus !== null ? `<span class="wr-sum-chip">Ort. Odak: <strong style="color:var(--amber);">${fStats.avgFocus} ★</strong></span>` : ''}
+      ${fStats.totalSolved > 0 ? `<span class="wr-sum-chip">Soru: <strong>${fStats.totalSolved}</strong> · Net: <strong style="color:var(--green);">${fStats.totalNet}</strong></span>` : ''}
+      <span class="wr-sum-chip">Toplam Süre: <strong>${formatShortDuration(totalDur)}</strong></span>
+    `;
   }
 
-  // 2. Sırala
-  if (sortVal === 'alpha') {
-    tasks.sort((a, b) => a.subject.localeCompare(b.subject, 'tr'));
-  } else if (sortVal === 'status') {
-    tasks.sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0));
-  } else if (sortVal === 'result') {
-    const getQ = t => {
-      if (!t.student_result) return 0;
-      return (Number(t.student_result.dogru || 0) + Number(t.student_result.yanlis || 0) + Number(t.student_result.bos || 0));
-    };
-    tasks.sort((a, b) => getQ(b) - getQ(a));
-  } else if (sortVal === 'duration') {
-    const getDur = t => Number(t.student_feedback?.time_spent || 0);
-    tasks.sort((a, b) => getDur(b) - getDur(a));
-  } else if (sortVal === 'focus') {
-    const getFocus = t => Number(t.student_feedback?.focus || 0);
-    tasks.sort((a, b) => getFocus(b) - getFocus(a));
-  } else if (sortVal === 'difficulty') {
-    const getDiff = t => Number(t.student_feedback?.difficulty || 0);
-    tasks.sort((a, b) => getDiff(b) - getDiff(a));
-  } else {
-    tasks.sort((a, b) => a.date.localeCompare(b.date));
+  // Tümünü aç/kapat buton etiketi
+  const expAllBtn = document.getElementById('wrExpandAllBtn');
+  if (expAllBtn) {
+    const allShownExpanded = tasks.length > 0 && tasks.every((t, i) => window._wrExpandedIds.has(_wrRowStableId(t, i)));
+    expAllBtn.textContent = allShownExpanded ? '↕ Detayları Kapat' : '↕ Tüm Notları Aç';
   }
 
-  // 3. Tabloyu Doldur
   const tbody = document.getElementById('wrTableBody');
-  if (tbody) {
-    if (tasks.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-dim);">Filtreye uygun görev bulunamadı.</td></tr>`;
-    } else {
-      tbody.innerHTML = tasks.map(t => {
-        const statusLabel = t.done ? '✓ Tamam' : '✗ Eksik';
-        const statusColor = t.done ? 'var(--green)' : 'var(--text-dim)';
-        const res = t.student_result ? `${t.student_result.dogru || 0}/${t.student_result.yanlis || 0}/${t.student_result.bos || 0}` : '—';
-        const focus = t.student_feedback?.focus ? '★'.repeat(t.student_feedback.focus) : '—';
-        const diff = t.student_feedback?.difficulty ? DL[t.student_feedback.difficulty] : '—';
-        const spent = t.student_feedback?.time_spent ? `${t.student_feedback.time_spent} dk` : '—';
-        return `
-          <tr style="border-bottom:1px solid var(--border); transition:background .15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
-            <td style="padding:8px 4px; font-weight:600; color:var(--text);">${esc(t.subject)}</td>
-            <td style="padding:8px 4px; text-align:center; font-weight:700; color:${statusColor};">${statusLabel}</td>
-            <td style="padding:8px 4px; text-align:center; font-weight:700; color:var(--accent);">${res}</td>
-            <td style="padding:8px 4px; text-align:center;">${spent}</td>
-            <td style="padding:8px 4px; text-align:center; color:#f0a500; font-size:10px;">${focus}</td>
-            <td style="padding:8px 4px; text-align:center;">${diff}</td>
-            <td style="padding:8px 4px; color:var(--text-mid); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(t.student_note || '')}">${esc(t.student_note || '—')}</td>
-          </tr>
-        `;
-      }).join('');
-    }
+  if (!tbody) return;
+
+  window._wrRowMap = Object.create(null);
+
+  if (tasks.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:28px 14px; color:var(--text-dim);">
+      <div style="font-weight:700; color:var(--text-mid); margin-bottom:6px;">Seçili filtrelere uygun görev bulunamadı.</div>
+      ${hasActiveFilter ? `<button type="button" class="btn btn-ghost btn-sm" onclick="window._wrResetFilters()">Filtreleri Temizle</button>` : ''}
+    </td></tr>`;
+    return;
   }
+
+  tbody.innerHTML = tasks.map((t, i) => {
+    const rowKey = 'wr_' + i;
+    const stableId = _wrRowStableId(t, i);
+    window._wrRowMap[rowKey] = t;
+    const isExpanded = window._wrExpandedIds.has(stableId);
+
+    const st = getTaskStatusMeta(t, todayDs);
+    const res = computeTaskResultMeta(t);
+    const dur = computeTaskDurationMeta(t);
+    const typeInfo = TYPE_META[t.type] || { label: t.type || 'Görev', full: t.type || 'Görev', cls: 'type-diger' };
+    const diffVal = Number(t.student_feedback?.difficulty || 0);
+    const diffMeta = diffVal ? DIFF_META[diffVal] : null;
+    const blockerKey = t.student_feedback?.blocker || '';
+    const blockerText = blockerKey ? (BLOCKER_LABELS[blockerKey] || blockerKey) : '';
+    const subSummary = _wrTaskSubSummary(t);
+    const focusVal = Number(t.student_feedback?.focus || 0);
+
+    // Sonuç hücresi
+    let resHtml = '<span class="wr-empty-dash">—</span>';
+    if (res && res.total > 0) {
+      resHtml = `<div class="wr-res-dyb"><span class="d">${res.dogru}</span><span class="sep">/</span><span class="y">${res.yanlis}</span><span class="sep">/</span><span class="b">${res.bos}</span></div>
+        <div class="wr-res-net ${res.tone}">${res.netLabel} net · %${res.accuracy}</div>`;
+    } else if (Array.isArray(t.task_items) && t.task_items.length > 0) {
+      const doneItems = t.done ? t.task_items.length : t.task_items.filter(x => x?.done).length;
+      const unitLbl = t.type === 'konu' ? 'video' : t.type === 'soru' ? 'test' : 'öğe';
+      resHtml = `<span class="wr-res-video">${doneItems}/${t.task_items.length} ${unitLbl}</span>`;
+    }
+
+    // Süre hücresi
+    let durHtml = '<span class="wr-empty-dash">—</span>';
+    if (dur.isLogged) {
+      durHtml = `<div class="wr-dur-main">${formatShortDuration(dur.spentMin)}</div>
+        ${dur.plannedMin > 0 ? `<div class="wr-dur-plan">Plan: ${formatShortDuration(dur.plannedMin)}</div>` : ''}
+        ${dur.overrunMin > 0 ? `<div class="wr-dur-over">+${dur.overrunMin} dk aşım</div>` : ''}`;
+    } else if (dur.plannedMin > 0) {
+      durHtml = `<div class="wr-dur-plan-only">${formatShortDuration(dur.plannedMin)}</div><div class="wr-dur-plan">Plan</div>`;
+    }
+
+    // Odak hücresi
+    let focusHtml = '<span class="wr-empty-dash">—</span>';
+    if (focusVal > 0) {
+      focusHtml = `<div class="wr-focus-cell ${focusVal <= 2 ? 'low' : ''}">
+        <span class="wr-stars">${'★'.repeat(focusVal)}<span class="wr-stars-empty">${'☆'.repeat(5 - focusVal)}</span></span>
+        <span class="wr-focus-num">${focusVal}/5</span>
+      </div>`;
+    }
+
+    // Öğrenci Notu hücresi
+    const noteText = String(t.student_note || '').trim();
+    const notePreviewHtml = noteText
+      ? `<div class="wr-note-preview" title="${escAttr(noteText)}">${esc(noteText)}</div>`
+      : `<div class="wr-note-preview empty">${res?.wrongTopics?.length ? `${res.wrongTopics.length} yanlış konu işaretli` : 'Not yok'}</div>`;
+
+    const mainRow = `
+      <tr class="wr-row ${isExpanded ? 'expanded' : ''}" onclick="window._wrToggleRow('${rowKey}')">
+        <td class="wr-task-cell">
+          <div class="wr-task-badges">
+            <span class="wr-date-pill">${esc(_wrFormatTaskDate(t.date))}</span>
+            <span class="wr-type-pill ${typeInfo.cls}">${esc(typeInfo.label)}</span>
+            ${t.exam ? `<span class="wr-exam-pill">${esc(t.exam)}</span>` : ''}
+            ${t.start_time ? `<span class="wr-time-badge">🕒 ${esc(t.start_time)}</span>` : ''}
+            ${t.added_by_student ? `<span class="wr-student-added-badge">🎓 Öğrenci</span>` : ''}
+          </div>
+          <div class="wr-task-title">${esc(t.subject || 'Görev')}</div>
+          ${subSummary ? `<div class="wr-task-sub" title="${escAttr(subSummary)}">${esc(subSummary)}</div>` : ''}
+          ${(blockerText || res?.wrongTopics?.length) ? `
+            <div class="wr-task-flags">
+              ${blockerText ? `<span class="wr-flag-blocker">⚠️ ${esc(blockerText)}</span>` : ''}
+              ${res?.wrongTopics?.length ? `<span class="wr-flag-topics">📌 ${res.wrongTopics.length} yanlış konu</span>` : ''}
+            </div>
+          ` : ''}
+        </td>
+        <td class="center"><span class="wr-status-pill ${st.cls}">${st.icon} ${esc(st.label)}</span></td>
+        <td class="wr-res-cell">${resHtml}</td>
+        <td class="wr-dur-cell">${durHtml}</td>
+        <td class="center">${focusHtml}</td>
+        <td class="center">${diffMeta ? `<span class="wr-diff-pill ${diffMeta.cls}">${esc(diffMeta.label)}</span>` : '<span class="wr-empty-dash">—</span>'}</td>
+        <td class="wr-note-cell">
+          <div class="wr-note-wrap">
+            ${notePreviewHtml}
+            <span class="wr-chevron" title="Detayı Aç / Kapat">▾</span>
+          </div>
+        </td>
+      </tr>`;
+
+    return isExpanded
+      ? mainRow + _wrRenderDetailRow(t, rowKey, st, res, dur, diffMeta, blockerText)
+      : mainRow;
+  }).join('');
 }
+
+window._wrShiftWeek = function(delta) {
+  const cur = typeof window._wrWeekOffset === 'number' ? window._wrWeekOffset : S.weekOffset;
+  openWeeklyReportModal(cur + Number(delta || 0));
+};
+
+window._wrGoCurrentWeek = function() {
+  openWeeklyReportModal(0);
+};
+
+window._wrSetQuickFilter = function(key) {
+  if (!window._wrState) window._wrState = { quickFilter: 'all', category: 'all', difficulty: 'all', search: '', sort: 'date' };
+  window._wrState.quickFilter = key || 'all';
+  filterSortWeeklyReport();
+};
+
+window._wrToggleDiffFilter = function(level) {
+  const diffEl = document.getElementById('wrDiffFilter');
+  const next = (diffEl && diffEl.value === String(level)) ? 'all' : String(level);
+  if (diffEl) diffEl.value = next;
+  if (window._wrState) window._wrState.difficulty = next;
+  filterSortWeeklyReport();
+  document.getElementById('wrTableCard')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+window._wrFilterByTopic = function(idx) {
+  const topic = window._wrWrongTopicsList?.[idx];
+  if (!topic) return;
+  const searchEl = document.getElementById('wrSearchInput');
+  const next = (searchEl && searchEl.value.trim() === topic) ? '' : topic;
+  if (searchEl) searchEl.value = next;
+  if (window._wrState) window._wrState.search = next;
+  filterSortWeeklyReport();
+  document.getElementById('wrTableCard')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+window._wrOnSearchInput = function(val) {
+  if (window._wrState) window._wrState.search = val || '';
+  filterSortWeeklyReport();
+};
+
+window._wrClearSearch = function() {
+  const searchEl = document.getElementById('wrSearchInput');
+  if (searchEl) searchEl.value = '';
+  if (window._wrState) window._wrState.search = '';
+  filterSortWeeklyReport();
+};
+
+window._wrResetFilters = function() {
+  window._wrState = { quickFilter: 'all', category: 'all', difficulty: 'all', search: '', sort: 'date' };
+  const catEl = document.getElementById('wrCategoryFilter');
+  const diffEl = document.getElementById('wrDiffFilter');
+  const sortEl = document.getElementById('wrSortSelect');
+  const searchEl = document.getElementById('wrSearchInput');
+  if (catEl) catEl.value = 'all';
+  if (diffEl) diffEl.value = 'all';
+  if (sortEl) sortEl.value = 'date';
+  if (searchEl) searchEl.value = '';
+  filterSortWeeklyReport();
+};
+
+window._wrToggleRow = function(rowKey) {
+  const t = window._wrRowMap?.[rowKey];
+  if (!t) return;
+  if (!window._wrExpandedIds) window._wrExpandedIds = new Set();
+  const idxNum = Number(String(rowKey).replace('wr_', '')) || 0;
+  const stableId = _wrRowStableId(t, idxNum);
+  if (window._wrExpandedIds.has(stableId)) {
+    window._wrExpandedIds.delete(stableId);
+  } else {
+    window._wrExpandedIds.add(stableId);
+  }
+  filterSortWeeklyReport();
+};
+
+window._wrToggleAllDetails = function() {
+  const tasks = window._wrFilteredTasks || window.currentWRTasks || [];
+  if (tasks.length === 0) return;
+  if (!window._wrExpandedIds) window._wrExpandedIds = new Set();
+  const ids = tasks.map((t, i) => _wrRowStableId(t, i));
+  const allExpanded = ids.every(id => window._wrExpandedIds.has(id));
+  ids.forEach(id => {
+    if (allExpanded) window._wrExpandedIds.delete(id);
+    else window._wrExpandedIds.add(id);
+  });
+  filterSortWeeklyReport();
+};
+
+window._wrMessageTask = function(rowKey) {
+  const t = window._wrRowMap?.[rowKey];
+  const stu = window._wrStudent || S.students.find(s => s.id === S.activeStuId);
+  if (!t || !stu) return;
+  const draft = buildCoachTaskMessageDraft(stu.name, t, window._wrTodayDs || todayStr());
+  cm('weeklyReportModal');
+  switchTab('messages');
+  setTimeout(async () => {
+    await selectThread(stu.id);
+    applyMsgTemplate(draft);
+  }, 80);
+};
+
+window._wrMessageStudent = function() {
+  const stu = window._wrStudent || S.students.find(s => s.id === S.activeStuId);
+  if (!stu) return;
+  cm('weeklyReportModal');
+  switchTab('messages');
+  setTimeout(() => selectThread(stu.id), 80);
+};
+
+window._wrOpenTask = function(rowKey) {
+  const t = window._wrRowMap?.[rowKey];
+  if (!t || !t.date) return;
+  const stuId = S.activeStuId;
+  const key = `${stuId}_${t.date}`;
+  if (!S.tasks[key]) S.tasks[key] = [];
+  let idx = t._id ? S.tasks[key].findIndex(x => x._id === t._id) : -1;
+  if (idx === -1) {
+    S.tasks[key].push({ ...t });
+    idx = S.tasks[key].length - 1;
+  } else {
+    S.tasks[key][idx] = { ...S.tasks[key][idx], ...t };
+  }
+  openTaskDetail(t.date, idx, 'coach');
+};
+
+window._wrOpenPdf = function() {
+  if (typeof window._wrWeekOffset === 'number' && window._wrWeekOffset !== S.weekOffset) {
+    S.weekOffset = window._wrWeekOffset;
+    saveS();
+  }
+  cm('weeklyReportModal');
+  openWeeklyPDFModal();
+};
+
+window.filterSortWeeklyReport = filterSortWeeklyReport;
 
 async function confirmApplyTemplate() {
   const templateId = document.getElementById('atmSelect').value;

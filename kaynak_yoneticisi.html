@@ -587,12 +587,16 @@ body {
     <h2 style="font-family:'Outfit',sans-serif; font-size:24px; font-weight:800; margin-bottom:4px;">ROSTRUM<span style="color:var(--accent)">AKADEMİ</span></h2>
     <p style="font-size:13px; color:var(--text-muted); margin-bottom:28px;">Kaynak Yöneticisi — Yetkili Girişi</p>
     
+    <div class="form-group" style="text-align:left; margin-bottom:14px;">
+      <label class="form-label">E-posta</label>
+      <input type="email" id="loginEmail" class="form-control" placeholder="ornek@email.com" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+    </div>
     <div class="form-group" style="text-align:left;">
-      <label class="form-label">Giriş Şifresi</label>
+      <label class="form-label">Şifre</label>
       <input type="password" id="loginPass" class="form-control" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="btn btn-primary" style="width:100%; justify-content:center; padding:13px; margin-top:8px;" onclick="doLogin()">Giriş Yap →</button>
-    <div id="loginErr" style="color:var(--rose); font-size:12.5px; margin-top:12px; display:none;">⚠️ Şifre hatalı, tekrar deneyin</div>
+    <div id="loginErr" style="color:var(--rose); font-size:12.5px; margin-top:12px; display:none;">⚠️ E-posta veya şifre hatalı</div>
   </div>
 </div>
 
@@ -1017,7 +1021,9 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const db = supabase.createClient(SB_URL, SB_KEY);
 const WORKER = 'https://claude-proxy.ceylanemin1928.workers.dev';
 
-// ── AUTH & INIT (Gerçek Supabase Developer Oturumu Zorunlu) ──
+let _currentUser = null;
+
+// ── AUTH & INIT (Gerçek Supabase Developer/Coach Oturumu Zorunlu) ──
 async function doLogin() {
   const email = (document.getElementById('loginEmail')?.value || '').trim();
   const p = document.getElementById('loginPass').value;
@@ -1031,6 +1037,7 @@ async function doLogin() {
       await db.auth.signOut();
       throw new Error('Yetkisiz rol');
     }
+    _currentUser = { id: data.user.id, role: u.role };
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('appMain').style.display = 'grid';
     initApp();
@@ -1047,6 +1054,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (session?.user) {
       const { data: u } = await db.from('users').select('role').eq('id', session.user.id).maybeSingle();
       if (u && ['developer', 'coach'].includes(u.role)) {
+        _currentUser = { id: session.user.id, role: u.role };
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('appMain').style.display = 'grid';
         initApp();
@@ -1054,6 +1062,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (_) {}
 });
+
+const FERNUS_PUBLISHERS = [
   { name: "345 (ÜçDörtBeş)", base: "https://ucdortbes.frns.in" },
   { name: "Bilgi Sarmal", base: "https://bilgisarmal.frns.in" },
   { name: "Çap Yayınları", base: "https://capyayinlari.frns.in" },
@@ -1095,29 +1105,6 @@ let fernusCountingActive = false;
 let fernusCurrentResult = null;
 let fernusCurrentSelectItems = [];
 let fernusBulkActive = false;
-
-// ── AUTH & INIT ──────────────────────────────────
-async function doLogin() {
-  const p = document.getElementById('loginPass').value;
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p));
-  const hash = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-  if (hash === _KR_HASH) {
-    sessionStorage.setItem('kaynak_auth', '1');
-    document.getElementById('loginOverlay').style.display = 'none';
-    document.getElementById('appMain').style.display = 'grid';
-    initApp();
-  } else {
-    const err = document.getElementById('loginErr');
-    err.style.display = 'block';
-    setTimeout(() => err.style.display='none', 2500);
-  }
-}
-
-if (sessionStorage.getItem('kaynak_auth')) {
-  document.getElementById('loginOverlay').style.display = 'none';
-  document.getElementById('appMain').style.display = 'grid';
-  window.addEventListener('DOMContentLoaded', initApp);
-}
 
 async function initApp() {
   try {
@@ -1529,6 +1516,7 @@ async function saveFernusBook() {
     const { error } = await db.from('resources').insert({
       exam_type, subject, publisher, name,
       year: new Date().getFullYear(),
+      coach_id: _currentUser?.role === 'developer' ? null : (_currentUser?.id || null),
       tests, active: true, resource_type: 'book'
     });
     if (error) throw error;
@@ -1609,14 +1597,16 @@ async function runFernusBulkImport() {
       const auto = autoDetectExamAndSubject(it.nm);
       const pubObj = FERNUS_PUBLISHERS.find(p => p.base === it.base);
 
-      await db.from('resources').insert({
+      const { error: insErr } = await db.from('resources').insert({
         exam_type: auto.exam_type,
         subject: auto.subject,
         publisher: pubObj ? pubObj.name.replace(/ \(.+\)/, '') : 'Fernus',
         name: it.nm,
         year: new Date().getFullYear(),
+        coach_id: _currentUser?.role === 'developer' ? null : (_currentUser?.id || null),
         tests, active: true, resource_type: 'book'
       });
+      if (insErr) throw insErr;
       done++;
       log.innerHTML += `<div style="color:var(--emerald)">✓ Kaydedildi: "${it.nm}" (${tests.length} test)</div>`;
     } catch(e) {
@@ -1663,7 +1653,6 @@ async function fetchPlaylist() {
   const apiKey = document.getElementById('ytApiKey').value.trim() || localStorage.getItem('yt_api_key');
   const statusEl = document.getElementById('fetchStatus');
 
-  if(!apiKey) return statusEl.innerHTML = '<span style="color:var(--rose)">⚠️ Önce API Key girin</span>';
   const match = url.match(/[?&]list=([^&\s]+)/);
   if(!match) return statusEl.innerHTML = '<span style="color:var(--rose)">⚠️ Geçersiz Playlist URL</span>';
 
@@ -1671,29 +1660,42 @@ async function fetchPlaylist() {
   try {
     _fetchedVideos = [];
     let nextPage = '';
-    do {
-      const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${match[1]}&maxResults=50&pageToken=${nextPage}&key=${apiKey}`);
-      const data = await res.json();
-      if(data.error) throw new Error(data.error.message);
+    if (!apiKey) {
+      const { data: { session } } = await db.auth.getSession();
+      if (!session?.access_token) throw new Error('Önce oturum açın veya YouTube API Key girin');
+      do {
+        const qUrl = `/api/youtube?playlistId=${encodeURIComponent(match[1])}${nextPage ? `&pageToken=${encodeURIComponent(nextPage)}` : ''}`;
+        const res = await fetch(qUrl, { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Oynatma listesi yüklenemedi.');
+        if (data.items) _fetchedVideos = _fetchedVideos.concat(data.items);
+        nextPage = data.nextPageToken || '';
+      } while (nextPage && _fetchedVideos.length < 200);
+    } else {
+      do {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${match[1]}&maxResults=50&pageToken=${nextPage}&key=${apiKey}`);
+        const data = await res.json();
+        if(data.error) throw new Error(data.error.message);
 
-      const ids = data.items.map(i => i.snippet.resourceId.videoId).join(',');
-      const durRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${apiKey}`);
-      const durData = await durRes.json();
-      const durMap = {};
-      (durData.items||[]).forEach(v => {
-        const iso = v.contentDetails.duration;
-        const h = parseInt(iso.match(/(\d+)H/)?.[1]||0);
-        const m = parseInt(iso.match(/(\d+)M/)?.[1]||0);
-        const s = parseInt(iso.match(/(\d+)S/)?.[1]||0);
-        durMap[v.id] = Math.ceil((h*3600+m*60+s)/60);
-      });
+        const ids = data.items.map(i => i.snippet.resourceId.videoId).join(',');
+        const durRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${apiKey}`);
+        const durData = await durRes.json();
+        const durMap = {};
+        (durData.items||[]).forEach(v => {
+          const iso = v.contentDetails.duration;
+          const h = parseInt(iso.match(/(\d+)H/)?.[1]||0);
+          const m = parseInt(iso.match(/(\d+)M/)?.[1]||0);
+          const s = parseInt(iso.match(/(\d+)S/)?.[1]||0);
+          durMap[v.id] = Math.ceil((h*3600+m*60+s)/60);
+        });
 
-      data.items.forEach(item => {
-        const vid = item.snippet.resourceId.videoId;
-        _fetchedVideos.push({ title: item.snippet.title, url: `https://www.youtube.com/watch?v=${vid}`, duration: durMap[vid]||0 });
-      });
-      nextPage = data.nextPageToken || '';
-    } while(nextPage && _fetchedVideos.length < 200);
+        data.items.forEach(item => {
+          const vid = item.snippet.resourceId.videoId;
+          _fetchedVideos.push({ title: item.snippet.title, url: `https://www.youtube.com/watch?v=${vid}`, duration: durMap[vid]||0 });
+        });
+        nextPage = data.nextPageToken || '';
+      } while(nextPage && _fetchedVideos.length < 200);
+    }
 
     statusEl.innerHTML = `<span style="color:var(--emerald)">✓ ${_fetchedVideos.length} video çekildi</span>`;
     document.getElementById('previewCount').textContent = _fetchedVideos.length + ' video';
@@ -1718,6 +1720,7 @@ async function saveYouTubePlaylist() {
     exam_type: document.getElementById('ytExam').value,
     subject: document.getElementById('ytSubject').value,
     publisher, name, year: new Date().getFullYear(),
+    coach_id: _currentUser?.role === 'developer' ? null : (_currentUser?.id || null),
     tests, active: true, resource_type: 'playlist'
   });
 
@@ -1745,6 +1748,7 @@ async function saveSoruBankasi() {
     exam_type: document.getElementById('sb_exam').value,
     subject: document.getElementById('sb_subject').value,
     publisher, name, year: new Date().getFullYear(),
+    coach_id: _currentUser?.role === 'developer' ? null : (_currentUser?.id || null),
     tests, active: true, resource_type: 'book'
   });
 
@@ -1770,6 +1774,7 @@ async function saveManuelPlaylist() {
     exam_type: document.getElementById('pl_exam').value,
     subject: document.getElementById('pl_subject').value,
     publisher, name, year: new Date().getFullYear(),
+    coach_id: _currentUser?.role === 'developer' ? null : (_currentUser?.id || null),
     tests, active: true, resource_type: 'playlist'
   });
 
@@ -1786,16 +1791,19 @@ async function loadList() {
   el.innerHTML = '<div style="color:var(--text-dim); padding:20px">Yükleniyor...</div>';
   const { data } = await db.from('resources').select('*').order('resource_type,exam_type,subject,name');
   _allResources = data || [];
-  renderList(_allResources);
+  filterList();
 }
 
 function filterList() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
+  const q = document.getElementById('searchInput').value;
   const type = document.getElementById('filterType').value;
+  const tokens = trClean(q).split(/\s+/).filter(Boolean);
   const filtered = _allResources.filter(r => {
     const matchType = !type || r.resource_type === type;
-    const matchQ = !q || r.name.toLowerCase().includes(q) || r.publisher?.toLowerCase().includes(q) || r.subject?.toLowerCase().includes(q);
-    return matchType && matchQ;
+    if (!matchType) return false;
+    if (!tokens.length) return true;
+    const hay = trClean(`${r.name || ''} ${r.publisher || ''} ${r.exam_type || ''} ${r.subject || ''}`);
+    return tokens.every(t => hay.includes(t));
   });
   renderList(filtered);
 }
