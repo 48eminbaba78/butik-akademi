@@ -18,6 +18,7 @@ import {
   getTaskStatusMeta, computeTaskResultMeta, computeTaskDurationMeta,
   computeWeeklyReportStats, filterAndSortWeeklyTasks, buildCoachTaskMessageDraft
 } from './weekly-report.js';
+import { computeCoachHomeMetrics } from './home-dashboard.js';
 
 function formatMinToHours(mins) {
   if (!mins || mins <= 0) return '0 sa';
@@ -691,7 +692,109 @@ function _renderAlertRowHtml(a, domKey, isFirst, isSnoozed = false, showStudentN
   </div>`;
 }
 
-// ── KOÇ ANA SAYFA ──────────────────────────────
+// ── KOÇ ANA SAYFA (KOMUTA MERKEZİ) ───────────────
+let _homePulseExpanded = false;
+let _homeFbExpanded = false;
+
+window._homeOpenDetail = function(idx) {
+  const stuId = window._homeStuIds?.[idx];
+  if (stuId) openStudentDetail(stuId);
+};
+window._homeOpenProgram = function(idx) {
+  const stuId = window._homeStuIds?.[idx];
+  if (stuId) goProgram(stuId);
+};
+window._homeOpenReport = function(idx) {
+  const stuId = window._homeStuIds?.[idx];
+  if (!stuId) return;
+  S.activeStuId = stuId;
+  S.weekOffset = 0;
+  saveUI();
+  openWeeklyReportModal(0);
+};
+window._homeMessageStudent = function(idx) {
+  const stuId = window._homeStuIds?.[idx];
+  if (!stuId) return;
+  switchTab('messages');
+  setTimeout(() => selectThread(stuId), 80);
+};
+window._homeReplyFeedback = function(idx) {
+  const item = window._homeFbMap?.[idx];
+  if (!item) return;
+  const draft = buildCoachTaskMessageDraft(item.studentName, item.task, window._homeTodayDs || todayStr());
+  switchTab('messages');
+  setTimeout(async () => {
+    await selectThread(item.studentId);
+    applyMsgTemplate(draft);
+  }, 80);
+};
+window._homeOpenFeedbackReport = function(idx) {
+  const item = window._homeFbMap?.[idx];
+  if (!item?.studentId) return;
+  S.activeStuId = item.studentId;
+  S.weekOffset = 0;
+  saveUI();
+  openWeeklyReportModal(0);
+};
+window._homeOpenAppt = function(idx) {
+  const apptId = window._homeApptIds?.[idx];
+  openApptModal(apptId || null);
+};
+window._homeOpenTodayAppt = function(idx) {
+  const apptId = window._homeTodayApptIds?.[idx];
+  openApptModal(apptId || null);
+};
+window._homeTogglePulseExpanded = function() {
+  _homePulseExpanded = !_homePulseExpanded;
+  renderHome();
+};
+window._homeToggleFbExpanded = function() {
+  _homeFbExpanded = !_homeFbExpanded;
+  renderHome();
+};
+window._homeAddTodo = async function() {
+  const inp = document.getElementById('homeTodoInput');
+  const btn = document.getElementById('homeTodoAddBtn');
+  const task = inp?.value.trim() || '';
+  if (!task) return showToast('Görev adı girin!');
+  const todayDs = window._homeTodayDs || todayStr();
+  if (btn) btn.disabled = true;
+  try {
+    const payload = { date: todayDs, coach_id: session.coachId, task, note: '', done: false };
+    const { data, error } = await db.from('coach_todos').insert(payload).select().single();
+    if (error) return showToast('Hata: ' + error.message);
+    if (!S.coachTodos[todayDs]) S.coachTodos[todayDs] = [];
+    S.coachTodos[todayDs].push({ _id: data.id, task: data.task, note: data.note || '', done: false });
+    saveCache();
+    renderHome();
+    showToast('Görev eklendi ✓');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+window._homeToggleTodo = async function(idx) {
+  const todayDs = window._homeTodayDs || todayStr();
+  const t = S.coachTodos[todayDs]?.[idx];
+  if (!t) return;
+  const newDone = !t.done;
+  const { error } = await db.from('coach_todos').update({ done: newDone }).eq('id', t._id);
+  if (error) return showToast('Hata: ' + error.message);
+  t.done = newDone;
+  saveCache();
+  renderHome();
+};
+window._homeDeleteTodo = async function(idx) {
+  const todayDs = window._homeTodayDs || todayStr();
+  const t = S.coachTodos[todayDs]?.[idx];
+  if (!t) return;
+  const { error } = await db.from('coach_todos').delete().eq('id', t._id);
+  if (error) return showToast('Hata: ' + error.message);
+  S.coachTodos[todayDs].splice(idx, 1);
+  saveCache();
+  renderHome();
+  showToast('Silindi');
+};
+
 function renderHome(){
   const el = document.getElementById('view-home');
   if(!el) return;
@@ -699,19 +802,25 @@ function renderHome(){
   const now = new Date();
   const dayNames = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
   const monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
-  const todayStr = fmtDate(now);
-
-  // Unread messages
-  let unread = 0;
-  Object.values(S.messages).forEach(msgs => { unread += msgs.filter(m=>m.from==='student'&&!m.read).length; });
-
-  // Bugünkü randevular
-  const todayAppts = S.appointments.filter(a=>a.date===todayStr).sort((a,b)=>a.time.localeCompare(b.time));
 
   // --- ANOMALİ TESPİTİ (Erken Uyarılar Motoru) ---
   const snoozedMap = loadSnoozedAlerts(session.coachId);
   const alertRes = computeEarlyWarnings(S, { now, snoozedMap });
-  const activeStudentsHome = (S.students || []).filter(s => s.active !== false);
+  const metrics = computeCoachHomeMetrics(S, { now, alertRes, getWeekStartFn: getWeekStart });
+
+  const {
+    todayDs, timeNow, activeStudents: activeStudentsHome, pendingInvitesCount,
+    unreadCount: unread, unreadSenders, todayAppts, nextTodayAppt: nextAppt,
+    upcomingAppts, apptKpiSub, weekTotal, weekDone, weekPct, weekSolved,
+    weekStudyMin, plannedStudentCount, studentPulse, recentFeedback,
+    todayTodos, briefingText
+  } = metrics;
+
+  window._homeTodayDs = todayDs;
+  window._homeStuIds = studentPulse.map(p => p.studentId);
+  window._homeFbMap = recentFeedback;
+  window._homeApptIds = upcomingAppts.map(a => a.id);
+  window._homeTodayApptIds = todayAppts.map(a => a.id);
   _lastAlertsById = {};
 
   if (_alertFilter === 'snoozed' && alertRes.counts.snoozed === 0) _alertFilter = 'all';
@@ -770,8 +879,8 @@ function renderHome(){
           <div style="text-align:center;padding:24px 16px">
             <div style="font-size:36px;margin-bottom:12px">👋</div>
             <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">İlk öğrencinizi ekleyin</div>
-            <div style="font-size:12px;color:var(--text-mid);margin-bottom:16px;line-height:1.6">Öğrencilerim sekmesinden öğrenci ekleyerek uygulamayı kullanmaya başlayabilirsiniz.</div>
-            <button class="btn btn-accent" onclick="switchTab('students')" style="font-size:13px;padding:9px 20px">Öğrenci Ekle →</button>
+            <div style="font-size:12px;color:var(--text-mid);margin-bottom:16px;line-height:1.6">Öğrencilerim sekmesinden öğrenci davet ederek uygulamayı kullanmaya başlayabilirsiniz.</div>
+            <button type="button" class="btn btn-accent" onclick="openStudentModal()" style="font-size:13px;padding:9px 20px">Öğrenci Davet Et →</button>
           </div>`;
       } else {
         anomaliesHTML = `
@@ -784,19 +893,19 @@ function renderHome(){
       const shownGroups = filteredGroups.slice(0, limit);
       anomaliesHTML = shownGroups.map(grp => {
         const isInvite = String(grp.studentId || '').startsWith('invite_');
-        const clickAction = isInvite ? `switchTab('students')` : `openStudentDetail('${esc(grp.studentId)}')`;
+        const clickAction = isInvite ? `switchTab('students')` : `openStudentDetail('${escAttr(grp.studentId)}')`;
         const isGrpExpanded = _expandedAlertGroups.has(grp.studentId) || grp.items.length <= 2;
         const shownItems = isGrpExpanded ? grp.items : grp.items.slice(0, 2);
         const rowsHTML = shownItems.map((a, idx) => _renderAlertRowHtml(a, `al_h_${domCounter++}`, idx === 0, false, false)).join('');
         const moreRowsBtn = grp.items.length > 2
-          ? `<button type="button" class="ew-more-rows-btn" onclick="event.stopPropagation();window._toggleAlertGroup('${esc(grp.studentId)}')">${isGrpExpanded ? 'Daha az göster' : `+${grp.items.length - 2} diğer uyarıyı göster`}</button>`
+          ? `<button type="button" class="ew-more-rows-btn" onclick="event.stopPropagation();window._toggleAlertGroup('${escAttr(grp.studentId)}')">${isGrpExpanded ? 'Daha az göster' : `+${grp.items.length - 2} diğer uyarıyı göster`}</button>`
           : '';
         const countBadge = grp.items.length > 1
           ? `<span class="ew-count-badge">${grp.items.length} uyarı</span>`
           : '';
         return `<div class="ew-card sev-${grp.worstSeverity}" onclick="${clickAction}">
           <div class="ew-card-hd">
-            <span class="ew-stu-name"><span class="ew-stu-dot" style="background:${grp.color || 'var(--accent)'}"></span>${esc(grp.studentName)}</span>
+            <span class="ew-stu-name"><span class="ew-stu-dot" style="background:${escAttr(grp.color || 'var(--accent)')}"></span>${esc(grp.studentName)}</span>
             ${countBadge}
           </div>
           ${rowsHTML}
@@ -814,28 +923,140 @@ function renderHome(){
 
   const hr = now.getHours();
   const greeting = hr < 6 ? 'İyi geceler' : hr < 12 ? 'Günaydın' : hr < 18 ? 'İyi günler' : 'İyi akşamlar';
-  const timeNow = `${String(hr).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  const nextAppt = todayAppts.find(a => a.time >= timeNow);
-
-  // YKS geri sayım — sınav geçince otomatik sonraki yıla döner
   const yksInfo = getNextYks();
   const daysToYks = yksInfo.days;
-
-  // Haftanın görev tamamlama özeti (aktif öğrenciler + kişisel weekStart)
-  let weekTotal = 0, weekDone = 0;
-  activeStudentsHome.forEach(s => {
-    const sWs = getWeekStart(0, s.weekStart || 0);
-    for(let i=0;i<7;i++){
-      const tasks = S.tasks[`${s.id}_${fmtDate(addDays(sWs,i))}`]||[];
-      weekTotal += tasks.length;
-      weekDone += tasks.filter(t=>t.done).length;
-    }
-  });
-  const weekPct = weekTotal > 0 ? Math.round(weekDone/weekTotal*100) : 0;
 
   const actionableCount = alertRes.counts.totalActionable;
   const headerIcon = alertRes.counts.critical > 0 ? '🚨' : actionableCount > 0 ? '⚠️' : '✅';
   const headerPillCls = alertRes.counts.critical > 0 ? 'hsc-pill-red' : actionableCount > 0 ? 'hsc-pill-amber' : 'hsc-pill-green';
+  const briefingCls = alertRes.counts.critical > 0 ? 'has-crit' : actionableCount === 0 && activeStudentsHome.length > 0 ? 'has-ok' : '';
+
+  // Öğrenci Haftalık Nabzı HTML
+  const pulseLimit = _homePulseExpanded ? studentPulse.length : Math.min(studentPulse.length, 6);
+  const shownPulse = studentPulse.slice(0, pulseLimit);
+  const pulseListHtml = shownPulse.map((p, idx) => {
+    const barCol = p.total === 0 ? 'var(--border2)' : p.pct >= 70 ? 'var(--green)' : p.pct >= 40 ? 'var(--accent)' : 'var(--red)';
+    let healthBadge = '';
+    if (p.criticalCount > 0) healthBadge = `<span class="hsp-badge crit">🔴 ${p.criticalCount} kritik</span>`;
+    else if (p.total === 0) healthBadge = `<span class="hsp-badge warn">Program Yok</span>`;
+    else if (p.warningCount > 0) healthBadge = `<span class="hsp-badge warn">🟡 ${p.warningCount} takip</span>`;
+    else if (p.pct >= 70) healthBadge = `<span class="hsp-badge ok">✓ Yolunda</span>`;
+
+    const metaParts = [
+      p.total > 0 ? `${p.done}/${p.total} görev` : 'Bu hafta görev yok',
+      p.solved > 0 ? `${p.solved} soru` : '',
+      p.studyMin > 0 ? formatShortDuration(p.studyMin) : '',
+      p.lastNet !== null ? `Son ${esc(p.lastExamType)}: ${esc(p.lastNet)} net${p.lastExamDaysAgo !== null ? ` (${p.lastExamDaysAgo}g)` : ''}` : ''
+    ].filter(Boolean);
+
+    return `<div class="hsp-row health-${p.health}" onclick="window._homeOpenDetail(${idx})">
+      <div class="hsp-avatar" style="background:${escAttr(p.color || 'var(--accent)')}">${esc((p.studentName || '?')[0])}</div>
+      <div class="hsp-info">
+        <div class="hsp-top">
+          <span class="hsp-name">${esc(p.studentName)}</span>
+          ${healthBadge}
+          ${p.unreadCount > 0 ? `<span class="hsp-badge msg">💬 ${p.unreadCount}</span>` : ''}
+        </div>
+        <div class="hsp-meta">${metaParts.map(m => `<span>${m}</span>`).join('<span>·</span>')}</div>
+        <div class="hsp-progress-wrap">
+          <div class="hsp-bar-track"><div class="hsp-bar-fill" style="width:${p.pct}%;background:${barCol}"></div></div>
+          <span class="hsp-pct" style="color:${p.total === 0 ? 'var(--text-dim)' : barCol}">${p.total > 0 ? `%${p.pct}` : '—'}</span>
+        </div>
+      </div>
+      <div class="hsp-actions">
+        <button type="button" class="hsp-btn ${p.total === 0 ? 'primary' : ''}" onclick="event.stopPropagation();window._homeOpenProgram(${idx})">📅 Program</button>
+        <button type="button" class="hsp-btn" onclick="event.stopPropagation();window._homeOpenReport(${idx})" title="Haftalık Gelişim Raporu">📊 Rapor</button>
+        <button type="button" class="hsp-btn" onclick="event.stopPropagation();window._homeMessageStudent(${idx})" title="Mesaj Gönder">💬</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Bugünkü ve Yaklaşan Randevular HTML
+  const todayApptsHtml = todayAppts.map((a, idx) => {
+    const stu = S.students.find(s => s.id === a.studentId);
+    const isPast = a.time < timeNow;
+    const [aH, aM] = String(a.time || '00:00').split(':').map(Number);
+    const apptMinutes = aH * 60 + aM;
+    const [nH, nM] = timeNow.split(':').map(Number);
+    const nowMinutes = nH * 60 + nM;
+    const diffMin = apptMinutes - nowMinutes;
+    const isLive = diffMin >= -((a.duration || 60)) && diffMin <= 15;
+    const mLink = a.meetLink || a.meet_link || '';
+    const liveBtn = isLive && mLink ? `<a href="${escAttr(mLink)}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;background:${diffMin <= 0 ? 'var(--red)' : 'var(--accent)'};color:#fff;font-size:11px;font-weight:800;text-decoration:none;animation:${diffMin <= 0 ? 'pulse 1.5s infinite' : 'none'};white-space:nowrap;flex-shrink:0">${diffMin <= 0 ? '🔴 Ders Sürüyor' : '🟡 Derse Gir'}</a>` : '';
+    return `<div class="hsc-appt-row ${isPast && !isLive ? 'hsc-appt-past' : ''}" onclick="window._homeOpenTodayAppt(${idx})" style="cursor:pointer;">
+      <div class="hsc-appt-time">${esc(a.time)}</div>
+      <div class="hsc-appt-bar" style="background:${escAttr(stu?.color || 'var(--accent)')}"></div>
+      <div style="flex:1;min-width:0">
+        <div class="hsc-appt-name">${esc(stu?.name || '?')}</div>
+        <div class="hsc-appt-meta">${esc(a.type)} · ${a.duration} dk${!isLive && mLink ? ` · <a href="${escAttr(mLink)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);text-decoration:none">${mLink.includes('zoom') ? 'Zoom' : 'Meet'} →</a>` : ''}</div>
+      </div>
+      ${liveBtn || (isPast ? '<span class="hsc-appt-done">✓</span>' : '')}
+    </div>`;
+  }).join('');
+
+  const upcomingHtml = upcomingAppts.length > 0 ? `
+    <div class="hd-appt-subhead">Yaklaşan (7 Gün)</div>
+    <div class="hd-upcoming-list">
+      ${upcomingAppts.map((a, idx) => `
+        <div class="hd-upcoming-row" onclick="window._homeOpenAppt(${idx})">
+          <span class="hd-up-day-pill">${esc(a.relLabel)}</span>
+          <span class="hd-up-time">${esc(a.time)}</span>
+          <div class="hd-up-info">
+            <div class="hd-up-name">${esc(a.studentName)}</div>
+            <div class="hd-up-type">${esc(a.type)} · ${a.duration} dk</div>
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+
+  // Son Öğrenci Geri Bildirimleri HTML
+  const fbLimit = _homeFbExpanded ? recentFeedback.length : Math.min(recentFeedback.length, 4);
+  const shownFeedback = recentFeedback.slice(0, fbLimit);
+  const feedbackHtml = recentFeedback.length === 0
+    ? `<div class="hsc-empty" style="padding:16px;">Son 7 günde zorlanma veya öğrenci notu bildirilmedi.</div>`
+    : `<div class="hfb-list">
+        ${shownFeedback.map((fb, idx) => `
+          <div class="hfb-item">
+            <div class="hfb-top">
+              <span class="hfb-stu">
+                <span class="ew-stu-dot" style="background:${escAttr(fb.studentColor || 'var(--accent)')}"></span>
+                ${esc(fb.studentName)}
+              </span>
+              <span class="hfb-date">${esc(fb.dateLabel)}</span>
+            </div>
+            <div class="hfb-subject">${esc(fb.subject)}</div>
+            <div class="hfb-badges">
+              <span class="wr-status-pill ${fb.statusCls}">${fb.statusIcon} ${esc(fb.statusLabel)}</span>
+              ${fb.diffLabel ? `<span class="wr-diff-pill ${fb.diffCls}">${esc(fb.diffLabel)}</span>` : ''}
+              ${fb.blockerLabel ? `<span class="wr-flag-blocker">⚠️ ${esc(fb.blockerLabel)}</span>` : ''}
+              ${fb.focus > 0 && fb.focus <= 2 ? `<span class="wr-flag-topics">🎯 Odak ${fb.focus}/5</span>` : ''}
+            </div>
+            ${fb.note ? `<div class="hfb-note" title="${escAttr(fb.note)}">“${esc(fb.note)}”</div>` : ''}
+            <div class="hfb-foot">
+              <button type="button" class="hfb-btn reply" onclick="window._homeReplyFeedback(${idx})">💬 Yanıtla</button>
+              <button type="button" class="hfb-btn" onclick="window._homeOpenFeedbackReport(${idx})">📊 Rapor</button>
+            </div>
+          </div>`).join('')}
+      </div>
+      ${recentFeedback.length > 4 ? `
+        <button type="button" class="ew-footer-btn" style="margin-top:8px;" onclick="window._homeToggleFbExpanded()">
+          ${_homeFbExpanded ? 'Daha Az Göster ▲' : `Tümünü Gör (${recentFeedback.length} bildirim) ▾`}
+        </button>` : ''}`;
+
+  // Bugünün Yapılacakları HTML
+  const todosHtml = todayTodos.items.length > 0
+    ? `<div class="htd-list">
+        ${todayTodos.items.map((td, idx) => `
+          <div class="htd-row ${td.done ? 'done' : ''}">
+            <button type="button" class="htd-chk" onclick="window._homeToggleTodo(${idx})" title="${td.done ? 'Geri al' : 'Tamamla'}">${td.done ? '✓' : ''}</button>
+            <span class="htd-txt">${esc(td.task)}</span>
+            <button type="button" class="htd-del" onclick="window._homeDeleteTodo(${idx})" title="Sil">×</button>
+          </div>`).join('')}
+      </div>`
+    : `<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">Bugün için kişisel yapılacak eklenmemiş.</div>`;
+
+  const unreadSubText = unread > 0
+    ? (unreadSenders.length ? `${unreadSenders.join(', ')} bekliyor` : 'Yanıt bekliyor')
+    : 'Tüm mesajlar okundu';
 
   el.innerHTML = `
     <!-- HERO -->
@@ -844,6 +1065,14 @@ function renderHome(){
         <div class="home-hero-greeting">${greeting},</div>
         <div class="home-hero-name">${esc(session.dbUser?.full_name?.split(' ')[0]||'Koç')} 👋</div>
         <div class="home-hero-date">${dayNames[now.getDay()]}, ${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}</div>
+        <div class="hd-briefing ${briefingCls}">${esc(briefingText)}</div>
+        <div class="hd-quick-actions">
+          <button type="button" class="hd-qbtn hd-qbtn-primary" onclick="openStudentModal()">+ Öğrenci Davet Et</button>
+          ${S.students.length > 0 ? `<button type="button" class="hd-qbtn" onclick="openApptModal()">📅 Randevu Planla</button>` : ''}
+          <button type="button" class="hd-qbtn" onclick="switchTab('messages')">💬 Mesajlar${unread > 0 ? ` <span class="hd-qbtn-badge">${unread}</span>` : ''}</button>
+          <button type="button" class="hd-qbtn" onclick="switchTab('coach-resources')">📚 Kaynaklar</button>
+          <button type="button" class="hd-qbtn" onclick="switchTab('coach-notes')">📝 Notlarım</button>
+        </div>
       </div>
       <div class="home-hero-right">
         <div class="home-yks-badge">
@@ -859,19 +1088,20 @@ function renderHome(){
       <div class="hsv2-card" onclick="switchTab('students')" title="Öğrencilere git">
         <div class="hsv2-top">
           <span class="hsv2-icon-wrap hsv2-amber">👥</span>
-          <span class="hsv2-trend">→</span>
+          ${pendingInvitesCount > 0 ? `<span class="hsv2-trend" style="color:var(--accent)">${pendingInvitesCount} davet</span>` : '<span class="hsv2-trend">→</span>'}
         </div>
         <div class="hsv2-val">${activeStudentsHome.length}</div>
         <div class="hsv2-lbl">Aktif Öğrenci</div>
+        <div class="hsv2-sub">${plannedStudentCount}/${activeStudentsHome.length} bu hafta programlı</div>
       </div>
-      <div class="hsv2-card" onclick="switchTab('students')" title="Öğrencilere git — randevu sekmesi">
+      <div class="hsv2-card" onclick="switchTab('todolist')" title="Takvim / Ajandaya git">
         <div class="hsv2-top">
           <span class="hsv2-icon-wrap hsv2-blue">📅</span>
-          <span class="hsv2-trend" style="color:var(--blue)">${nextAppt ? nextAppt.time : '—'}</span>
+          <span class="hsv2-trend" style="color:var(--blue)">${nextAppt ? esc(nextAppt.time) : (upcomingAppts.length > 0 ? esc(upcomingAppts[0].relLabel) : '—')}</span>
         </div>
         <div class="hsv2-val" style="color:var(--blue)">${todayAppts.length}</div>
         <div class="hsv2-lbl">Bugün Randevu</div>
-        <div class="hsv2-sub">${nextAppt ? `Sıradaki: ${nextAppt.time}` : 'Randevu tamamlandı'}</div>
+        <div class="hsv2-sub">${esc(apptKpiSub)}</div>
       </div>
       <div class="hsv2-card" onclick="switchTab('messages')" title="Mesajlara git">
         <div class="hsv2-top">
@@ -880,78 +1110,106 @@ function renderHome(){
         </div>
         <div class="hsv2-val" style="color:${unread>0?'var(--red)':'var(--green)'}">${unread}</div>
         <div class="hsv2-lbl">Okunmamış Mesaj</div>
-        <div class="hsv2-sub">${unread>0?'Yanıt bekliyor':'Tüm mesajlar okundu'}</div>
+        <div class="hsv2-sub">${esc(unreadSubText)}</div>
       </div>
-      <div class="hsv2-card" title="Haftalık görev durumu">
+      <div class="hsv2-card" onclick="document.getElementById('homeStudentPulse')?.scrollIntoView({behavior:'smooth',block:'start'})" title="Öğrenci haftalık nabzına in">
         <div class="hsv2-top">
           <span class="hsv2-icon-wrap ${weekPct>=70?'hsv2-green':weekPct>=40?'hsv2-amber':'hsv2-red'}">📋</span>
           <span class="hsv2-trend" style="color:${weekPct>=70?'var(--green)':weekPct>=40?'var(--accent)':'var(--red)'}">%${weekPct}</span>
         </div>
         <div class="hsv2-val" style="color:${weekPct>=70?'var(--green)':weekPct>=40?'var(--accent)':'var(--red)'}">${weekDone}<span style="font-size:18px;font-weight:500;color:var(--text-dim)">/${weekTotal}</span></div>
         <div class="hsv2-lbl">Haftalık Görev</div>
+        <div class="hsv2-sub">${weekSolved > 0 ? `${weekSolved} soru · ` : ''}${formatShortDuration(weekStudyMin)} çalışma</div>
         <div class="hsv2-progress"><div class="hsv2-bar" style="width:${weekPct}%;background:${weekPct>=70?'var(--green)':weekPct>=40?'var(--accent)':'var(--red)'}"></div></div>
       </div>
     </div>
     `}
 
-    <!-- ALT GRID: Uyarılar + Randevular -->
-    <div class="home-bottom-grid">
-      <div class="home-section-card ${actionableCount>0?'hsc-has-alerts':''}">
-        <div class="hsc-head">
-          <span class="hsc-head-icon">${headerIcon}</span>
-          <span class="hsc-head-title">Erken Uyarılar</span>
-          ${alertRes.counts.positive > 0 ? `<span class="hsc-pill hsc-pill-green">🏆 ${alertRes.counts.positive}</span>` : ''}
-          <span class="hsc-pill ${headerPillCls}">${actionableCount>0?actionableCount+' uyarı':'Temiz'}</span>
+    <!-- ANA KOMUTA IZGARASI -->
+    <div class="hd-main-grid">
+      <div class="hd-col-main">
+        <!-- ERKEN UYARILAR -->
+        <div class="home-section-card ${actionableCount>0?'hsc-has-alerts':''}">
+          <div class="hsc-head">
+            <span class="hsc-head-icon">${headerIcon}</span>
+            <span class="hsc-head-title">Erken Uyarılar</span>
+            ${alertRes.counts.positive > 0 ? `<span class="hsc-pill hsc-pill-green">🏆 ${alertRes.counts.positive}</span>` : ''}
+            <span class="hsc-pill ${headerPillCls}">${actionableCount>0?actionableCount+' uyarı':'Temiz'}</span>
+          </div>
+          ${alertFilterBarHTML}
+          <div class="hsc-body hsc-alerts-body ${_alertsExpanded?'expanded':''}">${anomaliesHTML}</div>
         </div>
-        ${alertFilterBarHTML}
-        <div class="hsc-body hsc-alerts-body ${_alertsExpanded?'expanded':''}">${anomaliesHTML}</div>
-      </div>
-      <div class="home-section-card">
-        <div class="hsc-head">
-          <span class="hsc-head-icon">📅</span>
-          <span class="hsc-head-title">Bugünün Randevuları</span>
-          <span class="hsc-pill">${todayAppts.length} randevu</span>
-        </div>
-        <div class="hsc-body">
-          ${todayAppts.length===0?`<div class="hsc-empty">Bugün randevu yok</div>`:''}
-          ${todayAppts.map(a=>{
-            const stu = S.students.find(s=>s.id===a.studentId);
-            const isPast = a.time < timeNow;
-            // Canlı ders kontrolü: şu andan 15 dk önce ile ders süresi sonuna kadar
-            const [aH,aM] = a.time.split(':').map(Number);
-            const apptMinutes = aH*60+aM;
-            const [nH,nM] = timeNow.split(':').map(Number);
-            const nowMinutes = nH*60+nM;
-            const diffMin = apptMinutes - nowMinutes;
-            const isLive = diffMin >= -((a.duration||60)) && diffMin <= 15;
-            const mLink = a.meetLink || a.meet_link || '';
-            const liveBtn = isLive && mLink ? `<a href="${esc(mLink)}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;background:${diffMin<=0?'var(--red)':'var(--accent)'};color:#fff;font-size:11px;font-weight:800;text-decoration:none;animation:${diffMin<=0?'pulse 1.5s infinite':'none'};white-space:nowrap;flex-shrink:0">${diffMin<=0?'🔴 Ders Sürüyor':'🟡 Derse Gir'}</a>` : '';
-            return `<div class="hsc-appt-row ${isPast&&!isLive?'hsc-appt-past':''}">
-              <div class="hsc-appt-time">${a.time}</div>
-              <div class="hsc-appt-bar" style="background:${stu?.color||'var(--accent)'}"></div>
-              <div style="flex:1;min-width:0">
-                <div class="hsc-appt-name">${esc(stu?.name||'?')}</div>
-                <div class="hsc-appt-meta">${esc(a.type)} · ${a.duration} dk${!isLive&&mLink?` · <a href="${esc(mLink)}" target="_blank" style="color:var(--blue);text-decoration:none">${mLink.includes('zoom')?'Zoom':'Meet'} →</a>`:''}</div>
-              </div>
-              ${liveBtn || (isPast?'<span class="hsc-appt-done">✓</span>':'')}
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-    </div>
 
-    <!-- HIZLI ERİŞİM -->
-    <div style="display:flex;gap:8px;max-width:900px;margin:0 auto 6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 2px 8px 2px" class="home-quick-cards-scroll">
-      ${[
-        {tab:'messages',icon:'💬',label:'Mesajlar',sub:unread>0?unread+' okunmamış':'Temiz'},
-        {tab:'coach-notes',icon:'📝',label:'Notlarım',sub:'Kişisel notlar'},
-        {tab:'todolist',icon:'📅',label:'Ajanda',sub:'Tüm randevular'},
-        {tab:'coach-applications',icon:'📩',label:'Başvurular',sub:'Eşleşme talepleri'},
-      ].map(({tab,icon,label,sub})=>`
-        <div onclick="switchTab('${tab}')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;white-space:nowrap;transition:all .15s;flex:1 0 auto;min-width:138px;box-shadow:var(--shadow)" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-          <span style="font-size:18px">${icon}</span>
-          <div><div style="font-size:12.5px;font-weight:700;color:var(--text)">${label}</div><div style="font-size:10px;color:var(--text-dim);margin-top:1px">${sub}</div></div>
-        </div>`).join('')}
+        <!-- ÖĞRENCİ HAFTALIK NABZI -->
+        ${activeStudentsHome.length > 0 ? `
+        <div id="homeStudentPulse" class="home-section-card">
+          <div class="hsc-head">
+            <span class="hsc-head-icon">📊</span>
+            <span class="hsc-head-title">Öğrenci Haftalık Nabzı</span>
+            <span class="hsc-pill">${plannedStudentCount}/${activeStudentsHome.length} programlı</span>
+            <button type="button" class="hsc-head-btn" onclick="switchTab('students')">Tümü →</button>
+          </div>
+          <div class="hd-body">
+            <div class="hsp-list">${pulseListHtml}</div>
+            ${studentPulse.length > 6 ? `
+              <button type="button" class="ew-footer-btn" style="margin-top:8px;" onclick="window._homeTogglePulseExpanded()">
+                ${_homePulseExpanded ? 'Daha Az Göster ▲' : `Tüm Öğrencileri Gör (${studentPulse.length} öğrenci) ▾`}
+              </button>` : ''}
+          </div>
+        </div>` : ''}
+      </div>
+
+      <div class="hd-col-side">
+        <!-- RANDEVULAR (BUGÜN + YAKLAŞAN 7 GÜN) -->
+        <div class="home-section-card">
+          <div class="hsc-head">
+            <span class="hsc-head-icon">📅</span>
+            <span class="hsc-head-title">Randevular</span>
+            <span class="hsc-pill">${todayAppts.length} bugün</span>
+            <div class="hsc-head-actions">
+              ${S.students.length > 0 ? `<button type="button" class="hsc-head-btn accent" onclick="openApptModal()">+ Ekle</button>` : ''}
+              <button type="button" class="hsc-head-btn" onclick="switchTab('todolist')">Takvim →</button>
+            </div>
+          </div>
+          <div class="hd-body">
+            ${todayAppts.length > 0
+              ? todayApptsHtml
+              : `<div class="hd-appt-empty-inline">
+                  <span>Bugün randevu yok</span>
+                  ${upcomingAppts.length === 0 && S.students.length > 0 ? `<button type="button" class="hsc-head-btn accent" onclick="openApptModal()">+ Planla</button>` : ''}
+                </div>`}
+            ${upcomingHtml}
+          </div>
+        </div>
+
+        <!-- SON ÖĞRENCİ GERİ BİLDİRİMLERİ -->
+        ${activeStudentsHome.length > 0 ? `
+        <div class="home-section-card">
+          <div class="hsc-head">
+            <span class="hsc-head-icon">💬</span>
+            <span class="hsc-head-title">Son Öğrenci Geri Bildirimleri</span>
+            <span class="hsc-pill">${recentFeedback.length} kayıt</span>
+          </div>
+          <div class="hd-body">${feedbackHtml}</div>
+        </div>` : ''}
+
+        <!-- BUGÜNÜN YAPILACAKLARI -->
+        <div class="home-section-card">
+          <div class="hsc-head">
+            <span class="hsc-head-icon">✅</span>
+            <span class="hsc-head-title">Bugünün Yapılacakları</span>
+            <span class="hsc-pill">${todayTodos.doneCount}/${todayTodos.totalCount}</span>
+            <button type="button" class="hsc-head-btn" onclick="switchTab('todolist')">Ajanda →</button>
+          </div>
+          <div class="hd-body">
+            ${todosHtml}
+            <div class="htd-add-form">
+              <input id="homeTodoInput" class="htd-input" type="text" placeholder="Bugün yapılacak not ekle..." onkeydown="if(event.key==='Enter'){event.preventDefault();window._homeAddTodo();}">
+              <button type="button" id="homeTodoAddBtn" class="htd-add-btn" onclick="window._homeAddTodo()">+ Ekle</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>`;
   _obRefreshWidget();
   }catch(err){ console.error('[renderHome] HATA:',err); el.innerHTML=`<div style='padding:24px;color:var(--text)'><b>İyi günler 👋</b><p style='color:var(--text-mid);margin-top:6px'>Hata: ${esc(err.message)}</p></div>`; }
@@ -4686,6 +4944,7 @@ async function _doSaveAppt(){
     }
   }
   cm('apptModal');
+  if(currentTab === 'home') renderHome();
   if(currentTab === 'todolist') renderAgenda();
   if(document.getElementById('apptList')) renderApptList();
 }
