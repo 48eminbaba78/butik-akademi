@@ -692,10 +692,15 @@ function _renderAlertRowHtml(a, domKey, isFirst, isSnoozed = false, showStudentN
   </div>`;
 }
 
-// ── KOÇ ANA SAYFA (KOMUTA MERKEZİ) ───────────────
+// ── KOÇ ANA SAYFA (SADE & PREMİUM) ───────────────
 let _homePulseExpanded = false;
 let _homeFbExpanded = false;
+let _homeMainTab = null; // null iken uyarı durumuna göre otomatik seçilir
 
+window._homeSetTab = function(tab) {
+  _homeMainTab = tab;
+  renderHome();
+};
 window._homeOpenDetail = function(idx) {
   const stuId = window._homeStuIds?.[idx];
   if (stuId) openStudentDetail(stuId);
@@ -803,7 +808,6 @@ function renderHome(){
   const dayNames = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
   const monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 
-  // --- ANOMALİ TESPİTİ (Erken Uyarılar Motoru) ---
   const snoozedMap = loadSnoozedAlerts(session.coachId);
   const alertRes = computeEarlyWarnings(S, { now, snoozedMap });
   const metrics = computeCoachHomeMetrics(S, { now, alertRes, getWeekStartFn: getWeekStart });
@@ -819,31 +823,35 @@ function renderHome(){
   window._homeTodayDs = todayDs;
   window._homeStuIds = studentPulse.map(p => p.studentId);
   window._homeFbMap = recentFeedback;
-  window._homeApptIds = upcomingAppts.map(a => a.id);
+  window._homeApptIds = upcomingAppts.slice(0, 4).map(a => a.id);
   window._homeTodayApptIds = todayAppts.map(a => a.id);
   _lastAlertsById = {};
 
   if (_alertFilter === 'snoozed' && alertRes.counts.snoozed === 0) _alertFilter = 'all';
 
+  const actionableCount = alertRes.counts.totalActionable;
+  const activeTab = _homeMainTab || (actionableCount > 0 || activeStudentsHome.length === 0 ? 'alerts' : 'students');
+
+  // Erken Uyarılar Filtre Çubuğu (Sade Nokta Göstergeli)
   let alertFilterBarHTML = '';
   if (activeStudentsHome.length > 0 && (alertRes.alerts.length > 0 || alertRes.counts.snoozed > 0)) {
     const chips = [
-      { id: 'all', cls: 'sev-all', label: `Tümü (${alertRes.alerts.length})` },
+      { id: 'all', dot: '', label: `Tümü (${alertRes.alerts.length})` },
     ];
     if (alertRes.counts.critical > 0 || _alertFilter === 'critical') {
-      chips.push({ id: 'critical', cls: 'sev-critical', label: `🔴 Kritik (${alertRes.counts.critical})` });
+      chips.push({ id: 'critical', dot: 'red', label: `Kritik (${alertRes.counts.critical})` });
     }
     if (alertRes.counts.warning > 0 || _alertFilter === 'warning') {
-      chips.push({ id: 'warning', cls: 'sev-warning', label: `🟡 Takip (${alertRes.counts.warning})` });
+      chips.push({ id: 'warning', dot: 'amber', label: `Takip (${alertRes.counts.warning})` });
     }
     if (alertRes.counts.positive > 0 || _alertFilter === 'positive') {
-      chips.push({ id: 'positive', cls: 'sev-positive', label: `🏆 Başarı (${alertRes.counts.positive})` });
+      chips.push({ id: 'positive', dot: 'green', label: `Başarı (${alertRes.counts.positive})` });
     }
     if (alertRes.counts.snoozed > 0 || _alertFilter === 'snoozed') {
-      chips.push({ id: 'snoozed', cls: 'sev-snoozed', label: `🔕 Ertelenen (${alertRes.counts.snoozed})` });
+      chips.push({ id: 'snoozed', dot: 'muted', label: `Ertelenen (${alertRes.counts.snoozed})` });
     }
     alertFilterBarHTML = `<div class="ew-filter-bar">
-      ${chips.map(c => `<button type="button" class="ew-chip ${c.cls} ${_alertFilter === c.id ? 'active' : ''}" onclick="window._setAlertFilter('${c.id}')">${c.label}</button>`).join('')}
+      ${chips.map(c => `<button type="button" class="ew-chip ${_alertFilter === c.id ? 'active' : ''}" onclick="window._setAlertFilter('${c.id}')">${c.dot ? `<span class="hd-dot ${c.dot}"></span>` : ''}${c.label}</button>`).join('')}
     </div>`;
   }
 
@@ -876,20 +884,19 @@ function renderHome(){
     if (filteredGroups.length === 0) {
       if (activeStudentsHome.length === 0 && S.students.length === 0) {
         anomaliesHTML = `
-          <div style="text-align:center;padding:24px 16px">
-            <div style="font-size:36px;margin-bottom:12px">👋</div>
-            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">İlk öğrencinizi ekleyin</div>
-            <div style="font-size:12px;color:var(--text-mid);margin-bottom:16px;line-height:1.6">Öğrencilerim sekmesinden öğrenci davet ederek uygulamayı kullanmaya başlayabilirsiniz.</div>
-            <button type="button" class="btn btn-accent" onclick="openStudentModal()" style="font-size:13px;padding:9px 20px">Öğrenci Davet Et →</button>
+          <div style="text-align:center;padding:32px 16px">
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">İlk öğrencinizi davet edin</div>
+            <div style="font-size:12.5px;color:var(--text-mid);margin-bottom:16px;line-height:1.55">Öğrenci eklediğinizde haftalık ilerleme, erken uyarılar ve randevular burada görünür.</div>
+            <button type="button" class="hd-btn-primary" onclick="openStudentModal()">+ Öğrenci Davet</button>
           </div>`;
       } else {
         anomaliesHTML = `
-          <div style="text-align:center;padding:16px;color:var(--text-dim);font-size:13px">
-            ✅ Harika! Bu kategoride bekleyen erken uyarı bulunmuyor.
+          <div style="text-align:center;padding:24px 16px;color:var(--text-dim);font-size:12.5px">
+            Bu kategoride bekleyen erken uyarı bulunmuyor.
           </div>`;
       }
     } else {
-      const limit = _alertFilter === 'all' && !_alertsExpanded ? 6 : filteredGroups.length;
+      const limit = _alertFilter === 'all' && !_alertsExpanded ? 4 : filteredGroups.length;
       const shownGroups = filteredGroups.slice(0, limit);
       anomaliesHTML = shownGroups.map(grp => {
         const isInvite = String(grp.studentId || '').startsWith('invite_');
@@ -913,65 +920,96 @@ function renderHome(){
         </div>`;
       }).join('');
 
-      if (_alertFilter === 'all' && filteredGroups.length > 6) {
+      if (_alertFilter === 'all' && filteredGroups.length > 4) {
         anomaliesHTML += `<button type="button" class="ew-footer-btn" onclick="window._toggleAlertsExpanded()">
-          ${_alertsExpanded ? 'Daha Az Göster ▲' : `Tümünü Gör (${filteredGroups.length} öğrenci · +${filteredGroups.length - 6} daha) ▾`}
+          ${_alertsExpanded ? 'Daha Az Göster' : `Tümünü Gör (+${filteredGroups.length - 4} öğrenci daha)`}
         </button>`;
       }
     }
   }
 
-  const hr = now.getHours();
-  const greeting = hr < 6 ? 'İyi geceler' : hr < 12 ? 'Günaydın' : hr < 18 ? 'İyi günler' : 'İyi akşamlar';
-  const yksInfo = getNextYks();
-  const daysToYks = yksInfo.days;
+  // Öğrenci Haftalık Nabzı HTML (Sade Satır Tasarımı)
+  let studentsTabHtml = '';
+  if (activeStudentsHome.length === 0) {
+    studentsTabHtml = `<div class="hd-empty-line" style="padding:20px 0;text-align:center;">Henüz aktif öğrenci yok.</div>`;
+  } else {
+    const pulseLimit = _homePulseExpanded ? studentPulse.length : Math.min(studentPulse.length, 7);
+    const shownPulse = studentPulse.slice(0, pulseLimit);
+    studentsTabHtml = `<div class="hd-stu-list">
+      ${shownPulse.map((p, idx) => {
+        const barCol = p.total === 0 ? 'var(--border2)' : p.pct >= 70 ? 'var(--green)' : p.pct >= 40 ? 'var(--accent)' : 'var(--red)';
+        let statusPill = '';
+        if (p.criticalCount > 0) statusPill = `<span class="hd-stu-pill crit">${p.criticalCount} kritik</span>`;
+        else if (p.total === 0) statusPill = `<span class="hd-stu-pill warn">Program Yok</span>`;
+        else if (p.warningCount > 0) statusPill = `<span class="hd-stu-pill warn">${p.warningCount} takip</span>`;
+        else if (p.pct >= 70) statusPill = `<span class="hd-stu-pill ok">Yolunda</span>`;
 
-  const actionableCount = alertRes.counts.totalActionable;
-  const headerIcon = alertRes.counts.critical > 0 ? '🚨' : actionableCount > 0 ? '⚠️' : '✅';
-  const headerPillCls = alertRes.counts.critical > 0 ? 'hsc-pill-red' : actionableCount > 0 ? 'hsc-pill-amber' : 'hsc-pill-green';
-  const briefingCls = alertRes.counts.critical > 0 ? 'has-crit' : actionableCount === 0 && activeStudentsHome.length > 0 ? 'has-ok' : '';
+        const subParts = [
+          p.total > 0 ? `${p.done}/${p.total} görev` : 'Bu hafta görev atanmadı',
+          p.solved > 0 ? `${p.solved} soru` : '',
+          p.lastNet !== null ? `Son ${esc(p.lastExamType)} ${esc(p.lastNet)} net` : ''
+        ].filter(Boolean);
 
-  // Öğrenci Haftalık Nabzı HTML
-  const pulseLimit = _homePulseExpanded ? studentPulse.length : Math.min(studentPulse.length, 6);
-  const shownPulse = studentPulse.slice(0, pulseLimit);
-  const pulseListHtml = shownPulse.map((p, idx) => {
-    const barCol = p.total === 0 ? 'var(--border2)' : p.pct >= 70 ? 'var(--green)' : p.pct >= 40 ? 'var(--accent)' : 'var(--red)';
-    let healthBadge = '';
-    if (p.criticalCount > 0) healthBadge = `<span class="hsp-badge crit">🔴 ${p.criticalCount} kritik</span>`;
-    else if (p.total === 0) healthBadge = `<span class="hsp-badge warn">Program Yok</span>`;
-    else if (p.warningCount > 0) healthBadge = `<span class="hsp-badge warn">🟡 ${p.warningCount} takip</span>`;
-    else if (p.pct >= 70) healthBadge = `<span class="hsp-badge ok">✓ Yolunda</span>`;
+        return `<div class="hd-stu-row" onclick="window._homeOpenDetail(${idx})">
+          <div class="hd-stu-avatar" style="background:${escAttr(p.color || 'var(--accent)')}">${esc((p.studentName || '?')[0])}</div>
+          <div class="hd-stu-main">
+            <div class="hd-stu-top">
+              <span class="hd-stu-name">${esc(p.studentName)}</span>
+              ${statusPill}
+              ${p.unreadCount > 0 ? `<span class="hd-stu-pill msg">${p.unreadCount} mesaj</span>` : ''}
+            </div>
+            <div class="hd-stu-sub">${subParts.join(' · ')}</div>
+          </div>
+          <div class="hd-stu-prog">
+            <div class="hd-stu-track"><div class="hd-stu-fill" style="width:${p.pct}%;background:${barCol}"></div></div>
+            <span class="hd-stu-pct" style="color:${p.total === 0 ? 'var(--text-dim)' : barCol}">${p.total > 0 ? `%${p.pct}` : '—'}</span>
+          </div>
+          <div class="hd-stu-actions">
+            <button type="button" class="hd-link-btn ${p.total === 0 ? 'accent' : ''}" onclick="event.stopPropagation();window._homeOpenProgram(${idx})">Program</button>
+            <button type="button" class="hd-link-btn" onclick="event.stopPropagation();window._homeOpenReport(${idx})">Rapor</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${studentPulse.length > 7 ? `
+      <button type="button" class="ew-footer-btn" style="margin-top:8px;" onclick="window._homeTogglePulseExpanded()">
+        ${_homePulseExpanded ? 'Daha Az Göster' : `Tüm Öğrencileri Gör (+${studentPulse.length - 7} daha)`}
+      </button>` : ''}`;
+  }
 
-    const metaParts = [
-      p.total > 0 ? `${p.done}/${p.total} görev` : 'Bu hafta görev yok',
-      p.solved > 0 ? `${p.solved} soru` : '',
-      p.studyMin > 0 ? formatShortDuration(p.studyMin) : '',
-      p.lastNet !== null ? `Son ${esc(p.lastExamType)}: ${esc(p.lastNet)} net${p.lastExamDaysAgo !== null ? ` (${p.lastExamDaysAgo}g)` : ''}` : ''
-    ].filter(Boolean);
-
-    return `<div class="hsp-row health-${p.health}" onclick="window._homeOpenDetail(${idx})">
-      <div class="hsp-avatar" style="background:${escAttr(p.color || 'var(--accent)')}">${esc((p.studentName || '?')[0])}</div>
-      <div class="hsp-info">
-        <div class="hsp-top">
-          <span class="hsp-name">${esc(p.studentName)}</span>
-          ${healthBadge}
-          ${p.unreadCount > 0 ? `<span class="hsp-badge msg">💬 ${p.unreadCount}</span>` : ''}
-        </div>
-        <div class="hsp-meta">${metaParts.map(m => `<span>${m}</span>`).join('<span>·</span>')}</div>
-        <div class="hsp-progress-wrap">
-          <div class="hsp-bar-track"><div class="hsp-bar-fill" style="width:${p.pct}%;background:${barCol}"></div></div>
-          <span class="hsp-pct" style="color:${p.total === 0 ? 'var(--text-dim)' : barCol}">${p.total > 0 ? `%${p.pct}` : '—'}</span>
-        </div>
+  // Son 7 Gün Geri Bildirimler HTML
+  const fbLimit = _homeFbExpanded ? recentFeedback.length : Math.min(recentFeedback.length, 5);
+  const shownFeedback = recentFeedback.slice(0, fbLimit);
+  const feedbackTabHtml = recentFeedback.length === 0
+    ? `<div class="hd-empty-line" style="padding:20px 0;text-align:center;">Son 7 günde zorlanma veya öğrenci notu bildirilmedi.</div>`
+    : `<div class="hd-fb-list">
+        ${shownFeedback.map((fb, idx) => `
+          <div class="hd-fb-row">
+            <div class="hd-fb-top">
+              <span class="hd-fb-stu">
+                <span class="hd-dot" style="background:${escAttr(fb.studentColor || 'var(--accent)')}"></span>
+                ${esc(fb.studentName)}
+              </span>
+              <span class="hd-fb-date">${esc(fb.dateLabel)}</span>
+            </div>
+            <div class="hd-fb-sub">${esc(fb.subject)}</div>
+            ${fb.note ? `<div class="hd-fb-quote" title="${escAttr(fb.note)}">“${esc(fb.note)}”</div>` : ''}
+            <div class="hd-fb-foot">
+              <div class="hd-fb-tags">
+                <span class="wr-status-pill ${fb.statusCls}">${fb.statusIcon} ${esc(fb.statusLabel)}</span>
+                ${fb.diffLabel ? `<span class="wr-diff-pill ${fb.diffCls}">${esc(fb.diffLabel)}</span>` : ''}
+                ${fb.blockerLabel ? `<span class="wr-flag-blocker">${esc(fb.blockerLabel)}</span>` : ''}
+              </div>
+              <button type="button" class="hd-link-btn accent" onclick="window._homeReplyFeedback(${idx})">Yanıtla</button>
+            </div>
+          </div>`).join('')}
       </div>
-      <div class="hsp-actions">
-        <button type="button" class="hsp-btn ${p.total === 0 ? 'primary' : ''}" onclick="event.stopPropagation();window._homeOpenProgram(${idx})">📅 Program</button>
-        <button type="button" class="hsp-btn" onclick="event.stopPropagation();window._homeOpenReport(${idx})" title="Haftalık Gelişim Raporu">📊 Rapor</button>
-        <button type="button" class="hsp-btn" onclick="event.stopPropagation();window._homeMessageStudent(${idx})" title="Mesaj Gönder">💬</button>
-      </div>
-    </div>`;
-  }).join('');
+      ${recentFeedback.length > 5 ? `
+        <button type="button" class="ew-footer-btn" style="margin-top:8px;" onclick="window._homeToggleFbExpanded()">
+          ${_homeFbExpanded ? 'Daha Az Göster' : `Tümünü Gör (+${recentFeedback.length - 5} bildirim)`}
+        </button>` : ''}`;
 
-  // Bugünkü ve Yaklaşan Randevular HTML
+  // Sağ Panel: Ajanda (Bugün + Yaklaşanlar)
   const todayApptsHtml = todayAppts.map((a, idx) => {
     const stu = S.students.find(s => s.id === a.studentId);
     const isPast = a.time < timeNow;
@@ -982,7 +1020,9 @@ function renderHome(){
     const diffMin = apptMinutes - nowMinutes;
     const isLive = diffMin >= -((a.duration || 60)) && diffMin <= 15;
     const mLink = a.meetLink || a.meet_link || '';
-    const liveBtn = isLive && mLink ? `<a href="${escAttr(mLink)}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;background:${diffMin <= 0 ? 'var(--red)' : 'var(--accent)'};color:#fff;font-size:11px;font-weight:800;text-decoration:none;animation:${diffMin <= 0 ? 'pulse 1.5s infinite' : 'none'};white-space:nowrap;flex-shrink:0">${diffMin <= 0 ? '🔴 Ders Sürüyor' : '🟡 Derse Gir'}</a>` : '';
+    const liveBtn = isLive && mLink
+      ? `<a href="${escAttr(mLink)}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:7px;background:${diffMin <= 0 ? 'var(--red)' : 'var(--accent)'};color:#fff;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">${diffMin <= 0 ? 'Ders Sürüyor' : 'Derse Gir'}</a>`
+      : '';
     return `<div class="hsc-appt-row ${isPast && !isLive ? 'hsc-appt-past' : ''}" onclick="window._homeOpenTodayAppt(${idx})" style="cursor:pointer;">
       <div class="hsc-appt-time">${esc(a.time)}</div>
       <div class="hsc-appt-bar" style="background:${escAttr(stu?.color || 'var(--accent)')}"></div>
@@ -994,55 +1034,17 @@ function renderHome(){
     </div>`;
   }).join('');
 
-  const upcomingHtml = upcomingAppts.length > 0 ? `
-    <div class="hd-appt-subhead">Yaklaşan (7 Gün)</div>
-    <div class="hd-upcoming-list">
-      ${upcomingAppts.map((a, idx) => `
-        <div class="hd-upcoming-row" onclick="window._homeOpenAppt(${idx})">
-          <span class="hd-up-day-pill">${esc(a.relLabel)}</span>
-          <span class="hd-up-time">${esc(a.time)}</span>
-          <div class="hd-up-info">
-            <div class="hd-up-name">${esc(a.studentName)}</div>
-            <div class="hd-up-type">${esc(a.type)} · ${a.duration} dk</div>
-          </div>
-        </div>`).join('')}
-    </div>` : '';
+  const shownUpcoming = upcomingAppts.slice(0, 4);
+  const upcomingHtml = shownUpcoming.length > 0 ? `
+    <div class="hd-sublabel">Yaklaşanlar</div>
+    ${shownUpcoming.map((a, idx) => `
+      <div class="hd-up-row" onclick="window._homeOpenAppt(${idx})">
+        <span class="hd-up-day">${esc(a.relLabel)}</span>
+        <span class="hd-up-time">${esc(a.time)}</span>
+        <span class="hd-up-name">${esc(a.studentName)}</span>
+      </div>`).join('')}` : '';
 
-  // Son Öğrenci Geri Bildirimleri HTML
-  const fbLimit = _homeFbExpanded ? recentFeedback.length : Math.min(recentFeedback.length, 4);
-  const shownFeedback = recentFeedback.slice(0, fbLimit);
-  const feedbackHtml = recentFeedback.length === 0
-    ? `<div class="hsc-empty" style="padding:16px;">Son 7 günde zorlanma veya öğrenci notu bildirilmedi.</div>`
-    : `<div class="hfb-list">
-        ${shownFeedback.map((fb, idx) => `
-          <div class="hfb-item">
-            <div class="hfb-top">
-              <span class="hfb-stu">
-                <span class="ew-stu-dot" style="background:${escAttr(fb.studentColor || 'var(--accent)')}"></span>
-                ${esc(fb.studentName)}
-              </span>
-              <span class="hfb-date">${esc(fb.dateLabel)}</span>
-            </div>
-            <div class="hfb-subject">${esc(fb.subject)}</div>
-            <div class="hfb-badges">
-              <span class="wr-status-pill ${fb.statusCls}">${fb.statusIcon} ${esc(fb.statusLabel)}</span>
-              ${fb.diffLabel ? `<span class="wr-diff-pill ${fb.diffCls}">${esc(fb.diffLabel)}</span>` : ''}
-              ${fb.blockerLabel ? `<span class="wr-flag-blocker">⚠️ ${esc(fb.blockerLabel)}</span>` : ''}
-              ${fb.focus > 0 && fb.focus <= 2 ? `<span class="wr-flag-topics">🎯 Odak ${fb.focus}/5</span>` : ''}
-            </div>
-            ${fb.note ? `<div class="hfb-note" title="${escAttr(fb.note)}">“${esc(fb.note)}”</div>` : ''}
-            <div class="hfb-foot">
-              <button type="button" class="hfb-btn reply" onclick="window._homeReplyFeedback(${idx})">💬 Yanıtla</button>
-              <button type="button" class="hfb-btn" onclick="window._homeOpenFeedbackReport(${idx})">📊 Rapor</button>
-            </div>
-          </div>`).join('')}
-      </div>
-      ${recentFeedback.length > 4 ? `
-        <button type="button" class="ew-footer-btn" style="margin-top:8px;" onclick="window._homeToggleFbExpanded()">
-          ${_homeFbExpanded ? 'Daha Az Göster ▲' : `Tümünü Gör (${recentFeedback.length} bildirim) ▾`}
-        </button>` : ''}`;
-
-  // Bugünün Yapılacakları HTML
+  // Sağ Panel: Bugünün Yapılacakları
   const todosHtml = todayTodos.items.length > 0
     ? `<div class="htd-list">
         ${todayTodos.items.map((td, idx) => `
@@ -1052,167 +1054,135 @@ function renderHome(){
             <button type="button" class="htd-del" onclick="window._homeDeleteTodo(${idx})" title="Sil">×</button>
           </div>`).join('')}
       </div>`
-    : `<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">Bugün için kişisel yapılacak eklenmemiş.</div>`;
+    : `<div class="hd-empty-line" style="margin-bottom:8px;">Bugün için kişisel yapılacak eklenmemiş.</div>`;
 
+  const hr = now.getHours();
+  const greeting = hr < 6 ? 'İyi geceler' : hr < 12 ? 'Günaydın' : hr < 18 ? 'İyi günler' : 'İyi akşamlar';
+  const yksInfo = getNextYks();
+  const daysToYks = yksInfo.days;
+  const firstName = session.dbUser?.full_name?.split(' ')[0] || 'Koç';
   const unreadSubText = unread > 0
     ? (unreadSenders.length ? `${unreadSenders.join(', ')} bekliyor` : 'Yanıt bekliyor')
     : 'Tüm mesajlar okundu';
+  const progColor = weekPct >= 70 ? 'var(--green)' : weekPct >= 40 ? 'var(--accent)' : 'var(--red)';
 
-  el.innerHTML = `
-    <!-- HERO -->
-    <div class="home-hero">
-      <div class="home-hero-left">
-        <div class="home-hero-greeting">${greeting},</div>
-        <div class="home-hero-name">${esc(session.dbUser?.full_name?.split(' ')[0]||'Koç')} 👋</div>
-        <div class="home-hero-date">${dayNames[now.getDay()]}, ${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}</div>
-        <div class="hd-briefing ${briefingCls}">${esc(briefingText)}</div>
-        <div class="hd-quick-actions">
-          <button type="button" class="hd-qbtn hd-qbtn-primary" onclick="openStudentModal()">+ Öğrenci Davet Et</button>
-          ${S.students.length > 0 ? `<button type="button" class="hd-qbtn" onclick="openApptModal()">📅 Randevu Planla</button>` : ''}
-          <button type="button" class="hd-qbtn" onclick="switchTab('messages')">💬 Mesajlar${unread > 0 ? ` <span class="hd-qbtn-badge">${unread}</span>` : ''}</button>
-          <button type="button" class="hd-qbtn" onclick="switchTab('coach-resources')">📚 Kaynaklar</button>
-          <button type="button" class="hd-qbtn" onclick="switchTab('coach-notes')">📝 Notlarım</button>
+  el.innerHTML = `<div class="hd-shell">
+    <!-- KATMAN 1: ÇERÇEVESİZ ÜST BAŞLIK -->
+    <div class="hd-header">
+      <div class="hd-header-left">
+        <div class="hd-date-kicker">${dayNames[now.getDay()]} · ${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}</div>
+        <h1 class="hd-title">${greeting}, ${esc(firstName)}</h1>
+        <div class="hd-subtitle ${alertRes.counts.critical > 0 ? 'has-crit' : ''}">
+          <span class="hd-dot ${alertRes.counts.critical > 0 ? 'red' : actionableCount > 0 ? 'amber' : 'green'}"></span>
+          <span>${esc(briefingText)}</span>
         </div>
       </div>
-      <div class="home-hero-right">
-        <div class="home-yks-badge">
-          <div class="home-yks-num">${daysToYks}</div>
-          <div class="home-yks-meta">gün kaldı<br><b>YKS ${yksInfo.year}</b></div>
-        </div>
+      <div class="hd-header-right">
+        <span class="hd-exam-pill">YKS ${yksInfo.year} · <b>${daysToYks} gün</b></span>
+        ${S.students.length > 0 ? `<button type="button" class="hd-btn-ghost" onclick="openApptModal()">+ Randevu</button>` : ''}
+        <button type="button" class="hd-btn-primary" onclick="openStudentModal()">+ Öğrenci Davet</button>
       </div>
     </div>
 
-    <!-- STAT KARTLARI -->
+    <!-- KATMAN 2: TEK PARÇA İNCE METRİK ŞERİDİ -->
     ${S.students.length === 0 ? '' : `
-    <div class="home-stats-v2">
-      <div class="hsv2-card" onclick="switchTab('students')" title="Öğrencilere git">
-        <div class="hsv2-top">
-          <span class="hsv2-icon-wrap hsv2-amber">👥</span>
-          ${pendingInvitesCount > 0 ? `<span class="hsv2-trend" style="color:var(--accent)">${pendingInvitesCount} davet</span>` : '<span class="hsv2-trend">→</span>'}
+    <div class="hd-metrics">
+      <div class="hd-metric-cell" onclick="switchTab('students')" title="Öğrencilere git">
+        <div class="hd-m-top">
+          <span class="hd-m-label"><span class="hd-dot accent"></span> Aktif Öğrenci</span>
+          <span class="hd-m-tag">${pendingInvitesCount > 0 ? `${pendingInvitesCount} davet` : '→'}</span>
         </div>
-        <div class="hsv2-val">${activeStudentsHome.length}</div>
-        <div class="hsv2-lbl">Aktif Öğrenci</div>
-        <div class="hsv2-sub">${plannedStudentCount}/${activeStudentsHome.length} bu hafta programlı</div>
+        <div class="hd-m-val">${activeStudentsHome.length}</div>
+        <div class="hd-m-sub">${plannedStudentCount}/${activeStudentsHome.length} bu hafta programlı</div>
       </div>
-      <div class="hsv2-card" onclick="switchTab('todolist')" title="Takvim / Ajandaya git">
-        <div class="hsv2-top">
-          <span class="hsv2-icon-wrap hsv2-blue">📅</span>
-          <span class="hsv2-trend" style="color:var(--blue)">${nextAppt ? esc(nextAppt.time) : (upcomingAppts.length > 0 ? esc(upcomingAppts[0].relLabel) : '—')}</span>
+      <div class="hd-metric-cell" onclick="switchTab('todolist')" title="Takvim / Ajandaya git">
+        <div class="hd-m-top">
+          <span class="hd-m-label"><span class="hd-dot blue"></span> Bugün Randevu</span>
+          <span class="hd-m-tag" style="color:var(--blue)">${nextAppt ? esc(nextAppt.time) : (upcomingAppts.length > 0 ? esc(upcomingAppts[0].relLabel) : '—')}</span>
         </div>
-        <div class="hsv2-val" style="color:var(--blue)">${todayAppts.length}</div>
-        <div class="hsv2-lbl">Bugün Randevu</div>
-        <div class="hsv2-sub">${esc(apptKpiSub)}</div>
+        <div class="hd-m-val">${todayAppts.length}</div>
+        <div class="hd-m-sub">${esc(apptKpiSub)}</div>
       </div>
-      <div class="hsv2-card" onclick="switchTab('messages')" title="Mesajlara git">
-        <div class="hsv2-top">
-          <span class="hsv2-icon-wrap ${unread>0?'hsv2-red':'hsv2-green'}">💬</span>
-          ${unread>0?`<span class="hsv2-badge-red">${unread} yeni</span>`:'<span class="hsv2-badge-green">Temiz</span>'}
+      <div class="hd-metric-cell" onclick="switchTab('messages')" title="Mesajlara git">
+        <div class="hd-m-top">
+          <span class="hd-m-label"><span class="hd-dot ${unread > 0 ? 'red' : 'green'}"></span> Okunmamış Mesaj</span>
+          <span class="hd-m-tag" style="color:${unread > 0 ? 'var(--red)' : 'var(--green)'}">${unread > 0 ? `${unread} yeni` : 'Temiz'}</span>
         </div>
-        <div class="hsv2-val" style="color:${unread>0?'var(--red)':'var(--green)'}">${unread}</div>
-        <div class="hsv2-lbl">Okunmamış Mesaj</div>
-        <div class="hsv2-sub">${esc(unreadSubText)}</div>
+        <div class="hd-m-val" style="color:${unread > 0 ? 'var(--red)' : 'var(--text)'}">${unread}</div>
+        <div class="hd-m-sub">${esc(unreadSubText)}</div>
       </div>
-      <div class="hsv2-card" onclick="document.getElementById('homeStudentPulse')?.scrollIntoView({behavior:'smooth',block:'start'})" title="Öğrenci haftalık nabzına in">
-        <div class="hsv2-top">
-          <span class="hsv2-icon-wrap ${weekPct>=70?'hsv2-green':weekPct>=40?'hsv2-amber':'hsv2-red'}">📋</span>
-          <span class="hsv2-trend" style="color:${weekPct>=70?'var(--green)':weekPct>=40?'var(--accent)':'var(--red)'}">%${weekPct}</span>
+      <div class="hd-metric-cell" onclick="window._homeSetTab('students')" title="Öğrenci haftalık nabzını aç">
+        <div class="hd-m-top">
+          <span class="hd-m-label"><span class="hd-dot ${weekPct >= 70 ? 'green' : weekPct >= 40 ? 'amber' : 'red'}"></span> Haftalık Görev</span>
+          <span class="hd-m-tag" style="color:${progColor}">%${weekPct}</span>
         </div>
-        <div class="hsv2-val" style="color:${weekPct>=70?'var(--green)':weekPct>=40?'var(--accent)':'var(--red)'}">${weekDone}<span style="font-size:18px;font-weight:500;color:var(--text-dim)">/${weekTotal}</span></div>
-        <div class="hsv2-lbl">Haftalık Görev</div>
-        <div class="hsv2-sub">${weekSolved > 0 ? `${weekSolved} soru · ` : ''}${formatShortDuration(weekStudyMin)} çalışma</div>
-        <div class="hsv2-progress"><div class="hsv2-bar" style="width:${weekPct}%;background:${weekPct>=70?'var(--green)':weekPct>=40?'var(--accent)':'var(--red)'}"></div></div>
+        <div class="hd-m-val">${weekDone}<span class="hd-m-val-muted">/${weekTotal}</span></div>
+        <div class="hd-m-sub">${weekSolved > 0 ? `${weekSolved} soru · ` : ''}${formatShortDuration(weekStudyMin)} çalışma</div>
+        <div class="hd-m-bar"><div class="hd-m-bar-fill" style="width:${weekPct}%;background:${progColor}"></div></div>
       </div>
     </div>
     `}
 
-    <!-- ANA KOMUTA IZGARASI -->
-    <div class="hd-main-grid">
-      <div class="hd-col-main">
-        <!-- ERKEN UYARILAR -->
-        <div class="home-section-card ${actionableCount>0?'hsc-has-alerts':''}">
-          <div class="hsc-head">
-            <span class="hsc-head-icon">${headerIcon}</span>
-            <span class="hsc-head-title">Erken Uyarılar</span>
-            ${alertRes.counts.positive > 0 ? `<span class="hsc-pill hsc-pill-green">🏆 ${alertRes.counts.positive}</span>` : ''}
-            <span class="hsc-pill ${headerPillCls}">${actionableCount>0?actionableCount+' uyarı':'Temiz'}</span>
+    <!-- KATMAN 3: SEKMELİ ODAK PANELİ + TEK AJANDA KARTI -->
+    <div class="hd-grid">
+      <div id="hdMainPanel" class="hd-panel">
+        <div class="hd-panel-head">
+          <div class="hd-tabs">
+            <button type="button" class="hd-tab ${activeTab === 'alerts' ? 'active' : ''}" onclick="window._homeSetTab('alerts')">
+              Dikkat Bekleyenler
+              ${actionableCount > 0 ? `<span class="hd-tab-cnt ${alertRes.counts.critical > 0 ? 'crit' : 'warn'}">${actionableCount}</span>` : ''}
+            </button>
+            <button type="button" class="hd-tab ${activeTab === 'students' ? 'active' : ''}" onclick="window._homeSetTab('students')">
+              Öğrenciler
+              <span class="hd-tab-cnt">${activeStudentsHome.length}</span>
+            </button>
+            <button type="button" class="hd-tab ${activeTab === 'feedback' ? 'active' : ''}" onclick="window._homeSetTab('feedback')">
+              Geri Bildirimler
+              ${recentFeedback.length > 0 ? `<span class="hd-tab-cnt">${recentFeedback.length}</span>` : ''}
+            </button>
           </div>
-          ${alertFilterBarHTML}
-          <div class="hsc-body hsc-alerts-body ${_alertsExpanded?'expanded':''}">${anomaliesHTML}</div>
+          ${activeTab === 'students' ? `<button type="button" class="hd-link-btn" onclick="switchTab('students')">Tümü →</button>` : ''}
         </div>
-
-        <!-- ÖĞRENCİ HAFTALIK NABZI -->
-        ${activeStudentsHome.length > 0 ? `
-        <div id="homeStudentPulse" class="home-section-card">
-          <div class="hsc-head">
-            <span class="hsc-head-icon">📊</span>
-            <span class="hsc-head-title">Öğrenci Haftalık Nabzı</span>
-            <span class="hsc-pill">${plannedStudentCount}/${activeStudentsHome.length} programlı</span>
-            <button type="button" class="hsc-head-btn" onclick="switchTab('students')">Tümü →</button>
-          </div>
-          <div class="hd-body">
-            <div class="hsp-list">${pulseListHtml}</div>
-            ${studentPulse.length > 6 ? `
-              <button type="button" class="ew-footer-btn" style="margin-top:8px;" onclick="window._homeTogglePulseExpanded()">
-                ${_homePulseExpanded ? 'Daha Az Göster ▲' : `Tüm Öğrencileri Gör (${studentPulse.length} öğrenci) ▾`}
-              </button>` : ''}
-          </div>
-        </div>` : ''}
+        <div class="hd-panel-body">
+          ${activeTab === 'alerts' ? `${alertFilterBarHTML}${anomaliesHTML}` : ''}
+          ${activeTab === 'students' ? studentsTabHtml : ''}
+          ${activeTab === 'feedback' ? feedbackTabHtml : ''}
+        </div>
       </div>
 
-      <div class="hd-col-side">
-        <!-- RANDEVULAR (BUGÜN + YAKLAŞAN 7 GÜN) -->
-        <div class="home-section-card">
-          <div class="hsc-head">
-            <span class="hsc-head-icon">📅</span>
-            <span class="hsc-head-title">Randevular</span>
-            <span class="hsc-pill">${todayAppts.length} bugün</span>
-            <div class="hsc-head-actions">
-              ${S.students.length > 0 ? `<button type="button" class="hsc-head-btn accent" onclick="openApptModal()">+ Ekle</button>` : ''}
-              <button type="button" class="hsc-head-btn" onclick="switchTab('todolist')">Takvim →</button>
+      <div class="hd-side-panel">
+        <!-- BÖLÜM 1: AJANDA (BUGÜN + YAKLAŞANLAR) -->
+        <div class="hd-side-sec">
+          <div class="hd-side-hd">
+            <span class="hd-side-title">Ajanda <span class="hd-side-cnt">${todayAppts.length} bugün</span></span>
+            <div class="hd-side-actions">
+              ${S.students.length > 0 ? `<button type="button" class="hd-link-btn accent" onclick="openApptModal()">+</button>` : ''}
+              <button type="button" class="hd-link-btn" onclick="switchTab('todolist')">Takvim →</button>
             </div>
           </div>
-          <div class="hd-body">
-            ${todayAppts.length > 0
-              ? todayApptsHtml
-              : `<div class="hd-appt-empty-inline">
-                  <span>Bugün randevu yok</span>
-                  ${upcomingAppts.length === 0 && S.students.length > 0 ? `<button type="button" class="hsc-head-btn accent" onclick="openApptModal()">+ Planla</button>` : ''}
-                </div>`}
-            ${upcomingHtml}
-          </div>
+          ${todayAppts.length > 0
+            ? todayApptsHtml
+            : `<div class="hd-empty-line">Bugün planlanmış randevu yok.</div>`}
+          ${upcomingHtml}
         </div>
 
-        <!-- SON ÖĞRENCİ GERİ BİLDİRİMLERİ -->
-        ${activeStudentsHome.length > 0 ? `
-        <div class="home-section-card">
-          <div class="hsc-head">
-            <span class="hsc-head-icon">💬</span>
-            <span class="hsc-head-title">Son Öğrenci Geri Bildirimleri</span>
-            <span class="hsc-pill">${recentFeedback.length} kayıt</span>
+        <!-- BÖLÜM 2: BUGÜNÜN YAPILACAKLARI -->
+        <div class="hd-side-sec">
+          <div class="hd-side-hd">
+            <span class="hd-side-title">Yapılacaklar <span class="hd-side-cnt">${todayTodos.doneCount}/${todayTodos.totalCount}</span></span>
+            <button type="button" class="hd-link-btn" onclick="switchTab('todolist')">Tümü →</button>
           </div>
-          <div class="hd-body">${feedbackHtml}</div>
-        </div>` : ''}
-
-        <!-- BUGÜNÜN YAPILACAKLARI -->
-        <div class="home-section-card">
-          <div class="hsc-head">
-            <span class="hsc-head-icon">✅</span>
-            <span class="hsc-head-title">Bugünün Yapılacakları</span>
-            <span class="hsc-pill">${todayTodos.doneCount}/${todayTodos.totalCount}</span>
-            <button type="button" class="hsc-head-btn" onclick="switchTab('todolist')">Ajanda →</button>
-          </div>
-          <div class="hd-body">
-            ${todosHtml}
-            <div class="htd-add-form">
-              <input id="homeTodoInput" class="htd-input" type="text" placeholder="Bugün yapılacak not ekle..." onkeydown="if(event.key==='Enter'){event.preventDefault();window._homeAddTodo();}">
-              <button type="button" id="homeTodoAddBtn" class="htd-add-btn" onclick="window._homeAddTodo()">+ Ekle</button>
-            </div>
+          ${todosHtml}
+          <div class="htd-add-form">
+            <input id="homeTodoInput" class="htd-input" type="text" placeholder="Görev ekle..." onkeydown="if(event.key==='Enter'){event.preventDefault();window._homeAddTodo();}">
+            <button type="button" id="homeTodoAddBtn" class="htd-add-btn" onclick="window._homeAddTodo()">+ Ekle</button>
           </div>
         </div>
       </div>
-    </div>`;
+    </div>
+  </div>`;
   _obRefreshWidget();
-  }catch(err){ console.error('[renderHome] HATA:',err); el.innerHTML=`<div style='padding:24px;color:var(--text)'><b>İyi günler 👋</b><p style='color:var(--text-mid);margin-top:6px'>Hata: ${esc(err.message)}</p></div>`; }
+  }catch(err){ console.error('[renderHome] HATA:',err); el.innerHTML=`<div style='padding:24px;color:var(--text)'><b>İyi günler</b><p style='color:var(--text-mid);margin-top:6px'>Hata: ${esc(err.message)}</p></div>`; }
 }
 
 // ── ÖĞRENCİ ARAMA ──────────────────────────────
