@@ -887,7 +887,7 @@ function renderHome(){
           <div style="text-align:center;padding:32px 16px">
             <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">İlk öğrencinizi davet edin</div>
             <div style="font-size:12.5px;color:var(--text-mid);margin-bottom:16px;line-height:1.55">Öğrenci eklediğinizde haftalık ilerleme, erken uyarılar ve randevular burada görünür.</div>
-            <button type="button" class="hd-btn-primary" onclick="openStudentModal()">+ Öğrenci Davet</button>
+            <button type="button" class="hd-btn-brand" onclick="openStudentModal()">+ Öğrenci Davet</button>
           </div>`;
       } else {
         anomaliesHTML = `
@@ -1064,66 +1064,96 @@ function renderHome(){
   const unreadSubText = unread > 0
     ? (unreadSenders.length ? `${unreadSenders.join(', ')} bekliyor` : 'Yanıt bekliyor')
     : 'Tüm mesajlar okundu';
-  const progColor = weekPct >= 70 ? 'var(--green)' : weekPct >= 40 ? 'var(--accent)' : 'var(--red)';
+  const progGrad = weekPct >= 70
+    ? 'linear-gradient(90deg, var(--green), #3ecf8e)'
+    : weekPct >= 40
+      ? 'linear-gradient(90deg, var(--accent), #F59E0B)'
+      : 'linear-gradient(90deg, var(--red), #f97316)';
+  const progTagCls = weekPct >= 70 ? 'green' : weekPct >= 40 ? 'accent' : 'red';
+  const progIcoCls = weekPct >= 70 ? 'green' : weekPct >= 40 ? 'amber' : 'red';
+
+  const icoUsers = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+  const icoCal = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+  const icoMsg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+  const icoCheck = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`;
+  const icoPlus = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
 
   el.innerHTML = `<div class="hd-shell">
-    <!-- KATMAN 1: ÇERÇEVESİZ ÜST BAŞLIK -->
-    <div class="hd-header">
-      <div class="hd-header-left">
-        <div class="hd-date-kicker">${dayNames[now.getDay()]} · ${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}</div>
-        <h1 class="hd-title">${greeting}, ${esc(firstName)}</h1>
-        <div class="hd-subtitle ${alertRes.counts.critical > 0 ? 'has-crit' : ''}">
-          <span class="hd-dot ${alertRes.counts.critical > 0 ? 'red' : actionableCount > 0 ? 'amber' : 'green'}"></span>
+    <!-- KATMAN 1: ROSTRUM ESPRESSO-TERRACOTTA BANNER -->
+    <div class="hd-banner">
+      <div class="hd-banner-left">
+        <div class="hd-date-kicker">
+          <span class="hd-kicker-bar"></span>
+          <span>${dayNames[now.getDay()]} · ${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}</span>
+        </div>
+        <h1 class="hd-title">${greeting}, <span class="hd-name-accent">${esc(firstName)}</span></h1>
+        <div class="hd-subtitle">
+          <span class="hd-pulse-dot ${alertRes.counts.critical > 0 ? 'red' : actionableCount > 0 ? 'amber' : 'green'}"></span>
           <span>${esc(briefingText)}</span>
         </div>
       </div>
-      <div class="hd-header-right">
-        <span class="hd-exam-pill">YKS ${yksInfo.year} · <b>${daysToYks} gün</b></span>
-        ${S.students.length > 0 ? `<button type="button" class="hd-btn-ghost" onclick="openApptModal()">+ Randevu</button>` : ''}
-        <button type="button" class="hd-btn-primary" onclick="openStudentModal()">+ Öğrenci Davet</button>
+      <div class="hd-banner-right">
+        <div class="hd-countdown" title="YKS ${yksInfo.year} geri sayım">
+          <span class="hd-cd-num">${daysToYks}</span>
+          <span class="hd-cd-meta"><span>gün kaldı</span><b>YKS ${yksInfo.year}</b></span>
+        </div>
+        ${S.students.length > 0 ? `<button type="button" class="hd-btn-glass" onclick="openApptModal()">${icoPlus} Randevu</button>` : ''}
+        <button type="button" class="hd-btn-brand" onclick="openStudentModal()">${icoPlus} Öğrenci Davet</button>
       </div>
     </div>
 
-    <!-- KATMAN 2: TEK PARÇA İNCE METRİK ŞERİDİ -->
+    <!-- KATMAN 2: ROSTRUM 4-KOLON İNCE METRİK ŞERİDİ -->
     ${S.students.length === 0 ? '' : `
     <div class="hd-metrics">
       <div class="hd-metric-cell" onclick="switchTab('students')" title="Öğrencilere git">
         <div class="hd-m-top">
-          <span class="hd-m-label"><span class="hd-dot accent"></span> Aktif Öğrenci</span>
-          <span class="hd-m-tag">${pendingInvitesCount > 0 ? `${pendingInvitesCount} davet` : '→'}</span>
+          <span class="hd-m-label-wrap">
+            <span class="hd-m-ico accent">${icoUsers}</span>
+            <span class="hd-m-label">Aktif Öğrenci</span>
+          </span>
+          <span class="hd-m-tag ${pendingInvitesCount > 0 ? 'accent' : ''}">${pendingInvitesCount > 0 ? `${pendingInvitesCount} davet` : '→'}</span>
         </div>
         <div class="hd-m-val">${activeStudentsHome.length}</div>
         <div class="hd-m-sub">${plannedStudentCount}/${activeStudentsHome.length} bu hafta programlı</div>
       </div>
       <div class="hd-metric-cell" onclick="switchTab('todolist')" title="Takvim / Ajandaya git">
         <div class="hd-m-top">
-          <span class="hd-m-label"><span class="hd-dot blue"></span> Bugün Randevu</span>
-          <span class="hd-m-tag" style="color:var(--blue)">${nextAppt ? esc(nextAppt.time) : (upcomingAppts.length > 0 ? esc(upcomingAppts[0].relLabel) : '—')}</span>
+          <span class="hd-m-label-wrap">
+            <span class="hd-m-ico blue">${icoCal}</span>
+            <span class="hd-m-label">Bugün Randevu</span>
+          </span>
+          <span class="hd-m-tag ${nextAppt || upcomingAppts.length > 0 ? 'blue' : ''}">${nextAppt ? esc(nextAppt.time) : (upcomingAppts.length > 0 ? esc(upcomingAppts[0].relLabel) : '—')}</span>
         </div>
         <div class="hd-m-val">${todayAppts.length}</div>
         <div class="hd-m-sub">${esc(apptKpiSub)}</div>
       </div>
       <div class="hd-metric-cell" onclick="switchTab('messages')" title="Mesajlara git">
         <div class="hd-m-top">
-          <span class="hd-m-label"><span class="hd-dot ${unread > 0 ? 'red' : 'green'}"></span> Okunmamış Mesaj</span>
-          <span class="hd-m-tag" style="color:${unread > 0 ? 'var(--red)' : 'var(--green)'}">${unread > 0 ? `${unread} yeni` : 'Temiz'}</span>
+          <span class="hd-m-label-wrap">
+            <span class="hd-m-ico ${unread > 0 ? 'red' : 'green'}">${icoMsg}</span>
+            <span class="hd-m-label">Okunmamış Mesaj</span>
+          </span>
+          <span class="hd-m-tag ${unread > 0 ? 'red' : 'green'}">${unread > 0 ? `${unread} yeni` : 'Temiz'}</span>
         </div>
         <div class="hd-m-val" style="color:${unread > 0 ? 'var(--red)' : 'var(--text)'}">${unread}</div>
         <div class="hd-m-sub">${esc(unreadSubText)}</div>
       </div>
       <div class="hd-metric-cell" onclick="window._homeSetTab('students')" title="Öğrenci haftalık nabzını aç">
         <div class="hd-m-top">
-          <span class="hd-m-label"><span class="hd-dot ${weekPct >= 70 ? 'green' : weekPct >= 40 ? 'amber' : 'red'}"></span> Haftalık Görev</span>
-          <span class="hd-m-tag" style="color:${progColor}">%${weekPct}</span>
+          <span class="hd-m-label-wrap">
+            <span class="hd-m-ico ${progIcoCls}">${icoCheck}</span>
+            <span class="hd-m-label">Haftalık Görev</span>
+          </span>
+          <span class="hd-m-tag ${progTagCls}">%${weekPct}</span>
         </div>
         <div class="hd-m-val">${weekDone}<span class="hd-m-val-muted">/${weekTotal}</span></div>
         <div class="hd-m-sub">${weekSolved > 0 ? `${weekSolved} soru · ` : ''}${formatShortDuration(weekStudyMin)} çalışma</div>
-        <div class="hd-m-bar"><div class="hd-m-bar-fill" style="width:${weekPct}%;background:${progColor}"></div></div>
+        <div class="hd-m-bar"><div class="hd-m-bar-fill" style="width:${weekPct}%;background:${progGrad}"></div></div>
       </div>
     </div>
     `}
 
-    <!-- KATMAN 3: SEKMELİ ODAK PANELİ + TEK AJANDA KARTI -->
+    <!-- KATMAN 3: SEKMELİ ODAK PANELİ + BİRLEŞİK AJANDA KARTI -->
     <div class="hd-grid">
       <div id="hdMainPanel" class="hd-panel">
         <div class="hd-panel-head">
@@ -1152,29 +1182,32 @@ function renderHome(){
 
       <div class="hd-side-panel">
         <!-- BÖLÜM 1: AJANDA (BUGÜN + YAKLAŞANLAR) -->
-        <div class="hd-side-sec">
+        <div class="hd-side-sec top">
           <div class="hd-side-hd">
-            <span class="hd-side-title">Ajanda <span class="hd-side-cnt">${todayAppts.length} bugün</span></span>
+            <span class="hd-side-title"><span class="hd-side-ico">${icoCal}</span> Ajanda <span class="hd-side-cnt">${todayAppts.length} bugün</span></span>
             <div class="hd-side-actions">
-              ${S.students.length > 0 ? `<button type="button" class="hd-link-btn accent" onclick="openApptModal()">+</button>` : ''}
+              ${S.students.length > 0 ? `<button type="button" class="hd-link-btn accent" onclick="openApptModal()" title="Randevu Planla">+</button>` : ''}
               <button type="button" class="hd-link-btn" onclick="switchTab('todolist')">Takvim →</button>
             </div>
           </div>
           ${todayAppts.length > 0
             ? todayApptsHtml
-            : `<div class="hd-empty-line">Bugün planlanmış randevu yok.</div>`}
+            : `<div class="hd-empty-box">
+                <span>Bugün planlanmış randevu yok.</span>
+                ${upcomingAppts.length === 0 && S.students.length > 0 ? `<button type="button" class="hd-link-btn accent" onclick="openApptModal()">Planla</button>` : ''}
+              </div>`}
           ${upcomingHtml}
         </div>
 
         <!-- BÖLÜM 2: BUGÜNÜN YAPILACAKLARI -->
         <div class="hd-side-sec">
           <div class="hd-side-hd">
-            <span class="hd-side-title">Yapılacaklar <span class="hd-side-cnt">${todayTodos.doneCount}/${todayTodos.totalCount}</span></span>
+            <span class="hd-side-title"><span class="hd-side-ico">${icoCheck}</span> Yapılacaklar <span class="hd-side-cnt">${todayTodos.doneCount}/${todayTodos.totalCount}</span></span>
             <button type="button" class="hd-link-btn" onclick="switchTab('todolist')">Tümü →</button>
           </div>
           ${todosHtml}
           <div class="htd-add-form">
-            <input id="homeTodoInput" class="htd-input" type="text" placeholder="Görev ekle..." onkeydown="if(event.key==='Enter'){event.preventDefault();window._homeAddTodo();}">
+            <input id="homeTodoInput" class="htd-input" type="text" placeholder="Bugün için görev ekle..." onkeydown="if(event.key==='Enter'){event.preventDefault();window._homeAddTodo();}">
             <button type="button" id="homeTodoAddBtn" class="htd-add-btn" onclick="window._homeAddTodo()">+ Ekle</button>
           </div>
         </div>
