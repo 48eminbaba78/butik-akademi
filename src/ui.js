@@ -10983,7 +10983,7 @@ async function renderCoachUyelik() {
               <div style="font-size:11px;color:var(--text-dim)">${new Date(p.created_at).toLocaleDateString('tr-TR')}</div>
             </div>
             <div style="display:flex;align-items:center;gap:10px">
-              ${p.status === 'completed' ? `<a href="/api/generate-pdf-report?paymentId=${p.id}" target="_blank" style="font-size:11px;font-weight:700;color:var(--accent);text-decoration:none">📄 Makbuz</a>` : ''}
+              ${p.status === 'completed' ? `<button type="button" onclick="openPaymentReceipt('${p.id}')" style="background:none;border:none;padding:0;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;font-family:inherit">📄 Makbuz</button>` : ''}
               <span style="font-size:11px;font-weight:700;color:${(statusLbl[p.status] || ['—', 'var(--text-dim)'])[1]}">${(statusLbl[p.status] || [p.status || '—'])[0]}</span>
             </div>
           </div>
@@ -10991,6 +10991,36 @@ async function renderCoachUyelik() {
       </div>
     </div>`;
 }
+async function _fetchSignedReportSig(paramKey, idValue) {
+  const resp = await fetch(`/api/generate-pdf-report?action=sign&${paramKey}=${encodeURIComponent(idValue)}`, {
+    headers: await aiAuthHeaders(),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data?.sig) {
+    throw new Error(data?.error || `İmzalı bağlantı üretilemedi (${resp.status})`);
+  }
+  return data.sig;
+}
+
+async function openPaymentReceipt(paymentId) {
+  if (!paymentId) return;
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.title = 'Makbuz Hazırlanıyor...';
+    win.document.body.innerHTML = '<p style="font-family:sans-serif;padding:24px;color:#475569">Makbuz hazırlanıyor...</p>';
+  }
+  try {
+    const sig = await _fetchSignedReportSig('paymentId', paymentId);
+    const url = `/api/generate-pdf-report?paymentId=${encodeURIComponent(paymentId)}&sig=${encodeURIComponent(sig)}`;
+    if (win) win.location.href = url;
+    else window.open(url, '_blank');
+  } catch (err) {
+    if (win) win.close();
+    showToast('Makbuz açılamadı: ' + err.message);
+  }
+}
+
+window.openPaymentReceipt = openPaymentReceipt;
 window.renderCoachUyelik = renderCoachUyelik;
 
 // ── KOÇ: ÖDEME BİLDİRİM MODALI (dinamik banka bilgisi + dekont yükleme) ──
@@ -13711,15 +13741,21 @@ async function sendWhatsAppReport() {
   const s = S.students.find(x => x.id === stuId);
   if (!s) return;
 
-  const reportUrl = `${window.location.origin}/api/generate-pdf-report?studentId=${stuId}`;
-  const message = `Merhaba, ${s.name} isimli öğrencimizin bu dönemki performans ve gelişim raporu hazırlandı. Aşağıdaki bağlantıdan raporu detaylıca görüntüleyebilirsiniz:\n\n🔗 ${reportUrl}`;
-
-  const encodedText = encodeURIComponent(message);
-  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
-  window.open(whatsappUrl, '_blank');
-  closeReportStudio();
-  showToast('WhatsApp yönlendirmesi açıldı ✓');
-  window._obMarkDone?.('report');
+  const win = window.open('', '_blank');
+  try {
+    const sig = await _fetchSignedReportSig('studentId', stuId);
+    const reportUrl = `${window.location.origin}/api/generate-pdf-report?studentId=${encodeURIComponent(stuId)}&sig=${encodeURIComponent(sig)}`;
+    const message = `Merhaba, ${s.name} isimli öğrencimizin bu dönemki performans ve gelişim raporu hazırlandı. Aşağıdaki bağlantıdan raporu detaylıca görüntüleyebilirsiniz:\n\n🔗 ${reportUrl}`;
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    if (win) win.location.href = whatsappUrl;
+    else window.open(whatsappUrl, '_blank');
+    closeReportStudio();
+    showToast('WhatsApp yönlendirmesi açıldı ✓');
+    window._obMarkDone?.('report');
+  } catch (err) {
+    if (win) win.close();
+    showToast('İmzalı rapor bağlantısı oluşturulamadı: ' + err.message);
+  }
 }
 
 async function sendParentEmailReport() {

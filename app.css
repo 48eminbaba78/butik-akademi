@@ -1491,15 +1491,6 @@ body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);displ
     position: relative;
     bottom: 0;
   }
-}tent:flex-end;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
-.rst-preview-viewport{flex:1;min-height:0;overflow:auto;padding:28px;display:flex;justify-content:center}
-.rst-preview-spacer{flex-shrink:0}
-.rst-preview-scaler{transform-origin:top left}
-.rst-preview-frame{border:none;display:block;background:#fff;box-shadow:var(--shadow-lg);border-radius:8px}
-@media(max-width:900px){
-  .rst-body{grid-template-columns:1fr;grid-auto-rows:auto;overflow-y:auto}
-  .rst-panel{border-right:none;border-bottom:1px solid var(--border);overflow-y:visible}
-  .rst-actions{position:static}
 }
 
 /* ── Net Sıçraması: konfeti ── */

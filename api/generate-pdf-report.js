@@ -3,16 +3,90 @@
 // Endpoint: /api/generate-pdf-report
 // ═══════════════════════════════════════════════════════════
 
-import { getServiceClient, verifyJwtUser, verifyReportToken, escapeHtml } from '../lib/api-auth.js';
+import { getServiceClient, verifyJwtUser, signReportToken, verifyReportToken, escapeHtml } from '../lib/api-auth.js';
+
+const EXAM_SCHEDULE_PDF = {
+  LGS:  { month: 5, day: 7,  label: 'LGS'  },
+  KPSS: { month: 6, day: 14, label: 'KPSS' },
+  ALES: { month: 4, day: 10, label: 'ALES' },
+  DGS:  { month: 6, day: 20, label: 'DGS'  },
+  YDS:  { month: 3, day: 15, label: 'YDS'  },
+  YKS:  { month: 5, day: 14, label: 'YKS'  },
+};
+
+function computeReportCountdown(examProfile) {
+  const key = String(examProfile || 'YKS').toUpperCase().split(/[\s_-]/)[0];
+  const cfg = EXAM_SCHEDULE_PDF[key] || EXAM_SCHEDULE_PDF.YKS;
+  const now = new Date();
+  let year = now.getUTCFullYear();
+  let examDate = new Date(Date.UTC(year, cfg.month, cfg.day, 9, 0, 0));
+  if (now > examDate) {
+    year += 1;
+    examDate = new Date(Date.UTC(year, cfg.month, cfg.day, 9, 0, 0));
+  }
+  return {
+    days: Math.max(1, Math.ceil((examDate.getTime() - now.getTime()) / 86400000)),
+    label: `${cfg.label} ${year}`,
+  };
+}
 
 export default async function handler(req, res) {
-  const { studentId, paymentId, sig } = req.query;
+  const q = req.query || {};
+  const studentId = q.studentId || q.student_id || '';
+  const paymentId = q.paymentId || q.payment_id || '';
+  const sig = q.sig || '';
+  const action = q.action || '';
 
   const auth = await verifyJwtUser(req);
+
+  // İmzalı bağlantı üretimi (Makbuz veya Veli WhatsApp Raporu için)
+  if (action === 'sign') {
+    if (!auth) {
+      return res.status(401).json({ error: 'İmzalı bağlantı üretmek için oturum doğrulaması gerekir.' });
+    }
+    let signDb;
+    try {
+      signDb = getServiceClient();
+    } catch (_) {
+      return res.status(500).json({ error: 'Sunucu yapılandırma hatası.' });
+    }
+
+    if (paymentId) {
+      const { data: payment } = await signDb.from('payments').select('id, coach_id, user_id').eq('id', paymentId).maybeSingle();
+      if (!payment) return res.status(404).json({ error: 'Ödeme kaydı bulunamadı.' });
+      const isOwner = payment.coach_id === auth.user.id || payment.user_id === auth.user.id || auth.profile.role === 'developer';
+      if (!isOwner) return res.status(403).json({ error: 'Bu makbuza erişim yetkiniz yok.' });
+      const token = signReportToken({ paymentId });
+      if (!token) return res.status(500).json({ error: 'Rapor imzası üretilemedi.' });
+      return res.status(200).json({ sig: token });
+    }
+
+    if (studentId) {
+      const { data: student } = await signDb.from('users').select('id, coach_id').eq('id', studentId).maybeSingle();
+      if (!student) return res.status(404).json({ error: 'Öğrenci bulunamadı.' });
+      const isOwner = auth.user.id === student.id || student.coach_id === auth.user.id || auth.profile.role === 'developer';
+      if (!isOwner) return res.status(403).json({ error: 'Bu öğrenci için rapor bağlantısı üretemezsiniz.' });
+      const token = signReportToken({ studentId });
+      if (!token) return res.status(500).json({ error: 'Rapor imzası üretilemedi.' });
+      return res.status(200).json({ sig: token });
+    }
+
+    return res.status(400).json({ error: 'studentId veya paymentId parametresi zorunludur.' });
+  }
+
   const signed = sig ? verifyReportToken(sig) : null;
+  const signedStuId = signed?.studentId || signed?.student_id || '';
+  const signedPayId = signed?.paymentId || signed?.payment_id || '';
 
   if (!auth && !signed) {
     return res.status(401).send('<h1>Yetkisiz Erişim: Oturum doğrulaması veya geçerli rapor imzası gereklidir.</h1>');
+  }
+
+  if (signed && paymentId && signedPayId !== paymentId) {
+    return res.status(403).send('<h1>Yetkisiz makbuz bağlantısı.</h1>');
+  }
+  if (signed && studentId && signedStuId !== studentId) {
+    return res.status(403).send('<h1>Yetkisiz rapor bağlantısı.</h1>');
   }
 
   let db;
@@ -28,16 +102,12 @@ export default async function handler(req, res) {
     return res.status(400).send('<h1>Hata: studentId parametresi zorunludur.</h1>');
   }
 
-  if (signed && signed.studentId !== studentId) {
-    return res.status(403).send('<h1>Yetkisiz rapor bağlantısı.</h1>');
-  }
-
   try {
-    const [{ data: student }, { data: tasks }, { data: exams }, { data: appts }] = await Promise.all([
-      db.from('users').select('*, workspaces(brand_name, brand_color)').eq('id', studentId).maybeSingle(),
-      db.from('tasks').select('*').eq('student_id', studentId),
-      db.from('exams').select('*').eq('student_id', studentId),
-      db.from('appointments').select('*').eq('student_id', studentId)
+    const [{ data: student }, { data: tasks }, { data: exams }, { data: masteryRows }] = await Promise.all([
+      db.from('users').select('id, full_name, target, exam_profile, coach_id').eq('id', studentId).maybeSingle(),
+      db.from('tasks').select('date, type, exam_type, subject, duration, done, note, student_note, student_result, student_feedback').eq('student_id', studentId).order('date', { ascending: false }).limit(120),
+      db.from('exams').select('name, date, exam_type, nets').eq('student_id', studentId).order('date', { ascending: false }).limit(10),
+      db.from('konu_mastery').select('subject, konu, stars, status, ka_date, td_date, last_review_date').eq('student_id', studentId),
     ]);
 
     if (!student) {
@@ -50,15 +120,34 @@ export default async function handler(req, res) {
       if (!isOwner) return res.status(403).send('<h1>Bu öğrencinin raporuna erişim yetkiniz yok.</h1>');
     }
 
-    const totalTasks = tasks?.length || 0;
-    const doneTasks = tasks?.filter(t => t.done)?.length || 0;
+    const { data: workspace } = student.coach_id
+      ? await db.from('workspaces').select('brand_name, brand_color').eq('coach_id', student.coach_id).maybeSingle()
+      : { data: null };
+
+    const allTasks = tasks || [];
+    const totalTasks = allTasks.length;
+    const doneTasks = allTasks.filter(t => t.done).length;
     const completionRate = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
-    const brandName = escapeHtml(student.workspaces?.brand_name || 'Rostrum Akademi');
-    const brandColor = /^#[0-9a-fA-F]{3,8}$/.test(student.workspaces?.brand_color || '') ? student.workspaces.brand_color : '#f0a500';
+    const weekCutoffIso = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const weekTasks = allTasks.filter(t => t.date && t.date >= weekCutoffIso);
+    const weekDone = weekTasks.filter(t => t.done).length;
+    const weekPct = weekTasks.length > 0 ? Math.round((weekDone / weekTasks.length) * 100) : completionRate;
+
+    const allMastery = masteryRows || [];
+    const tdCount = allMastery.filter(m => m.status === 'td' || Number(m.stars) >= 7).length;
+    const activeMasteryCount = allMastery.filter(m => m.status !== 'td' && Number(m.stars) < 7 && (m.status === 'active' || Number(m.stars) > 0 || m.ka_date)).length;
+    const masteryPct = allMastery.length > 0
+      ? Math.min(100, Math.round(((tdCount + activeMasteryCount * 0.4) / allMastery.length) * 100))
+      : 0;
+
+    const countdown = computeReportCountdown(student.exam_profile);
+
+    const brandName = escapeHtml(workspace?.brand_name || 'Rostrum Akademi');
+    const brandColor = /^#[0-9a-fA-F]{3,8}$/.test(workspace?.brand_color || '') ? workspace.brand_color : '#E8613A';
     const studentNameEsc = escapeHtml(student.full_name || 'Öğrenci');
 
-    const recentExams = exams?.slice(-5) || [];
+    const recentExams = exams || [];
 
     const htmlReport = `
 <!DOCTYPE html>
@@ -66,7 +155,7 @@ export default async function handler(req, res) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${studentNameEsc} — Haftalık Gelişim Raporu</title>
+  <title>${studentNameEsc} — Gelişim Raporu</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body {
@@ -74,31 +163,30 @@ export default async function handler(req, res) {
       background-color: #ffffff;
       color: #0f172a;
       margin: 0;
-      padding: 3rem;
+      padding: 2.5rem 3rem;
       line-height: 1.5;
     }
     .header {
       border-bottom: 2px solid ${brandColor};
-      padding-bottom: 1.5rem;
+      padding-bottom: 1.4rem;
       margin-bottom: 2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
     .logo {
       font-family: 'Syne', sans-serif;
       font-weight: 800;
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       color: #0f172a;
-    }
-    .logo span {
-      color: ${brandColor};
     }
     h1 {
       font-family: 'Syne', sans-serif;
-      font-size: 2.2rem;
+      font-size: 2rem;
       font-weight: 800;
-      margin: 0 0 0.5rem 0;
+      margin: 0 0 0.4rem 0;
     }
     .meta {
       font-size: 0.9rem;
@@ -106,33 +194,42 @@ export default async function handler(req, res) {
     }
     .grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
-      margin-bottom: 2.5rem;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2.2rem;
+    }
+    @media (max-width: 780px) {
+      body { padding: 1.5rem 1rem; }
+      .grid { grid-template-columns: repeat(2, 1fr); }
     }
     .card {
       border: 1px solid #e2e8f0;
       border-radius: 12px;
-      padding: 1.5rem;
+      padding: 1.2rem;
       background-color: #f8fafc;
     }
     .card-lbl {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       text-transform: uppercase;
       font-weight: 700;
       color: #64748b;
-      letter-spacing: 1px;
-      margin-bottom: 0.5rem;
+      letter-spacing: 0.8px;
+      margin-bottom: 0.4rem;
     }
     .card-val {
       font-family: 'Syne', sans-serif;
-      font-size: 2rem;
+      font-size: 1.85rem;
       font-weight: 800;
       color: #0f172a;
     }
+    .card-sub {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 0.35rem;
+    }
     h2 {
       font-family: 'Syne', sans-serif;
-      font-size: 1.5rem;
+      font-size: 1.35rem;
       margin-top: 2rem;
       margin-bottom: 1rem;
       border-bottom: 1px solid #e2e8f0;
@@ -144,9 +241,11 @@ export default async function handler(req, res) {
       margin-bottom: 2rem;
     }
     th, td {
-      padding: 0.75rem 1rem;
+      padding: 0.7rem 0.9rem;
       text-align: left;
       border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+      font-size: 0.9rem;
     }
     th {
       background-color: #f1f5f9;
@@ -165,6 +264,15 @@ export default async function handler(req, res) {
       background-color: #fee2e2;
       color: #b91c1c;
     }
+    .stu-fb-line {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 11px;
+      color: #475569;
+      background: #f1f5f9;
+      border-radius: 6px;
+      padding: 2px 7px;
+    }
     .print-btn {
       position: fixed;
       bottom: 2rem;
@@ -175,17 +283,13 @@ export default async function handler(req, res) {
       padding: 0.75rem 1.5rem;
       border-radius: 8px;
       font-weight: 600;
-      font-size: 1rem;
+      font-size: 0.95rem;
       cursor: pointer;
       box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
     }
     @media print {
-      .print-btn {
-        display: none;
-      }
-      body {
-        padding: 0;
-      }
+      .print-btn { display: none; }
+      body { padding: 0; }
     }
   </style>
 </head>
@@ -196,26 +300,31 @@ export default async function handler(req, res) {
   <div class="header">
     <div>
       <h1>${studentNameEsc}</h1>
-      <div class="meta">Hedef: <strong>${escapeHtml(student.target || 'Belirtilmemiş')}</strong> | Tarih: <strong>${escapeHtml(new Date().toLocaleDateString('tr-TR'))}</strong></div>
+      <div class="meta">Hedef: <strong>${escapeHtml(student.target || 'Belirtilmemiş')}</strong> | Rapor Tarihi: <strong>${escapeHtml(new Date().toLocaleDateString('tr-TR'))}</strong></div>
     </div>
     <div class="logo">${brandName}</div>
   </div>
 
   <div class="grid">
     <div class="card">
-      <div class="card-lbl">Görev Başarı Oranı</div>
-      <div class="card-val" style="color: ${brandColor}">%${completionRate}</div>
-      <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">${doneTasks} tamamlanan / ${totalTasks} toplam görev</div>
+      <div class="card-lbl">Son 7 Gün Başarı</div>
+      <div class="card-val" style="color: ${brandColor}">%${weekPct}</div>
+      <div class="card-sub">${weekTasks.length ? `${weekDone}/${weekTasks.length} görev` : `${doneTasks}/${totalTasks} genel görev`}</div>
     </div>
     <div class="card">
-      <div class="card-lbl">Genel İlerleme</div>
-      <div class="card-val">%${Number(student.progress) || 0}</div>
-      <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">Sistem müfredat yüzdesi</div>
+      <div class="card-lbl">Konu İlerleme</div>
+      <div class="card-val">%${masteryPct}</div>
+      <div class="card-sub">${tdCount} TD · ${activeMasteryCount} aktif konu</div>
+    </div>
+    <div class="card">
+      <div class="card-lbl">Sınava Kalan Gün</div>
+      <div class="card-val">${countdown.days}</div>
+      <div class="card-sub">${escapeHtml(countdown.label)}</div>
     </div>
     <div class="card">
       <div class="card-lbl">Girilen Denemeler</div>
-      <div class="card-val">${exams?.length || 0}</div>
-      <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">Toplam takip edilen sınav</div>
+      <div class="card-val">${recentExams.length}</div>
+      <div class="card-sub">Son takip edilen sınavlar</div>
     </div>
   </div>
 
@@ -243,8 +352,8 @@ export default async function handler(req, res) {
   </table>
   ` : '<p style="color: #64748b;">Henüz deneme kaydı bulunmuyor.</p>'}
 
-  <h2>📅 Haftalık Ders Çalışma Planı Görevleri</h2>
-  ${tasks && tasks.length > 0 ? `
+  <h2>📅 Son Ders Çalışma Planı Görevleri &amp; Geri Bildirimler</h2>
+  ${allTasks.length > 0 ? `
   <table>
     <thead>
       <tr>
@@ -256,15 +365,26 @@ export default async function handler(req, res) {
       </tr>
     </thead>
     <tbody>
-      ${tasks.slice(0, 15).map(t => `
+      ${allTasks.slice(0, 20).map(t => {
+        const res = t.student_result;
+        const resTxt = res && (res.dogru != null || res.yanlis != null)
+          ? `${Number(res.dogru || 0)}D / ${Number(res.yanlis || 0)}Y`
+          : '';
+        const diffNum = Number(t.student_feedback?.difficulty || 0);
+        const fbBits = [
+          resTxt,
+          diffNum >= 4 ? `Zorluk: ${diffNum}/5` : '',
+          t.student_note ? `Not: "${String(t.student_note).slice(0, 80)}"` : '',
+        ].filter(Boolean).join(' · ');
+        return `
         <tr>
           <td>${escapeHtml(t.date)}</td>
-          <td><strong>${escapeHtml(t.subject)}</strong>${t.note ? `<br><span style="font-size: 11px; color: #64748b;">Not: ${escapeHtml(t.note)}</span>` : ''}</td>
+          <td><strong>${escapeHtml(t.subject)}</strong>${t.note ? `<br><span style="font-size: 11px; color: #64748b;">${escapeHtml(t.note)}</span>` : ''}${fbBits ? `<br><span class="stu-fb-line">${escapeHtml(fbBits)}</span>` : ''}</td>
           <td>${escapeHtml(t.type)}</td>
           <td>${Number(t.duration) || 0} dk</td>
           <td><span class="badge ${t.done ? '' : 'badge-pending'}">${t.done ? 'Tamamlandı' : 'Bekliyor'}</span></td>
-        </tr>
-      `).join('')}
+        </tr>`;
+      }).join('')}
     </tbody>
   </table>
   ` : '<p style="color: #64748b;">Haftalık programda tanımlanmış görev bulunmuyor.</p>'}
@@ -284,7 +404,8 @@ export default async function handler(req, res) {
 
 // Yazdırılabilir ödeme makbuzu
 async function generateReceipt(res, db, paymentId, auth, signed) {
-  if (signed && signed.paymentId !== paymentId) {
+  const signedPayId = signed?.paymentId || signed?.payment_id || '';
+  if (signed && signedPayId !== paymentId) {
     return res.status(403).send('<h1>Yetkisiz makbuz bağlantısı.</h1>');
   }
   try {
