@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Koç Bul | Rostrum Akademi</title>
+  <link rel="canonical" href="https://rostrumakademi.com/koc_bul.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -11,8 +14,8 @@
       --surface: #1a1916;
       --surface2: #242220;
       --border: #383430;
-      --accent: #f0a500;
-      --accent-dim: rgba(240, 165, 0, 0.12);
+      --accent: #E8613A;
+      --accent-dim: rgba(232, 97, 58, 0.12);
       --text: #f0ece6;
       --text-mid: #9a9088;
       --text-dim: #5a5450;
@@ -212,11 +215,11 @@
 
     .btn-accent {
       background: var(--accent);
-      color: #0f0e0c;
+      color: #ffffff;
     }
 
     .btn-accent:hover {
-      background: #fbb800;
+      background: #d4522d;
     }
 
     .btn-ghost {
@@ -342,6 +345,14 @@
       transform: translateX(-50%) translateY(0);
     }
 
+    .kb-topbar { display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+    .kb-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); font-weight: 800; font-size: 16px; }
+    .kb-logo img { height: 28px; width: auto; border-radius: 6px; }
+    .kb-logo span { color: var(--accent); }
+    .kb-navlinks { display: flex; align-items: center; gap: 16px; }
+    .kb-navlinks a { color: var(--text-mid); text-decoration: none; font-size: 13px; font-weight: 600; transition: color .2s; }
+    .kb-navlinks a:hover { color: var(--text); }
+
     /* Derin link (/koc/<slug>) ile gelindiğinde "Koç Bul" listesi bir an
        görünüp sonra profile geçmesin diye ilk boyamadan önce gizleniyor. */
     html.deep-link-boot .container { display: none; }
@@ -359,6 +370,13 @@
 <body>
 
 <div class="container">
+  <nav class="kb-topbar">
+    <a href="/index.html" class="kb-logo"><img src="/logo.png" alt="Rostrum Akademi Logo">ROSTRUM<span>AKADEMİ</span></a>
+    <div class="kb-navlinks">
+      <a href="/index.html">← Ana Sayfa</a>
+      <a href="/app.html" style="background:var(--accent);color:#fff;padding:7px 14px;border-radius:8px">Giriş Yap →</a>
+    </div>
+  </nav>
   <header>
     <h1>Rostrum Akademi <span>Koç Bul</span></h1>
     <p class="subtitle">Hedeflerinize en uygun eğitim koçunu bulun ve hemen eşleşme başvurusu yapın.</p>
@@ -494,7 +512,7 @@
       allCoaches = (users || []).map(u => ({
         id: u.id,
         name: u.full_name,
-        color: u.color || '#f0a500',
+        color: u.color || '#E8613A',
         brand: u.target || 'Rostrum Akademi Koçu',
         profile: profileMap[u.id] || {}
       }));
@@ -693,7 +711,7 @@
             target = {
               id: data[0].id,
               name: data[0].full_name,
-              color: data[0].color || '#f0a500',
+              color: data[0].color || '#E8613A',
               brand: data[0].target || 'Rostrum Akademi Koçu',
               profile: {
                 bio: data[0].bio,
@@ -728,7 +746,7 @@
               target = {
                 id: p.id,
                 name: u ? u.full_name : 'Rostrum Koçu',
-                color: u ? (u.color || '#f0a500') : '#f0a500',
+                color: u ? (u.color || '#E8613A') : '#E8613A',
                 brand: u ? (u.target || 'Rostrum Akademi Koçu') : 'Rostrum Akademi Koçu',
                 profile: p
               };
@@ -746,7 +764,7 @@
             target = {
               id: u.id,
               name: u.full_name,
-              color: u.color || '#f0a500',
+              color: u.color || '#E8613A',
               brand: u.target || 'Rostrum Akademi Koçu',
               profile: p || {}
             };

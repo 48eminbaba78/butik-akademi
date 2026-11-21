@@ -4,24 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Blog — Rostrum Akademi</title>
-<meta name="description" content="Koçluk, öğrenci yönetimi ve eğitim üzerine pratik yazılar. Haftalık program, deneme analizi, iletişim ve dijital koçluk ipuçları.">
+<meta name="description" content="Koçluk, öğrenci yönetimi ve eğitim üzerine pratik yazılar. Haftalık program, deneme analizi, iletişim ve dijital koçluk rehberleri.">
 <meta name="robots" content="index, follow">
-<link rel="canonical" href="https://rostrumakademi.app/blog.html">
+<link rel="canonical" href="https://rostrumakademi.com/blog.html">
 <meta property="og:title" content="Blog — Rostrum Akademi">
-<meta property="og:description" content="Koçluk ve eğitim üzerine pratik yazılar. Haftalık program, deneme analizi, motivasyon ve daha fazlası.">
+<meta property="og:description" content="Koçluk ve eğitim üzerine pratik yazılar. Haftalık program, deneme analizi, motivasyon ve veli raporlama rehberleri.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://rostrumakademi.app/blog.html">
+<meta property="og:url" content="https://rostrumakademi.com/blog.html">
 <meta property="og:site_name" content="Rostrum Akademi">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f0a500'/><text y='.9em' font-size='80' x='10'>R</text></svg>">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-:root{--bg:#07060a;--s1:#0f0d14;--s2:#17151e;--bd:#2d2a3a;--acc:#f0a500;--acc2:#c084fc;--acc3:#3ecf8e;--text:#f0eaf8;--mid:#a09ab8;--dim:#5a5668;}
+:root{--bg:#0f0e0c;--s1:#171512;--s2:#211e1a;--bd:#332d28;--acc:#E8613A;--acc2:#ff8a65;--acc3:#3ecf8e;--text:#f5f2ed;--mid:#a8a098;--dim:#6e6760;}
 body{font-family:'Geist',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;}
-nav{position:fixed;top:0;left:0;right:0;z-index:100;height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 52px;background:rgba(7,6,10,.9);backdrop-filter:blur(24px);border-bottom:1px solid var(--bd);}
-.nav-logo{font-family:'Geist',sans-serif;font-size:17px;font-weight:800;text-decoration:none;color:var(--text);}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 52px;background:rgba(15,14,12,.9);backdrop-filter:blur(24px);border-bottom:1px solid var(--bd);}
+.nav-logo{font-family:'Geist',sans-serif;font-size:17px;font-weight:800;text-decoration:none;color:var(--text);display:flex;align-items:center;gap:8px;}
+.nav-logo img{height:28px;width:auto;border-radius:6px;}
 .nav-logo b{color:var(--acc);}
 .nav-back{color:var(--mid);text-decoration:none;font-size:13px;font-weight:500;transition:color .2s;}
 .nav-back:hover{color:var(--text);}
@@ -29,115 +31,177 @@ main{max-width:1000px;margin:0 auto;padding:100px 40px 80px;}
 .page-label{font-size:11px;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;}
 h1{font-family:'Geist',sans-serif;font-size:clamp(32px,5vw,52px);font-weight:800;letter-spacing:-2px;margin-bottom:36px;}
 .blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-.blog-card{background:var(--s1);border:1px solid var(--bd);border-radius:16px;overflow:hidden;transition:all .25s;cursor:pointer;}
-.blog-card:hover{border-color:rgba(240,165,0,.2);transform:translateY(-3px);}
-.blog-thumb{height:140px;display:flex;align-items:center;justify-content:center;font-size:48px;}
-.blog-body{padding:18px 20px;}
-.blog-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:3px 10px;border-radius:99px;display:inline-block;margin-bottom:10px;}
-.blog-title{font-family:'Geist',sans-serif;font-size:16px;font-weight:700;line-height:1.3;margin-bottom:8px;}
-.blog-excerpt{font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:14px;}
+.blog-card{background:var(--s1);border:1px solid var(--bd);border-radius:16px;overflow:hidden;transition:all .25s;cursor:pointer;display:flex;flex-direction:column;}
+.blog-card:hover{border-color:rgba(232,97,58,.4);transform:translateY(-3px);}
+.blog-thumb{height:130px;display:flex;align-items:center;justify-content:center;font-size:44px;}
+.blog-body{padding:18px 20px;display:flex;flex-direction:column;flex:1;}
+.blog-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:3px 10px;border-radius:99px;display:inline-block;margin-bottom:10px;align-self:flex-start;}
+.blog-title{font-family:'Geist',sans-serif;font-size:16px;font-weight:700;line-height:1.35;margin-bottom:8px;}
+.blog-excerpt{font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:14px;flex:1;}
 .blog-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);}
-.coming-soon{text-align:center;padding:60px 20px;color:var(--dim);}
-.coming-soon .icon{font-size:48px;margin-bottom:16px;}
-.coming-soon h2{font-family:'Geist',sans-serif;font-size:22px;font-weight:800;color:var(--mid);margin-bottom:8px;}
-.coming-soon p{font-size:14px;}
+.post-article h2{font-size:18px;font-weight:700;color:var(--text);margin:22px 0 8px;}
+.post-article p{font-size:15px;color:var(--mid);line-height:1.8;margin-bottom:14px;}
+.post-article ul{padding-left:20px;margin:0 0 16px;}
+.post-article li{font-size:14.5px;color:var(--mid);line-height:1.75;margin-bottom:6px;}
 footer{border-top:1px solid var(--bd);padding:28px 40px;text-align:center;font-size:12px;color:var(--dim);}
 footer a{color:var(--acc);text-decoration:none;}
-@media(max-width:700px){nav{padding:0 20px;} main{padding:90px 20px 60px;} .blog-grid{grid-template-columns:1fr;}}
+@media(max-width:860px){.blog-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){nav{padding:0 20px;} main{padding:90px 20px 60px;} .blog-grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
 <nav>
-  <a href="index.html" class="nav-logo">ROSTRUM<b>AKADEMİ</b></a>
+  <a href="index.html" class="nav-logo"><img src="/logo.png" alt="Rostrum Akademi Logo">ROSTRUM<b>AKADEMİ</b></a>
   <a href="index.html" class="nav-back">← Ana Sayfa</a>
 </nav>
 <main>
-  <div class="page-label">Blog</div>
-  <h1>Koçluk & Eğitim<br>Üzerine</h1>
+  <div class="page-label">Blog &amp; Rehberler</div>
+  <h1>Koçluk &amp; Eğitim<br>Üzerine</h1>
   <div class="blog-grid">
-    <div class="blog-card" style="cursor:pointer" onclick="openPost(this)">
-      <div class="blog-thumb" style="background:rgba(240,165,0,.06)">📋</div>
+    <div class="blog-card" data-slug="haftalik-program" onclick="openPost(this)">
+      <div class="blog-thumb" style="background:rgba(232,97,58,.08)">📋</div>
       <div class="blog-body">
-        <span class="blog-tag" style="background:rgba(240,165,0,.1);color:var(--acc)">Verimlilik</span>
+        <span class="blog-tag" style="background:rgba(232,97,58,.14);color:var(--acc)">Verimlilik</span>
         <div class="blog-title">Haftalık Program Nasıl Hazırlanır? Koçlar İçin 5 Altın Kural</div>
-        <div class="blog-excerpt">Etkili bir haftalık program öğrencinin motivasyonunu doğrudan etkiler. Bu kurallar çalışma düzenini köklü biçimde değiştirebilir.</div>
-        <div class="blog-meta"><span>15 May 2026</span><span>5 dk okuma</span></div>
+        <div class="blog-excerpt">Etkili bir haftalık program öğrencinin motivasyonunu doğrudan etkiler. Dengeli görev dağılımı kuralları.</div>
+        <div class="blog-meta"><span>Rehber</span><span>5 dk okuma</span></div>
       </div>
     </div>
-    <div class="blog-card" style="cursor:pointer" onclick="openPost(this)">
-      <div class="blog-thumb" style="background:rgba(96,180,255,.06)">📊</div>
+    <div class="blog-card" data-slug="deneme-analizi" onclick="openPost(this)">
+      <div class="blog-thumb" style="background:rgba(77,166,255,.08)">📊</div>
       <div class="blog-body">
-        <span class="blog-tag" style="background:rgba(96,180,255,.1);color:var(--acc4,#60b4ff)">Deneme Analizi</span>
+        <span class="blog-tag" style="background:rgba(77,166,255,.14);color:#4da6ff">Deneme Analizi</span>
         <div class="blog-title">TYT Net Hesaplama ve Gelişim Takibi: Koçun Rehberi</div>
-        <div class="blog-excerpt">Deneme sonuçlarını doğru analiz etmek, öğrencinin hangi konulara odaklanması gerektiğini net biçimde ortaya koyar.</div>
-        <div class="blog-meta"><span>8 May 2026</span><span>7 dk okuma</span></div>
+        <div class="blog-excerpt">Deneme sonuçlarını ders ders analiz etmek, öğrencinin hangi konulara odaklanması gerektiğini ortaya koyar.</div>
+        <div class="blog-meta"><span>Analiz</span><span>6 dk okuma</span></div>
       </div>
     </div>
-    <div class="blog-card" style="cursor:pointer" onclick="openPost(this)">
-      <div class="blog-thumb" style="background:rgba(62,207,142,.06)">💬</div>
+    <div class="blog-card" data-slug="saglikli-iletisim" onclick="openPost(this)">
+      <div class="blog-thumb" style="background:rgba(62,207,142,.08)">💬</div>
       <div class="blog-body">
-        <span class="blog-tag" style="background:rgba(62,207,142,.1);color:var(--acc3)">İletişim</span>
-        <div class="blog-title">Öğrenci ile Sağlıklı İletişim Kurmanın 7 Yolu</div>
-        <div class="blog-excerpt">Koç-öğrenci ilişkisinde iletişim kalitesi başarıyı doğrudan belirler. Güven inşa etmenin pratik yolları.</div>
-        <div class="blog-meta"><span>1 May 2026</span><span>4 dk okuma</span></div>
+        <span class="blog-tag" style="background:rgba(62,207,142,.14);color:var(--acc3)">İletişim</span>
+        <div class="blog-title">Öğrenci ile Sağlıklı İletişim Kurmanın Pratik Yolları</div>
+        <div class="blog-excerpt">Koç-öğrenci ilişkisinde iletişim kalitesi sürekliliği doğrudan belirler. Güven inşa etmenin adımları.</div>
+        <div class="blog-meta"><span>İletişim</span><span>4 dk okuma</span></div>
       </div>
     </div>
-    <div class="blog-card" style="cursor:pointer" onclick="openPost(this)">
-      <div class="blog-thumb" style="background:rgba(192,132,252,.06)">⚡</div>
+    <div class="blog-card" data-slug="dijital-kocluk" onclick="openPost(this)">
+      <div class="blog-thumb" style="background:rgba(232,97,58,.08)">⚡</div>
       <div class="blog-body">
-        <span class="blog-tag" style="background:rgba(192,132,252,.1);color:var(--acc2)">Teknoloji</span>
-        <div class="blog-title">Dijital Koçluğa Geçiş: Hangi Araçları Kullanmalısınız?</div>
-        <div class="blog-excerpt">Kağıt defterden dijital platforma geçiş yaparken dikkat edilmesi gereken kriterler ve araç seçimi rehberi.</div>
-        <div class="blog-meta"><span>22 Nis 2026</span><span>6 dk okuma</span></div>
+        <span class="blog-tag" style="background:rgba(232,97,58,.14);color:var(--acc2)">Teknoloji</span>
+        <div class="blog-title">Dijital Koçluğa Geçiş: Dağınık Araçlardan Tek Panele</div>
+        <div class="blog-excerpt">Kağıt defter ve dağınık sohbet gruplarından düzenli koçluk platformuna geçişte dikkat edilecekler.</div>
+        <div class="blog-meta"><span>Sistem</span><span>5 dk okuma</span></div>
       </div>
     </div>
-    <div class="blog-card" style="cursor:pointer" onclick="openPost(this)">
-      <div class="blog-thumb" style="background:rgba(240,165,0,.06)">🎯</div>
+    <div class="blog-card" data-slug="yks-motivasyon" onclick="openPost(this)">
+      <div class="blog-thumb" style="background:rgba(232,97,58,.08)">🎯</div>
       <div class="blog-body">
-        <span class="blog-tag" style="background:rgba(240,165,0,.1);color:var(--acc)">Motivasyon</span>
-        <div class="blog-title">YKS Sürecinde Öğrenci Motivasyonunu Nasıl Yüksek Tutarsınız?</div>
-        <div class="blog-excerpt">Uzun sınav maratonunda öğrencilerin motivasyonunu korumak için kanıtlanmış stratejiler ve pratik teknikler.</div>
-        <div class="blog-meta"><span>10 Nis 2026</span><span>5 dk okuma</span></div>
+        <span class="blog-tag" style="background:rgba(232,97,58,.14);color:var(--acc)">Motivasyon</span>
+        <div class="blog-title">YKS Sürecinde Öğrenci Motivasyonunu Nasıl Korursunuz?</div>
+        <div class="blog-excerpt">Uzun sınav maratonunda düşen tempoyu erken uyarılarla yakalamak ve mikro hedeflerle toparlamak.</div>
+        <div class="blog-meta"><span>Strateji</span><span>5 dk okuma</span></div>
       </div>
     </div>
-    <div class="blog-card" style="cursor:pointer" onclick="openPost(this)">
-      <div class="blog-thumb" style="background:rgba(96,180,255,.06)">📄</div>
+    <div class="blog-card" data-slug="veli-raporlama" onclick="openPost(this)">
+      <div class="blog-thumb" style="background:rgba(77,166,255,.08)">📄</div>
       <div class="blog-body">
-        <span class="blog-tag" style="background:rgba(96,180,255,.1);color:#60b4ff">Raporlama</span>
-        <div class="blog-title">Velilere Etkili Rapor Hazırlamak: Format ve İçerik Önerileri</div>
-        <div class="blog-excerpt">Velilerin anlayacağı, güven veren raporlar nasıl hazırlanır? Koçluk ilişkisini güçlendiren rapor formatı.</div>
-        <div class="blog-meta"><span>2 Nis 2026</span><span>4 dk okuma</span></div>
+        <span class="blog-tag" style="background:rgba(77,166,255,.14);color:#4da6ff">Raporlama</span>
+        <div class="blog-title">Velilere Etkili Rapor Hazırlamak: İçerik ve Düzen</div>
+        <div class="blog-excerpt">Velilerin net okuyacağı, güven veren haftalık performans karneleri nasıl hazırlanır?</div>
+        <div class="blog-meta"><span>Raporlama</span><span>4 dk okuma</span></div>
       </div>
     </div>
   </div>
 </main>
-<footer>© 2026 Rostrum Akademi · <a href="privacy.html">Gizlilik</a> · <a href="terms.html">Koşullar</a></footer>
-<div id="postModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;overflow-y:auto;padding:60px 20px">
-  <div style="max-width:700px;margin:0 auto;background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:36px;position:relative">
-    <button onclick="document.getElementById('postModal').style.display='none'" style="position:absolute;top:16px;right:16px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:18px;color:var(--mid);display:flex;align-items:center;justify-content:center">×</button>
-    <div id="postContent"></div>
+<footer>© 2026 Rostrum Akademi · <a href="mailto:rostrumakademi@gmail.com">rostrumakademi@gmail.com</a> · <a href="privacy.html">Gizlilik</a> · <a href="terms.html">Koşullar</a> · <a href="kvkk.html">KVKK</a></footer>
+<div id="postModal" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:100;overflow-y:auto;padding:60px 20px">
+  <div style="max-width:720px;margin:0 auto;background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:36px;position:relative">
+    <button onclick="document.getElementById('postModal').style.display='none'" aria-label="Kapat" style="position:absolute;top:16px;right:16px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:18px;color:var(--mid);display:flex;align-items:center;justify-content:center">×</button>
+    <div id="postContent" class="post-article"></div>
   </div>
 </div>
 <script>
-function openPost(card){
-  const title=card.querySelector('.blog-title').textContent;
-  const excerpt=card.querySelector('.blog-excerpt').textContent;
-  const tag=card.querySelector('.blog-tag').textContent;
-  const emoji=card.querySelector('.blog-thumb').textContent;
-  const meta=card.querySelectorAll('.blog-meta span');
-  document.getElementById('postContent').innerHTML=`
-    <div style="font-size:48px;margin-bottom:16px">${emoji}</div>
+const POST_ARTICLES = {
+  'haftalik-program': `
+    <p>Haftalık çalışma programı, yalnızca öğrenciye ödev listesi vermek değildir; öğrencinin zamanını, enerjisini ve dikkatini gerçekçi hedeflerle dengelemektir.</p>
+    <h2>1. Süreyi Değil Hızı Baz Alın</h2>
+    <p>Her öğrencinin 40 Matematik sorusunu veya 30 Paragraf sorusunu çözme süresi farklıdır. Sabit saatler yazmak yerine öğrencinin soru çözme hızını ölçerek gerçekçi bloklar oluşturun.</p>
+    <h2>2. Zor ve Kolay Dersleri Dengeleyin</h2>
+    <ul>
+      <li><strong>Ağır sayısal/konu öğrenme blokları:</strong> Zihnin en dinç olduğu ilk çalışma saatlerine yerleştirin.</li>
+      <li><strong>Tekrar ve soru çözüm blokları:</strong> Günün ikinci yarısına veya yorucu derslerin arkasına koyun.</li>
+      <li><strong>Tampon zaman bırakın:</strong> Haftanın bir akşamını veya Pazar gününün yarısını telafi saati olarak ayırın.</li>
+    </ul>
+    <h2>3. Pazartesi Geceden Değil Hafta Sonundan Kilitleyin</h2>
+    <p>Öğrenci Pazartesi sabahı kalktığında ne çalışacağını düşünmek zorunda kalmamalıdır. Net görev adları ve kaynak/test numaraları program uyumluluğunu ciddi oranda artırır.</p>`,
+  'deneme-analizi': `
+    <p>Deneme sınavı netini yalnızca toplam puan olarak okumak, eksik konuları görmeyi engeller. Asıl gelişim yanlış ve boşların kategorize edilmesiyle başlar.</p>
+    <h2>Doğru – Yanlış – Boş Ayrımı</h2>
+    <ul>
+      <li><strong>Bilgi eksikliği:</strong> Konu hiç öğrenilmemiş veya unutulmuşsa haftalık programa konu tekrarı ekleyin.</li>
+      <li><strong>Dikkat / işlem hatası:</strong> Tekrar eden işlem hataları genelde yorgunluk veya süre baskısından kaynaklanır; branş denemesi temposunu düzenleyin.</li>
+      <li><strong>Zaman yetişmemesi:</strong> Turlama tekniği ve ders geçiş süreleri üzerine çalışın.</li>
+    </ul>
+    <h2>Trend Takibi</h2>
+    <p>Tek bir denemedeki düşüş moral bozmamalı; son 4-5 denemenin hareketli ortalamasına bakarak gerçek yönü değerlendirmek gerekir.</p>`,
+  'saglikli-iletisim': `
+    <p>Öğrencinin programına sadık kalması, koçundan aldığı geri bildirimin tonu ve netliğiyle yakından ilişkilidir.</p>
+    <h2>Güveni Koruyan 4 Alışkanlık</h2>
+    <ul>
+      <li><strong>Önce dinleyin:</strong> Görev tamamlanmadığında yargılamak yerine "Bu hafta seni en çok ne zorladı?" sorusuyla kök nedeni anlayın.</li>
+      <li><strong>Sınırları netleştirin:</strong> Mesajlaşma ve görüşme saatlerini başta tanımlamak hem koçun hem öğrencinin verimini korur.</li>
+      <li><strong>Küçük ilerlemeleri görünür kılın:</strong> Tamamlanan testler veya azalan yanlış sayıları haftalık değerlendirmede mutlaka vurgulayın.</li>
+      <li><strong>Veli ile şeffaf olun:</strong> Haftalık özet raporlarla veliye düzenli bilgi verin, kulaktan dolma yorumları azaltın.</li>
+    </ul>`,
+  'dijital-kocluk': `
+    <p>Öğrenci sayısı 5'i geçtiğinde kağıt notlar, WhatsApp sohbetleri ve ayrı Excel dosyaları koçun zamanının büyük kısmını yönetimsel işlere harcatır.</p>
+    <h2>Tek Panel Yaklaşımı Neyi Değiştirir?</h2>
+    <ul>
+      <li><strong>Merkezi kaynak havuzu:</strong> Bir kez tanımladığınız soru bankasını veya YouTube oynatma listesini tüm öğrencilere tek tıkla atarsınız.</li>
+      <li><strong>Anlık durum takibi:</strong> Hangi öğrencinin görevini yaptığını veya 3 gündür sisteme girmediğini sormadan erken uyarılarla görürsünüz.</li>
+      <li><strong>Standart veli sunumu:</strong> Her hafta sıfırdan özet yazmak yerine tek tıkla markalı PDF karne paylaşırsınız.</li>
+    </ul>`,
+  'yks-motivasyon': `
+    <p>YKS 9-10 aylık uzun bir süreçtir. Motivasyon her gün yüksek kalmaz; bu yüzden sürdürülebilir olan şey motivasyon değil, doğru kurgulanmış sistemdir.</p>
+    <h2>Tükenmişliği Önlemek İçin</h2>
+    <ul>
+      <li><strong>Aşırı yüklemeden kaçının:</strong> Her gün 10 saatlik gerçekçi olmayan hedefler yerine tamamlanabilir %85-90 hedef bandı kurun.</li>
+      <li><strong>Erken sinyalleri yakalayın:</strong> İki gün üst üste görev aksatan veya zorlandığı ders artan öğrenciyle kısa bir ara görüşme yapın.</li>
+      <li><strong>Hedef görselleştirmesi:</strong> Öğrencinin hedeflediği üniversite/bölüm net aralığını aylık mikro basamaklara bölün.</li>
+    </ul>`,
+  'veli-raporlama': `
+    <p>Veliler sınav sürecinde çocuklarının ne kadar ve ne yönde ilerlediğini görmek ister. Net, sade ve görsel bir rapor güven duygusunu pekiştirir.</p>
+    <h2>İyi Bir Haftalık Raporda Neler Olmalı?</h2>
+    <ul>
+      <li><strong>Haftalık tamamlama oranı:</strong> Verilen görevlerin ne kadarının tamamlandığı ve çözülen toplam soru sayısı.</li>
+      <li><strong>Ders bazında dağılım:</strong> Hangi derslere ağırlık verildiği ve varsa zorlanılan başlıklar.</li>
+      <li><strong>Güncel deneme özeti:</strong> Son denemelerdeki net değişimi.</li>
+      <li><strong>Koçun kısa değerlendirmesi:</strong> Bir sonraki hafta için 2-3 cümlelik somut eylem planı.</li>
+    </ul>`
+};
+
+function openPost(card) {
+  const title = card.querySelector('.blog-title').textContent;
+  const excerpt = card.querySelector('.blog-excerpt').textContent;
+  const tag = card.querySelector('.blog-tag').textContent;
+  const emoji = card.querySelector('.blog-thumb').textContent;
+  const slug = card.getAttribute('data-slug') || '';
+  const meta = card.querySelectorAll('.blog-meta span');
+  const bodyHtml = POST_ARTICLES[slug] || `<p>${excerpt}</p>`;
+  document.getElementById('postContent').innerHTML = `
+    <div style="font-size:44px;margin-bottom:14px">${emoji}</div>
     <div style="font-size:11px;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${tag}</div>
-    <h1 style="font-family:'Geist',sans-serif;font-size:28px;font-weight:800;letter-spacing:-1px;margin-bottom:12px;line-height:1.2">${title}</h1>
-    <div style="font-size:12px;color:var(--dim);margin-bottom:24px">${meta[0]?.textContent||''} · ${meta[1]?.textContent||''}</div>
-    <p style="font-size:15px;color:var(--mid);line-height:1.8;margin-bottom:16px">${excerpt}</p>
-    <p style="font-size:15px;color:var(--mid);line-height:1.8;margin-bottom:16px">Bu yazının tam içeriği yakında yayınlanacak. Rostrum Akademi bloğunu takip etmeye devam edin.</p>
-    <div style="background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.15);border-radius:12px;padding:16px 18px;margin-top:24px">
-      <div style="font-size:13px;font-weight:700;color:var(--acc);margin-bottom:6px">Platformu deneyin</div>
-      <div style="font-size:13px;color:var(--mid)">Rostrum Akademi ile koçluk sürecinizi dijitalleştirin.</div>
-      <a href="index.html#register" style="display:inline-block;margin-top:10px;background:var(--acc);color:#07060a;padding:8px 20px;border-radius:9px;font-size:13px;font-weight:700;text-decoration:none">Ücretsiz Başla →</a>
+    <h1 style="font-family:'Geist',sans-serif;font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:10px;line-height:1.2">${title}</h1>
+    <div style="font-size:12px;color:var(--dim);margin-bottom:24px">${meta[0]?.textContent || ''} · ${meta[1]?.textContent || ''}</div>
+    <p style="font-size:15px;color:var(--text);font-weight:500;line-height:1.75;margin-bottom:16px">${excerpt}</p>
+    ${bodyHtml}
+    <div style="background:rgba(232,97,58,.08);border:1px solid rgba(232,97,58,.2);border-radius:12px;padding:16px 18px;margin-top:24px">
+      <div style="font-size:13px;font-weight:700;color:var(--acc);margin-bottom:6px">Platformu 7 gün ücretsiz deneyin</div>
+      <div style="font-size:13px;color:var(--mid)">Rostrum Akademi ile tüm koçluk sürecinizi tek panelden yönetin.</div>
+      <a href="index.html#register" style="display:inline-block;margin-top:10px;background:var(--acc);color:#ffffff;padding:8px 20px;border-radius:9px;font-size:13px;font-weight:700;text-decoration:none">Ücretsiz Başla →</a>
     </div>`;
-  document.getElementById('postModal').style.display='block';
+  document.getElementById('postModal').style.display = 'block';
 }
 </script>
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};</script>

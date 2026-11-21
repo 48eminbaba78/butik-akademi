@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Öğrenci Kaydı — Rostrum Akademi</title>
   <meta name="description" content="Koçunuzun davetiyle Rostrum Akademi'ye katılın.">
-  <link rel="icon" href="/favicon.ico">
+  <link rel="canonical" href="https://rostrumakademi.com/davet.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -212,7 +214,8 @@
 <body>
 
   <header class="topbar">
-    <div class="logo">Rostrum<span>Akademi</span></div>
+    <a href="/index.html" class="logo" style="display:flex;align-items:center;gap:8px;text-decoration:none"><img src="/logo.png" alt="Rostrum Akademi Logo" style="height:28px;width:auto;border-radius:6px">Rostrum <span>Akademi</span></a>
+    <a href="/index.html" style="font-size:13px;color:var(--muted);text-decoration:none">← Ana Sayfa</a>
   </header>
 
   <main>
@@ -550,7 +553,7 @@
           });
 
         // Mark invitation as used (authenticated student JWT ile)
-        let acceptToken = signUpData?.session?.access_token || '';
+        let acceptToken = authData?.session?.access_token || '';
         if (!acceptToken) {
           const { data: signInData } = await db.auth.signInWithPassword({ email: studentEmail, password });
           acceptToken = signInData?.session?.access_token || '';

@@ -414,6 +414,36 @@ function passwordResetEmail({ action_link }) {
 </td></tr>`);
 }
 
+function escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function contactFormEmail({ name, email, subject, message, phone, source }) {
+  const safeMsg = escHtml(message).replace(/\n/g, '<br>');
+  return wrap(`
+<tr><td style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:36px 40px;text-align:center;border-bottom:4px solid #E8613A">
+  <div style="font-size:40px;margin-bottom:10px">📩</div>
+  <h1 style="color:#ffffff;font-size:22px;font-weight:800;margin:0 0 6px">Yeni İletişim Formu Mesajı</h1>
+  <p style="color:#ff9e80;margin:0;font-size:14px">${escHtml(subject || 'Genel Soru')}</p>
+</td></tr>
+<tr><td style="padding:36px 40px">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:24px">
+    <tr><td style="padding:14px 18px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#334155"><strong>Gönderen:</strong> ${escHtml(name)}</td></tr>
+    <tr><td style="padding:14px 18px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#334155"><strong>E-posta:</strong> <a href="mailto:${escHtml(email)}" style="color:#E8613A">${escHtml(email)}</a></td></tr>
+    ${phone ? `<tr><td style="padding:14px 18px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#334155"><strong>Telefon:</strong> ${escHtml(phone)}</td></tr>` : ''}
+    <tr><td style="padding:14px 18px;font-size:13px;color:#334155"><strong>Kaynak:</strong> ${escHtml(source || 'contact.html')}</td></tr>
+  </table>
+  <div style="background:#ffffff;border-left:4px solid #E8613A;padding:16px 20px;border:1px solid #e2e8f0;border-left-width:4px;border-radius:8px;font-size:14px;color:#1e293b;line-height:1.7">
+    ${safeMsg}
+  </div>
+</td></tr>`);
+}
+
 function applicationEmail({ student_name, status, coach_name, invite_link }) {
   const isAccepted = status === 'accepted';
   const name = student_name || 'Öğrencimiz';
@@ -548,6 +578,94 @@ export default async function handler(req, res) {
         : '📋 Başvurunuz hakkında bilgi — Rostrum Akademi';
       await sendEmail(data.to, subject, applicationEmail(data));
       return res.status(200).json({ success: true });
+    }
+
+    if (type === 'contact_form') {
+      const name = String(data.name || '').trim();
+      const email = String(data.email || '').trim().toLowerCase();
+      const subject = String(data.subject || 'Genel Soru').trim();
+      const message = String(data.message || '').trim();
+      const phone = String(data.phone || '').trim();
+      const source = String(data.source || 'contact').trim();
+
+      if (!name || !email || !message) {
+        return res.status(400).json({ error: 'Ad, e-posta ve mesaj alanları zorunludur.' });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Geçerli bir e-posta adresi girin.' });
+      }
+
+      const nameParts = name.split(/\s+/);
+      const first_name = nameParts[0] || name;
+      const last_name = nameParts.slice(1).join(' ');
+      const noteText = `[İletişim · ${subject}]${phone ? ' Tel: ' + phone : ''}\n${message}`.slice(0, 2000);
+
+      let saved = false;
+      if (SB_SERVICE_KEY) {
+        try {
+          const admin = createClient(SB_URL, SB_SERVICE_KEY, {
+            auth: { autoRefreshToken: false, persistSession: false }
+          });
+          const { error: insertErr } = await admin.from('leads').insert({
+            first_name,
+            last_name,
+            brand_name: `[İLETİŞİM: ${subject}]`.slice(0, 120),
+            email,
+            phone: phone || '-',
+            student_count: 0,
+            plan: 'contact',
+            notes: noteText,
+            status: 'pending',
+            source,
+            role: 'contact'
+          });
+          if (!insertErr) {
+            saved = true;
+          } else if (insertErr.code === '23505') {
+            const { data: existing } = await admin
+              .from('leads')
+              .select('id, notes')
+              .eq('email', email)
+              .maybeSingle();
+            if (existing?.id) {
+              const mergedNotes = [existing.notes, `--- (${new Date().toISOString().slice(0, 10)}) ---\n${noteText}`]
+                .filter(Boolean)
+                .join('\n')
+                .slice(0, 4000);
+              const { error: updErr } = await admin
+                .from('leads')
+                .update({ notes: mergedNotes, status: 'pending' })
+                .eq('id', existing.id);
+              if (!updErr) saved = true;
+            }
+          } else {
+            console.warn('[contact_form leads insert]', insertErr.message);
+          }
+        } catch (dbErr) {
+          console.warn('[contact_form db error]', dbErr.message);
+        }
+      }
+
+      let emailed = false;
+      try {
+        const adminTo = process.env.ADMIN_EMAIL || 'rostrumakademi@gmail.com';
+        await sendEmail(
+          adminTo,
+          `📩 Yeni İletişim Mesajı [${subject}] — ${name}`,
+          contactFormEmail({ name, email, subject, message, phone, source })
+        );
+        emailed = true;
+      } catch (mailErr) {
+        console.warn('[contact_form mail error]', mailErr.message);
+      }
+
+      if (!saved && !emailed) {
+        return res.status(500).json({
+          error: 'Mesaj şu anda gönderilemedi. Lütfen doğrudan rostrumakademi@gmail.com adresine yazın.'
+        });
+      }
+
+      return res.status(200).json({ success: true, saved, emailed });
     }
 
     if (type === 'password_reset') {

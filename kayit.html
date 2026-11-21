@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ücretsiz Başla — Rostrum Akademi</title>
   <meta name="description" content="7 gün ücretsiz deneyin. Öğrencilerinizin YKS gelişimini tek platformda yönetin.">
-  <link rel="icon" href="/favicon.ico">
+  <link rel="canonical" href="https://rostrumakademi.com/kayit.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -272,8 +274,11 @@
 <body>
 
   <nav class="topbar">
-    <div class="logo">Rostrum <span>Akademi</span></div>
-    <a href="/app.html" class="topbar-login">Giriş Yap →</a>
+    <a href="/index.html" class="logo" style="display:flex;align-items:center;gap:8px;text-decoration:none"><img src="/logo.png" alt="Rostrum Akademi Logo" style="height:28px;width:auto;border-radius:6px">Rostrum <span>Akademi</span></a>
+    <div style="display:flex;align-items:center;gap:18px">
+      <a href="/index.html" class="topbar-login">Ana Sayfa</a>
+      <a href="/app.html" class="topbar-login">Giriş Yap →</a>
+    </div>
   </nav>
 
   <main>
@@ -352,7 +357,7 @@
         </form>
 
         <div class="terms-note">
-          Kaydolarak <a href="/terms.html">Kullanım Koşulları</a>'nı ve <a href="/privacy.html">Gizlilik Politikası</a>'nı kabul etmiş olursunuz.
+          Kaydolarak <a href="/terms.html" target="_blank">Kullanım Koşulları</a>'nı, <a href="/privacy.html" target="_blank">Gizlilik Politikası</a>'nı ve <a href="/kvkk.html" target="_blank">KVKK Aydınlatma Metni</a>'ni kabul etmiş olursunuz.
         </div>
 
         <div class="divider">veya</div>
@@ -366,6 +371,8 @@
 
   <script>
     const API_URL = '/api/create-student';
+    const urlPlan = new URLSearchParams(window.location.search).get('plan');
+    const selectedPlanTier = ['bireysel', 'profesyonel'].includes(urlPlan) ? urlPlan : 'bireysel';
 
     async function handleSignup(e) {
       e.preventDefault();
@@ -384,7 +391,7 @@
         const res = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'coach', full_name: fullName, email, password })
+          body: JSON.stringify({ type: 'coach', full_name: fullName, email, password, plan_tier: selectedPlanTier })
         });
         const data = await res.json();
 

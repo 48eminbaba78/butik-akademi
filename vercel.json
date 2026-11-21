@@ -14,7 +14,14 @@
   },
   "rewrites": [
     { "source": "/admin/(.*)", "destination": "/admin/dist/index.html" },
-    { "source": "/koc/:slug", "destination": "/koc_bul.html?koc=:slug" }
+    { "source": "/koc/:slug", "destination": "/koc_bul.html?koc=:slug" },
+    { "source": "/app", "destination": "/app.html" },
+    { "source": "/kayit", "destination": "/kayit.html" },
+    { "source": "/davet", "destination": "/davet.html" },
+    { "source": "/fiyatlar", "destination": "/pricing.html" },
+    { "source": "/hakkimizda", "destination": "/about.html" },
+    { "source": "/iletisim", "destination": "/contact.html" },
+    { "source": "/blog", "destination": "/blog.html" }
   ],
   "headers": [
     {
