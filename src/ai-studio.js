@@ -542,3 +542,80 @@ export function parseCopilotStructuredReply(reply) {
     draft: draft || 'Taslak üretilemedi.',
   };
 }
+
+function _parseIsoUtcMs(iso) {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) return null;
+  const [y, m, d] = String(iso).split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+function _fmtUtcIso(utcMs) {
+  const dt = new Date(utcMs);
+  const y = dt.getUTCFullYear();
+  const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(dt.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Hedef tarihin (YYYY-MM-DD) mevcut hafta başlangıcına göre hafta farkını (offset) hesaplar.
+ */
+export function computeWeekOffsetForDate(targetDateIso, currentWeekStartDate) {
+  const targetMs = _parseIsoUtcMs(targetDateIso);
+  if (targetMs === null || !(currentWeekStartDate instanceof Date) || Number.isNaN(currentWeekStartDate.getTime())) {
+    return 0;
+  }
+  const baseMs = Date.UTC(
+    currentWeekStartDate.getFullYear(),
+    currentWeekStartDate.getMonth(),
+    currentWeekStartDate.getDate()
+  );
+  const diffDays = Math.round((targetMs - baseMs) / 86400000);
+  return Math.floor(diffDays / 7);
+}
+
+/**
+ * AI taslak görevlerini takvim haftalarına (weekOffset) göre özetler.
+ */
+export function summarizeDraftWeeks(tasks = [], currentWeekStartDate) {
+  if (!(currentWeekStartDate instanceof Date) || Number.isNaN(currentWeekStartDate.getTime())) {
+    return [];
+  }
+  const baseMs = Date.UTC(
+    currentWeekStartDate.getFullYear(),
+    currentWeekStartDate.getMonth(),
+    currentWeekStartDate.getDate()
+  );
+  const byOffset = new Map();
+
+  for (const t of (tasks || [])) {
+    if (!t?.date) continue;
+    const targetMs = _parseIsoUtcMs(t.date);
+    if (targetMs === null) continue;
+    const diffDays = Math.round((targetMs - baseMs) / 86400000);
+    const offset = Math.floor(diffDays / 7);
+
+    let bucket = byOffset.get(offset);
+    if (!bucket) {
+      const startMs = baseMs + offset * 7 * 86400000;
+      const endMs = startMs + 6 * 86400000;
+      bucket = {
+        offset,
+        startIso: _fmtUtcIso(startMs),
+        endIso: _fmtUtcIso(endMs),
+        totalCount: 0,
+        selectedCount: 0,
+        minutes: 0,
+      };
+      byOffset.set(offset, bucket);
+    }
+
+    bucket.totalCount += 1;
+    if (t.selected !== false) {
+      bucket.selectedCount += 1;
+      bucket.minutes += Math.max(0, Number(t.duration) || 0);
+    }
+  }
+
+  return [...byOffset.values()].sort((a, b) => a.offset - b.offset);
+}

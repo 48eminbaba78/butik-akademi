@@ -23,7 +23,8 @@ import {
   INTENSITY_PRESETS, COPILOT_MODES, AI_PROGRAM_PRESETS,
   formatMinuteRangeHours, computeStudentAIContext, buildPresetInstruction,
   computeBranchDistribution, buildGroundedCopilotPrompt,
-  buildCopilotFallbackReply, parseCopilotStructuredReply
+  buildCopilotFallbackReply, parseCopilotStructuredReply,
+  computeWeekOffsetForDate, summarizeDraftWeeks
 } from './ai-studio.js';
 
 function formatMinToHours(mins) {
@@ -1717,9 +1718,12 @@ function openStudentDetail(stuId){
               <div id="aiProgramDayChips" class="aip-day-chips"></div>
               <div class="aip-preview-bar">
                 <span class="aip-preview-lbl">Önizleme &amp; Düzenleme</span>
-                <div class="aip-mode-toggle">
-                  <button type="button" id="aipModeDailyBtn" class="aip-mode-btn active" onclick="setAIProgramPreviewMode('daily')">📅 Gün Gün</button>
-                  <button type="button" id="aipModeBranchBtn" class="aip-mode-btn" onclick="setAIProgramPreviewMode('branch')">📚 Branş Branş</button>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <button type="button" class="btn btn-accent btn-xs" onclick="viewAIDraftOnProgramScreen('${s.id}')" style="font-weight:700">📅 Mevcut Program Ekranında Gör</button>
+                  <div class="aip-mode-toggle">
+                    <button type="button" id="aipModeDailyBtn" class="aip-mode-btn active" onclick="setAIProgramPreviewMode('daily')">📅 Gün Gün</button>
+                    <button type="button" id="aipModeBranchBtn" class="aip-mode-btn" onclick="setAIProgramPreviewMode('branch')">📚 Branş Branş</button>
+                  </div>
                 </div>
               </div>
               <div id="aiProgramRows" class="aip-rows"></div>
@@ -1766,6 +1770,11 @@ function openStudentDetail(stuId){
   const _tt1=document.getElementById('tbarTitle'); if(_tt1) _tt1.textContent = s.name;
   _loadCoachNoteForStudent(stuId);
   _hydrateAIStudioResources(s.id);
+  if (_aiProgramState.stuId === stuId && _aiProgramState.draft?.tasks?.length) {
+    _renderAIProgramPreview();
+    const resArea = document.getElementById('aiProgramResultArea');
+    if (resArea) resArea.style.display = 'block';
+  }
 }
 
 function setStuActiveSeg(btn) {
@@ -2746,19 +2755,21 @@ function saveGeminiKey(){
 // ═══════════════════════════════════════════════
 let _taskDate='';
 // ── Görev kartı (koç/öğrenci ortak) — hem haftalık liste hem saatlik "Saatsiz" bölümünde kullanılır ──
-function _taskCardHtml(t, ds, ti, role){
+function _taskCardHtml(t, ds, ti, role, opts = {}){
   const timeBadge = t.start_time ? `<div class="tc-time-badge">🕒 ${t.start_time}</div>` : '';
   const roleArg = role==='coach' ? 'coach' : 'student';
   const toggleFn = role==='coach' ? `toggleTask('${ds}',${ti})` : `openTaskDetail('${ds}',${ti},'student','completed')`;
   const menuBtn = role==='coach' ? `<button class="tc-menu-btn" onclick="event.stopPropagation();showTaskMenu('${ds}',${ti},this)">⋯</button>` : '';
+  const replaceBadge = opts?.willReplace ? `<div class="ai-will-replace-tag">🔄 Onayda yeni öneriyle değişecek</div>` : '';
   return `
-    <div data-task-id="${t._id}" class="task-card task-${t.type} ${t.done?'done':''} ${t.start_time?'hourly-card':''}" onclick="openTaskDetail('${ds}',${ti},'${roleArg}')" style="cursor:pointer">
+    <div data-task-id="${t._id}" class="task-card task-${t.type} ${t.done?'done':''} ${t.start_time?'hourly-card':''} ${opts?.willReplace?'will-replace-card':''}" onclick="openTaskDetail('${ds}',${ti},'${roleArg}')" style="cursor:pointer">
       <div class="tc-check ${t.done?'on':''}" onclick="event.stopPropagation();${toggleFn}"></div>
       <div class="tc-body">
         ${timeBadge}
         <div class="tc-type">${typeLabel(t.type)}${t.exam?' · '+t.exam:''}</div>
         <div class="tc-subject">${esc(t.subject)}</div>
         <div class="tc-meta">${t.duration} dk</div>
+        ${replaceBadge}
       </div>
       ${menuBtn}
     </div>`;
@@ -2886,7 +2897,7 @@ function _parseTaskSubject(rawSubject) {
   return { branch: s || 'Diğer', resource: 'Genel / Manuel' };
 }
 
-function _collectSubjectTasks(stuId, wStart, rangeKey) {
+function _collectSubjectTasks(stuId, wStart, rangeKey, includeAIDrafts = false) {
   if (!stuId) return [];
   const daysCount = rangeKey === '7d' ? 7 : rangeKey === '14d' ? 14 : 60;
   const rows = [];
@@ -2896,21 +2907,44 @@ function _collectSubjectTasks(stuId, wStart, rangeKey) {
     const list = S.tasks[`${stuId}_${ds}`] || [];
     list.forEach((t, ti) => {
       const { branch, resource } = _parseTaskSubject(t.subject);
-      rows.push({ t, ds, ti, dateObj: d, branch, resource });
+      rows.push({ t, ds, ti, dateObj: d, branch, resource, isAIDraft: false });
+    });
+  }
+  if (includeAIDrafts && _aiProgramState.stuId === stuId && _aiProgramState.draft?.tasks?.length) {
+    const rangeStartIso = fmtDate(wStart);
+    const rangeEndIso = fmtDate(addDays(wStart, daysCount - 1));
+    _aiProgramState.draft.tasks.forEach((t, idx) => {
+      if (!t?.date || t.date < rangeStartIso || t.date > rangeEndIso) return;
+      const [y, m, d] = t.date.split('-').map(Number);
+      const { branch, resource } = _parseTaskSubject(t.subject);
+      rows.push({
+        t: { ...t, exam: t.exam_type || t.exam },
+        ds: t.date,
+        ti: idx,
+        dateObj: new Date(y, m - 1, d),
+        branch,
+        resource,
+        isAIDraft: true,
+        aiIdx: idx,
+      });
     });
   }
   return rows;
 }
 
 function _renderSubjectTaskRowHtml(entry, role) {
-  const { t, ds, ti, dateObj, resource } = entry;
+  const { t, ds, ti, dateObj, resource, isAIDraft, aiIdx } = entry;
   const roleArg = role === 'coach' ? 'coach' : 'student';
-  const toggleFn = role === 'coach'
-    ? `toggleTask('${ds}',${ti})`
-    : `openTaskDetail('${ds}',${ti},'student','completed')`;
-  const menuBtn = role === 'coach'
-    ? `<button class="tc-menu-btn" style="opacity:.75" onclick="event.stopPropagation();showTaskMenu('${ds}',${ti},this)">⋯</button>`
-    : '';
+  const toggleFn = isAIDraft
+    ? `_toggleAIRow(${aiIdx}, ${t.selected === false})`
+    : role === 'coach'
+      ? `toggleTask('${ds}',${ti})`
+      : `openTaskDetail('${ds}',${ti},'student','completed')`;
+  const menuBtn = isAIDraft
+    ? `<button type="button" class="ai-draft-tool-btn" title="Öneriyi kaldır" onclick="event.stopPropagation();_removeAIRow(${aiIdx})">✕</button>`
+    : role === 'coach'
+      ? `<button class="tc-menu-btn" style="opacity:.75" onclick="event.stopPropagation();showTaskMenu('${ds}',${ti},this)">⋯</button>`
+      : '';
   const shortDow = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'][dateObj.getDay()];
   const dateLbl = `${dateObj.getDate()} ${MONTHS_TR[dateObj.getMonth()].slice(0,3)} ${shortDow}`;
   const items = Array.isArray(t.task_items) ? t.task_items : [];
@@ -2922,7 +2956,7 @@ function _renderSubjectTaskRowHtml(entry, role) {
       const raw = it.label || it;
       const clean = cleanTestLabel(raw, resource);
       const unit = it.soru ? (isVideo ? `${it.soru} dk` : `${it.soru}s`) : '';
-      const itemDone = !!(it.done || t.done);
+      const itemDone = !isAIDraft && !!(it.done || t.done);
       return `<span class="subj-item-pill ${itemDone ? 'done' : ''}">${itemDone ? '✓ ' : ''}${esc(clean)}${unit ? ` <span class="subj-item-unit">${unit}</span>` : ''}</span>`;
     }).join('');
     detailHtml += `<div class="subj-items-wrap">${pills}</div>`;
@@ -2933,10 +2967,17 @@ function _renderSubjectTaskRowHtml(entry, role) {
     detailHtml += `<div class="subj-task-note">${esc(t.note)}</div>`;
   }
 
-  return `<div class="subj-task-row ${t.done ? 'done' : ''}" data-task-id="${t._id}" onclick="openTaskDetail('${ds}',${ti},'${roleArg}')">
-    <div class="tc-check ${t.done ? 'on' : ''}" onclick="event.stopPropagation();${toggleFn}"></div>
+  const rowCls = isAIDraft
+    ? `subj-task-row ai-draft-subj-row ${t.selected === false ? 'unchecked' : ''}`
+    : `subj-task-row ${t.done ? 'done' : ''}`;
+  const rowClick = isAIDraft ? '' : `onclick="openTaskDetail('${ds}',${ti},'${roleArg}')"`;
+  const chkOn = isAIDraft ? (t.selected !== false) : !!t.done;
+
+  return `<div class="${rowCls}" ${isAIDraft ? '' : `data-task-id="${t._id}"`} ${rowClick}>
+    <div class="tc-check ${chkOn ? 'on' : ''}" onclick="event.stopPropagation();${toggleFn}"></div>
     <div class="subj-task-body">
       <div class="subj-task-top">
+        ${isAIDraft ? '<span class="ai-subj-badge">✨ AI ÖNERİ</span>' : ''}
         <span class="subj-date-pill">${dateLbl}</span>
         <span class="subj-type-pill type-${t.type}">${typeLabel(t.type)}${t.exam ? ' · ' + esc(t.exam) : ''}</span>
         ${t.start_time ? `<span class="subj-time-pill">🕒 ${esc(t.start_time)}</span>` : ''}
@@ -2950,7 +2991,7 @@ function _renderSubjectTaskRowHtml(entry, role) {
 
 function _subjectProgramViewHtml(stuId, wStart, role) {
   if (!stuId) return '<div class="empty"><p>Program görüntülemek için öğrenci seçin</p></div>';
-  const rows = _collectSubjectTasks(stuId, wStart, _subjRange);
+  const rows = _collectSubjectTasks(stuId, wStart, _subjRange, role === 'coach');
   const rangeEnd = addDays(wStart, (_subjRange === '7d' ? 7 : _subjRange === '14d' ? 14 : 60) - 1);
   const rangeOpts = [
     { id: '7d',  lbl: 'Bu Hafta (7 Gün)' },
@@ -3071,6 +3112,148 @@ function setSubjRange(range) {
   else renderProgram();
 }
 
+function _getAIDraftDateRange(stuId) {
+  if (!stuId || _aiProgramState.stuId !== stuId || !_aiProgramState.draft?.tasks?.length) return null;
+  const dates = _aiProgramState.draft.tasks
+    .filter(t => t.selected !== false && t.subject && t.date)
+    .map(t => t.date)
+    .sort();
+  if (!dates.length) return null;
+  return { minDate: dates[0], maxDate: dates[dates.length - 1] };
+}
+
+function _getAIDraftTasksForDate(stuId, ds) {
+  if (!stuId || _aiProgramState.stuId !== stuId || !_aiProgramState.draft?.tasks?.length) return [];
+  const out = [];
+  _aiProgramState.draft.tasks.forEach((t, idx) => {
+    if (t?.date === ds) out.push({ t, idx });
+  });
+  return out;
+}
+
+function _aiDraftTaskCardHtml(t, idx) {
+  const isSelected = t.selected !== false;
+  const isEditing = _aiProgramState.editingIdx === idx;
+  const typeLbl = t.type === 'konu' ? 'KONU' : t.type === 'soru' ? 'SORU' : t.type === 'deneme' ? 'DENEME' : 'DİĞER';
+  const items = Array.isArray(t.task_items) ? t.task_items : [];
+  const itemsHtml = !isEditing && items.length
+    ? `<div class="ai-draft-items">${items.slice(0, 3).map(it => {
+        const lbl = typeof it === 'string' ? it : (it.label || it.title || it.name || '');
+        return `<span class="ai-draft-item-chip">${esc(lbl)}</span>`;
+      }).join('')}${items.length > 3 ? `<span class="ai-draft-item-chip">+${items.length - 3}</span>` : ''}</div>`
+    : '';
+
+  const editHtml = isEditing
+    ? `<div class="ai-draft-edit-box" onclick="event.stopPropagation()">
+        <input type="text" value="${escAttr(t.subject || '')}" placeholder="Branş - Kaynak" onchange="_onAIRowChange(${idx}, 'subject', this.value)">
+        <div class="ai-draft-edit-row">
+          <input type="date" value="${escAttr(t.date || '')}" onchange="_onAIRowChange(${idx}, 'date', this.value)" style="flex:1">
+          <input type="number" value="${Number(t.duration) || 30}" min="5" step="5" onchange="_onAIRowChange(${idx}, 'duration', this.value)" style="width:68px">
+          <span style="font-size:11px;color:var(--text-dim)">dk</span>
+        </div>
+        <input type="text" value="${escAttr(t.note || '')}" placeholder="Konu / kapsam notu" onchange="_onAIRowChange(${idx}, 'note', this.value)">
+        <button type="button" class="btn btn-accent btn-xs" onclick="toggleEditAIDraftRow(null)" style="align-self:flex-end">✓ Düzenlemeyi Kapat</button>
+      </div>`
+    : '';
+
+  return `
+    <div class="task-card ai-draft-card ${isSelected ? '' : 'unchecked'}">
+      <div class="ai-draft-card-top">
+        <div class="tc-check ${isSelected ? 'on' : ''}" onclick="event.stopPropagation();_toggleAIRow(${idx}, ${!isSelected})" title="${isSelected ? 'Bu öneriyi devre dışı bırak' : 'Bu öneriyi dahil et'}"></div>
+        <div class="tc-body" style="min-width:0;flex:1">
+          <div class="ai-draft-head-badges">
+            <span class="ai-draft-pill">✨ AI ÖNERİ</span>
+            <button type="button" class="ai-draft-type-btn" onclick="event.stopPropagation();_cycleAIRowType(${idx})" title="Görev türünü değiştir">${typeLbl} · ${esc(t.exam_type || 'TYT')}</button>
+          </div>
+          <div class="tc-subject">${esc(t.subject || '')}</div>
+          <div class="tc-meta">${Number(t.duration) || 30} dk</div>
+          ${t.note ? `<div class="ai-draft-note">${esc(t.note)}</div>` : ''}
+          ${itemsHtml}
+        </div>
+        <div class="ai-draft-card-tools">
+          <button type="button" class="ai-draft-tool-btn" title="Düzenle" onclick="event.stopPropagation();toggleEditAIDraftRow(${idx})">✏️</button>
+          <button type="button" class="ai-draft-tool-btn" title="Öneriden kaldır" onclick="event.stopPropagation();_removeAIRow(${idx})">✕</button>
+        </div>
+      </div>
+      ${editHtml}
+    </div>`;
+}
+
+function _formatShortIsoSpan(startIso, endIso) {
+  const fmtPart = iso => {
+    const [, m, d] = iso.split('-').map(Number);
+    return `${d} ${(MONTHS_TR[m - 1] || '').slice(0, 3)}`;
+  };
+  return `${fmtPart(startIso)} – ${fmtPart(endIso)}`;
+}
+
+function _renderProgramAIDraftBannerHtml(stuId, ws) {
+  if (!stuId || _aiProgramState.stuId !== stuId || !_aiProgramState.draft?.tasks?.length) return '';
+  const draft = _aiProgramState.draft;
+  const allTasks = draft.tasks || [];
+  const selectedTasks = allTasks.filter(t => t.selected !== false);
+  const totalMin = selectedTasks.reduce((s, t) => s + (Number(t.duration) || 0), 0);
+  const dist = computeBranchDistribution(allTasks);
+  const weekSummaries = summarizeDraftWeeks(allTasks, getWeekStart(0, ws));
+  const showWeekPills = weekSummaries.length > 1 || (weekSummaries.length === 1 && weekSummaries[0].offset !== S.weekOffset);
+
+  const weekPillsHtml = showWeekPills
+    ? `<div class="ai-prog-ov-weeks">
+        <span style="font-size:11px;font-weight:700;color:var(--text-dim)">Öneri Haftaları:</span>
+        ${weekSummaries.map(w => `
+          <button type="button" class="ai-prog-week-btn ${w.offset === S.weekOffset ? 'active' : ''}" onclick="jumpToAIProgramWeek(${w.offset})">
+            📅 ${esc(_formatShortIsoSpan(w.startIso, w.endIso))} (${w.selectedCount} öneri · ${formatMinToHours(w.minutes)})
+          </button>`).join('')}
+      </div>`
+    : '';
+
+  const branchStripHtml = dist.length
+    ? `<div class="ai-prog-ov-branch-row">
+        <div class="ai-prog-ov-branch-bar">
+          ${dist.map(d => `<div style="width:${Math.max(4, d.pct)}%;background:${d.color}" title="${escAttr(d.branch)}: ${d.minutes} dk (%${d.pct})"></div>`).join('')}
+        </div>
+        <div class="aip-branch-legend">
+          ${dist.map(d => `<span class="aip-branch-leg-item"><i class="aip-branch-dot" style="background:${d.color}"></i><b>${esc(d.branch)}</b> %${d.pct}</span>`).join('')}
+        </div>
+      </div>`
+    : '';
+
+  const curConflict = _aiProgramState.conflictMode || 'append';
+  const conflictHtml = _aiProgramState.existingCountInRange > 0
+    ? `<div class="ai-prog-ov-conflict">
+        <span>Tarih aralığında mevcut <b>${_aiProgramState.existingCountInRange}</b> görev var:</span>
+        <label><input type="radio" name="aiProgBannerConflictMode" value="append" ${curConflict !== 'replace_pending' ? 'checked' : ''} onchange="setAIProgramConflictMode(this.value)"> Üzerine ekle</label>
+        <label><input type="radio" name="aiProgBannerConflictMode" value="replace_pending" ${curConflict === 'replace_pending' ? 'checked' : ''} onchange="setAIProgramConflictMode(this.value)"> Bekleyenleri temizle &amp; yaz</label>
+      </div>`
+    : '';
+
+  return `
+    <div class="ai-prog-overlay-banner" id="aiProgOverlayBanner">
+      <div class="ai-prog-ov-top">
+        <div class="ai-prog-ov-title-wrap">
+          <div class="ai-prog-ov-badges">
+            <span class="ai-prog-ov-pill">✨ AI Önerilen Program Önizlemesi</span>
+            <span class="ai-prog-ov-stat">${selectedTasks.length} görev · ${formatMinToHours(totalMin)}</span>
+            ${_aiProgramState.provider ? `<span class="ai-prog-ov-stat">${esc(_aiProgramState.provider)}${_aiProgramState.model ? ' · ' + esc(_aiProgramState.model) : ''}</span>` : ''}
+          </div>
+          <div class="ai-prog-ov-summary">${esc(draft.summary || 'Öğrenci verileri doğrultusunda önerilen taslak aşağıdaki gün sütunlarına yerleştirildi.')}</div>
+        </div>
+        <div class="ai-prog-ov-actions">
+          <button type="button" id="aiProgramBannerApproveBtn" class="btn btn-accent btn-sm" onclick="approveAIProgramDraft('${stuId}')" ${selectedTasks.length === 0 ? 'disabled' : ''} style="font-weight:700">✅ Onayla ve Kaydet (${selectedTasks.length})</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="openAIStudioListForStudent('${stuId}')">🎛️ Stüdyoda Aç</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="discardAIProgramDraft()">🗑️ Kapat</button>
+        </div>
+      </div>
+      ${weekPillsHtml}
+      ${branchStripHtml}
+      ${conflictHtml}
+      <div class="ai-prog-ov-revise">
+        <input type="text" id="aiProgInlineReviseInput" class="aip-revise-input" placeholder="Program ekranından revizyon iste (örn: Perşembeyi hafiflet, fizik yerine kimya ekle)..." onkeydown="if(event.key==='Enter'){event.preventDefault();reviseAIProgramFromProgramView('${stuId}');}">
+        <button type="button" id="aiProgInlineReviseBtn" class="btn btn-ghost btn-sm" onclick="reviseAIProgramFromProgramView('${stuId}')">🔄 Revize Et</button>
+      </div>
+    </div>`;
+}
+
 function renderProgram(){
   const el=document.getElementById('view-program');
   const stu=S.students.find(s=>s.id===S.activeStuId);
@@ -3080,6 +3263,7 @@ function renderProgram(){
   const today=todayStr();
   const progMode = localStorage.getItem('ra_program_mode') || 'weekly';
   const selIdx=_resolveSelDayIdx(wStart,today);
+  const aiRange = _aiProgramState.conflictMode === 'replace_pending' ? _getAIDraftDateRange(S.activeStuId) : null;
 
   let dayCards='',stripMeta=[];
   if (progMode !== 'subject') {
@@ -3093,7 +3277,18 @@ function renderProgram(){
       const doneMin=tasks.reduce((s,t)=>s+(t.done?Number(t.duration):0),0);
       const dayLabel=DAYS_TR[(ws+i)%7];
 
-      const taskHtml = _dayTasksBodyHtml(ds, tasks, 'coach', progMode);
+      const aiDayDrafts = _getAIDraftTasksForDate(S.activeStuId, ds);
+      const aiDaySelected = aiDayDrafts.filter(x => x.t.selected !== false);
+      const aiDayMin = aiDaySelected.reduce((sum, x) => sum + (Number(x.t.duration) || 0), 0);
+      const aiDraftHtml = aiDayDrafts.map(({ t, idx }) => _aiDraftTaskCardHtml(t, idx)).join('');
+
+      let taskHtml;
+      if (progMode === 'hourly') {
+        taskHtml = _dayTasksBodyHtml(ds, tasks, 'coach', progMode);
+      } else {
+        const replaceDayActive = Boolean(aiRange && ds >= aiRange.minDate && ds <= aiRange.maxDate);
+        taskHtml = tasks.map((t, ti) => _taskCardHtml(t, ds, ti, 'coach', { willReplace: replaceDayActive && !t.done })).join('');
+      }
 
       const shortDay = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][(ws+i)%7];
       stripMeta.push({shortDay,dateNum:d.getDate(),isToday});
@@ -3105,10 +3300,11 @@ function renderProgram(){
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
             <span class="day-badge" style="font-size:8.5px">${formatMinToHours(doneMin)} / ${formatMinToHours(totalMin)}</span>
+            ${aiDayDrafts.length > 0 ? `<span class="day-badge ai-day-badge" style="font-size:8.5px" title="AI tarafından önerilen görevler">✨ +${formatMinToHours(aiDayMin)} (${aiDaySelected.length} öneri)</span>` : ''}
             ${_clipboardTask?`<button class="btn btn-ghost btn-xs" onclick="pasteTaskFromClipboard('${ds}')" style="font-size:9px;color:var(--accent);border-color:rgba(240,165,0,.3);background:var(--accent-dim);padding:2px 6px">Yapıştır</button>`:''}
           </div>
         </div>
-        <div class="day-tasks-list ${progMode==='hourly'?'tl-mode':''}">${taskHtml||''}</div>
+        <div class="day-tasks-list ${progMode==='hourly'?'tl-mode':''}">${taskHtml||''}${aiDraftHtml}</div>
         <button class="add-day-btn" onclick="openTaskModal('${ds}','${dayLabel}')" ${!S.activeStuId?'disabled':''}>+ Görev Ekle</button>
       </div>`;
     }
@@ -3136,6 +3332,7 @@ function renderProgram(){
         <button class="btn btn-danger btn-sm" onclick="openClearWeekModal()">Temizle</button>
       </div>
     </div>
+    ${_renderProgramAIDraftBannerHtml(S.activeStuId, ws)}
     <div class="week-nav" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div style="display:flex;gap:6px;align-items:center">
         <button class="btn btn-ghost btn-sm" onclick="chWeek(-1)">←</button>
@@ -14954,6 +15151,8 @@ let _aiProgramState = {
   stuId: null,
   draft: null,
   previewMode: 'daily',
+  conflictMode: 'append',
+  editingIdx: null,
   existingCountInRange: 0,
   provider: '',
   model: '',
@@ -14966,6 +15165,7 @@ function openAIProgramForStudent() {
     showToast('Önce bir öğrenci seçin.');
     return;
   }
+  _activeAIStudioTab = 'program';
   openStudentDetail(S.activeStuId);
   setTimeout(() => {
     const box = document.getElementById('aiProgramBuilderBox');
@@ -14973,6 +15173,63 @@ function openAIProgramForStudent() {
     const promptEl = document.getElementById('aiProgramPrompt');
     if (promptEl) promptEl.focus();
   }, 140);
+}
+
+function viewAIDraftOnProgramScreen(stuId) {
+  const s = S.students.find(x => x.id === stuId);
+  if (!s) return;
+  const tasks = (_aiProgramState.stuId === stuId ? _aiProgramState.draft?.tasks : null) || [];
+  const dates = tasks.filter(t => t.selected !== false && t.date).map(t => t.date).sort();
+  if (dates.length) {
+    S.weekOffset = computeWeekOffsetForDate(dates[0], getWeekStart(0, s.weekStart ?? 0));
+    saveS();
+  }
+  openStudentProgram(stuId);
+}
+
+function openAIStudioListForStudent(stuId) {
+  _activeAIStudioTab = 'program';
+  if (document.getElementById('aiProgramBuilderBox') && S.activeStuId === stuId) {
+    switchTab('student-detail');
+    switchAIStudioTab('program');
+  } else {
+    openStudentDetail(stuId);
+  }
+  setTimeout(() => {
+    const target = document.getElementById('aiProgramResultArea') || document.getElementById('aiProgramBuilderBox');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 140);
+}
+
+function discardAIProgramDraft() {
+  _aiProgramState.draft = null;
+  _aiProgramState.editingIdx = null;
+  _aiProgramState.conflictMode = 'append';
+  const resArea = document.getElementById('aiProgramResultArea');
+  const rowsEl = document.getElementById('aiProgramRows');
+  if (resArea) resArea.style.display = 'none';
+  if (rowsEl) rowsEl.innerHTML = '';
+  if (currentTab === 'program') renderProgram();
+  showToast('AI program önerisi kapatıldı');
+}
+
+function setAIProgramConflictMode(mode) {
+  _aiProgramState.conflictMode = mode === 'replace_pending' ? 'replace_pending' : 'append';
+  document.querySelectorAll('input[name="aiProgConflictMode"], input[name="aiProgBannerConflictMode"]').forEach(el => {
+    el.checked = el.value === _aiProgramState.conflictMode;
+  });
+  if (currentTab === 'program') renderProgram();
+}
+
+function jumpToAIProgramWeek(offset) {
+  S.weekOffset = Number(offset) || 0;
+  saveS();
+  renderProgram();
+}
+
+function toggleEditAIDraftRow(idx) {
+  _aiProgramState.editingIdx = (idx === null || _aiProgramState.editingIdx === idx) ? null : idx;
+  if (currentTab === 'program') renderProgram();
 }
 
 async function generateAIProgramDraft(stuId) {
@@ -14983,21 +15240,29 @@ async function reviseAIProgramDraft(stuId) {
   await _requestAIProgramDraft(stuId, true);
 }
 
-async function _requestAIProgramDraft(stuId, isRevision) {
+async function reviseAIProgramFromProgramView(stuId) {
+  const inlineInput = document.getElementById('aiProgInlineReviseInput');
+  const text = (inlineInput?.value || '').trim();
+  await _requestAIProgramDraft(stuId, true, text);
+}
+
+async function _requestAIProgramDraft(stuId, isRevision, customRevisionPrompt = '') {
   const s = S.students.find(x => x.id === stuId);
   if (!s) return;
 
   const startDate = document.getElementById('aiProgStartDate')?.value || todayStr();
   const daysCount = Math.max(1, Math.min(14, parseInt(document.getElementById('aiProgDays')?.value, 10) || 7));
-  const minDaily = Math.max(30, parseInt(document.getElementById('aiProgMinDaily')?.value, 10) || 270);
-  const maxDaily = Math.max(minDaily, parseInt(document.getElementById('aiProgMaxDaily')?.value, 10) || 330);
+  const minDaily = Math.max(30, parseInt(document.getElementById('aiProgMinDaily')?.value, 10) || _aiProgramState.minDaily || 270);
+  const maxDaily = Math.max(minDaily, parseInt(document.getElementById('aiProgMaxDaily')?.value, 10) || _aiProgramState.maxDaily || 330);
   const videoSpeed = parseFloat(document.getElementById('aiProgVideoSpeed')?.value || '1.5') || 1.5;
   const rawCoachPrompt = (document.getElementById('aiProgramPrompt')?.value || '').trim();
   const restDay = (document.getElementById('aiProgRestDay')?.value || '').trim();
   const coachPrompt = (restDay && !rawCoachPrompt.toLowerCase().includes(restDay.toLowerCase()))
     ? `${rawCoachPrompt}${rawCoachPrompt ? ' ' : ''}${restDay} gününü hafif dinlenme / boş gün bırak.`
     : rawCoachPrompt;
-  const revisionPrompt = isRevision ? (document.getElementById('aiProgramRevisePrompt')?.value || '').trim() : '';
+  const revisionPrompt = isRevision
+    ? (customRevisionPrompt || (document.getElementById('aiProgramRevisePrompt')?.value || '').trim())
+    : '';
 
   if (isRevision && !revisionPrompt) {
     showToast('Lütfen önce bir revizyon isteği yazın.');
@@ -15010,11 +15275,13 @@ async function _requestAIProgramDraft(stuId, isRevision) {
 
   const genBtn = document.getElementById('aiProgramBtn');
   const revBtn = document.getElementById('aiProgramReviseBtn');
+  const inlineRevBtn = document.getElementById('aiProgInlineReviseBtn');
   const statusEl = document.getElementById('aiProgramStatusMsg');
   const errBox = document.getElementById('aiProgramErrorBox');
   if (errBox) { errBox.style.display = 'none'; errBox.textContent = ''; }
   if (genBtn) { genBtn.disabled = true; genBtn.textContent = isRevision ? '📋 Akıllı Program Oluştur' : '⌛ Veriler Analiz Ediliyor...'; }
   if (revBtn) { revBtn.disabled = true; if (isRevision) revBtn.textContent = '⌛ Revize Ediliyor...'; }
+  if (inlineRevBtn) { inlineRevBtn.disabled = true; inlineRevBtn.textContent = '⌛ Revize Ediliyor...'; }
   if (statusEl) statusEl.textContent = isRevision ? 'Revizyon hazırlanıyor...' : 'Öğrenci verileri, denemeler, hızlar ve kaynaklar işleniyor...';
 
   try {
@@ -15059,6 +15326,8 @@ async function _requestAIProgramDraft(stuId, isRevision) {
         tasks: data.tasks.map((t, idx) => ({ ...t, _idx: idx, selected: true })),
       },
       previewMode: _aiProgramState.previewMode || 'daily',
+      conflictMode: isRevision ? (_aiProgramState.conflictMode || 'append') : 'append',
+      editingIdx: null,
       existingCountInRange: Number(data.existingCountInRange || 0),
       provider: data.provider || '',
       model: data.model || '',
@@ -15069,15 +15338,22 @@ async function _requestAIProgramDraft(stuId, isRevision) {
     if (isRevision) {
       const revInput = document.getElementById('aiProgramRevisePrompt');
       if (revInput) revInput.value = '';
+      const inlineInput = document.getElementById('aiProgInlineReviseInput');
+      if (inlineInput) inlineInput.value = '';
+    }
+
+    const firstDate = _aiProgramState.draft.tasks.map(t => t.date).filter(Boolean).sort()[0];
+    if (firstDate) {
+      S.weekOffset = computeWeekOffsetForDate(firstDate, getWeekStart(0, s.weekStart ?? 0));
+      saveS();
     }
 
     _renderAIProgramPreview();
     const resArea = document.getElementById('aiProgramResultArea');
-    if (resArea) {
-      resArea.style.display = 'block';
-      setTimeout(() => resArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
-    }
-    showToast(isRevision ? '🔄 Program revize edildi ✓' : '📋 Akıllı program taslağı hazır ✓');
+    if (resArea) resArea.style.display = 'block';
+
+    openStudentProgram(stuId);
+    showToast(isRevision ? '🔄 Program revize edildi ve program ekranında güncellendi ✓' : '✨ Önerilen program mevcut program ekranına yerleştirildi ✓');
   } catch (e) {
     console.error('_requestAIProgramDraft error:', e);
     if (errBox) {
@@ -15088,6 +15364,7 @@ async function _requestAIProgramDraft(stuId, isRevision) {
   } finally {
     if (genBtn) { genBtn.disabled = false; genBtn.textContent = '📋 Akıllı Program Oluştur'; }
     if (revBtn) { revBtn.disabled = false; revBtn.textContent = '🔄 Revize Et'; }
+    if (inlineRevBtn) { inlineRevBtn.disabled = false; inlineRevBtn.textContent = '🔄 Revize Et'; }
     if (statusEl) statusEl.textContent = '';
   }
 }
@@ -15153,13 +15430,13 @@ function _renderAIProgramMetaAndChips() {
   const conflictEl = document.getElementById('aiProgramConflictBox');
   if (conflictEl) {
     if (existingCountInRange > 0) {
-      const curMode = document.querySelector('input[name="aiProgConflictMode"]:checked')?.value || 'append';
+      const curMode = _aiProgramState.conflictMode || 'append';
       conflictEl.style.display = 'block';
       conflictEl.innerHTML = `
         <div class="aip-conflict-title">📅 Seçili tarih aralığında öğrencinin halihazırda <strong>${existingCountInRange}</strong> görevi var:</div>
         <div class="aip-conflict-opts">
-          <label><input type="radio" name="aiProgConflictMode" value="append" ${curMode !== 'replace_pending' ? 'checked' : ''}> Mevcut görevlerin üzerine ekle</label>
-          <label><input type="radio" name="aiProgConflictMode" value="replace_pending" ${curMode === 'replace_pending' ? 'checked' : ''}> Seçili tarihlerdeki bekleyen (tamamlanmamış) görevleri temizle ve yaz</label>
+          <label><input type="radio" name="aiProgConflictMode" value="append" ${curMode !== 'replace_pending' ? 'checked' : ''} onchange="setAIProgramConflictMode(this.value)"> Mevcut görevlerin üzerine ekle</label>
+          <label><input type="radio" name="aiProgConflictMode" value="replace_pending" ${curMode === 'replace_pending' ? 'checked' : ''} onchange="setAIProgramConflictMode(this.value)"> Seçili tarihlerdeki bekleyen (tamamlanmamış) görevleri temizle ve yaz</label>
         </div>`;
     } else {
       conflictEl.style.display = 'none';
@@ -15305,12 +15582,21 @@ function _renderAIProgramPreview() {
   _renderAIProgramRows();
 }
 
+function _syncAIProgramViews(rerenderRows = true) {
+  if (document.getElementById('aiProgramMetaBanner')) {
+    _renderAIProgramMetaAndChips();
+    if (rerenderRows) _renderAIProgramRows();
+  }
+  if (currentTab === 'program') {
+    renderProgram();
+  }
+}
+
 function _toggleAIRow(idx, checked) {
   const t = _aiProgramState.draft?.tasks?.[idx];
   if (!t) return;
   t.selected = !!checked;
-  _renderAIProgramMetaAndChips();
-  _renderAIProgramRows();
+  _syncAIProgramViews(true);
 }
 
 function _onAIRowChange(idx, field, value) {
@@ -15325,14 +15611,15 @@ function _onAIRowChange(idx, field, value) {
   } else if (field === 'note') {
     t.note = String(value || '').trim();
   }
-  _renderAIProgramMetaAndChips();
-  if (field === 'date') _renderAIProgramRows();
+  _syncAIProgramViews(field === 'date');
 }
 
 function _removeAIRow(idx) {
   if (!_aiProgramState.draft?.tasks) return;
   _aiProgramState.draft.tasks.splice(idx, 1);
-  _renderAIProgramPreview();
+  if (_aiProgramState.editingIdx === idx) _aiProgramState.editingIdx = null;
+  else if (_aiProgramState.editingIdx !== null && _aiProgramState.editingIdx > idx) _aiProgramState.editingIdx--;
+  _syncAIProgramViews(true);
 }
 
 function _cycleAIRowType(idx) {
@@ -15341,7 +15628,7 @@ function _cycleAIRowType(idx) {
   const order = ['konu', 'soru', 'deneme'];
   const next = order[(order.indexOf(t.type) + 1) % order.length];
   t.type = next;
-  _renderAIProgramPreview();
+  _syncAIProgramViews(true);
 }
 
 function _addManualAIRow(date) {
@@ -15360,7 +15647,7 @@ function _addManualAIRow(date) {
     selected: true,
   });
   _aiProgramState.draft.tasks = tasks;
-  _renderAIProgramPreview();
+  _syncAIProgramViews(true);
 }
 
 function _scrollToAIDay(date) {
@@ -15376,10 +15663,12 @@ async function approveAIProgramDraft(stuId) {
   if (!selected.length) return showToast('Eklenecek görev kalmadı.');
 
   const btn = document.getElementById('aiProgramApproveBtn');
+  const bannerBtn = document.getElementById('aiProgramBannerApproveBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Kaydediliyor...'; }
+  if (bannerBtn) { bannerBtn.disabled = true; bannerBtn.textContent = 'Kaydediliyor...'; }
 
   try {
-    const conflictMode = document.querySelector('input[name="aiProgConflictMode"]:checked')?.value || 'append';
+    const conflictMode = _aiProgramState.conflictMode || document.querySelector('input[name="aiProgConflictMode"]:checked')?.value || 'append';
     const dates = [...new Set(selected.map(t => t.date))].sort();
     const minDate = dates[0];
     const maxDate = dates[dates.length - 1];
@@ -15435,7 +15724,10 @@ async function approveAIProgramDraft(stuId) {
       });
     });
 
+    saveCache();
     _aiProgramState.draft = null;
+    _aiProgramState.editingIdx = null;
+    _aiProgramState.conflictMode = 'append';
     const resArea = document.getElementById('aiProgramResultArea');
     const rowsEl = document.getElementById('aiProgramRows');
     if (resArea) resArea.style.display = 'none';
@@ -15452,6 +15744,10 @@ async function approveAIProgramDraft(stuId) {
     if (btn) {
       btn.disabled = false;
       btn.textContent = '✅ Programı Onayla ve Kaydet';
+    }
+    if (bannerBtn) {
+      bannerBtn.disabled = false;
+      bannerBtn.textContent = '✅ Onayla ve Kaydet';
     }
   }
 }
@@ -19385,8 +19681,15 @@ window.assignResourceAsTask = assignResourceAsTask;
 window.confirmAssignResource = confirmAssignResource;
 window.sendCopilotDraft = sendCopilotDraft;
 window.openAIProgramForStudent = openAIProgramForStudent;
+window.viewAIDraftOnProgramScreen = viewAIDraftOnProgramScreen;
+window.openAIStudioListForStudent = openAIStudioListForStudent;
+window.discardAIProgramDraft = discardAIProgramDraft;
+window.setAIProgramConflictMode = setAIProgramConflictMode;
+window.jumpToAIProgramWeek = jumpToAIProgramWeek;
+window.toggleEditAIDraftRow = toggleEditAIDraftRow;
 window.generateAIProgramDraft = generateAIProgramDraft;
 window.reviseAIProgramDraft = reviseAIProgramDraft;
+window.reviseAIProgramFromProgramView = reviseAIProgramFromProgramView;
 window.setAIProgramPreviewMode = setAIProgramPreviewMode;
 window._toggleAIRow = _toggleAIRow;
 window._onAIRowChange = _onAIRowChange;
