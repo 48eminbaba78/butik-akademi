@@ -575,6 +575,161 @@ function addDaysIso(isoDate, delta) {
   return new Date(Date.UTC(y, m - 1, d + delta)).toISOString().slice(0, 10);
 }
 
+const BLOCKER_LABELS_AI = {
+  time: 'Zamanı yetmedi',
+  topic: 'Konuyu anlayamadı',
+  hard: 'Kaynak çok zordu',
+  moti: 'Motivasyon yok',
+};
+
+const EXAM_SCHEDULE_AI = {
+  LGS:  { month: 5, day: 7,  label: 'LGS'  },
+  KPSS: { month: 6, day: 14, label: 'KPSS' },
+  ALES: { month: 4, day: 10, label: 'ALES' },
+  DGS:  { month: 6, day: 20, label: 'DGS'  },
+  YDS:  { month: 3, day: 15, label: 'YDS'  },
+  YKS:  { month: 5, day: 14, label: 'YKS'  },
+};
+
+function computeExamPhaseContext(startDateIso, examProfile) {
+  const key = String(examProfile || 'YKS').toUpperCase().split(/[\s_-]/)[0];
+  const cfg = EXAM_SCHEDULE_AI[key] || EXAM_SCHEDULE_AI.YKS;
+  const baseDate = /^\d{4}-\d{2}-\d{2}$/.test(String(startDateIso || ''))
+    ? new Date(`${startDateIso}T09:00:00Z`)
+    : new Date();
+  let year = baseDate.getUTCFullYear();
+  let examDate = new Date(Date.UTC(year, cfg.month, cfg.day, 9, 0, 0));
+  if (baseDate > examDate) {
+    year += 1;
+    examDate = new Date(Date.UTC(year, cfg.month, cfg.day, 9, 0, 0));
+  }
+  const daysLeft = Math.max(1, Math.ceil((examDate.getTime() - baseDate.getTime()) / 86400000));
+  let phase = 'Sınav Kampı & Deneme Fazı (Yoğun branş/genel deneme + öğrenci geri bildirimlerindeki yanlış/zorlanılan konulara nokta atışı telafi)';
+  if (daysLeft > 180) {
+    phase = 'Temel & Konu İnşa Fazı (Konu ilerlemesi + kademeli soru bankası + günlük paragraf/problem rutini)';
+  } else if (daysLeft >= 90) {
+    phase = 'Konu Tamamlama & Pekiştirme Fazı (Eksik konuları hızla bitirme + konu anlatımı bitenlerde yoğun soru taraması + aralıklı tekrar)';
+  }
+  return {
+    exam_label: `${cfg.label} ${year}`,
+    exam_date: examDate.toISOString().slice(0, 10),
+    days_left: daysLeft,
+    phase,
+  };
+}
+
+function buildTopicProgressSummary(masteryRows, nowMs) {
+  const completedBySubject = {};
+  const completedExamples = [];
+  const inProgressKaDone = [];
+  const weakOrStaleTopics = [];
+  let totalCompletedTd = 0;
+
+  for (const m of (masteryRows || [])) {
+    const stars = Number(m.stars || 0);
+    const status = m.status || 'not_started';
+    const daysSince = m.last_review_date
+      ? Math.max(0, Math.floor((nowMs - new Date(m.last_review_date).getTime()) / 86400000))
+      : 999;
+
+    if (status === 'td' || stars >= 7) {
+      totalCompletedTd++;
+      completedBySubject[m.subject] = (completedBySubject[m.subject] || 0) + 1;
+      if (completedExamples.length < 10) {
+        completedExamples.push(`${m.subject}: ${m.konu}`);
+      }
+      continue;
+    }
+
+    if (status === 'not_started' && stars === 0 && !m.ka_date) continue;
+
+    if (status === 'active' || m.ka_date || (stars >= 3 && stars <= 6)) {
+      inProgressKaDone.push({
+        subject: m.subject,
+        konu: m.konu,
+        stars,
+        ka_done: !!m.ka_date,
+        days_since_review: daysSince < 999 ? daysSince : null,
+      });
+    }
+
+    if (stars <= 3 || daysSince >= 14) {
+      weakOrStaleTopics.push({
+        subject: m.subject,
+        konu: m.konu,
+        stars,
+        days_since_review: daysSince < 999 ? daysSince : null,
+      });
+    }
+  }
+
+  weakOrStaleTopics.sort((a, b) => (a.stars - b.stars) || ((b.days_since_review || 0) - (a.days_since_review || 0)));
+
+  return {
+    completed_td_count: totalCompletedTd,
+    completed_by_subject: completedBySubject,
+    completed_examples: completedExamples,
+    in_progress_ka_done: inProgressKaDone.slice(0, 16),
+    weak_or_stale_topics: weakOrStaleTopics.slice(0, 16),
+  };
+}
+
+function extractStudentTaskFeedbacks(pastTasks) {
+  const feedbacks = [];
+  const remediationTopics = new Set();
+  const sortedDesc = [...(pastTasks || [])].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+  for (const t of sortedDesc) {
+    const fb = t.student_feedback || {};
+    const res = t.student_result || {};
+    const stuNote = String(t.student_note || '').trim();
+    const d = Number(res.dogru || 0);
+    const y = Number(res.yanlis || 0);
+    const b = Number(res.bos || 0);
+    const totalQ = d + y + b;
+    const accuracyPct = totalQ > 0 ? Math.round((d / totalQ) * 100) : null;
+    const wrongTopics = Array.isArray(res.yanlis_konular)
+      ? res.yanlis_konular.filter(Boolean).map(x => String(x).trim()).filter(Boolean)
+      : [];
+    const diff = Number(fb.difficulty || 0);
+    const blockerLabel = fb.blocker ? (BLOCKER_LABELS_AI[fb.blocker] || String(fb.blocker)) : null;
+    const plannedMin = Number(t.duration || 0);
+    const spentMin = Number(fb.time_spent || 0);
+    const overrun = spentMin > 0 && plannedMin > 0 && spentMin >= plannedMin * 1.35 && (spentMin - plannedMin) >= 15;
+    const isStruggle = diff >= 4 || fb.status === 'failed' || fb.status === 'partial' || !!blockerLabel
+      || (accuracyPct !== null && accuracyPct < 65) || y >= 4 || wrongTopics.length > 0 || overrun;
+
+    if (!stuNote && !isStruggle) continue;
+
+    feedbacks.push({
+      date: t.date,
+      subject: t.subject,
+      topic_note: String(t.note || '').slice(0, 60),
+      status: fb.status || (t.done ? 'completed' : 'pending'),
+      difficulty: diff || null,
+      blocker_label: blockerLabel,
+      student_note: stuNote ? stuNote.slice(0, 140) : null,
+      accuracy_pct: accuracyPct,
+      wrong_topics: wrongTopics.slice(0, 4),
+      time_spent_vs_planned: spentMin > 0 ? `${spentMin}dk/${plannedMin}dk` : null,
+    });
+
+    if (isStruggle) {
+      if (wrongTopics.length) {
+        wrongTopics.slice(0, 3).forEach(wt => remediationTopics.add(`${t.subject} — ${wt}`));
+      } else {
+        remediationTopics.add(`${t.subject}${t.note ? ' (' + String(t.note).slice(0, 32) + ')' : ''}${blockerLabel ? ' [' + blockerLabel + ']' : ''}`);
+      }
+    }
+    if (feedbacks.length >= 15) break;
+  }
+
+  return {
+    student_task_feedbacks: feedbacks,
+    priority_remediation_topics: [...remediationTopics].slice(0, 10),
+  };
+}
+
 async function handleProgramBuilder(req, res) {
   try {
     const authHeader = req.headers['authorization'] || '';
@@ -614,13 +769,13 @@ async function handleProgramBuilder(req, res) {
 
     // 1. Öğrencinin TÜM verilerini ve aktif kaynak kataloğunu paralel çek
     const [stuRes, profRes, speedRes, bookRes, examRes, masteryRes, taskRes, msgRes, resCatalog] = await Promise.all([
-      userDb.from('users').select('id, full_name, target, yks_area, week_start, coach_id').eq('id', studentId).maybeSingle(),
+      userDb.from('users').select('id, full_name, target, exam_profile, yks_area, week_start, coach_id').eq('id', studentId).maybeSingle(),
       userDb.from('student_profiles').select('level, struggling_subjects, daily_capacity, coach_note, target_university, target_department, target_rank').eq('id', studentId).maybeSingle(),
       userDb.from('student_speeds').select('exam_type, subject, secs_per_question').eq('student_id', studentId),
       userDb.from('student_books').select('name, total_tests, completed_tests').eq('student_id', studentId),
       userDb.from('exams').select('name, date, exam_type, nets, exam_details').eq('student_id', studentId).order('date', { ascending: false }).limit(8),
-      userDb.from('konu_mastery').select('subject, konu, stars, status, last_review_date').eq('student_id', studentId),
-      userDb.from('tasks').select('id, date, type, exam_type, subject, duration, done, note, task_items').eq('student_id', studentId).gte('date', sixtyDaysAgo).order('date', { ascending: true }).limit(600),
+      userDb.from('konu_mastery').select('subject, konu, stars, status, last_review_date, ka_date, td_date').eq('student_id', studentId),
+      userDb.from('tasks').select('id, date, type, exam_type, subject, duration, done, note, task_items, student_note, student_result, student_feedback').eq('student_id', studentId).gte('date', sixtyDaysAgo).order('date', { ascending: true }).limit(600),
       userDb.from('messages').select('from_role, text, created_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(25),
       userDb.from('resources').select('id, exam_type, subject, publisher, name, resource_type, coach_id, active, tests').eq('active', true).limit(300),
     ]);
@@ -662,14 +817,9 @@ async function handleProgramBuilder(req, res) {
       `${t.date}|${t.exam_type || ''}|${t.subject}|${t.duration || 0}dk|${t.done ? 'yapildi' : 'bekliyor'}`
     );
 
-    const weakTopics = (masteryRes.data || [])
-      .filter(m => m.status !== 'td' && m.status !== 'not_started')
-      .map(m => {
-        const daysSince = m.last_review_date ? Math.floor((Date.now() - new Date(m.last_review_date).getTime()) / 86400000) : 999;
-        return { konu: m.konu, subject: m.subject, stars: m.stars, daysSince };
-      })
-      .filter(m => m.stars <= 2 || m.daysSince > 20)
-      .slice(0, 12);
+    const examCountdown = computeExamPhaseContext(startDate, student.exam_profile);
+    const topicProgress = buildTopicProgressSummary(masteryRes.data || [], Date.now());
+    const feedbackAnalysis = extractStudentTaskFeedbacks(pastTasks);
 
     const recentMessages = [...(msgRes.data || [])].reverse().map(m => `[${m.from_role}] ${m.text}`).slice(-8);
 
@@ -708,6 +858,7 @@ async function handleProgramBuilder(req, res) {
     const hintText = [
       coachPrompt,
       revisionPrompt,
+      feedbackAnalysis.priority_remediation_topics.join(' '),
       recentMessages.join(' '),
       (bookRes.data || []).map(b => b.name).join(' '),
     ].join(' ');
@@ -746,10 +897,15 @@ KESİN KURALLAR:
    - Katalogdaki (detailed_resources) bir kitap veya playlistten seçerken MUTLAKA tam "resource_id" ve o kaynağın "clusters[].remIdx" listesindeki GERÇEK indeksleri ("item_indices": [..]) ver. Zaten çözülmüş/izlenmiş kalemleri tekrar yazma!
    - Önce KONU (playlist) ardından aynı/sonraki günlerde SORU (kitap) sırasını koru (önce videosunu izlemeden ağır soru testi koyma).
    - Eğer koçun istediği kaynak katalogda YOKSA (örn. Apotemi Paragraf, Toprak Kurumsal TYT Matematik gibi), "resource_id": null bırak, "manual_source": "Kitap/Kanal Adı", "question_count" veya "estimated_minutes", ve "manual_items": ["Konu/Test açıklaması"] doldur.
-5. ÇIKTI JSON ŞEMASI:
+5. SINAVA KALAN GÜN, KONU İLERLEMESİ VE ÖĞRENCİ GERİ BİLDİRİMLERİ ÖNCELİĞİ:
+   - ÖĞRENCİ GERİ BİLDİRİMLERİ (student_task_feedbacks & priority_remediation_topics): Öğrencinin "Konuyu anlayamadım", "Kaynak çok zordu", "Yapamadım/Kısmen", "Zor/Çok Zor" dediği, not yazdığı veya doğruluk oranı düşük (<%65) çıkan konulara programın ilk günlerinde mutlaka telafi görevi yerleştir (konu anlaşılmadıysa kısa tekrar/video + orta seviye test; süre yetmediyse hız/soru pratiği).
+   - KONU İLERLEME DURUMU (topic_progress): Konu anlatımı bitmiş (in_progress_ka_done, 3-6 yıldız) konularda baştan video koyma, soru bankası taraması ve tekrar ver. Zayıf/unutulmuş (weak_or_stale_topics, 1-3 yıldız) konulara konu+soru ikilisi kur. progressPct değeri yüksek olan kitapları düzenli tamamla.
+   - SINAVA KALAN GÜN (exam_countdown: ${examCountdown.days_left} gün kaldı — ${examCountdown.phase}): Kalan güne göre konu inşası, pekiştirme veya deneme kampı dengesini gözet.
+   - AÇIKLAMA ZORUNLULUĞU: Çıktıdaki "summary" ve "notes" alanlarında sınava kalan günü (${examCountdown.days_left} gün), konu ilerleme durumunu ve öğrencinin hangi geri bildirimlerinin programa nasıl yansıtıldığını koça açıkça raporla.
+6. ÇIKTI JSON ŞEMASI:
 {
-  "summary": "Koça yönelik 2-3 cümlelik veri temelli plan özeti (hangi deneme/hız/talimat dikkate alındı)",
-  "notes": ["Önemli koçluk veya denge notu 1"],
+  "summary": "Koça yönelik 2-3 cümlelik veri temelli plan özeti (sınava kalan gün, konu ilerlemesi, öğrenci geri bildirimleri ve denemeler)",
+  "notes": ["Önemli koçluk, konu geri bildirimi telafisi veya denge notu 1"],
   "tasks": [
     {
       "date": "YYYY-MM-DD",
@@ -784,6 +940,17 @@ KESİN KURALLAR:
 
     const buildSnapshot = (compact) => ({
       student: baseStudentInfo,
+      exam_countdown: examCountdown,
+      topic_progress: compact
+        ? {
+            completed_td_count: topicProgress.completed_td_count,
+            completed_by_subject: topicProgress.completed_by_subject,
+            in_progress_ka_done: topicProgress.in_progress_ka_done.slice(0, 8),
+            weak_or_stale_topics: topicProgress.weak_or_stale_topics.slice(0, 10),
+          }
+        : topicProgress,
+      priority_remediation_topics: feedbackAnalysis.priority_remediation_topics.slice(0, compact ? 6 : 10),
+      student_task_feedbacks: feedbackAnalysis.student_task_feedbacks.slice(0, compact ? 8 : 15),
       student_speeds_secs_per_q: compactSpeeds,
       student_books: compact ? (bookRes.data || []).slice(0, 12) : (bookRes.data || []),
       recent_exams: (examRes.data || []).slice(0, compact ? 4 : 8).map(e =>
@@ -791,7 +958,6 @@ KESİN KURALLAR:
           ? { name: e.name, date: e.date, type: e.exam_type, nets: e.nets }
           : { name: e.name, date: e.date, type: e.exam_type, nets: e.nets, details: e.exam_details }
       ),
-      weak_topics_mastery: compact ? weakTopics.slice(0, 8) : weakTopics,
       avg_historical_daily_minutes: avgAssignedMin,
       active_program_sources: activeProgramSources,
       ...(compact ? {} : { recent_tasks_sample: recentTasksCompact }),
@@ -800,12 +966,13 @@ KESİN KURALLAR:
 
     const formatBuilderPrompt = (snap, idx) => {
       let msg = `HEDEF TARİHLER (${clampedDays} gün): ${JSON.stringify(targetDates)}
+SINAVA KALAN GÜN: ${examCountdown.days_left} gün (${examCountdown.exam_label} · ${examCountdown.phase})
 GÜNLÜK SÜRE HEDEFİ: ${minDaily} - ${maxDaily} dk
 VİDEO İZLEME HIZI: ${videoSpeed}x
 
 KOÇUN YÖNLENDİRMESİ VE ÖĞRENCİ MESAJI:
 """
-${coachPrompt || 'Öğrencinin mevcut verilerine, zayıf konularına ve kaldığı yerlere göre dengeli bir program oluştur.'}
+${coachPrompt || 'Sınava kalan günü, öğrencinin konu ilerlemesini ve çalıştığı konulara verdiği geri bildirimleri baz alarak dengeli bir program oluştur.'}
 """
 
 ÖĞRENCİ VERİLERİ (TEK GERÇEK KAYNAK):
@@ -817,7 +984,7 @@ ${JSON.stringify(idx.detailed)}
 DİĞER KATALOG KAYNAKLARI (yalnızca adları — gerekirse manual_source olarak kullanılabilir):
 ${JSON.stringify(idx.compactOthers)}
 
-ZORUNLU KURAL: Yukarıdaki TÜM ${clampedDays} GÜN (${targetDates.join(', ')}) için her güne 4-6 görev yazarak toplam ${clampedDays * 4}-${clampedDays * 6} görev üret. Her gün toplam ${minDaily}-${maxDaily} dk olmalı. Tek günlük veya az görevli eksik taslak DÖNDÜRME.`;
+ZORUNLU KURAL: Yukarıdaki TÜM ${clampedDays} GÜN (${targetDates.join(', ')}) için her güne 4-6 görev yazarak toplam ${clampedDays * 4}-${clampedDays * 6} görev üret. Her gün toplam ${minDaily}-${maxDaily} dk olmalı. Öğrenci geri bildirimlerinde zorlanılan/düşük doğruluklu/anlaşılmayan konulara ilk günlerde telafi ver ve summary içinde kalan gün, konu ilerlemesi ile bu geri bildirimleri özetle.`;
 
       if (previousDraft && revisionPrompt) {
         const prevCompact = (previousDraft.tasks || []).map(t => ({
@@ -834,7 +1001,8 @@ ${JSON.stringify(prevCompact)}`;
     };
 
     const groqSystemPrompt = `YKS koçluk planlayıcısısın. SADECE geçerli saf JSON döndür (markdown/yorum yok).
-KRİTİK: ${clampedDays} günün HER BİRİ için ayrı 4-6 görev üret (toplam en az ${clampedDays * 4} görev, her gün ${minDaily}-${maxDaily} dk). Örnek şemada 1 öğe olsa bile sen TÜM ${clampedDays} günü doldurmak ZORUNDASIN!
+KRİTİK: ${clampedDays} günün HER BİRİ için ayrı 4-6 görev üret (toplam en az ${clampedDays * 4} görev, her gün ${minDaily}-${maxDaily} dk).
+Sınava kalan gün (${examCountdown.days_left} gün · ${examCountdown.phase}), topic_progress (KA bitenlerde soru bankası, zayıflarda konu+soru) ve student_task_feedbacks / priority_remediation_topics verilerini ilk günlere telafi olarak mutlaka yansıt; summary'de açıkla.
 topic_note çok kısa (en fazla 5 kelime) olsun ki tüm ${clampedDays * 4}+ görev JSON'a eksiksiz sığsın.
 Video hızı ${videoSpeed}x (uzun videoları part_index/part_total ile 35-55 dk böl).
 Katalogda tam resource_id + remIdx içinden item_indices ver; katalog dışı için resource_id:null, manual_source, question_count/estimated_minutes, manual_items yaz.
@@ -886,6 +1054,13 @@ Katalogda tam resource_id + remIdx içinden item_indices ver; katalog dışı i�
       ...hydrated,
       provider: aiRes.provider,
       model: aiRes.model,
+      examCountdown,
+      topicProgressSummary: {
+        completedTdCount: topicProgress.completed_td_count,
+        kaDoneCount: topicProgress.in_progress_ka_done.length,
+        weakCount: topicProgress.weak_or_stale_topics.length,
+      },
+      feedbackCount: feedbackAnalysis.student_task_feedbacks.length,
       existingCountInRange: existingTasksInRange.length,
       existingTasksInRange: existingTasksInRange.slice(0, 30),
     });

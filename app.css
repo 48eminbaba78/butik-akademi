@@ -3255,6 +3255,404 @@ input[type="checkbox"]:checked {
   font-weight: 700 !important;
 }
 
+/* ── ROSTRUM AI KOÇLUK STÜDYOSU (.ai-studio-*) ───────────────── */
+#view-student-detail {
+  padding-bottom: 84px;
+}
+.ai-studio-card {
+  margin-top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(28, 25, 23, 0.04);
+}
+.ai-studio-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(232, 97, 58, 0.08) 0%, var(--surface) 60%);
+  border-bottom: 1px solid var(--border);
+}
+.ai-studio-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.ai-studio-ico {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  border: 1px solid rgba(232, 97, 58, 0.22);
+}
+.ai-studio-title {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+.ai-studio-sub {
+  margin: 2px 0 0 0;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+.ai-studio-tabs {
+  display: inline-flex;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 3px;
+  gap: 3px;
+}
+.ai-studio-tab {
+  border: none;
+  background: transparent;
+  color: var(--text-mid);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+.ai-studio-tab:hover {
+  color: var(--text);
+}
+.ai-studio-tab.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(232, 97, 58, 0.25);
+}
+
+/* Canlı Öğrenci Veri Şeridi */
+.ai-context-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.ai-ctx-cell {
+  padding: 12px 16px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ai-ctx-cell:last-child {
+  border-right: none;
+}
+.ai-ctx-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
+  color: var(--text-dim);
+}
+.ai-ctx-val {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ai-ctx-val.accent { color: var(--accent); }
+.ai-ctx-val.good { color: var(--green); }
+.ai-ctx-val.warn { color: #d97706; }
+.ai-ctx-val.crit { color: var(--red); }
+.ai-ctx-sub {
+  font-size: 11px;
+  color: var(--text-mid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Öğrenci Konu Geri Bildirimleri & Zayıf Konu Vurgu Çipleri */
+.ai-fb-bar {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ai-fb-bar-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-mid);
+  white-space: nowrap;
+}
+.ai-fb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: inherit;
+  transition: all 0.15s ease;
+  max-width: 100%;
+}
+.ai-fb-chip.critical {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.28);
+  color: var(--red);
+}
+.ai-fb-chip.warn {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #b45309;
+}
+[data-theme="dark"] .ai-fb-chip.warn { color: #fbbf24; }
+.ai-fb-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.ai-studio-body {
+  padding: 18px 20px;
+}
+.ai-studio-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Strateji & Kaynak Çipleri */
+.aip-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.aip-chip-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin-right: 2px;
+}
+.aip-preset-chip,
+.aip-source-chip {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-mid);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.aip-preset-chip:hover,
+.aip-source-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+.aip-source-chip small {
+  opacity: 0.8;
+  font-weight: 700;
+}
+
+/* Yoğunluk Seçicileri & Saat Rozeti */
+.aip-intensity-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.aip-intensity-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.aip-int-btn {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-mid);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.aip-int-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.aip-hours-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+/* Branş Dağılım Barı */
+.aip-branch-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.aip-branch-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+.aip-branch-bar {
+  display: flex;
+  height: 9px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface);
+  gap: 2px;
+}
+.aip-branch-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 11px;
+  color: var(--text-mid);
+}
+.aip-branch-leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.aip-branch-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.aip-group-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.aip-add-day-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.aip-add-day-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.aip-type-badge {
+  cursor: pointer;
+}
+
+/* Copilot 3 Mod & Yapılandırılmış Analiz Kartları */
+.copilot-mode-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.copilot-mode-btn {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-mid);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.copilot-mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.copilot-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.copilot-ins-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 13px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.copilot-ins-lbl {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 5px;
+}
+.copilot-ins-card.strong .copilot-ins-lbl { color: var(--green); }
+.copilot-ins-card.attention .copilot-ins-lbl { color: #d97706; }
+.copilot-ins-card.action .copilot-ins-lbl { color: var(--accent); }
+
+@media (max-width: 900px) {
+  .ai-context-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ai-ctx-cell:nth-child(2n) { border-right: none; }
+  .ai-ctx-cell:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+  .copilot-insights-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .ai-studio-head { padding: 14px 16px; }
+  .ai-studio-body { padding: 14px 16px; }
+  .ai-studio-tabs { width: 100%; }
+  .ai-studio-tab { flex: 1; text-align: center; padding: 7px 6px; font-size: 11.5px; }
+  .ai-context-strip { grid-template-columns: 1fr; }
+  .ai-ctx-cell { border-right: none; border-bottom: 1px solid var(--border); }
+  .ai-ctx-cell:last-child { border-bottom: none; }
+}
+
 /* ── HAFTALIK GELİŞİM RAPORU (.wr-*) ────────────────────────────── */
 #taskDetailModal {
   z-index: 2100;

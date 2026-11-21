@@ -19,6 +19,12 @@ import {
   computeWeeklyReportStats, filterAndSortWeeklyTasks, buildCoachTaskMessageDraft
 } from './weekly-report.js';
 import { computeCoachHomeMetrics } from './home-dashboard.js';
+import {
+  INTENSITY_PRESETS, COPILOT_MODES, AI_PROGRAM_PRESETS,
+  formatMinuteRangeHours, computeStudentAIContext, buildPresetInstruction,
+  computeBranchDistribution, buildGroundedCopilotPrompt,
+  buildCopilotFallbackReply, parseCopilotStructuredReply
+} from './ai-studio.js';
 
 function formatMinToHours(mins) {
   if (!mins || mins <= 0) return '0 sa';
@@ -1398,6 +1404,54 @@ function openStudentDetail(stuId){
 
   const streak = calculateStudentStreak(s.id);
 
+  const allStuTasks = Object.entries(S.tasks || {}).flatMap(([k, list]) => {
+    if (!k.startsWith(`${s.id}_`)) return [];
+    const dt = k.slice(`${s.id}_`.length);
+    return (list || []).map(t => ({ ...t, date: dt }));
+  });
+  const stuOlderTasks = (S.olderTaskStats || []).filter(t => (t.studentId || t.student_id) === s.id);
+  const stuExams = (S.exams || []).filter(e => e.studentId === s.id);
+  const stuSpeeds = (S.studentSpeeds || []).filter(sp => sp.student_id === s.id);
+  const stuMastery = (S.konuMastery || {})[s.id] || {};
+  const aiCtx = computeStudentAIContext({
+    student: s,
+    examCountdown: getNextYks(s.examProfile),
+    allTasks: allStuTasks,
+    olderTasks: stuOlderTasks,
+    exams: stuExams,
+    speeds: stuSpeeds,
+    masteryBySubject: stuMastery,
+    topicListBySubject: KONU_LISTESI,
+    alerts: stuActionable,
+    todayIso: todayStr(),
+  });
+  _aiStudioCache = { stuId: s.id, ctx: aiCtx };
+
+  const activePresetChipsHtml = AI_PROGRAM_PRESETS.map(p =>
+    `<button type="button" class="aip-preset-chip" title="${escAttr(p.desc)}" onclick="applyAIProgramPreset('${p.id}','${s.id}')">${esc(p.label)}</button>`
+  ).join('');
+
+  const activeSourceChipsHtml = aiCtx.activeResources.length
+    ? aiCtx.activeResources.map((r, i) =>
+        `<button type="button" class="aip-source-chip" onclick="_appendAISourceToPrompt(${i})" title="${escAttr(r.subject)}">+ ${esc(r.name)} <small>(${r.taskCount} görev · %${r.assignedPct})</small></button>`
+      ).join('')
+    : '<span style="font-size:11px;color:var(--text-dim)">Henüz aktif kaynak görevi yok — talimat kutusuna dilediğiniz kaynağı yazabilirsiniz.</span>';
+
+  const fbHighlightsHtml = aiCtx.feedbackSummary.highlights.length
+    ? `<div class="ai-fb-bar">
+        <span class="ai-fb-bar-lbl">📌 Konu &amp; Geri Bildirim Odakları (tıkla, programa ekle):</span>
+        ${aiCtx.feedbackSummary.highlights.map((h, i) =>
+          `<button type="button" class="ai-fb-chip ${h.severity}" onclick="_appendAIHighlight(${i})" title="${escAttr(h.detail || h.promptText)}">${h.severity === 'critical' ? '🔴' : '🟡'} ${esc(h.chipLabel)}</button>`
+        ).join('')}
+      </div>`
+    : '';
+
+  const cdToneCls = aiCtx.examCountdown.days <= 90 ? 'crit' : aiCtx.examCountdown.days <= 180 ? 'warn' : 'accent';
+  const fbToneCls = aiCtx.feedbackSummary.struggleCount > 0 ? 'warn' : 'good';
+  const deltaBadge = aiCtx.examSummary.deltaNet !== null
+    ? ` (${aiCtx.examSummary.deltaNet >= 0 ? '+' : ''}${aiCtx.examSummary.deltaNet})`
+    : '';
+
   const el=document.getElementById('view-student-detail');
   el.innerHTML=`
     <button class="back-link" onclick="switchTab('students')">← Öğrencilerim</button>
@@ -1557,88 +1611,152 @@ function openStudentDetail(stuId){
       </div>
     </div>
 
-    <!-- AI COPILOT SECTION -->
-    <div class="card" style="margin-top:16px; border: 1.5px dashed var(--accent); padding: 20px; border-radius: 16px; background: var(--surface)">
-      <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px">
-        <div style="width:40px;height:40px;border-radius:12px;background:rgba(232,97,58,.12);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 2px 8px rgba(232,97,58,.2)">✨</div>
-        <div>
-          <h3 style="margin:0; font-family:'Inter',sans-serif; font-size:16px; font-weight:800; color:var(--text)">Yapay Zeka Copilot</h3>
-          <p style="margin:2px 0 0 0; font-size:11.5px; color:var(--text-dim)">Öğrencinin haftalık performans verilerini analiz ederek kişiselleştirilmiş mesaj ve aksiyon taslağı hazırlayın.</p>
-        </div>
-      </div>
-      
-      <div style="margin-bottom:12px">
-        <button id="aiCopilotBtn" class="btn btn-accent btn-sm" onclick="generateAICopilotDraft('${s.id}')" style="gap:6px;font-weight:700;padding:10px 18px;border-radius:10px">✨ Durum Analizi Yap ve Taslak Oluştur</button>
-      </div>
-      
-      <div id="aiCopilotResultArea" style="display:none; margin-top:14px">
-        <div id="aiCopilotAnalysisBox" style="background:var(--surface2); border:1px solid var(--border); padding:14px; border-radius:12px; font-size:12.5px; margin-bottom:12px; line-height:1.6; color:var(--text)">
-          <!-- Analiz buraya gelecek -->
-        </div>
-        <div style="background:rgba(232,97,58,.08); border:1px solid rgba(232,97,58,.25); color:var(--accent); padding:12px; border-radius:10px; font-size:11.5px; margin-bottom:12px; line-height:1.5">
-          💡 <b>Önemli Not:</b> Yapay zekanın hazırladığı taslak aşağıdadır. Gönderebilmek için taslağı en az bir karakter değiştirecek şekilde düzenlemelisiniz.
-        </div>
-        <div class="field">
-          <label style="font-size:11.5px; font-weight:700; color:var(--text-mid); margin-bottom:6px; display:block">Mesaj Taslağı (Düzenlenmesi Zorunlu)</label>
-          <textarea id="aiCopilotTextarea" style="width:100%; min-height:150px; font-family:inherit; font-size:13px; line-height:1.6; padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text)" oninput="checkCopilotDraftEdited()"></textarea>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px">
-          <div style="display:flex; gap:10px; flex-wrap:wrap">
-            <button id="aiCopilotSendBtn" class="btn btn-accent btn-sm" onclick="sendCopilotDraft('${s.id}')" style="background:var(--green); border-color:var(--green); color:white; flex:1; min-width:200px; padding:10px" disabled>✍️ Kaydet ve Öğrenciye Gönder</button>
-            <button class="btn btn-ghost btn-sm" onclick="shareCopilotWhatsApp()" style="flex:1; min-width:200px; padding:10px; background:var(--surface2)">💬 WhatsApp ile Veliye Gönder</button>
-          </div>
-          <span id="aiCopilotEditWarning" style="color:var(--red); font-size:11px; font-weight:bold">Öğrenciye gönderebilmek için taslak üzerinde en az bir değişiklik yapmalısınız.</span>
-        </div>
-      </div>
-
-      <div class="aip-section" id="aiProgramBuilderBox">
-        <div class="aip-head">
+    <!-- ROSTRUM AI KOÇLUK STÜDYOSU -->
+    <div class="ai-studio-card" id="aiStudioCard">
+      <div class="ai-studio-head">
+        <div class="ai-studio-title-wrap">
+          <div class="ai-studio-ico">✨</div>
           <div>
-            <div class="aip-title">✨ Akıllı AI Program Oluşturucu</div>
-            <div class="aip-sub">Öğrencinin netleri, hızı (sn/soru), zayıf konuları, katalog kaynakları ve yönlendirmenle dengeli program kurar.</div>
+            <h3 class="ai-studio-title">Yapay Zeka Koçluk Stüdyosu</h3>
+            <p class="ai-studio-sub">Sınava kalan gün, konu haritası ilerlemesi ve öğrenci geri bildirimleriyle akıllı plan &amp; değerlendirme.</p>
           </div>
         </div>
-        <textarea id="aiProgramPrompt" class="aip-prompt" rows="3" placeholder="Örn: Salı'dan itibaren 9 günlük program yaz. Paragraf Apotemi olsun, fizik videoları ESŞ 1.5x hızda ve uzun videoları bölerek ver. Günde 5-5.5 saat dengeli olsun..."></textarea>
-        <div class="aip-controls">
-          <label class="aip-field"><span>Başlangıç</span><input type="date" id="aiProgStartDate" value="${todayStr()}"></label>
-          <label class="aip-field"><span>Gün Sayısı</span><input type="number" id="aiProgDays" value="7" min="1" max="14"></label>
-          <label class="aip-field"><span>Min (dk/gün)</span><input type="number" id="aiProgMinDaily" value="270" min="30" step="15"></label>
-          <label class="aip-field"><span>Max (dk/gün)</span><input type="number" id="aiProgMaxDaily" value="330" min="60" step="15"></label>
-          <label class="aip-field"><span>Video Hızı</span>
-            <select id="aiProgVideoSpeed">
-              <option value="1">1.0x</option>
-              <option value="1.25">1.25x</option>
-              <option value="1.5" selected>1.5x</option>
-              <option value="1.75">1.75x</option>
-              <option value="2">2.0x</option>
-            </select>
-          </label>
+        <div class="ai-studio-tabs">
+          <button type="button" id="aiStudioTabBtn_program" class="ai-studio-tab${_activeAIStudioTab !== 'copilot' ? ' active' : ''}" onclick="switchAIStudioTab('program')">📋 Akıllı Program</button>
+          <button type="button" id="aiStudioTabBtn_copilot" class="ai-studio-tab${_activeAIStudioTab === 'copilot' ? ' active' : ''}" onclick="switchAIStudioTab('copilot')">💬 Durum Analizi &amp; Mesaj</button>
         </div>
-        <div class="aip-actions-top">
-          <button id="aiProgramBtn" class="btn btn-accent btn-sm aip-gen-btn" onclick="generateAIProgramDraft('${s.id}')">📋 Akıllı Program Oluştur</button>
-          <span id="aiProgramStatusMsg" class="aip-status"></span>
-        </div>
-        <div id="aiProgramErrorBox" class="aip-error-box" style="display:none"></div>
+      </div>
 
-        <div id="aiProgramResultArea" class="aip-result" style="display:none">
-          <div id="aiProgramMetaBanner" class="aip-meta-banner"></div>
-          <div id="aiProgramWarnings" class="aip-warnings" style="display:none"></div>
-          <div id="aiProgramConflictBox" class="aip-conflict-box" style="display:none"></div>
-          <div id="aiProgramDayChips" class="aip-day-chips"></div>
-          <div class="aip-preview-bar">
-            <span class="aip-preview-lbl">Önizleme &amp; Düzenleme</span>
-            <div class="aip-mode-toggle">
-              <button type="button" id="aipModeDailyBtn" class="aip-mode-btn active" onclick="setAIProgramPreviewMode('daily')">📅 Gün Gün</button>
-              <button type="button" id="aipModeBranchBtn" class="aip-mode-btn" onclick="setAIProgramPreviewMode('branch')">📚 Branş Branş</button>
+      <!-- CANLI ÖĞRENCİ BAĞLAM ŞERİDİ -->
+      <div class="ai-context-strip">
+        <div class="ai-ctx-cell">
+          <span class="ai-ctx-lbl">⏳ Sınava Kalan Gün</span>
+          <span class="ai-ctx-val ${cdToneCls}">${aiCtx.examCountdown.days} gün kaldı</span>
+          <span class="ai-ctx-sub">${esc(aiCtx.examCountdown.label)} ${esc(aiCtx.examCountdown.year)} · ${esc(aiCtx.examCountdown.badgeText)}</span>
+        </div>
+        <div class="ai-ctx-cell">
+          <span class="ai-ctx-lbl">📈 Konu İlerlemesi</span>
+          <span class="ai-ctx-val good">%${aiCtx.masterySummary.pct} ilerleme</span>
+          <span class="ai-ctx-sub">${aiCtx.masterySummary.tdCount} TD · ${aiCtx.masterySummary.activeCount} Aktif · ${aiCtx.masterySummary.weakTopics.length} Zayıf</span>
+        </div>
+        <div class="ai-ctx-cell">
+          <span class="ai-ctx-lbl">💬 Konu Geri Bildirimleri</span>
+          <span class="ai-ctx-val ${fbToneCls}">${aiCtx.feedbackSummary.struggleCount > 0 ? aiCtx.feedbackSummary.struggleCount + ' zorlanılan görev' : 'Sorun bildirilmedi'}</span>
+          <span class="ai-ctx-sub">${aiCtx.feedbackSummary.noteCount} öğrenci notu · ${aiCtx.feedbackSummary.lowAccCount} düşük %</span>
+        </div>
+        <div class="ai-ctx-cell">
+          <span class="ai-ctx-lbl">📊 Deneme &amp; Kaynak</span>
+          <span class="ai-ctx-val">${esc(aiCtx.examSummary.latestLabel)}${esc(deltaBadge)}</span>
+          <span class="ai-ctx-sub">📚 ${aiCtx.activeResources.length} aktif kaynak · ⏱️ ${aiCtx.speedCount} hız</span>
+        </div>
+      </div>
+
+      ${fbHighlightsHtml}
+
+      <div class="ai-studio-body">
+        <!-- SEKME 1: AKILLI AI PROGRAM OLUŞTURUCU -->
+        <div id="aiStudioPane_program" class="ai-studio-pane" style="${_activeAIStudioTab === 'copilot' ? 'display:none;' : ''}">
+          <div id="aiProgramBuilderBox">
+            <div class="aip-chip-row" style="margin-bottom:8px">
+              <span class="aip-chip-lbl">Hızlı Strateji:</span>
+              ${activePresetChipsHtml}
+            </div>
+
+            <textarea id="aiProgramPrompt" class="aip-prompt" rows="3" placeholder="Örn: Öğrencinin zorlandığı konulara ilk günlerden telafi koy, KA bitmiş konularda soru bankasından ilerlet, günde 5 saat dengeli olsun..."></textarea>
+
+            <div class="aip-chip-row" style="margin-top:8px;margin-bottom:10px">
+              <span class="aip-chip-lbl">Aktif Kaynaklar:</span>
+              <div id="aiProgSourceChips" class="aip-chip-row" style="flex:1">${activeSourceChipsHtml}</div>
+            </div>
+
+            <div class="aip-intensity-bar" style="margin-bottom:8px">
+              <div class="aip-intensity-pills">
+                <span class="aip-chip-lbl">Yoğunluk:</span>
+                ${INTENSITY_PRESETS.map(ip =>
+                  `<button type="button" class="aip-int-btn${ip.id === 'balanced' ? ' active' : ''}" data-preset="${ip.id}" onclick="applyAIIntensityPreset('${ip.id}')">${ip.label} (${ip.rangeLabel})</button>`
+                ).join('')}
+              </div>
+              <span id="aiProgHoursBadge" class="aip-hours-badge">${formatMinuteRangeHours(270, 330)}</span>
+            </div>
+
+            <div class="aip-controls">
+              <label class="aip-field"><span>Başlangıç</span><input type="date" id="aiProgStartDate" value="${todayStr()}"></label>
+              <label class="aip-field"><span>Gün Sayısı</span><input type="number" id="aiProgDays" value="7" min="1" max="14"></label>
+              <label class="aip-field"><span>Min (dk/gün)</span><input type="number" id="aiProgMinDaily" value="270" min="30" step="15" oninput="updateAIProgHoursBadge()"></label>
+              <label class="aip-field"><span>Max (dk/gün)</span><input type="number" id="aiProgMaxDaily" value="330" min="60" step="15" oninput="updateAIProgHoursBadge()"></label>
+              <label class="aip-field"><span>Video Hızı</span>
+                <select id="aiProgVideoSpeed">
+                  <option value="1">1.0x</option>
+                  <option value="1.25">1.25x</option>
+                  <option value="1.5" selected>1.5x</option>
+                  <option value="1.75">1.75x</option>
+                  <option value="2">2.0x</option>
+                </select>
+              </label>
+              <label class="aip-field"><span>Dinlenme Günü</span>
+                <select id="aiProgRestDay">
+                  <option value="">Yok (Tam Hafta)</option>
+                  <option value="Pazar">Pazar</option>
+                  <option value="Cumartesi">Cumartesi</option>
+                  <option value="Çarşamba">Çarşamba</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="aip-actions-top" style="margin-top:10px">
+              <button id="aiProgramBtn" class="btn btn-accent btn-sm aip-gen-btn" onclick="generateAIProgramDraft('${s.id}')">📋 Akıllı Program Oluştur</button>
+              <span id="aiProgramStatusMsg" class="aip-status"></span>
+            </div>
+            <div id="aiProgramErrorBox" class="aip-error-box" style="display:none;margin-top:8px"></div>
+
+            <div id="aiProgramResultArea" class="aip-result" style="display:none;margin-top:12px">
+              <div id="aiProgramMetaBanner" class="aip-meta-banner"></div>
+              <div id="aiProgramBranchBar" class="aip-branch-card" style="display:none"></div>
+              <div id="aiProgramWarnings" class="aip-warnings" style="display:none"></div>
+              <div id="aiProgramConflictBox" class="aip-conflict-box" style="display:none"></div>
+              <div id="aiProgramDayChips" class="aip-day-chips"></div>
+              <div class="aip-preview-bar">
+                <span class="aip-preview-lbl">Önizleme &amp; Düzenleme</span>
+                <div class="aip-mode-toggle">
+                  <button type="button" id="aipModeDailyBtn" class="aip-mode-btn active" onclick="setAIProgramPreviewMode('daily')">📅 Gün Gün</button>
+                  <button type="button" id="aipModeBranchBtn" class="aip-mode-btn" onclick="setAIProgramPreviewMode('branch')">📚 Branş Branş</button>
+                </div>
+              </div>
+              <div id="aiProgramRows" class="aip-rows"></div>
+              <div class="aip-revise-box">
+                <input type="text" id="aiProgramRevisePrompt" class="aip-revise-input" placeholder="Revizyon isteği yaz (örn: Paragrafı Apotemi yap, Perşembe'yi hafiflet, tüm fizik videoları ESŞ olsun)...">
+                <button type="button" id="aiProgramReviseBtn" class="btn btn-ghost btn-sm" onclick="reviseAIProgramDraft('${s.id}')">🔄 Revize Et</button>
+              </div>
+              <div class="aip-footer">
+                <button id="aiProgramApproveBtn" class="btn btn-accent btn-sm aip-approve-btn" onclick="approveAIProgramDraft('${s.id}')" disabled>✅ Programı Onayla ve Kaydet</button>
+              </div>
             </div>
           </div>
-          <div id="aiProgramRows" class="aip-rows"></div>
-          <div class="aip-revise-box">
-            <input type="text" id="aiProgramRevisePrompt" class="aip-revise-input" placeholder="Revizyon isteği yaz (örn: Paragrafı Apotemi yap, Perşembe'yi hafiflet, tüm fizik videoları ESŞ olsun)...">
-            <button type="button" id="aiProgramReviseBtn" class="btn btn-ghost btn-sm" onclick="reviseAIProgramDraft('${s.id}')">🔄 Revize Et</button>
+        </div>
+
+        <!-- SEKME 2: DURUM ANALİZİ & MESAJ ASİSTANI (COPILOT) -->
+        <div id="aiStudioPane_copilot" class="ai-studio-pane" style="${_activeAIStudioTab === 'copilot' ? '' : 'display:none;'}">
+          <div class="copilot-mode-pills">
+            ${COPILOT_MODES.map(m =>
+              `<button type="button" class="copilot-mode-btn${_activeCopilotMode === m.id ? ' active' : ''}" data-mode="${m.id}" onclick="setCopilotMode('${m.id}')">${esc(m.label)}</button>`
+            ).join('')}
           </div>
-          <div class="aip-footer">
-            <button id="aiProgramApproveBtn" class="btn btn-accent btn-sm aip-approve-btn" onclick="approveAIProgramDraft('${s.id}')" disabled>✅ Programı Onayla ve Kaydet</button>
+
+          <div>
+            <button id="aiCopilotBtn" class="btn btn-accent btn-sm" onclick="generateAICopilotDraft('${s.id}')" style="gap:6px;font-weight:700;padding:10px 18px;border-radius:10px">✨ Durum Analizi Yap ve Taslak Oluştur</button>
+          </div>
+
+          <div id="aiCopilotResultArea" style="display:none; margin-top:4px">
+            <div id="aiCopilotAnalysisBox"></div>
+            <div class="field">
+              <label style="font-size:11.5px; font-weight:700; color:var(--text-mid); margin-bottom:6px; display:block">Mesaj Taslağı (Düzenleyebilir veya Doğrudan Gönderebilirsiniz)</label>
+              <textarea id="aiCopilotTextarea" style="width:100%; min-height:150px; font-family:inherit; font-size:13px; line-height:1.6; padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text)"></textarea>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px">
+              <button id="aiCopilotSendBtn" class="btn btn-accent btn-sm" onclick="sendCopilotDraft('${s.id}')" style="background:var(--green); border-color:var(--green); color:white; flex:1; min-width:180px; padding:10px">✍️ Öğrenciye Gönder &amp; Arşivle</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="copyCopilotDraft()" style="padding:10px 14px; background:var(--surface2)">📋 Metni Kopyala</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="shareCopilotWhatsApp()" style="flex:1; min-width:180px; padding:10px; background:var(--surface2)">💬 WhatsApp ile Veliye Gönder</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1647,6 +1765,7 @@ function openStudentDetail(stuId){
   if(currentTab !== 'student-detail') switchTab('student-detail');
   const _tt1=document.getElementById('tbarTitle'); if(_tt1) _tt1.textContent = s.name;
   _loadCoachNoteForStudent(stuId);
+  _hydrateAIStudioResources(s.id);
 }
 
 function setStuActiveSeg(btn) {
@@ -14492,146 +14611,246 @@ Karşındaki kişi bir Eğitim Koçudur. Ona profesyonel bir meslektaş gibi hit
 }
 
 let _originalCopilotDraft = "";
+let _activeAIStudioTab = 'program';
+let _activeCopilotMode = 'student_feedback';
+let _aiStudioCache = { stuId: null, ctx: null };
+
+function switchAIStudioTab(tab) {
+  _activeAIStudioTab = tab === 'copilot' ? 'copilot' : 'program';
+  const pBtn = document.getElementById('aiStudioTabBtn_program');
+  const cBtn = document.getElementById('aiStudioTabBtn_copilot');
+  const pPane = document.getElementById('aiStudioPane_program');
+  const cPane = document.getElementById('aiStudioPane_copilot');
+  if (pBtn) pBtn.classList.toggle('active', _activeAIStudioTab === 'program');
+  if (cBtn) cBtn.classList.toggle('active', _activeAIStudioTab === 'copilot');
+  if (pPane) pPane.style.display = _activeAIStudioTab === 'program' ? '' : 'none';
+  if (cPane) cPane.style.display = _activeAIStudioTab === 'copilot' ? '' : 'none';
+}
+
+function setCopilotMode(mode) {
+  _activeCopilotMode = mode || 'student_feedback';
+  document.querySelectorAll('.copilot-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === _activeCopilotMode);
+  });
+}
+
+function _appendPromptSentence(sentence) {
+  const ta = document.getElementById('aiProgramPrompt');
+  if (!ta || !sentence) return;
+  const cur = ta.value.trim();
+  if (cur.includes(sentence)) {
+    showToast('Bu yönerge zaten talimat kutusunda.');
+    return;
+  }
+  ta.value = cur ? cur + ' ' + sentence : sentence;
+  ta.focus();
+}
+
+function _appendAIHighlight(idx) {
+  const h = _aiStudioCache?.ctx?.feedbackSummary?.highlights?.[idx];
+  if (!h) return;
+  switchAIStudioTab('program');
+  _appendPromptSentence(h.promptText);
+  showToast('Konu odağı program talimatına eklendi ✓');
+}
+
+function _appendAISourceToPrompt(idx) {
+  const r = _aiStudioCache?.ctx?.activeResources?.[idx];
+  if (!r) return;
+  switchAIStudioTab('program');
+  _appendPromptSentence(`${r.branch ? r.branch + ' için ' : ''}${r.name} kaynağından sıradaki konular/testlerle devam et.`);
+  showToast(`"${r.name}" talimata eklendi ✓`);
+}
+
+function applyAIProgramPreset(presetId, stuId) {
+  const ta = document.getElementById('aiProgramPrompt');
+  if (!ta) return;
+  const restDay = document.getElementById('aiProgRestDay')?.value || '';
+  const ctx = (_aiStudioCache?.stuId === stuId ? _aiStudioCache.ctx : null) || {};
+  const txt = buildPresetInstruction(presetId, ctx, restDay);
+  if (txt) {
+    ta.value = txt;
+    ta.focus();
+    showToast('Strateji şablonu uygulandı ✓');
+  }
+}
+
+function updateAIProgHoursBadge() {
+  const minVal = parseInt(document.getElementById('aiProgMinDaily')?.value, 10) || 270;
+  const maxVal = parseInt(document.getElementById('aiProgMaxDaily')?.value, 10) || 330;
+  const badge = document.getElementById('aiProgHoursBadge');
+  if (badge) badge.textContent = formatMinuteRangeHours(minVal, maxVal);
+  document.querySelectorAll('.aip-int-btn').forEach(b => {
+    const p = INTENSITY_PRESETS.find(x => x.id === b.dataset.preset);
+    b.classList.toggle('active', !!p && p.minDaily === minVal && p.maxDaily === maxVal);
+  });
+}
+
+function applyAIIntensityPreset(presetId) {
+  const p = INTENSITY_PRESETS.find(x => x.id === presetId);
+  if (!p) return;
+  const minEl = document.getElementById('aiProgMinDaily');
+  const maxEl = document.getElementById('aiProgMaxDaily');
+  if (minEl) minEl.value = p.minDaily;
+  if (maxEl) maxEl.value = p.maxDaily;
+  updateAIProgHoursBadge();
+}
+
+async function _hydrateAIStudioResources(stuId) {
+  const wrap = document.getElementById('aiProgSourceChips');
+  const resources = _aiStudioCache?.stuId === stuId ? (_aiStudioCache.ctx?.activeResources || []) : [];
+  if (!wrap || !resources.length) return;
+  try {
+    const names = resources.map(r => r.name);
+    const { data } = await db.from('resources').select('name,tests').in('name', names);
+    if (!data || !data.length) return;
+    const totalByName = {};
+    data.forEach(r => {
+      totalByName[r.name] = Array.isArray(r.tests) ? r.tests.length : 0;
+    });
+    if (_aiStudioCache.stuId !== stuId) return;
+    const stillWrap = document.getElementById('aiProgSourceChips');
+    if (!stillWrap) return;
+    stillWrap.innerHTML = resources.map((r, i) => {
+      const catTotal = totalByName[r.name] || 0;
+      const pctLabel = catTotal > 0
+        ? `%${Math.min(100, Math.round((r.doneCount / catTotal) * 100))} katalog`
+        : `${r.taskCount} görev · %${r.assignedPct}`;
+      return `<button type="button" class="aip-source-chip" onclick="_appendAISourceToPrompt(${i})" title="${escAttr(r.subject)}">+ ${esc(r.name)} <small>(${pctLabel})</small></button>`;
+    }).join('');
+  } catch (_) {}
+}
 
 async function generateAICopilotDraft(stuId) {
-  const s = S.students.find(s=>s.id===stuId);
+  const s = S.students.find(x => x.id === stuId);
   if (!s) return;
-  
+
   const btn = document.getElementById('aiCopilotBtn') || document.querySelector('[onclick*="generateAICopilotDraft"]');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = "⌛ Analiz Ediliyor ve Taslak Oluşturuluyor...";
+    btn.textContent = "⌛ Veriler Analiz Ediliyor ve Taslak Oluşturuluyor...";
   }
-  
+
   try {
-    // Haftalık görev bilgileri
-    const ws = getWeekStart(0, s.weekStart||0);
-    let wTotal=0, wDone=0, wMin=0;
-    for(let i=0;i<7;i++){
-      const tasks=S.tasks[`${s.id}_${fmtDate(addDays(ws,i))}`]||[];
-      wTotal+=tasks.length; wDone+=tasks.filter(t=>t.done).length;
-      wMin+=tasks.reduce((sum,t)=>sum+Number(t.duration||0),0);
+    const ws = getWeekStart(0, s.weekStart || 0);
+    let wTotal = 0, wDone = 0, wMin = 0;
+    for (let i = 0; i < 7; i++) {
+      const tasks = S.tasks[`${s.id}_${fmtDate(addDays(ws, i))}`] || [];
+      wTotal += tasks.length;
+      wDone += tasks.filter(t => t.done).length;
+      wMin += tasks.reduce((sum, t) => sum + Number(t.duration || 0), 0);
     }
-    const wPct=wTotal>0?Math.round((wDone/wTotal)*100):0;
-    
-    // Son denemeler
-    const stuExams = (S.exams||[]).filter(e=>e.studentId===stuId).slice(-5);
-    const recentExamsData = stuExams.map(e=>({
-      name: e.type + ' ' + (e.name||''),
-      date: e.date||'',
-      nets: e.nets||{}
+    const wPct = wTotal > 0 ? Math.round((wDone / wTotal) * 100) : 0;
+
+    const stuExams = (S.exams || []).filter(e => e.studentId === stuId).slice(-5);
+    const recentExamsData = stuExams.map(e => ({
+      name: e.type + ' ' + (e.name || ''),
+      date: e.date || '',
+      nets: e.nets || {},
     }));
-    
-    // Hız bilgileri
+
     const speedMap = {};
-    (S.studentSpeeds||[]).filter(sp=>sp.student_id===stuId).forEach(sp=>{
+    (S.studentSpeeds || []).filter(sp => sp.student_id === stuId).forEach(sp => {
       speedMap[`${sp.exam_type}_${sp.subject}`] = sp.secs_per_question;
     });
 
-    const prompt = `Lütfen şu öğrenci için haftalık durum analizi ve öğrenciye gönderilecek haftalık değerlendirme mesajı taslağı oluştur:
-Öğrenci Adı: ${s.name}
-Hedef: ${s.target || 'Belirtilmemiş'}
-Bu haftaki görev tamamlama oranı: %${wPct} (${wDone}/${wTotal} görev tamamlandı, toplam ${Math.round(wMin/60)} saat çalışıldı)
-Son denemeler: ${JSON.stringify(recentExamsData)}
-Soru Çözüm Hızları (saniye/soru): ${JSON.stringify(speedMap)}
+    const aiCtx = (_aiStudioCache?.stuId === stuId && _aiStudioCache.ctx)
+      ? _aiStudioCache.ctx
+      : computeStudentAIContext({
+          student: s,
+          examCountdown: getNextYks(s.examProfile),
+          allTasks: Object.entries(S.tasks || {}).flatMap(([k, l]) => k.startsWith(`${s.id}_`) ? (l || []).map(t => ({ ...t, date: k.slice(`${s.id}_`.length) })) : []),
+          olderTasks: (S.olderTaskStats || []).filter(t => (t.studentId || t.student_id) === s.id),
+          exams: stuExams,
+          speeds: (S.studentSpeeds || []).filter(sp => sp.student_id === s.id),
+          masteryBySubject: (S.konuMastery || {})[s.id] || {},
+          topicListBySubject: KONU_LISTESI,
+          todayIso: todayStr(),
+        });
 
-ANALİZ VE TASLAK KURALLARI (TÜRKÇE YAZ):
-1. Analiz kısmını koçun göreceği şekilde kısa, net ve yapıcı tut. Zayıf konulardan bahsedeceksen özellikle Sözel/Sosyal branşlardaki aksamaları vurgula.
-2. Öğrenciye gönderilecek mesaj taslağını samimi ve destekleyici yaz, fakat koçun kendi yorumlarını ekleyebileceği şablon alanları bırak. Örneğin: "[Buraya öğrenciyle son görüşmenizden özel bir not ekleyin]".
-3. Mesaj taslağı tamamen Türkçe, samimi ve yapıcı olmalıdır.
-4. Çıktıyı tam olarak şu iki etiket arasında yapılandır:
-[ANALİZ]
-(Koç için durum analizi ve anomali tespiti)
-[TASLAK]
-(Öğrenciye gönderilecek haftalık değerlendirme taslağı)`;
+    const stuAlerts = typeof computeEarlyWarnings === 'function'
+      ? (computeEarlyWarnings(s.id, { nowIso: todayStr() })?.alerts || []).map(a => a.title)
+      : [];
 
-    let reply = "";
+    const prompt = buildGroundedCopilotPrompt({
+      mode: _activeCopilotMode,
+      studentName: s.name,
+      studentTarget: s.target,
+      aiCtx,
+      weekStats: { pct: wPct, done: wDone, total: wTotal, minutes: wMin },
+      recentExams: recentExamsData,
+      speedMap,
+      alertTitles: stuAlerts,
+    });
+
+    let reply = '';
     const context = {
       studentName: s.name,
       target: s.target,
       recentExams: recentExamsData,
       taskCompletionRate: wPct,
-      weeklyTaskCount: wTotal
+      weeklyTaskCount: wTotal,
+      examProfile: s.examProfile || 'YKS',
     };
-    
+
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
         headers: await aiAuthHeaders(),
         body: JSON.stringify({
-          messages: [{role: 'user', content: prompt}],
+          messages: [{ role: 'user', content: prompt }],
           context,
-          userRole: 'coach'
-        })
+          userRole: 'coach',
+        }),
       });
       if (response.ok) {
         const data = await response.json();
         reply = data.reply;
       }
-    } catch(e) {
-      console.warn('AI Chat API offline, using intelligent fallback prompt', e);
+    } catch (e) {
+      console.warn('AI Chat API offline, using grounded fallback prompt', e);
     }
 
     if (!reply) {
-      reply = `[ANALİZ]
-🎯 <b>Hedef Uyum Analizi:</b> ${esc(s.name)} ${esc(s.target || 'hedefine')} kilitlenmiş durumda.
-⚡ <b>Sayısal Performans:</b> Matematik ve Fizik branşlarında %100 usta ve FULL net potansiyeline sahip.
-⚠️ <b>Aksiyon Alanı:</b> Sözel ve Sosyal alanlarda (Paragraf, Tarih, Coğrafya) aksayan 3 eksik konu tespit edildi. Bu haftaki 1-on-1 görüşmede Türkçe ve Sosyal tekrarlarına ağırlık verilmesi tavsiye edilir.
-
-[TASLAK]
-Merhaba ${esc(s.name)} 👋
-
-Bu haftaki çalışma temposunu inceledim. Matematik ve Fizik branşlarındaki netlerin harika seviyede ⚡
-
-Sayısal gücümüzü korurken, Türkçe Paragraf ve Sosyal Bilgilerdeki birkaç eksik konuyu bu haftaki programımızla tamamen kapatacağız.
-
-[Buraya öğrenciyle son görüşmenizden özel bir hatırlatma notu ekleyin]
-
-Aynen böyle devam! 🚀`;
+      reply = buildCopilotFallbackReply({
+        mode: _activeCopilotMode,
+        studentName: s.name,
+        studentTarget: s.target,
+        aiCtx,
+        weekStats: { pct: wPct, done: wDone, total: wTotal, minutes: wMin },
+      });
     }
-    
-    // Parse reply
-    let analysis = "Analiz üretilemedi.";
-    let draft = "Taslak üretilemedi.";
-    
-    const analysisIdx = reply.indexOf('[ANALİZ]');
-    const draftIdx = reply.indexOf('[TASLAK]');
-    
-    if (analysisIdx !== -1 && draftIdx !== -1) {
-      if (analysisIdx < draftIdx) {
-        analysis = reply.substring(analysisIdx + 8, draftIdx).trim();
-        draft = reply.substring(draftIdx + 8).trim();
-      } else {
-        draft = reply.substring(draftIdx + 8, analysisIdx).trim();
-        analysis = reply.substring(analysisIdx + 8).trim();
-      }
-    } else {
-      draft = reply;
-      analysis = "Öğrenci performans verileri başarıyla analiz edildi.";
-    }
-    
+
+    const parsed = parseCopilotStructuredReply(reply);
     const box = document.getElementById('aiCopilotAnalysisBox');
-    if (box) box.innerHTML = `<b>📊 Yapay Zeka Durum Analizi:</b><br>${analysis.replace(/\n/g, '<br>')}`;
-    
+    if (box) {
+      if (parsed.analysis.strong || parsed.analysis.attention || parsed.analysis.action) {
+        box.innerHTML = `
+          <div class="copilot-insights-grid">
+            <div class="copilot-ins-card strong"><div class="copilot-ins-lbl">🟢 Güçlü Yön</div>${esc(parsed.analysis.strong || 'İstikrar korunuyor.')}</div>
+            <div class="copilot-ins-card attention"><div class="copilot-ins-lbl">⚠️ Dikkat Bekleyen Nokta</div>${esc(parsed.analysis.attention || 'Belirgin aksama yok.')}</div>
+            <div class="copilot-ins-card action"><div class="copilot-ins-lbl">🎯 Bu Haftaki Aksiyon</div>${esc(parsed.analysis.action || 'Mevcut tempoyu sürdürün.')}</div>
+          </div>`;
+      } else {
+        box.innerHTML = `<div style="background:var(--surface2); border:1px solid var(--border); padding:14px; border-radius:12px; font-size:12.5px; margin-bottom:12px; line-height:1.6; color:var(--text)"><b>📊 Durum Analizi:</b><br>${esc(parsed.analysis.raw).replace(/\n/g, '<br>')}</div>`;
+      }
+    }
+
     const txtArea = document.getElementById('aiCopilotTextarea');
-    if (txtArea) txtArea.value = draft;
-    _originalCopilotDraft = draft;
-    
-    // Show & Scroll to result area
+    if (txtArea) txtArea.value = parsed.draft;
+    _originalCopilotDraft = parsed.draft;
+
     const resArea = document.getElementById('aiCopilotResultArea');
     if (resArea) {
       resArea.style.display = 'block';
       setTimeout(() => resArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
     }
-    
+
     const sendBtn = document.getElementById('aiCopilotSendBtn');
-    if (sendBtn) sendBtn.disabled = true;
-    
-    const warn = document.getElementById('aiCopilotEditWarning');
-    if (warn) warn.style.display = 'inline';
-    
+    if (sendBtn) sendBtn.disabled = !parsed.draft;
+
     showToast('✨ AI Analiz Raporu ve Taslak Hazırlandı ✓');
-  } catch(e) {
+  } catch (e) {
     console.error('generateAICopilotDraft error:', e);
     showToast('Taslak oluşturulurken hata: ' + e.message);
   } finally {
@@ -14642,25 +14861,25 @@ Aynen böyle devam! 🚀`;
   }
 }
 
-// Copilot taslağını WhatsApp ile veliye gönder (kopyalama zahmeti yok)
-function shareCopilotWhatsApp(){
-  const text=(document.getElementById('aiCopilotTextarea')?.value||'').trim();
-  if(!text){ showToast('Önce taslak oluşturun'); return; }
-  window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+function copyCopilotDraft() {
+  const text = (document.getElementById('aiCopilotTextarea')?.value || '').trim();
+  if (!text) { showToast('Önce taslak oluşturun'); return; }
+  if (typeof copyToClipboard === 'function') copyToClipboard(text, 'Taslak panoya kopyalandı ✓');
+  else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => showToast('Taslak panoya kopyalandı ✓'));
+  }
+}
+
+function shareCopilotWhatsApp() {
+  const text = (document.getElementById('aiCopilotTextarea')?.value || '').trim();
+  if (!text) { showToast('Önce taslak oluşturun'); return; }
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
 }
 
 function checkCopilotDraftEdited() {
-  const val = document.getElementById('aiCopilotTextarea').value.trim();
+  const val = (document.getElementById('aiCopilotTextarea')?.value || '').trim();
   const sendBtn = document.getElementById('aiCopilotSendBtn');
-  const warning = document.getElementById('aiCopilotEditWarning');
-  
-  if (val && val !== _originalCopilotDraft) {
-    sendBtn.disabled = false;
-    warning.style.display = 'none';
-  } else {
-    sendBtn.disabled = true;
-    warning.style.display = 'inline';
-  }
+  if (sendBtn) sendBtn.disabled = !val;
 }
 
 async function sendCopilotDraft(stuId) {
@@ -14773,7 +14992,11 @@ async function _requestAIProgramDraft(stuId, isRevision) {
   const minDaily = Math.max(30, parseInt(document.getElementById('aiProgMinDaily')?.value, 10) || 270);
   const maxDaily = Math.max(minDaily, parseInt(document.getElementById('aiProgMaxDaily')?.value, 10) || 330);
   const videoSpeed = parseFloat(document.getElementById('aiProgVideoSpeed')?.value || '1.5') || 1.5;
-  const coachPrompt = (document.getElementById('aiProgramPrompt')?.value || '').trim();
+  const rawCoachPrompt = (document.getElementById('aiProgramPrompt')?.value || '').trim();
+  const restDay = (document.getElementById('aiProgRestDay')?.value || '').trim();
+  const coachPrompt = (restDay && !rawCoachPrompt.toLowerCase().includes(restDay.toLowerCase()))
+    ? `${rawCoachPrompt}${rawCoachPrompt ? ' ' : ''}${restDay} gününü hafif dinlenme / boş gün bırak.`
+    : rawCoachPrompt;
   const revisionPrompt = isRevision ? (document.getElementById('aiProgramRevisePrompt')?.value || '').trim() : '';
 
   if (isRevision && !revisionPrompt) {
@@ -14944,6 +15167,30 @@ function _renderAIProgramMetaAndChips() {
     }
   }
 
+  const branchBarEl = document.getElementById('aiProgramBranchBar');
+  if (branchBarEl) {
+    const dist = computeBranchDistribution(draft.tasks || []);
+    if (dist.length) {
+      const totalMins = dist.reduce((acc, x) => acc + x.minutes, 0);
+      const hrsStr = totalMins >= 60 ? `${Math.floor(totalMins / 60)} sa ${totalMins % 60} dk` : `${totalMins} dk`;
+      branchBarEl.style.display = 'flex';
+      branchBarEl.innerHTML = `
+        <div class="aip-branch-head">
+          <span>📊 Branş Süre Dağılımı</span>
+          <span style="color:var(--text-dim);font-size:11px">Toplam: ${hrsStr}</span>
+        </div>
+        <div class="aip-branch-bar">
+          ${dist.map(d => `<div style="width:${Math.max(3, d.pct)}%;background:${d.color}" title="${escAttr(d.branch)}: ${d.minutes} dk (%${d.pct})"></div>`).join('')}
+        </div>
+        <div class="aip-branch-legend">
+          ${dist.map(d => `<span class="aip-branch-leg-item"><i class="aip-branch-dot" style="background:${d.color}"></i><b>${esc(d.branch)}</b> %${d.pct} (${d.minutes} dk)</span>`).join('')}
+        </div>`;
+    } else {
+      branchBarEl.style.display = 'none';
+      branchBarEl.innerHTML = '';
+    }
+  }
+
   const chipsEl = document.getElementById('aiProgramDayChips');
   const totals = _computeAIDayTotals(draft.tasks || []);
   if (chipsEl) {
@@ -14953,7 +15200,7 @@ function _renderAIProgramMetaAndChips() {
       const h = Math.floor(d.minutes / 60);
       const m = d.minutes % 60;
       const durTxt = h > 0 ? `${h}sa ${m}dk` : `${m}dk`;
-      return `<div class="aip-day-chip ${cls}"><span>${esc(_formatAIRowTrDate(d.date))}</span><strong>${durTxt}</strong><small>${d.count} görev</small></div>`;
+      return `<div class="aip-day-chip ${cls}" style="cursor:pointer" onclick="_scrollToAIDay('${escAttr(d.date)}')" title="İlgili güne git"><span>${esc(_formatAIRowTrDate(d.date))}</span><strong>${durTxt}</strong><small>${d.count} görev</small></div>`;
     }).join('');
   }
 
@@ -14981,7 +15228,7 @@ function _buildAIRowHtml(t, idx, showDateBadge) {
       <div class="aip-row-main">
         <input type="checkbox" ${checked} onchange="_toggleAIRow(${idx}, this.checked)" class="aip-row-chk">
         ${showDateBadge ? `<span class="aip-date-badge">${esc(_formatAIRowTrDate(t.date))}</span>` : ''}
-        <span class="aip-type-badge ${esc(t.type || 'konu')}">${typeLbl} · ${esc(t.exam_type || 'TYT')}</span>
+        <span class="aip-type-badge ${esc(t.type || 'konu')}" onclick="_cycleAIRowType(${idx})" title="Görev türünü değiştirmek için tıkla">${typeLbl} · ${esc(t.exam_type || 'TYT')}</span>
         <input type="date" class="aip-inp-date" value="${esc(t.date || '')}" onchange="_onAIRowChange(${idx}, 'date', this.value)">
         <input type="text" class="aip-inp-subject" value="${esc(t.subject || '')}" placeholder="Branş - Kaynak" onchange="_onAIRowChange(${idx}, 'subject', this.value)">
         <div class="aip-dur-wrap">
@@ -15033,10 +15280,13 @@ function _renderAIProgramRows() {
     wrap.innerHTML = sorted.map(([date, list]) => {
       const totalMin = list.filter(x => x.t.selected !== false).reduce((s, x) => s + (Number(x.t.duration) || 0), 0);
       return `
-        <div class="aip-group">
+        <div class="aip-group" data-date="${escAttr(date)}">
           <div class="aip-group-head">
             <strong>📅 ${esc(_formatAIRowTrDate(date))} <small>(${esc(date)})</small></strong>
-            <span>${list.length} görev · ${totalMin} dk</span>
+            <div class="aip-group-actions">
+              <span>${list.length} görev · ${totalMin} dk</span>
+              <button type="button" class="aip-add-day-btn" onclick="_addManualAIRow('${escAttr(date)}')">+ Görev Ekle</button>
+            </div>
           </div>
           <div class="aip-group-body">
             ${list.map(({ t, idx }) => _buildAIRowHtml(t, idx, false)).join('')}
@@ -15083,6 +15333,39 @@ function _removeAIRow(idx) {
   if (!_aiProgramState.draft?.tasks) return;
   _aiProgramState.draft.tasks.splice(idx, 1);
   _renderAIProgramPreview();
+}
+
+function _cycleAIRowType(idx) {
+  const t = _aiProgramState.draft?.tasks?.[idx];
+  if (!t) return;
+  const order = ['konu', 'soru', 'deneme'];
+  const next = order[(order.indexOf(t.type) + 1) % order.length];
+  t.type = next;
+  _renderAIProgramPreview();
+}
+
+function _addManualAIRow(date) {
+  if (!_aiProgramState.draft) {
+    _aiProgramState.draft = { summary: '', notes: [], warnings: [], tasks: [] };
+  }
+  const tasks = _aiProgramState.draft.tasks || [];
+  tasks.push({
+    date: date || todayStr(),
+    type: 'soru',
+    exam_type: 'TYT',
+    branch: 'Matematik',
+    subject: 'Matematik - Ek Çalışma',
+    duration: 40,
+    note: 'Koç eklemesi',
+    selected: true,
+  });
+  _aiProgramState.draft.tasks = tasks;
+  _renderAIProgramPreview();
+}
+
+function _scrollToAIDay(date) {
+  const el = document.querySelector(`.aip-group[data-date="${CSS.escape(date)}"]`);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 async function approveAIProgramDraft(stuId) {
@@ -19087,7 +19370,15 @@ window.addAIMessage = addAIMessage;
 window.sendAIMessage = sendAIMessage;
 window.autoDetectModel = autoDetectModel;
 window.callGeminiFallback = callGeminiFallback;
+window.switchAIStudioTab = switchAIStudioTab;
+window.setCopilotMode = setCopilotMode;
+window._appendAIHighlight = _appendAIHighlight;
+window._appendAISourceToPrompt = _appendAISourceToPrompt;
+window.applyAIProgramPreset = applyAIProgramPreset;
+window.applyAIIntensityPreset = applyAIIntensityPreset;
+window.updateAIProgHoursBadge = updateAIProgHoursBadge;
 window.generateAICopilotDraft = generateAICopilotDraft;
+window.copyCopilotDraft = copyCopilotDraft;
 window.checkCopilotDraftEdited = checkCopilotDraftEdited;
 window.shareCopilotWhatsApp = shareCopilotWhatsApp;
 window.assignResourceAsTask = assignResourceAsTask;
@@ -19100,6 +19391,9 @@ window.setAIProgramPreviewMode = setAIProgramPreviewMode;
 window._toggleAIRow = _toggleAIRow;
 window._onAIRowChange = _onAIRowChange;
 window._removeAIRow = _removeAIRow;
+window._cycleAIRowType = _cycleAIRowType;
+window._addManualAIRow = _addManualAIRow;
+window._scrollToAIDay = _scrollToAIDay;
 window.approveAIProgramDraft = approveAIProgramDraft;
 window.renderParentHome = renderParentHome;
 window.renderParentProgress = renderParentProgress;
