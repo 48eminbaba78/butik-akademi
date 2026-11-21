@@ -14910,8 +14910,12 @@ async function _hydrateAIStudioResources(stuId) {
     if (!stillWrap) return;
     stillWrap.innerHTML = resources.map((r, i) => {
       const catTotal = totalByName[r.name] || 0;
+      const doneItems = Number(r.doneItemsCount || 0);
+      const assignedItems = Number(r.assignedItemsCount || r.taskCount || 0);
       const pctLabel = catTotal > 0
-        ? `%${Math.min(100, Math.round((r.doneCount / catTotal) * 100))} katalog`
+        ? (doneItems > 0
+            ? `%${Math.min(100, Math.round((doneItems / catTotal) * 100))} katalog`
+            : `${assignedItems}/${catTotal} atandı`)
         : `${r.taskCount} görev · %${r.assignedPct}`;
       return `<button type="button" class="aip-source-chip" onclick="_appendAISourceToPrompt(${i})" title="${escAttr(r.subject)}">+ ${esc(r.name)} <small>(${pctLabel})</small></button>`;
     }).join('');

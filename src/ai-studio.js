@@ -216,7 +216,20 @@ export function computeStudentAIContext({
       if (isOverrun) reasons.push(`+${durMeta.overrunMin} dk süre aşımı`);
 
       const topicLabel = t.note ? `${t.subject} (${t.note.slice(0, 32)})` : t.subject;
-      const reasonStr = reasons.join(' · ') || (stuNote ? `Not: "${stuNote.slice(0, 48)}"` : 'Geri bildirim');
+      const cleanNoteSummary = String(t.note || '').replace(/^\d+\s+(?:video|test)\s*:\s*/i, '').split(/[,;]/)[0].trim();
+      const rawHint = (cleanNoteSummary && cleanNoteSummary !== resourceName)
+        ? cleanNoteSummary
+        : (resourceName && resourceName !== branch ? resourceName : '');
+      const topicHint = rawHint.length > 22 ? rawHint.slice(0, 20) + '…' : rawHint;
+      const prefixLbl = topicHint && branch ? `${branch} · ${topicHint}` : (branch || resourceName);
+      const reasonStr = reasons.join(' · ');
+      const chipLabel = reasonStr
+        ? `${prefixLbl}: ${reasonStr}`
+        : `${branch || resourceName}: Not: "${stuNote.slice(0, 40)}"`;
+      const hintParts = [...reasons];
+      if (stuNote) hintParts.push(`Öğrenci notu: "${stuNote.slice(0, 90)}"`);
+      if (!hintParts.length) hintParts.push('Geri bildirim');
+
       feedbackItems.push({
         date: t.date || '',
         subject: t.subject || '',
@@ -231,8 +244,8 @@ export function computeStudentAIContext({
         wrongTopics: resultMeta?.wrongTopics || [],
         overrunMin: durMeta.overrunMin,
         severity: (fb.status === 'failed' || fb.blocker === 'topic' || isLowAcc) ? 'critical' : 'warn',
-        chipLabel: `${branch || resourceName}: ${reasonStr}`,
-        promptHint: `${topicLabel} için öğrenci geri bildirimi [${reasonStr}${stuNote ? '; Öğrenci notu: "' + stuNote.slice(0, 90) + '"' : ''}] — bu konuya pekiştirici/telafi görev ekle.`,
+        chipLabel,
+        promptHint: `${topicLabel} için öğrenci geri bildirimi [${hintParts.join('; ')}] — bu konuya pekiştirici/telafi görev ekle.`,
       });
     }
   }
@@ -240,10 +253,12 @@ export function computeStudentAIContext({
   // Birleşik tıklanabilir vurgu çipleri (önce kritik geri bildirimler, sonra zayıf konular)
   const highlights = [];
   const usedHighlightKey = new Set();
+  const usedLabels = new Set();
   for (const fi of feedbackItems) {
-    const key = `${fi.branch}::${fi.topicNote.slice(0, 20)}`;
-    if (usedHighlightKey.has(key)) continue;
+    const key = `${fi.branch}::${fi.topicNote.slice(0, 20)}::${fi.studentNote.slice(0, 20)}`;
+    if (usedHighlightKey.has(key) || usedLabels.has(fi.chipLabel)) continue;
     usedHighlightKey.add(key);
+    usedLabels.add(fi.chipLabel);
     highlights.push({
       kind: 'feedback',
       severity: fi.severity,
@@ -277,12 +292,18 @@ export function computeStudentAIContext({
       subject: t.subject,
       taskCount: 0,
       doneCount: 0,
+      assignedItemsCount: 0,
+      doneItemsCount: 0,
       assignedUnits: 0,
       doneUnits: 0,
       lastDate: '',
     };
     entry.taskCount++;
     if (t.done) entry.doneCount++;
+    const itemCount = items.length > 0 ? items.length : 1;
+    const doneItemCnt = t.done ? itemCount : items.filter(it => it?.done).length;
+    entry.assignedItemsCount += itemCount;
+    entry.doneItemsCount += doneItemCnt;
     const unitSum = items.reduce((sum, it) => sum + (Number(it?.soru) || 0), 0);
     entry.assignedUnits += unitSum;
     if (t.done) entry.doneUnits += unitSum;

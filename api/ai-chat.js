@@ -442,50 +442,68 @@ async function readShortApiError(resp) {
   }
 }
 
-async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt, groqSystemPrompt) {
+async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt, groqSystemPrompt, deadlineMs = Date.now() + 46000) {
   const errors = [];
+  const timeLeft = () => deadlineMs - Date.now();
+  const capTimeout = (wantMs) => Math.max(0, Math.min(wantMs, timeLeft() - 1200));
 
   // 1. Anthropic Claude (öncelikli — karmaşık planlama & JSON tutarlılığı yüksek)
   if (keys.anthropicKey) {
-    try {
+    const timeoutMs = capTimeout(18000);
+    if (timeoutMs >= 5000) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 24000);
-      const model = (process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5').trim();
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': keys.anthropicKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 6000,
-          temperature: 0.3,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: userPrompt }],
-        }),
-      });
-      clearTimeout(timer);
-      if (resp.ok) {
-        const data = await resp.json();
-        const text = (data.content || []).map(b => b.text || '').join('').trim();
-        return { json: extractJsonObject(text), provider: 'anthropic', model };
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const model = (process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5').trim();
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'content-type': 'application/json',
+            'x-api-key': keys.anthropicKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 4800,
+            temperature: 0.3,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userPrompt }],
+          }),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const text = (data.content || []).map(b => b.text || '').join('').trim();
+          return { json: extractJsonObject(text), provider: 'anthropic', model };
+        }
+        const detail = await readShortApiError(resp);
+        errors.push(`Anthropic ${resp.status}${detail ? ': ' + detail : ''}`);
+      } catch (e) {
+        errors.push(`Anthropic: ${e.message}`);
+      } finally {
+        clearTimeout(timer);
       }
-      const detail = await readShortApiError(resp);
-      errors.push(`Anthropic ${resp.status}${detail ? ': ' + detail : ''}`);
-    } catch (e) {
-      errors.push(`Anthropic: ${e.message}`);
+    } else {
+      errors.push('Anthropic: bütçe yetersiz');
     }
   }
 
   // 2. Google Gemini
   if (keys.geminiKey) {
-    for (const gModel of ['gemini-2.5-flash', 'gemini-2.0-flash']) {
+    let firstAttemptElapsed = 0;
+    const gModels = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+    for (let i = 0; i < gModels.length; i++) {
+      const gModel = gModels[i];
+      if (i > 0 && firstAttemptElapsed >= 6000) break;
+      const timeoutMs = capTimeout(20000);
+      if (timeoutMs < 5000) {
+        errors.push(`${gModel}: bütçe yetersiz`);
+        break;
+      }
+      const startedAt = Date.now();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 28000);
         const generationConfig = {
           responseMimeType: 'application/json',
           temperature: 0.3,
@@ -504,7 +522,7 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
             generationConfig,
           }),
         });
-        clearTimeout(timer);
+        if (i === 0) firstAttemptElapsed = Date.now() - startedAt;
         if (resp.ok) {
           const data = await resp.json();
           const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -513,25 +531,34 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
         const detail = await readShortApiError(resp);
         errors.push(`${gModel} ${resp.status}${detail ? ': ' + detail : ''}`);
       } catch (e) {
+        if (i === 0) firstAttemptElapsed = Date.now() - startedAt;
         errors.push(`${gModel}: ${e.message}`);
+      } finally {
+        clearTimeout(timer);
       }
     }
   }
 
-  // 3. Groq (bu hesapta aktif olan openai/gpt-oss-120b; düşük reasoning ile daha hızlı & eksiksiz JSON)
+  // 3. Groq (önce hızlı llama-3.3-70b-versatile, ardından düşük reasoning ile openai/gpt-oss-120b)
   if (keys.groqKey) {
     const promptForGroq = groqUserPrompt || userPrompt;
     const sysForGroq = groqSystemPrompt || systemPrompt;
     const groqAttempts = [
-      { useJsonMode: true, reasoningLow: true, maxTokens: 4800 },
-      { useJsonMode: false, reasoningLow: false, maxTokens: 4800 },
+      { model: 'llama-3.3-70b-versatile', useJsonMode: true,  reasoningLow: false, maxTokens: 4500, maxMs: 15000 },
+      { model: 'openai/gpt-oss-120b',     useJsonMode: true,  reasoningLow: true,  maxTokens: 4800, maxMs: 16000 },
+      { model: 'openai/gpt-oss-120b',     useJsonMode: false, reasoningLow: false, maxTokens: 4800, maxMs: 15000 },
     ];
     for (const att of groqAttempts) {
+      const timeoutMs = capTimeout(att.maxMs);
+      if (timeoutMs < 5000) {
+        errors.push(`Groq (${att.model}): bütçe yetersiz`);
+        break;
+      }
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 24000);
         const payload = {
-          model: 'openai/gpt-oss-120b',
+          model: att.model,
           messages: [
             { role: 'system', content: sysForGroq },
             { role: 'user', content: promptForGroq },
@@ -551,18 +578,17 @@ async function callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserP
           },
           body: JSON.stringify(payload),
         });
-        clearTimeout(timer);
         if (resp.ok) {
           const data = await resp.json();
           const text = data?.choices?.[0]?.message?.content || '';
-          return { json: extractJsonObject(text), provider: 'groq', model: 'openai/gpt-oss-120b' };
+          return { json: extractJsonObject(text), provider: 'groq', model: att.model };
         }
         const detail = await readShortApiError(resp);
-        errors.push(`Groq (${att.useJsonMode ? 'json' : 'text'}) ${resp.status}${detail ? ': ' + detail : ''}`);
-        if (resp.status !== 400) break;
+        errors.push(`Groq (${att.model}) ${resp.status}${detail ? ': ' + detail : ''}`);
       } catch (e) {
-        errors.push(`Groq: ${e.message}`);
-        break;
+        errors.push(`Groq (${att.model}): ${e.message}`);
+      } finally {
+        clearTimeout(timer);
       }
     }
   }
@@ -763,21 +789,27 @@ async function handleProgramBuilder(req, res) {
       return res.status(400).json({ error: 'studentId ve geçerli startDate (YYYY-MM-DD) zorunludur.' });
     }
 
+    const reqStartedAt = Date.now();
+    const HARD_DEADLINE_MS = 46000;
+    const deadlineMs = reqStartedAt + HARD_DEADLINE_MS;
+    const remainingMs = () => deadlineMs - Date.now();
+
     const clampedDays = Math.max(1, Math.min(14, Number(daysCount) || 7));
     const endDate = addDaysIso(startDate, clampedDays - 1);
-    const sixtyDaysAgo = addDaysIso(startDate, -60);
+    const fortyFiveDaysAgo = addDaysIso(startDate, -45);
 
-    // 1. Öğrencinin TÜM verilerini ve aktif kaynak kataloğunu paralel çek
-    const [stuRes, profRes, speedRes, bookRes, examRes, masteryRes, taskRes, msgRes, resCatalog] = await Promise.all([
+    // 1. Öğrencinin verilerini, aktif kaynak kataloğunu ve AI anahtarlarını paralel çek
+    const [stuRes, profRes, speedRes, bookRes, examRes, masteryRes, taskRes, msgRes, resCatalog, keys] = await Promise.all([
       userDb.from('users').select('id, full_name, target, exam_profile, yks_area, week_start, coach_id').eq('id', studentId).maybeSingle(),
       userDb.from('student_profiles').select('level, struggling_subjects, daily_capacity, coach_note, target_university, target_department, target_rank').eq('id', studentId).maybeSingle(),
       userDb.from('student_speeds').select('exam_type, subject, secs_per_question').eq('student_id', studentId),
       userDb.from('student_books').select('name, total_tests, completed_tests').eq('student_id', studentId),
-      userDb.from('exams').select('name, date, exam_type, nets, exam_details').eq('student_id', studentId).order('date', { ascending: false }).limit(8),
+      userDb.from('exams').select('name, date, exam_type, nets').eq('student_id', studentId).order('date', { ascending: false }).limit(8),
       userDb.from('konu_mastery').select('subject, konu, stars, status, last_review_date, ka_date, td_date').eq('student_id', studentId),
-      userDb.from('tasks').select('id, date, type, exam_type, subject, duration, done, note, task_items, student_note, student_result, student_feedback').eq('student_id', studentId).gte('date', sixtyDaysAgo).order('date', { ascending: true }).limit(600),
+      userDb.from('tasks').select('id, date, type, exam_type, subject, duration, done, note, task_items, student_note, student_result, student_feedback').eq('student_id', studentId).gte('date', fortyFiveDaysAgo).order('date', { ascending: true }).limit(350),
       userDb.from('messages').select('from_role, text, created_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(25),
       userDb.from('resources').select('id, exam_type, subject, publisher, name, resource_type, coach_id, active, tests').eq('active', true).limit(300),
+      resolveAIKeys(),
     ]);
 
     const student = stuRes.data;
@@ -869,7 +901,7 @@ async function handleProgramBuilder(req, res) {
       pendingLabelsBySubject,
       student.yks_area || 'SAY',
       hintText,
-      { excludePending: assumePendingDone, activeSubjectNames }
+      { maxDetailed: 14, maxClusters: 6, maxRemIdx: 5, maxCompact: 14, excludePending: assumePendingDone, activeSubjectNames }
     );
     const groqResourceIndex = buildResourceTopicIndex(
       resources,
@@ -877,7 +909,7 @@ async function handleProgramBuilder(req, res) {
       pendingLabelsBySubject,
       student.yks_area || 'SAY',
       hintText,
-      { maxDetailed: 12, maxClusters: 4, maxRemIdx: 4, maxCompact: 8, excludePending: assumePendingDone, activeSubjectNames }
+      { maxDetailed: 10, maxClusters: 4, maxRemIdx: 4, maxCompact: 8, excludePending: assumePendingDone, activeSubjectNames }
     );
 
     const targetDates = [];
@@ -888,7 +920,7 @@ Görevin, koçun verdiği talimatlar ile öğrencinin sistemdeki TÜM gerçek ve
 
 KESİN KURALLAR:
 1. SADECE geçerli JSON döndür. Başka açıklama, markdown veya ekstra metin YAZMA.
-2. Her gün için toplam dakika KESİNLİKLE [${minDaily}, ${maxDaily}] aralığında kalsın (günlük ortalama ~${Math.round((Number(minDaily) + Number(maxDaily)) / 2)} dk).
+2. Her gün için toplam dakika KESİNLİKLE [${minDaily}, ${maxDaily}] aralığında kalsın (günlük ortalama ~${Math.round((Number(minDaily) + Number(maxDaily)) / 2)} dk; topic_note en fazla 6 kelime olsun).
 3. ÖĞRENCİNİN HIZLARI & VİDEO HIZI:
    - Video izleme hızı: ${videoSpeed}x (örn. 120 dk ham video ${videoSpeed}x hızda ${Math.round(120 / Number(videoSpeed))} dk sürer).
    - Eğer bir playlistte TEK bir video çok uzunsa (ör. 90-150 dk ham video), onu TEK oturuşta verme! "part_index": 1, "part_total": 2 (ve ertesi/sonraki güne "part_index": 2, "part_total": 2) şeklinde insani 35-55 dk'lık parçalara böl.
@@ -897,15 +929,16 @@ KESİN KURALLAR:
    - Katalogdaki (detailed_resources) bir kitap veya playlistten seçerken MUTLAKA tam "resource_id" ve o kaynağın "clusters[].remIdx" listesindeki GERÇEK indeksleri ("item_indices": [..]) ver. Zaten çözülmüş/izlenmiş kalemleri tekrar yazma!
    - Önce KONU (playlist) ardından aynı/sonraki günlerde SORU (kitap) sırasını koru (önce videosunu izlemeden ağır soru testi koyma).
    - Eğer koçun istediği kaynak katalogda YOKSA (örn. Apotemi Paragraf, Toprak Kurumsal TYT Matematik gibi), "resource_id": null bırak, "manual_source": "Kitap/Kanal Adı", "question_count" veya "estimated_minutes", ve "manual_items": ["Konu/Test açıklaması"] doldur.
+   - JSON'u kısa tutmak için "part_index", "part_total", "manual_source", "manual_items" alanlarını YALNIZCA gerektiğinde yaz (tek parçalı katalog görevlerinde bu opsiyonel alanları atla).
 5. SINAVA KALAN GÜN, KONU İLERLEMESİ VE ÖĞRENCİ GERİ BİLDİRİMLERİ ÖNCELİĞİ:
    - ÖĞRENCİ GERİ BİLDİRİMLERİ (student_task_feedbacks & priority_remediation_topics): Öğrencinin "Konuyu anlayamadım", "Kaynak çok zordu", "Yapamadım/Kısmen", "Zor/Çok Zor" dediği, not yazdığı veya doğruluk oranı düşük (<%65) çıkan konulara programın ilk günlerinde mutlaka telafi görevi yerleştir (konu anlaşılmadıysa kısa tekrar/video + orta seviye test; süre yetmediyse hız/soru pratiği).
    - KONU İLERLEME DURUMU (topic_progress): Konu anlatımı bitmiş (in_progress_ka_done, 3-6 yıldız) konularda baştan video koyma, soru bankası taraması ve tekrar ver. Zayıf/unutulmuş (weak_or_stale_topics, 1-3 yıldız) konulara konu+soru ikilisi kur. progressPct değeri yüksek olan kitapları düzenli tamamla.
    - SINAVA KALAN GÜN (exam_countdown: ${examCountdown.days_left} gün kaldı — ${examCountdown.phase}): Kalan güne göre konu inşası, pekiştirme veya deneme kampı dengesini gözet.
    - AÇIKLAMA ZORUNLULUĞU: Çıktıdaki "summary" ve "notes" alanlarında sınava kalan günü (${examCountdown.days_left} gün), konu ilerleme durumunu ve öğrencinin hangi geri bildirimlerinin programa nasıl yansıtıldığını koça açıkça raporla.
-6. ÇIKTI JSON ŞEMASI:
+6. ÇIKTI JSON ŞEMASI (katalog görevlerinde yalnızca zorunlu alanları yaz):
 {
   "summary": "Koça yönelik 2-3 cümlelik veri temelli plan özeti (sınava kalan gün, konu ilerlemesi, öğrenci geri bildirimleri ve denemeler)",
-  "notes": ["Önemli koçluk, konu geri bildirimi telafisi veya denge notu 1"],
+  "notes": ["Önemli koçluk veya telafi notu 1"],
   "tasks": [
     {
       "date": "YYYY-MM-DD",
@@ -914,13 +947,9 @@ KESİN KURALLAR:
       "branch": "Matematik" | "Geometri" | "Fizik" | "Kimya" | "Biyoloji" | "Türkçe" | "Edebiyat" | "Tarih" | "Coğrafya" | "Felsefe" | "Din Kültürü",
       "resource_id": "uuid-veya-null",
       "item_indices": [13, 14],
-      "part_index": 1,
-      "part_total": 1,
-      "manual_source": "resource_id null ise kaynak adı",
-      "manual_items": ["isteğe bağlı manuel alt kalemler"],
       "question_count": 20,
       "estimated_minutes": 35,
-      "topic_note": "Kısa ve net konu/kapsam açıklaması"
+      "topic_note": "En fazla 6 kelimelik kısa konu notu"
     }
   ]
 }`;
@@ -953,14 +982,15 @@ KESİN KURALLAR:
       student_task_feedbacks: feedbackAnalysis.student_task_feedbacks.slice(0, compact ? 8 : 15),
       student_speeds_secs_per_q: compactSpeeds,
       student_books: compact ? (bookRes.data || []).slice(0, 12) : (bookRes.data || []),
-      recent_exams: (examRes.data || []).slice(0, compact ? 4 : 8).map(e =>
-        compact
-          ? { name: e.name, date: e.date, type: e.exam_type, nets: e.nets }
-          : { name: e.name, date: e.date, type: e.exam_type, nets: e.nets, details: e.exam_details }
-      ),
+      recent_exams: (examRes.data || []).slice(0, compact ? 4 : 8).map(e => ({
+        name: e.name,
+        date: e.date,
+        type: e.exam_type,
+        nets: e.nets,
+      })),
       avg_historical_daily_minutes: avgAssignedMin,
       active_program_sources: activeProgramSources,
-      ...(compact ? {} : { recent_tasks_sample: recentTasksCompact }),
+      ...(compact ? {} : { recent_tasks_sample: recentTasksCompact.slice(-12) }),
       recent_chat_messages: compact ? recentMessages.slice(-4) : recentMessages,
     });
 
@@ -1003,15 +1033,14 @@ ${JSON.stringify(prevCompact)}`;
     const groqSystemPrompt = `YKS koçluk planlayıcısısın. SADECE geçerli saf JSON döndür (markdown/yorum yok).
 KRİTİK: ${clampedDays} günün HER BİRİ için ayrı 4-6 görev üret (toplam en az ${clampedDays * 4} görev, her gün ${minDaily}-${maxDaily} dk).
 Sınava kalan gün (${examCountdown.days_left} gün · ${examCountdown.phase}), topic_progress (KA bitenlerde soru bankası, zayıflarda konu+soru) ve student_task_feedbacks / priority_remediation_topics verilerini ilk günlere telafi olarak mutlaka yansıt; summary'de açıkla.
-topic_note çok kısa (en fazla 5 kelime) olsun ki tüm ${clampedDays * 4}+ görev JSON'a eksiksiz sığsın.
-Video hızı ${videoSpeed}x (uzun videoları part_index/part_total ile 35-55 dk böl).
+topic_note en fazla 5-6 kelime olsun; katalog görevlerinde part_index, part_total, manual_source, manual_items gibi varsayılan alanları yazma (yalnızca gerektiğinde ekle) ki tüm görevler hızlı ve eksiksiz sığsın.
+Video hızı ${videoSpeed}x (yalnızca çok uzun videoları part_index/part_total ile 35-55 dk böl).
 Katalogda tam resource_id + remIdx içinden item_indices ver; katalog dışı için resource_id:null, manual_source, question_count/estimated_minutes, manual_items yaz.
-Şema: {"summary":"kısa özet","notes":[""],"tasks":[{"date":"${targetDates[0]}","exam_type":"TYT|AYT-SAY|AYT-EA|AYT-SOZ","type":"konu|soru|deneme|diger","branch":"Matematik|Geometri|Fizik|Kimya|Biyoloji|Türkçe","resource_id":null,"item_indices":[0],"part_index":1,"part_total":1,"manual_source":"","manual_items":[""],"question_count":20,"estimated_minutes":35,"topic_note":"kısa"}]}`;
+Şema: {"summary":"kısa özet","notes":[""],"tasks":[{"date":"${targetDates[0]}","exam_type":"TYT|AYT-SAY|AYT-EA|AYT-SOZ","type":"konu|soru|deneme|diger","branch":"Matematik|Geometri|Fizik|Kimya|Biyoloji|Türkçe","resource_id":null,"item_indices":[0],"question_count":20,"estimated_minutes":35,"topic_note":"kısa"}]}`;
 
     const userPrompt = formatBuilderPrompt(buildSnapshot(false), resourceIndex);
     const groqUserPrompt = formatBuilderPrompt(buildSnapshot(true), groqResourceIndex);
 
-    const keys = await resolveAIKeys();
     const hydrateOpts = {
       startDate,
       daysCount: clampedDays,
@@ -1021,14 +1050,15 @@ Katalogda tam resource_id + remIdx içinden item_indices ver; katalog dışı i�
       completedLabelsBySubject: effectiveCompletedLabels,
     };
 
-    let aiRes = await callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt, groqSystemPrompt);
+    let aiRes = await callStructuredProgramAI(systemPrompt, userPrompt, keys, groqUserPrompt, groqSystemPrompt, deadlineMs);
     let hydrated = hydrateProgramPlan(aiRes.json, resourcesById, speedRes.data || [], hydrateOpts);
 
-    // Yapay zeka eksik gün/görev (örn. 1 görev) döndürdüyse 1 kez tam doldurma düzeltme isteği yap
+    // Yapay zeka eksik gün/görev (örn. 1 görev) döndürdüyse sadece süre bütçesi yeterliyken (<18s) 1 düzeltme isteği yap
     const minTasksRequired = clampedDays >= 2 ? clampedDays * 3 : 1;
-    const minDaysRequired = clampedDays >= 2 ? Math.ceil(clampedDays * 0.6) : 1;
+    const minDaysRequired = clampedDays >= 2 ? Math.ceil(clampedDays * 0.7) : 1;
     const coveredDays = new Set(hydrated.tasks.map(t => t.date)).size;
-    if (hydrated.tasks.length < minTasksRequired || coveredDays < minDaysRequired) {
+    const elapsedMs = Date.now() - reqStartedAt;
+    if ((hydrated.tasks.length < minTasksRequired || coveredDays < minDaysRequired) && elapsedMs < 18000 && remainingMs() >= 18000) {
       const fixSuffix = `\n\nDİKKAT: Önceki çıktın eksik kaldı (yalnızca ${hydrated.tasks.length} görev ve ${coveredDays}/${clampedDays} gün). Şimdi TÜM ${clampedDays} gün (${targetDates.join(', ')}) için her güne 4-6 görev ekleyerek EN AZ ${clampedDays * 4} görevli TAM JSON üret!`;
       try {
         const retryRes = await callStructuredProgramAI(
@@ -1036,7 +1066,8 @@ Katalogda tam resource_id + remIdx içinden item_indices ver; katalog dışı i�
           userPrompt + fixSuffix,
           keys,
           groqUserPrompt + fixSuffix,
-          groqSystemPrompt
+          groqSystemPrompt,
+          deadlineMs
         );
         const retryHydrated = hydrateProgramPlan(retryRes.json, resourcesById, speedRes.data || [], hydrateOpts);
         if (retryHydrated.tasks.length > hydrated.tasks.length) {
