@@ -353,6 +353,19 @@
     .kb-navlinks a { color: var(--text-mid); text-decoration: none; font-size: 13px; font-weight: 600; transition: color .2s; }
     .kb-navlinks a:hover { color: var(--text); }
 
+    @media (max-width: 600px) {
+      body { padding: 20px 14px; }
+      .kb-topbar { flex-wrap: wrap; gap: 10px; padding-bottom: 16px; margin-bottom: 20px; }
+      h1 { font-size: 28px; }
+      .subtitle { font-size: 14px; }
+      .filter-bar { padding: 14px; gap: 12px; }
+      .filter-group { min-width: 100%; }
+      .filter-group input, .filter-group select, .form-field input, .form-field select, .form-field textarea { font-size: 16px; }
+      .coaches-grid { grid-template-columns: 1fr; }
+      .coach-card { padding: 18px; }
+      .modal { padding: 20px 16px; border-radius: 16px; }
+    }
+
     /* Derin link (/koc/<slug>) ile gelindiğinde "Koç Bul" listesi bir an
        görünüp sonra profile geçmesin diye ilk boyamadan önce gizleniyor. */
     html.deep-link-boot .container { display: none; }

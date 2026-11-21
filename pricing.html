@@ -62,7 +62,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .bt-badge{position:absolute;top:-8px;right:-8px;background:#3ecf8e;color:#0f0e0c;font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;text-transform:uppercase;}
 
 /* PRICING GRID */
-.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;max-width:1000px;margin:0 auto;padding:0 40px 80px;}
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;max-width:760px;margin:0 auto;padding:0 40px 80px;}
 .pc{background:var(--s1);border:1px solid var(--bd);border-radius:20px;padding:32px;display:flex;flex-direction:column;transition:border-color .3s,transform .25s;position:relative;overflow:hidden;}
 .pc:hover{border-color:var(--bd2);transform:translateY(-4px);}
 .pc.featured{border-color:rgba(232,97,58,.45);background:linear-gradient(135deg,var(--s1),rgba(232,97,58,.05));}
@@ -140,6 +140,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   nav{padding:0 20px;}
   .hero{padding:100px 20px 60px;}
   .pricing-grid{padding:0 20px 60px;grid-template-columns:1fr;}
+  .pc{padding:24px 20px;}
   .faq-sec,.cta-banner{padding-left:20px;padding-right:20px;}
   .cta-inner{padding:36px 24px;}
 }
@@ -164,7 +165,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 </section>
 
 <!-- PRICING CARDS -->
-<div class="pricing-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));max-width:760px">
+<div class="pricing-grid">
 
   <!-- BİREYSEL -->
   <div class="pc">

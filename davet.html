@@ -207,6 +207,13 @@
     .btn-back:hover { color: var(--text); }
     .fade-in { animation: fade .3s ease both; }
     @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    @media (max-width: 600px) {
+      .topbar { padding: 14px 16px; }
+      main { padding: 24px 14px 40px; }
+      .card { padding: 24px 18px; border-radius: 16px; }
+      .field input, .field select { font-size: 16px; }
+    }
   </style>
   <script src="/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

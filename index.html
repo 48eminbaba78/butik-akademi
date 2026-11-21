@@ -747,14 +747,37 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   .how-sec,.faq-sec{padding:60px 20px;}
 }
 @media(max-width:600px){
-  .prob-sol-grid{grid-template-columns:1fr;}
+  .prob-sol-grid{grid-template-columns:1fr;padding:52px 16px;}
   .bento{grid-template-columns:1fr;}
+  .bc{padding:20px 18px;}
   .bc-6,.bc-4,.bc-8,.bc-12{grid-column:span 1;}
-  .hero{padding:90px 20px 48px;}
-  .hero h1{letter-spacing:-1.5px;}
+  .hero{padding:90px 16px 48px;}
+  .hero-eyebrow{font-size:10px;padding:5px 12px;max-width:100%;white-space:normal;text-align:center;line-height:1.4;margin-bottom:20px;}
+  .hero h1{font-size:clamp(30px,8vw,40px);letter-spacing:-1.2px;line-height:1.08;}
   .hero-badges{display:none;}
   .hero-cta{flex-direction:column;align-items:stretch;}
   .btn-hero-main,.btn-hero-ghost{justify-content:center;padding:14px 24px;}
+  .gallery-section{padding:48px 16px;}
+  .gallery-header{margin-bottom:28px;}
+  .gallery-item{flex:0 0 85vw;max-width:340px;}
+  .logos-strip{padding:32px 20px 0 !important;}
+  .logos-row{gap:16px 24px !important;}
+  .features-tabs{display:flex !important;width:100%;max-width:100%;border-radius:16px;padding:4px;gap:4px;margin:24px auto 28px;}
+  .ft-tab{flex:1;justify-content:center;padding:9px 6px;font-size:12px;gap:4px;white-space:nowrap;}
+  .studio-card-box{min-width:0 !important;width:100% !important;max-width:100% !important;padding:14px 16px !important;}
+  .week-strip{gap:4px;}
+  .ws-day{padding:6px 2px;}
+  .ws-num{font-size:14px;}
+  .ws-task{font-size:7.5px;padding:2px 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .timeline{grid-template-columns:1fr;gap:24px;margin-top:36px;}
+  .pricing-sec,.reg-sec,.testi-sec{padding:52px 16px;}
+  .form-card{padding:22px 18px;border-radius:18px;}
+  .ff-row{grid-template-columns:1fr;gap:0;}
+  .plan-pills{flex-direction:column;}
+  .ff input,.ff select,.ob-input,.ob-select{font-size:16px;}
+  .f-modal-body{padding:24px 18px;}
+  .f-modal-title{font-size:20px;}
+  .ob-step3-body{padding:28px 18px !important;}
   footer{padding:44px 20px 20px;}
   .footer-grid{grid-template-columns:1fr;}
   .ig-header{flex-direction:column;align-items:flex-start;gap:14px;}
@@ -857,8 +880,11 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   border-radius: 24px;
   width: 100%;
   max-width: 580px;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: 0 24px 60px rgba(0,0,0,0.6);
   animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1209,6 +1235,8 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
+  row-gap: 6px;
   gap: 12px;
   font-size: 11.5px;
   color: var(--dim);
@@ -1473,10 +1501,10 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
 </div>
 
 <!-- LOGOS -->
-<div style="padding:40px 40px 0;border-top:1px solid var(--bd)">
+<div class="logos-strip" style="padding:40px 40px 0;border-top:1px solid var(--bd)">
   <div style="max-width:1100px;margin:0 auto">
     <div class="reveal" style="text-align:center;font-size:12px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:24px">Kimler İçin Tasarlandı</div>
-    <div class="reveal" style="display:flex;align-items:center;justify-content:center;gap:40px;flex-wrap:wrap;opacity:.45;filter:grayscale(1)">
+    <div class="reveal logos-row" style="display:flex;align-items:center;justify-content:center;gap:40px;flex-wrap:wrap;opacity:.45;filter:grayscale(1)">
       <div style="font-family:'Geist',sans-serif;font-size:14px;font-weight:800;color:var(--text)">BUTİK AKADEMİLER</div>
       <div style="font-family:'Geist',sans-serif;font-size:14px;font-weight:800;color:var(--text)">BİREYSEL REHBERLER</div>
       <div style="font-family:'Geist',sans-serif;font-size:14px;font-weight:800;color:var(--text)">ÖZEL DERS PLATFORMLARI</div>
@@ -1538,7 +1566,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
         <div style="max-width:580px;">
           <div class="bc-icon" style="font-size:32px; margin-bottom:8px;">🎨</div>
           <div class="bc-title" style="font-size:21px; font-weight:800; color:#fff; margin-bottom:6px;">Rostrum Studio — No-Code Sayfa Oluşturucu</div>
-          <div class="bc-desc" style="font-size:13.5px; line-height:1.65; color:var(--mid); margin-bottom:14px;">
+          <div class="bc-desc" style="font-size:13.5px; line-height:1.65; color:rgba(255,255,255,0.78); margin-bottom:14px;">
             Instagram biyografiniz ve sosyal medya reklamlarınız için sürükle-bırak yöntemiyle yüksek dönüşümlü kişisel YKS koçluk web sayfanızı saniyeler içinde tasarlayın. Kod yazmadan lansman yapın.
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -1547,7 +1575,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
             <span style="font-size:11px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); padding:4px 10px; border-radius:99px; color:#fff; font-weight:600;">🚀 Tek Tıkla Yayınla</span>
           </div>
         </div>
-        <div style="background:rgba(0,0,0,0.45); border:1px solid rgba(232,97,58,0.3); border-radius:16px; padding:18px 24px; text-align:center; min-width:240px; flex:1; max-width:320px;">
+        <div class="studio-card-box" style="background:rgba(0,0,0,0.45); border:1px solid rgba(232,97,58,0.3); border-radius:16px; padding:18px 24px; text-align:center; min-width:240px; flex:1; max-width:320px;">
           <div style="font-size:10px; color:var(--mid); font-weight:800; text-transform:uppercase; letter-spacing:0.8px;">Özel Sayfa Bağlantınız</div>
           <div style="font-size:14px; font-weight:800; color:var(--acc); margin:8px 0; word-break:break-all;">rostrumakademi.com/koc/adiniz</div>
           <div style="font-size:11.5px; color:#3ecf8e; font-weight:700;">✓ Instagram Bio Uyumlu</div>
@@ -2303,7 +2331,7 @@ footer{padding:60px 40px 28px;border-top:1px solid var(--bd);}
     </div>
 
     <!-- STEP 3: AKTİVASYON VE YÖNLENDİRME -->
-    <div class="ob-body" id="obStep3" style="display:none;text-align:center;padding:40px 32px">
+    <div class="ob-body ob-step3-body" id="obStep3" style="display:none;text-align:center;padding:40px 32px">
       <div style="width:64px;height:64px;border-radius:50%;background:rgba(232,97,58,0.15);border:2px solid var(--acc);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 20px auto;animation:pulse 1.5s infinite">
         🎉
       </div>
